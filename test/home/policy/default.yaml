@@ -1,0 +1,11 @@
+# e2e dispatch policy — the operator may dispatch anything; workflow-to-workflow
+# chains are explicit, and `forbidden` deliberately has no route to `composer`
+# so the policy-denial scenario can prove the gate.
+"system:admin":
+  - "*"
+"admin:*":
+  - "*"
+"cli:parent":
+  - child
+"cli:forbidden":
+  - child

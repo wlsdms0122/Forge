@@ -1,0 +1,83 @@
+description: Kernel language tour — every control-flow feature in one shallow pass
+inputs:
+  who:
+    type: string
+    default: world
+  mode:
+    type: string
+    oneOf: [a, b]
+    default: a
+  items:
+    type: array
+    default: [one, two]
+steps:
+- id: greet
+  value: { format: "hello, ${name}", with: { name: { ref: inputs.who } } }
+- id: quoted
+  value: { value: { ref: kept-as-data } }
+- id: pick
+  branch:
+    when:
+      { of: { ref: inputs.mode }, is: a }
+    then:
+      steps:
+      - id: chosen
+        value: took-a
+      output: { ref: chosen }
+    else:
+      steps:
+      - id: chosen
+        value: took-b
+      output: { ref: chosen }
+- id: gate
+  loop:
+    where:
+      { of: { ref: "gate.index" }, is_not: 2 }
+    steps:
+    - id: latest
+      value: { ref: gate.index }
+    guard: 5
+    output: { ref: latest }
+- id: walk
+  each:
+    in: { ref: inputs.items }
+    steps:
+    - id: tagged
+      value:
+        format: "${index}:${item}"
+        with:
+          index: { ref: walk.index }
+          item: { ref: walk.item }
+    output: { ref: tagged }
+- id: par
+  parallel:
+  - id: left
+    value: 1
+  - id: right
+    value: 2
+- id: blk
+  group:
+    steps:
+    - id: inner
+      value: grouped
+    output: { ref: inner }
+- id: caught
+  abort: bail out
+  rescue:
+  - id: recovery
+    value: rescued
+- id: called
+  use:
+    spec: child
+    inputs:
+      tag: from-use
+outputs:
+  greeting: { ref: greet }
+  quoted: { ref: quoted }
+  branch: { ref: pick }
+  loop: { ref: gate }
+  walk: { ref: walk }
+  parallel: { ref: par }
+  group: { ref: blk }
+  rescued: { ref: caught }
+  used: { ref: called.tag_out }

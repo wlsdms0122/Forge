@@ -1,0 +1,9 @@
+description: E2E child — echoes its input back
+inputs:
+  tag:
+    type: string
+steps:
+- id: echo
+  value: { format: "child:${tag}", with: { tag: { ref: inputs.tag } } }
+outputs:
+  tag_out: { ref: echo }

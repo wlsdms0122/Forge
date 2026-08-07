@@ -1,0 +1,10 @@
+description: Cross-run dispatch — parent spawns a child run through the policy gate
+steps:
+- id: fan
+  dispatch:
+    name: child
+    inputs:
+      tag: from-dispatch
+    timeout: 60
+outputs:
+  child: { ref: fan }

@@ -1,0 +1,11 @@
+description: Policy gate — a dispatch outside the allow list must fail, and rescue must not swallow it
+steps:
+- id: blocked
+  dispatch:
+    name: composer
+    timeout: 60
+  rescue:
+  - id: swallow
+    value: should-not-swallow
+outputs:
+  result: { ref: blocked }

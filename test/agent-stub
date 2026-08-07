@@ -1,0 +1,30 @@
+#!/usr/bin/env python3
+# Fake claude CLI for the release e2e scenario. Speaks just enough of the
+# stream-json protocol for StreamJSON.Reader: one assistant frame, one terminal
+# result frame, exit 0. The reply embeds the session mode (new vs resume) and
+# the session id so workflows can assert session inheritance from the outside.
+import json
+import sys
+
+arguments = sys.argv[1:]
+
+
+def option(name):
+    return arguments[arguments.index(name) + 1] if name in arguments else None
+
+
+prompt = option("-p") or ""
+resumed = option("--resume")
+fresh = option("--session-id")
+mode, session = ("resume", resumed) if resumed else ("new", fresh or "none")
+text = f"stub[{mode}:{session}] {prompt[:80]}"
+
+print(json.dumps({
+    "type": "assistant",
+    "message": {"content": [{"type": "text", "text": text}]},
+}), flush=True)
+print(json.dumps({
+    "type": "result",
+    "result": text,
+    "usage": {"input_tokens": 1, "output_tokens": 1},
+}), flush=True)
