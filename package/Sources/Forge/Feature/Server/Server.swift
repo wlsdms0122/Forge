@@ -480,6 +480,7 @@ package actor Server {
         let info: [String: Any] = [
             "socket":       socketPath,
             "session":      session,
+            "version":      Version.current,
             "pid":          ProcessInfo.processInfo.processIdentifier,
             "started_at":   ISO8601DateFormatter().string(from: bootedAt),
             "log_jsonl":    config.logJSONL.path,
