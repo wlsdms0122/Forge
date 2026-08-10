@@ -8,7 +8,7 @@
 import ArgumentParser
 import Foundation
 
-func renderTrigger(_ trigger: [String: Any]?) -> String {
+private func renderTrigger(_ trigger: [String: Any]?) -> String {
     guard let trigger else { return "?" }
     
     if let every = trigger["every"] as? String { return "every \(every)" }

@@ -1,5 +1,5 @@
 //
-//  Schedule.swift
+//  ScheduleCommand.swift
 //  ForgeCLI
 //
 //  Created by JSilver on 8/8/26.
@@ -43,25 +43,4 @@ struct ScheduleCommand: ParsableCommand {
     // MARK: - Initializer
     // MARK: - Public
     // MARK: - Private
-}
-
-func setScheduleEnabled(
-    _ socketPath: String,
-    id: String,
-    enabled: Bool,
-    token: String,
-    json: Bool
-) {
-    switch callRPC(
-        socketPath: socketPath,
-        method: "schedule.set_enabled",
-        params: ["id": id, "enabled": enabled],
-        token: token
-    ) {
-    case .ok(let dict):
-        if json { printJSON(dict) } else { print(renderResultPlain(dict)) }
-    
-    case .err(let type, let message):
-        dieRPC("schedule \(enabled ? "enable" : "disable")", type: type, message: message)
-    }
 }
