@@ -6,6 +6,7 @@
 //
 
 import ArgumentParser
+import Forge
 import Foundation
 
 @main
@@ -66,6 +67,7 @@ struct ForgeCommand: AsyncParsableCommand {
                 5   RPC error returned by the daemon.
                 6   RPC rejected for a stale/invalid token — reissue needed.
             """,
+        version: Version.current,
         subcommands: [
             ServeCommand.self,
             WorkflowCommand.self,

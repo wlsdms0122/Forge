@@ -58,7 +58,7 @@ struct StatusCommand: ParsableCommand {
     // MARK: - Private
     private func printPlain(_ dictionary: [String: Any]) {
         if let daemon = dictionary["daemon"] as? [String: Any] {
-            for key in ["session", "socket", "pid", "started_at", "uptime_s"] {
+            for key in ["session", "version", "socket", "pid", "started_at", "uptime_s"] {
                 if let value = daemon[key] { print("\(key):\(pad(key))\(value)") }
             }
         }
