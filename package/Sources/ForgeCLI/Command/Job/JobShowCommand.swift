@@ -36,7 +36,7 @@ struct JobShowCommand: ParsableCommand {
             token: token
         ) {
         case .ok(let dict):
-            printJSON(dict)
+            if json { printJSON(dict) } else { print(renderResultPlain(dict)) }
         
         case .err(let type, let message):
             dieRPC("job show", type: type, message: message)
