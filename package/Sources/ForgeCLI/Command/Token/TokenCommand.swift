@@ -1,5 +1,5 @@
 //
-//  Token.swift
+//  TokenCommand.swift
 //  ForgeCLI
 //
 //  Created by JSilver on 8/8/26.

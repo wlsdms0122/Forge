@@ -1,5 +1,5 @@
 //
-//  Resource.swift
+//  ResourceCommand.swift
 //  ForgeCLI
 //
 //  Created by JSilver on 8/8/26.
