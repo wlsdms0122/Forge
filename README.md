@@ -311,7 +311,7 @@ swift build --package-path package
 swift test  --package-path package          # unit + integration suites
 
 swift build -c release --package-path package
-test/run package/.build/release/ForgeCLI    # release e2e gate (~3s, 43 checks)
+test/run package/.build/release/ForgeCLI    # release e2e gate (~3s, 45 checks)
 ```
 
 The e2e gate boots a real daemon against the in-repo session home

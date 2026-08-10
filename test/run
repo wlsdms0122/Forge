@@ -115,9 +115,14 @@ def main():
         harness.boot()
         print(f"e2e session up at {harness.home}")
 
+        # The binary knows its own version, and the daemon reports the same one.
+        version = harness.forge("--version").strip()
+        check(version and version[0].isdigit(), "--version answers a version number", version)
+
         # Status speaks the current config vocabulary.
         status = harness.forge("status")
         check("workflow_directory" in status, "status speaks the config vocabulary", status)
+        check(version in status, "status reports the daemon's version", status)
 
         # The catalog loaded whole.
         listed = harness.forge("workflow", "list")
