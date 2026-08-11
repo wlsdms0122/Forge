@@ -37,34 +37,24 @@ struct PolicyCheckCommand: ParsableCommand {
     // MARK: - Initializer
     // MARK: - Public
     func run() throws {
-        let socketPath = try resolveSocket(global)
-        let token = resolveToken(global.token)
+        let client = Client(global, context: "policy check")
         let params: [String: Any] = ["principal": principal, "workflow": workflow]
         
-        switch callRPC(
-            socketPath: socketPath,
-            method: "policy.check",
-            params: params,
-            token: token
-        ) {
-        case .ok(let dictionary):
-            if json {
-                printJSON(dictionary)
-                
-                return
-            }
-            
-            let allowed = (dictionary["allowed"] as? Bool) ?? false
-            let principal = (dictionary["principal"] as? String) ?? principal
-            let workflow = (dictionary["workflow"] as? String) ?? workflow
-            
-            print("\(principal) → \(workflow): \(allowed ? "allowed" : "denied")")
-            
-            if !allowed { ForgeCommand.exit(withError: ExitCode(1)) }
+        let result = client.call("policy.check", params)
         
-        case .err(let type, let message):
-            dieRPC("policy check", type: type, message: message)
+        if json {
+            printJSON(result)
+            
+            return
         }
+        
+        let allowed = (result["allowed"] as? Bool) ?? false
+        let principal = (result["principal"] as? String) ?? principal
+        let workflow = (result["workflow"] as? String) ?? workflow
+        
+        print("\(principal) → \(workflow): \(allowed ? "allowed" : "denied")")
+        
+        if !allowed { ForgeCommand.exit(withError: ExitCode(1)) }
     }
     
     // MARK: - Private

@@ -57,7 +57,7 @@ struct ServiceSendCommand: ParsableCommand {
     // MARK: - Initializer
     // MARK: - Public
     func run() throws {
-        let socketPath = try resolveSocket(global)
+        let client = Client(global, context: "service send")
         
         guard let payloadData = payload.data(using: .utf8),
             let payloadAny = try? JSONSerialization.jsonObject(with: payloadData),
@@ -73,24 +73,12 @@ struct ServiceSendCommand: ParsableCommand {
         let params: [String: Any] = [
             "service": name,
             "payload": payloadObject,
-            "async": isAsync,
+            "async": isAsync
         ]
-        let token = resolveToken(global.token)
         
-        switch callRPC(
-            socketPath: socketPath,
-            method: "session.send",
-            params: params,
-            token: token
-        ) {
-        case .ok(let dict):
-            if json { printJSON(dict) } else { print(renderResultPlain(dict)) }
-            
-            ForgeCommand.exit()
+        printResult(client.call("session.send", params), json: json)
         
-        case .err(let type, let message):
-            dieRPC("service send", type: type, message: message)
-        }
+        ForgeCommand.exit()
     }
     
     // MARK: - Private

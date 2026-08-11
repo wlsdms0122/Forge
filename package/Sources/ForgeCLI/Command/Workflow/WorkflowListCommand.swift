@@ -23,51 +23,40 @@ struct WorkflowListCommand: ParsableCommand {
     // MARK: - Initializer
     // MARK: - Public
     func run() throws {
-        let socketPath = try resolveSocket(global)
-        let token = resolveToken(global.token)
+        let client = Client(global, context: "workflow list")
+        let result = client.call("workflow.list")
         
-        switch callRPC(
-            socketPath: socketPath,
-            method: "workflow.list",
-            params: [:],
-            token: token
-        ) {
-        case .err(let type, let message):
-            dieRPC("workflow list", type: type, message: message)
+        if json {
+            printJSON(result)
+            
+            return
+        }
         
-        case .ok(let dict):
-            if json {
-                printJSON(dict)
-                
-                return
-            }
+        let workflows = (result["workflows"] as? [[String: Any]]) ?? []
+        let failures  = (result["failures"]  as? [[String: Any]]) ?? []
+        
+        if workflows.isEmpty && failures.isEmpty {
+            print("(no workflows registered)")
             
-            let workflows = (dict["workflows"] as? [[String: Any]]) ?? []
-            let failures  = (dict["failures"]  as? [[String: Any]]) ?? []
+            return
+        }
+        
+        for workflow in workflows {
+            let name = workflow["name"] as? String ?? "?"
+            let description = workflow["description"] as? String ?? ""
             
-            if workflows.isEmpty && failures.isEmpty {
-                print("(no workflows registered)")
-                
-                return
-            }
+            print(description.isEmpty ? name : "\(name)\t\(description)")
+        }
+        
+        if !failures.isEmpty {
+            print("")
+            print("FAILED (\(failures.count)):")
             
-            for workflow in workflows {
-                let name = workflow["name"] as? String ?? "?"
-                let description = workflow["description"] as? String ?? ""
+            for failure in failures {
+                let path   = failure["path"]   as? String ?? "?"
+                let reason = failure["reason"] as? String ?? "?"
                 
-                print(description.isEmpty ? name : "\(name)\t\(description)")
-            }
-            
-            if !failures.isEmpty {
-                print("")
-                print("FAILED (\(failures.count)):")
-                
-                for failure in failures {
-                    let path   = failure["path"]   as? String ?? "?"
-                    let reason = failure["reason"] as? String ?? "?"
-                    
-                    print("  \(path): \(reason)")
-                }
+                print("  \(path): \(reason)")
             }
         }
     }

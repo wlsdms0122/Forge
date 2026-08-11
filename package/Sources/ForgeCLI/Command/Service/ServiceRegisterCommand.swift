@@ -50,14 +50,13 @@ struct ServiceRegisterCommand: ParsableCommand {
     // MARK: - Initializer
     // MARK: - Public
     func run() throws {
-        let socketPath = try resolveSocket(global)
-        let token = resolveToken(global.token)
+        let client = Client(global, context: "service register")
         let schemaObject = schema.map { value in parseJSONObjectArg(value, flag: "--schema") }
         let bridge = ServiceBridge(
             service: name,
-            socketPath: socketPath,
+            socketPath: client.socketPath,
             schema: schemaObject,
-            token: token
+            token: client.token
         )
         
         bridge.run()

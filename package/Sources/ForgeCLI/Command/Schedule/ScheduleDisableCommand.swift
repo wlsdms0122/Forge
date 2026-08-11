@@ -26,12 +26,10 @@ struct ScheduleDisableCommand: ParsableCommand {
     // MARK: - Initializer
     // MARK: - Public
     func run() throws {
-        let socketPath = try resolveSocket(global)
-        setScheduleEnabled(
-            socketPath,
-            id: id,
-            enabled: false,
-            token: resolveToken(global.token),
+        let client = Client(global, context: "schedule disable")
+        
+        printResult(
+            client.call("schedule.set_enabled", ["id": id, "enabled": false]),
             json: json
         )
     }
