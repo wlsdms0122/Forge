@@ -378,13 +378,13 @@ package actor Server {
         await Log.shared.append(
             "runtime.boot",
             [
-                "runtime_directory":  config.runtimeDirectory.path,
-                "socket":       socketPath,
-                "workflow_directory":  config.workflowDirectory?.path ?? "",
-                "schedule_directory":  config.scheduleDirectory?.path ?? "",
-                "runtime_schedule_directoryectory": runtimeScheduleDirectory.path,
-                "job_directory":       jobDirectory.path,
-                "policy_directory":    config.policyDirectory?.path ?? "",
+                "runtime_directory":          config.runtimeDirectory.path,
+                "socket":                     socketPath,
+                "workflow_directory":         config.workflowDirectory?.path ?? "",
+                "schedule_directory":         config.scheduleDirectory?.path ?? "",
+                "runtime_schedule_directory": runtimeScheduleDirectory.path,
+                "job_directory":              jobDirectory.path,
+                "policy_directory":           config.policyDirectory?.path ?? ""
             ],
             level: .default,
             category: "runtime"
@@ -478,17 +478,17 @@ package actor Server {
     
     private func writeRuntimeInfo() {
         let info: [String: Any] = [
-            "socket":       socketPath,
-            "session":      session,
-            "version":      Version.current,
-            "pid":          ProcessInfo.processInfo.processIdentifier,
-            "started_at":   ISO8601DateFormatter().string(from: bootedAt),
-            "log_jsonl":    config.logJSONL.path,
-            "error_log":    config.errorLog.path,
-            "workflow_directory":  config.workflowDirectory?.path ?? "",
-            "schedule_directory":  config.scheduleDirectory?.path ?? "",
-            "runtime_schedule_directoryectory": runtimeScheduleDirectory.path,
-            "job_directory":       jobDirectory.path,
+            "socket":                     socketPath,
+            "session":                    session,
+            "version":                    Version.current,
+            "pid":                        ProcessInfo.processInfo.processIdentifier,
+            "started_at":                 ISO8601DateFormatter().string(from: bootedAt),
+            "log_jsonl":                  config.logJSONL.path,
+            "error_log":                  config.errorLog.path,
+            "workflow_directory":         config.workflowDirectory?.path ?? "",
+            "schedule_directory":         config.scheduleDirectory?.path ?? "",
+            "runtime_schedule_directory": runtimeScheduleDirectory.path,
+            "job_directory":              jobDirectory.path
         ]
         let url = runtimeInfoURL()
         
