@@ -68,19 +68,11 @@ struct ServeCommand: AsyncParsableCommand {
                 <error_log>                    stderr / traceback log.
 
             RPC METHODS
-                workflow.dispatch    workflow.list
-                workflow.describe    workflow.list_active
-                workflow.cancel
-                schedule.list        schedule.set_enabled
-                schedule.create      schedule.delete
-                job.create           job.show
-                job.list             job.update
-                job.delete
-                resource.list        resource.read
-                policy.list          policy.check
-                token.issue          daemon.status
-                session.send         session.list
-                session.handler.register      session.handler.ack
+                Every method — its params, result shape, and the token it
+                demands — is written in document/API.md §"RPC methods". The
+                client subcommands (`forge workflow`, `schedule`, `job`,
+                `resource`, `policy`, `token`, `service`, `status`) cover
+                the same surface from a terminal.
 
             SIGNALS
                 SIGINT, SIGTERM    graceful shutdown (drains in-flight RPCs).
