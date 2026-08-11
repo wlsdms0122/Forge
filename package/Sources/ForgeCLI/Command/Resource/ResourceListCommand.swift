@@ -23,40 +23,29 @@ struct ResourceListCommand: ParsableCommand {
     // MARK: - Initializer
     // MARK: - Public
     func run() throws {
-        let socketPath = try resolveSocket(global)
-        let token = resolveToken(global.token)
+        let client = Client(global, context: "resource list")
+        let result = client.call("resource.list")
         
-        switch callRPC(
-            socketPath: socketPath,
-            method: "resource.list",
-            params: [:],
-            token: token
-        ) {
-        case .err(let type, let message):
-            dieRPC("resource list", type: type, message: message)
+        if json {
+            printJSON(result)
+            
+            return
+        }
         
-        case .ok(let dictionary):
-            if json {
-                printJSON(dictionary)
-                
-                return
-            }
+        let rows = (result["resources"] as? [[String: Any]]) ?? []
+        
+        if rows.isEmpty {
+            print("(no resources)")
             
-            let rows = (dictionary["resources"] as? [[String: Any]]) ?? []
+            return
+        }
+        
+        for row in rows {
+            let path = row["path"] as? String ?? "?"
+            let size = row["size"] as? Int ?? 0
+            let mtime = row["mtime"] as? String ?? "?"
             
-            if rows.isEmpty {
-                print("(no resources)")
-                
-                return
-            }
-            
-            for row in rows {
-                let path = row["path"] as? String ?? "?"
-                let size = row["size"] as? Int ?? 0
-                let mtime = row["mtime"] as? String ?? "?"
-                
-                print("\(path)\t\(size)\t\(mtime)")
-            }
+            print("\(path)\t\(size)\t\(mtime)")
         }
     }
     

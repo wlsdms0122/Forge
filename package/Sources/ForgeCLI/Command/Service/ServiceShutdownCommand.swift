@@ -30,13 +30,9 @@ struct ServiceShutdownCommand: ParsableCommand {
     // MARK: - Initializer
     // MARK: - Public
     func run() throws {
-        controlCall(
-            global: global,
-            method: "service.shutdown",
-            params: ["name": name],
-            context: "service shutdown",
-            json: json
-        )
+        let client = Client(global, context: "service shutdown")
+        
+        printResult(client.call("service.shutdown", ["name": name]), json: json)
     }
     
     // MARK: - Private

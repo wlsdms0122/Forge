@@ -24,25 +24,17 @@ struct StatusCommand: ParsableCommand {
     // MARK: - Initializer
     // MARK: - Public
     func run() throws {
-        let socketPath = try resolveSocket(global)
-        let token = global.token ?? ""
+        // `daemon.status` is the daemon's token-free introspection method, so
+        // status speaks with whatever the caller happened to pass.
+        let client = Client(global, context: "status", token: global.token ?? "")
         
-        switch callRPC(
-            socketPath: socketPath,
-            method: "daemon.status",
-            params: [:],
-            token: token
-        ) {
+        switch client.send("daemon.status") {
         case .err(let type, let message):
             if type == "ClientError" {
-                reportNotRunning(
-                    session: global.session,
-                    socketPath: socketPath,
-                    detail: message
-                )
+                reportNotRunning(session: global.session, socketPath: client.socketPath)
             }
             
-            dieRPC("status", type: type, message: message)
+            client.fail(type: type, message: message)
         
         case .ok(let dictionary):
             if json {
@@ -108,7 +100,7 @@ struct StatusCommand: ParsableCommand {
         String(repeating: " ", count: max(1, 12 - key.count))
     }
     
-    private func reportNotRunning(session: String?, socketPath: String, detail: String) {
+    private func reportNotRunning(session: String?, socketPath: String) {
         if
             let home = try? Session.home(session: session),
             let data = try? Data(contentsOf: Session.runtimeInfo(in: home)),

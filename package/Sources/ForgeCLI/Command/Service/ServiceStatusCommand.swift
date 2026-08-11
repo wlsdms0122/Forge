@@ -29,45 +29,34 @@ struct ServiceStatusCommand: ParsableCommand {
     // MARK: - Initializer
     // MARK: - Public
     func run() throws {
-        let socketPath = try resolveSocket(global)
-        let token = resolveToken(global.token)
+        let client = Client(global, context: "service status")
+        let result = client.call("service.status")
         
-        switch callRPC(
-            socketPath: socketPath,
-            method: "service.status",
-            params: [:],
-            token: token
-        ) {
-        case .err(let type, let message):
-            dieRPC("service status", type: type, message: message)
+        if json {
+            printJSON(result)
+            
+            return
+        }
         
-        case .ok(let dict):
-            if json {
-                printJSON(dict)
-                
-                return
-            }
+        let services = (result["services"] as? [[String: Any]]) ?? []
+        
+        if services.isEmpty {
+            print("(no services configured)")
             
-            let services = (dict["services"] as? [[String: Any]]) ?? []
+            return
+        }
+        
+        for service in services {
+            let name = service["name"] as? String ?? "?"
+            let state = service["state"] as? String ?? "?"
+            let registered = (service["registered"] as? Bool ?? false) ? "registered" : "-"
+            let pid = (service["pid"] as? Int).map { pid in "pid=\(pid)" } ?? ""
+            let crashes = (service["crashes"] as? Int)
+                .flatMap { count in count > 0 ? "crashes=\(count)" : nil } ?? ""
+            let parts = [name, state, registered, pid, crashes]
+                .filter { part in !part.isEmpty }
             
-            if services.isEmpty {
-                print("(no services configured)")
-                
-                return
-            }
-            
-            for service in services {
-                let name = service["name"] as? String ?? "?"
-                let state = service["state"] as? String ?? "?"
-                let registered = (service["registered"] as? Bool ?? false) ? "registered" : "-"
-                let pid = (service["pid"] as? Int).map { pid in "pid=\(pid)" } ?? ""
-                let crashes = (service["crashes"] as? Int)
-                    .flatMap { count in count > 0 ? "crashes=\(count)" : nil } ?? ""
-                let parts = [name, state, registered, pid, crashes]
-                    .filter { part in !part.isEmpty }
-                
-                print(parts.joined(separator: "\t"))
-            }
+            print(parts.joined(separator: "\t"))
         }
     }
     

@@ -33,94 +33,82 @@ struct WorkflowDescribeCommand: ParsableCommand {
     // MARK: - Initializer
     // MARK: - Public
     func run() throws {
-        let socketPath = try resolveSocket(global)
-        let token = resolveToken(global.token)
+        let client = Client(global, context: "workflow describe")
+        let result = client.call("workflow.describe", ["name": name])
         
-        switch callRPC(
-            socketPath: socketPath,
-            method: "workflow.describe",
-            params: ["name": name],
-            token: token
-        ) {
-        case .err(let type, let message):
-            dieRPC("workflow describe", type: type, message: message)
+        if json {
+            printJSON(result)
+            
+            return
+        }
         
-        case .ok(let dict):
-            if json {
-                printJSON(dict)
+        let resolvedName = result["name"] as? String ?? name
+        let description = result["description"] as? String ?? ""
+        let source = result["source"] as? String ?? ""
+        
+        print(resolvedName)
+        
+        if !description.isEmpty { print("  \(description)") }
+        if !source.isEmpty { print("  source: \(source)") }
+        
+        let inputs = (result["inputs"] as? [String: Any]) ?? [:]
+        
+        if inputs.isEmpty {
+            print("  inputs: (none)")
+        } else {
+            print("  inputs:")
+            
+            for key in inputs.keys.sorted() {
+                let spec = inputs[key] as? [String: Any] ?? [:]
+                var bits: [String] = []
                 
-                return
-            }
-            
-            let resolvedName = dict["name"] as? String ?? name
-            let description = dict["description"] as? String ?? ""
-            let source = dict["source"] as? String ?? ""
-            
-            print(resolvedName)
-            
-            if !description.isEmpty { print("  \(description)") }
-            if !source.isEmpty { print("  source: \(source)") }
-            
-            let inputs = (dict["inputs"] as? [String: Any]) ?? [:]
-            
-            if inputs.isEmpty {
-                print("  inputs: (none)")
-            } else {
-                print("  inputs:")
+                if let type = spec["type"] as? String { bits.append(type) }
                 
-                for key in inputs.keys.sorted() {
-                    let spec = inputs[key] as? [String: Any] ?? [:]
-                    var bits: [String] = []
+                if spec.keys.contains("default") {
+                    bits.append("optional")
                     
-                    if let type = spec["type"] as? String { bits.append(type) }
-                    
-                    if spec.keys.contains("default") {
-                        bits.append("optional")
-                        
-                        if let value = spec["default"], !(value is NSNull) {
-                            bits.append("default=\(renderPlainValue(value))")
-                        }
-                    }
-                    
-                    if let one = spec["oneOf"] as? [Any] {
-                        bits.append("one_of=\(renderPlainValue(one))")
-                    }
-                    
-                    let header = bits.isEmpty
-                        ? key
-                        : "\(key) (\(bits.joined(separator: ", ")))"
-                    
-                    if let hint = spec["hint"] as? String, !hint.isEmpty {
-                        print("    \(header) — \(hint)")
-                    } else {
-                        print("    \(header)")
+                    if let value = spec["default"], !(value is NSNull) {
+                        bits.append("default=\(renderPlainValue(value))")
                     }
                 }
-            }
-            
-            let outputs = (dict["outputs"] as? [String: Any]) ?? [:]
-            
-            if !outputs.isEmpty {
-                print("  outputs:")
                 
-                for key in outputs.keys.sorted() {
-                    let raw = outputs[key]
-                    let rendered: String
-                    
-                    if let string = raw as? String {
-                        rendered = string
-                    } else if let any = raw,
-                        let data = try? JSONSerialization.data(withJSONObject: any),
-                        let string = String(data: data, encoding: .utf8) {
-                        rendered = string
-                    } else {
-                        rendered = ""
-                    }
-                    
-                    print("    \(key) ← \(rendered)")
+                if let one = spec["oneOf"] as? [Any] {
+                    bits.append("one_of=\(renderPlainValue(one))")
+                }
+                
+                let header = bits.isEmpty
+                    ? key
+                    : "\(key) (\(bits.joined(separator: ", ")))"
+                
+                if let hint = spec["hint"] as? String, !hint.isEmpty {
+                    print("    \(header) — \(hint)")
+                } else {
+                    print("    \(header)")
                 }
             }
+        }
+        
+        let outputs = (result["outputs"] as? [String: Any]) ?? [:]
+        
+        if !outputs.isEmpty {
+            print("  outputs:")
             
+            for key in outputs.keys.sorted() {
+                let raw = outputs[key]
+                let rendered: String
+                
+                if let string = raw as? String {
+                    rendered = string
+                } else if let any = raw,
+                    let data = try? JSONSerialization.data(withJSONObject: any),
+                    let string = String(data: data, encoding: .utf8) {
+                    rendered = string
+                } else {
+                    rendered = ""
+                }
+                
+                print("    \(key) ← \(rendered)")
+            }
         }
     }
     

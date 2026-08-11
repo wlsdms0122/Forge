@@ -19,6 +19,17 @@ func printJSON(_ object: [String: Any]) {
     }
 }
 
+// The default answer of a client command: the whole result, as JSON when the
+// caller asked for it and as an indented tree otherwise. A command only writes
+// its own renderer when the plain form would bury what the command is for.
+func printResult(_ object: [String: Any], json: Bool) {
+    if json {
+        printJSON(object)
+    } else {
+        print(renderResultPlain(object))
+    }
+}
+
 func die(_ message: String, code: Int32) -> Never {
     FileHandle.standardError.write(Data(("forge: " + message + "\n").utf8))
     exit(code)

@@ -98,7 +98,7 @@ struct WorkflowDispatchCommand: ParsableCommand {
     // MARK: - Initializer
     // MARK: - Public
     func run() throws {
-        let socketPath = try resolveSocket(global)
+        let client = Client(global, context: "workflow dispatch")
         
         guard (name != nil) != (spec != nil) else {
             die("workflow dispatch: pass exactly one of a workflow name argument or --spec", code: 4)
@@ -131,40 +131,23 @@ struct WorkflowDispatchCommand: ParsableCommand {
             params["root"] = root
         }
         
-        let token = resolveToken(global.token)
-        
         if stream {
             guard !isAsync else {
                 die("workflow dispatch: --stream and --async are mutually exclusive", code: 4)
             }
             
-            runStream(socketPath: socketPath, params: params, token: token)
+            runStream(client, params: params)
         }
         
-        switch callRPC(
-            socketPath: socketPath,
-            method: "workflow.dispatch",
-            params: params,
-            token: token
-        ) {
-        case .ok(let dict):
-            if json { printJSON(dict) } else { print(renderResultPlain(dict)) }
-            
-            ForgeCommand.exit()
+        printResult(client.call("workflow.dispatch", params), json: json)
         
-        case .err(let type, let message):
-            dieRPC("workflow dispatch", type: type, message: message)
-        }
+        ForgeCommand.exit()
     }
     
     // MARK: - Private
-    private func runStream(
-        socketPath: String,
-        params: [String: Any],
-        token: String
-    ) -> Never {
+    private func runStream(_ client: Client, params: [String: Any]) -> Never {
         var streamParams = params
-        streamParams["token"] = token
+        streamParams["token"] = client.token
         streamParams.removeValue(forKey: "async")
         
         guard let requestData = RPC.requestLine(
@@ -174,8 +157,8 @@ struct WorkflowDispatchCommand: ParsableCommand {
             die("workflow dispatch: encode request failed", code: 4)
         }
         
-        guard let socket = StreamSocket(path: socketPath) else {
-            die("workflow dispatch: connect failed (socket=\(socketPath))", code: 5)
+        guard let socket = StreamSocket(path: client.socketPath) else {
+            die("workflow dispatch: connect failed (socket=\(client.socketPath))", code: 5)
         }
         
         defer { socket.close() }
@@ -189,7 +172,7 @@ struct WorkflowDispatchCommand: ParsableCommand {
         }
         
         if case .err(let type, let message) = RPC.parseFrame(ackFrame) {
-            dieRPC("workflow dispatch", type: type, message: message)
+            client.fail(type: type, message: message)
         }
         
         emitStdoutLine(String(decoding: ackFrame, as: UTF8.self))

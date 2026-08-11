@@ -60,8 +60,7 @@ struct JobUpdateCommand: ParsableCommand {
     // MARK: - Initializer
     // MARK: - Public
     func run() throws {
-        let socketPath = try resolveSocket(global)
-        let token = resolveToken(global.token)
+        let client = Client(global, context: "job update")
         
         var params: [String: Any] = ["id": id]
         
@@ -74,18 +73,7 @@ struct JobUpdateCommand: ParsableCommand {
         if let itemStatus { params["item_status"] = itemStatus }
         if let status { params["status"] = status }
         
-        switch callRPC(
-            socketPath: socketPath,
-            method: "job.update",
-            params: params,
-            token: token
-        ) {
-        case .ok(let dict):
-            if json { printJSON(dict) } else { print(renderResultPlain(dict)) }
-        
-        case .err(let type, let message):
-            dieRPC("job update", type: type, message: message)
-        }
+        printResult(client.call("job.update", params), json: json)
     }
     
     // MARK: - Private
