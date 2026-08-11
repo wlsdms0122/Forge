@@ -30,13 +30,9 @@ struct ServiceRestartCommand: ParsableCommand {
     // MARK: - Initializer
     // MARK: - Public
     func run() throws {
-        controlCall(
-            global: global,
-            method: "service.restart",
-            params: ["name": name],
-            context: "service restart",
-            json: json
-        )
+        let client = Client(global, context: "service restart")
+        
+        printResult(client.call("service.restart", ["name": name]), json: json)
     }
     
     // MARK: - Private

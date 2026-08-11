@@ -14,7 +14,7 @@ This document covers the full CLI surface and the JSON-RPC methods underneath.
 For the workflow spec (Step / Action / Condition / Expression syntax), see
 **[Spec.md](./Spec.md)**.
 
-- [1. Invocation & configuration](#1-invocation--configuration) — binary/socket discovery, config, env, global options, exit status
+- [1. Invocation & configuration](#1-invocation--configuration) — version, binary/socket discovery, config, env, global options, exit status
 - [2. CLI surface](#2-cli-surface) — [`serve`](#forge-serve) · [`workflow`](#forge-workflow) · [`schedule`](#forge-schedule) · [`job`](#forge-job) · [`resource`](#forge-resource) · [`service`](#forge-service) · [`status`](#forge-status) · [`policy`](#forge-policy) · [`token issue`](#forge-token-issue)
 - [3. RPC transport](#3-rpc-transport)
 - [4. RPC methods](#4-rpc-methods)
@@ -22,6 +22,12 @@ For the workflow spec (Step / Action / Condition / Expression syntax), see
 ---
 
 ## 1. Invocation & configuration
+
+### Version
+
+`forge --version` prints the product version (e.g. `0.1.0`) and exits. The same
+version appears in `forge status` under the daemon's identity and in the
+session's `runtime.json`, so a client can tell which build a running daemon is.
 
 ### Binary discovery
 
@@ -475,7 +481,7 @@ may not use `reload` (global control).
 
 ### `forge status`
 
-Print the daemon's identity (session, socket, pid, uptime), its effective
+Print the daemon's identity (session, version, socket, pid, uptime), its effective
 `ForgeConfig` with each value's source (toml / env / default), and runtime counts
 (workflows, schedules, jobs, services). RPC: `daemon.status` (token-free). If the
 socket is dead, falls back to reading `runtime.json` for a "not running / crashed"

@@ -1,5 +1,5 @@
 //
-//  Policy.swift
+//  PolicyCommand.swift
 //  ForgeCLI
 //
 //  Created by JSilver on 8/8/26.

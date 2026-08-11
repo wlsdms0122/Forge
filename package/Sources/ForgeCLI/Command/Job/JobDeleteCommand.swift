@@ -31,21 +31,9 @@ struct JobDeleteCommand: ParsableCommand {
     // MARK: - Initializer
     // MARK: - Public
     func run() throws {
-        let socketPath = try resolveSocket(global)
-        let token = resolveToken(global.token)
+        let client = Client(global, context: "job delete")
         
-        switch callRPC(
-            socketPath: socketPath,
-            method: "job.delete",
-            params: ["id": id],
-            token: token
-        ) {
-        case .ok(let dict):
-            if json { printJSON(dict) } else { print(renderResultPlain(dict)) }
-        
-        case .err(let type, let message):
-            dieRPC("job delete", type: type, message: message)
-        }
+        printResult(client.call("job.delete", ["id": id]), json: json)
     }
     
     // MARK: - Private

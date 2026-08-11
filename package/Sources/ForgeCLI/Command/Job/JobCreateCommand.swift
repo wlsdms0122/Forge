@@ -61,8 +61,7 @@ struct JobCreateCommand: ParsableCommand {
     // MARK: - Initializer
     // MARK: - Public
     func run() throws {
-        let socketPath = try resolveSocket(global)
-        let token = resolveToken(global.token)
+        let client = Client(global, context: "job create")
         
         var params: [String: Any] = ["title": title]
         
@@ -96,18 +95,7 @@ struct JobCreateCommand: ParsableCommand {
         if let status { params["status"] = status }
         if let id { params["id"] = id }
         
-        switch callRPC(
-            socketPath: socketPath,
-            method: "job.create",
-            params: params,
-            token: token
-        ) {
-        case .ok(let dict):
-            if json { printJSON(dict) } else { print(renderResultPlain(dict)) }
-        
-        case .err(let type, let message):
-            dieRPC("job create", type: type, message: message)
-        }
+        printResult(client.call("job.create", params), json: json)
     }
     
     // MARK: - Private

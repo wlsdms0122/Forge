@@ -26,27 +26,16 @@ struct TokenIssueCommand: ParsableCommand {
     // MARK: - Initializer
     // MARK: - Public
     func run() throws {
-        let socketPath = try resolveSocket(global)
-        let token = resolveToken(global.token)
+        let client = Client(global, context: "token issue")
+        let result = client.call("token.issue", ["principal": principal])
         
-        switch callRPC(
-            socketPath: socketPath,
-            method: "token.issue",
-            params: ["principal": principal],
-            token: token
-        ) {
-        case .ok(let dictionary):
-            if json {
-                printJSON(dictionary)
-            } else {
-                print((dictionary["token"] as? String) ?? "")
-            }
-            
-            ForgeCommand.exit()
-        
-        case .err(let type, let message):
-            dieRPC("token issue", type: type, message: message)
+        if json {
+            printJSON(result)
+        } else {
+            print((result["token"] as? String) ?? "")
         }
+        
+        ForgeCommand.exit()
     }
     
     // MARK: - Private

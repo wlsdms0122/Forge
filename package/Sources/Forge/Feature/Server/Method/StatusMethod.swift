@@ -39,6 +39,7 @@ struct DaemonStatusMethod: Sendable {
         
         let daemon: [String: Any] = [
             "session": session,
+            "version": Version.current,
             "socket": socketPath,
             "pid": Int(ProcessInfo.processInfo.processIdentifier),
             "started_at": ISO8601.string(bootedAt),
