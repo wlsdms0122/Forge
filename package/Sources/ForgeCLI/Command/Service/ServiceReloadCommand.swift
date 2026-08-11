@@ -28,13 +28,9 @@ struct ServiceReloadCommand: ParsableCommand {
     // MARK: - Initializer
     // MARK: - Public
     func run() throws {
-        controlCall(
-            global: global,
-            method: "service.reload",
-            params: [:],
-            context: "service reload",
-            json: json
-        )
+        let client = Client(global, context: "service reload")
+        
+        printResult(client.call("service.reload"), json: json)
     }
     
     // MARK: - Private

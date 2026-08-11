@@ -32,29 +32,18 @@ struct ServiceDescribeCommand: ParsableCommand {
     // MARK: - Initializer
     // MARK: - Public
     func run() throws {
-        let socketPath = try resolveSocket(global)
-        let token = resolveToken(global.token)
+        let client = Client(global, context: "service describe")
+        let result = client.call("session.list")
         
-        switch callRPC(
-            socketPath: socketPath,
-            method: "session.list",
-            params: [:],
-            token: token
-        ) {
-        case .err(let type, let message):
-            dieRPC("service describe", type: type, message: message)
+        let services = (result["services"] as? [[String: Any]]) ?? []
         
-        case .ok(let dict):
-            let services = (dict["services"] as? [[String: Any]]) ?? []
-            
-            guard let entry = services.first(
-                where: { service in (service["service"] as? String) == name }
-            ) else {
-                die("service describe: '\(name)' not registered", code: 5)
-            }
-            
-            if json { printJSON(entry) } else { printServicePlain(entry) }
+        guard let entry = services.first(
+            where: { service in (service["service"] as? String) == name }
+        ) else {
+            die("service describe: '\(name)' not registered", code: 5)
         }
+        
+        if json { printJSON(entry) } else { printServicePlain(entry) }
     }
     
     // MARK: - Private

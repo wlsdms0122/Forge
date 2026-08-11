@@ -32,8 +32,7 @@ struct JobListCommand: ParsableCommand {
     // MARK: - Initializer
     // MARK: - Public
     func run() throws {
-        let socketPath = try resolveSocket(global)
-        let token = resolveToken(global.token)
+        let client = Client(global, context: "job list")
         
         var params: [String: Any] = [:]
         
@@ -41,43 +40,34 @@ struct JobListCommand: ParsableCommand {
         if let originValue { params["origin_value"] = originValue }
         if let status { params["status"] = status }
         
-        switch callRPC(
-            socketPath: socketPath,
-            method: "job.list",
-            params: params,
-            token: token
-        ) {
-        case .err(let type, let message):
-            dieRPC("job list", type: type, message: message)
+        let result = client.call("job.list", params)
         
-        case .ok(let dict):
-            if json {
-                printJSON(dict)
-                
-                return
-            }
+        if json {
+            printJSON(result)
             
-            let jobs = (dict["jobs"] as? [[String: Any]]) ?? []
+            return
+        }
+        
+        let jobs = (result["jobs"] as? [[String: Any]]) ?? []
+        
+        if jobs.isEmpty {
+            print("(no jobs)")
             
-            if jobs.isEmpty {
-                print("(no jobs)")
-                
-                return
-            }
+            return
+        }
+        
+        for job in jobs {
+            let id = job["id"] as? String ?? "?"
+            let status = job["status"] as? String ?? "?"
+            let title = job["title"] as? String ?? ""
+            let parent = (job["parent_job"] as? String)
+                .map { parentID in " ↳\(parentID)" } ?? ""
+            let open = (job["open"] as? Bool ?? false) ? " ●open" : ""
+            let last = (job["last_event"] as? [String: Any]).map { event in
+                " (\(event["kind"] as? String ?? "?") @ \(event["ts"] as? String ?? "?"))"
+            } ?? ""
             
-            for job in jobs {
-                let id = job["id"] as? String ?? "?"
-                let status = job["status"] as? String ?? "?"
-                let title = job["title"] as? String ?? ""
-                let parent = (job["parent_job"] as? String)
-                    .map { parentID in " ↳\(parentID)" } ?? ""
-                let open = (job["open"] as? Bool ?? false) ? " ●open" : ""
-                let last = (job["last_event"] as? [String: Any]).map { event in
-                    " (\(event["kind"] as? String ?? "?") @ \(event["ts"] as? String ?? "?"))"
-                } ?? ""
-                
-                print("\(id)\t[\(status)]\(open)\t\(title)\(parent)\(last)")
-            }
+            print("\(id)\t[\(status)]\(open)\t\(title)\(parent)\(last)")
         }
     }
     

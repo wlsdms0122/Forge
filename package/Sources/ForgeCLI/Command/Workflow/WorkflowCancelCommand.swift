@@ -26,21 +26,9 @@ struct WorkflowCancelCommand: ParsableCommand {
     // MARK: - Initializer
     // MARK: - Public
     func run() throws {
-        let socketPath = try resolveSocket(global)
-        let token = resolveToken(global.token)
+        let client = Client(global, context: "workflow cancel")
         
-        switch callRPC(
-            socketPath: socketPath,
-            method: "workflow.cancel",
-            params: ["workflow_id": workflowID],
-            token: token
-        ) {
-        case .ok(let dict):
-            if json { printJSON(dict) } else { print(renderResultPlain(dict)) }
-        
-        case .err(let type, let message):
-            dieRPC("workflow cancel", type: type, message: message)
-        }
+        printResult(client.call("workflow.cancel", ["workflow_id": workflowID]), json: json)
     }
     
     // MARK: - Private

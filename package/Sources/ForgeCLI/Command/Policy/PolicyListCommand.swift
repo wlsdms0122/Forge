@@ -23,36 +23,30 @@ struct PolicyListCommand: ParsableCommand {
     // MARK: - Initializer
     // MARK: - Public
     func run() throws {
-        let socketPath = try resolveSocket(global)
-        let token = resolveToken(global.token)
+        let client = Client(global, context: "policy list")
+        let result = client.call("policy.list")
         
-        switch callRPC(socketPath: socketPath, method: "policy.list", params: [:], token: token) {
-        case .ok(let dictionary):
-            if json {
-                printJSON(dictionary)
-                
-                return
-            }
+        if json {
+            printJSON(result)
             
-            let policy = (dictionary["policy"] as? [String: [String]]) ?? [:]
-            
-            if policy.isEmpty {
-                print("(empty)")
-                
-                return
-            }
-            
-            let width = policy.keys.map { key in key.count }.max() ?? 0
-            
-            for key in policy.keys.sorted() {
-                let padding = String(repeating: " ", count: width - key.count)
-                let workflows = (policy[key] ?? []).joined(separator: ", ")
-                
-                print("\(key)\(padding)  →  \(workflows)")
-            }
+            return
+        }
         
-        case .err(let type, let message):
-            dieRPC("policy list", type: type, message: message)
+        let policy = (result["policy"] as? [String: [String]]) ?? [:]
+        
+        if policy.isEmpty {
+            print("(empty)")
+            
+            return
+        }
+        
+        let width = policy.keys.map { key in key.count }.max() ?? 0
+        
+        for key in policy.keys.sorted() {
+            let padding = String(repeating: " ", count: width - key.count)
+            let workflows = (policy[key] ?? []).joined(separator: ", ")
+            
+            print("\(key)\(padding)  →  \(workflows)")
         }
     }
     

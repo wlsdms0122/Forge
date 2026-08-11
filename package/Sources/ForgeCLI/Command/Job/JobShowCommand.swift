@@ -26,21 +26,9 @@ struct JobShowCommand: ParsableCommand {
     // MARK: - Initializer
     // MARK: - Public
     func run() throws {
-        let socketPath = try resolveSocket(global)
-        let token = resolveToken(global.token)
+        let client = Client(global, context: "job show")
         
-        switch callRPC(
-            socketPath: socketPath,
-            method: "job.show",
-            params: ["id": id],
-            token: token
-        ) {
-        case .ok(let dict):
-            if json { printJSON(dict) } else { print(renderResultPlain(dict)) }
-        
-        case .err(let type, let message):
-            dieRPC("job show", type: type, message: message)
-        }
+        printResult(client.call("job.show", ["id": id]), json: json)
     }
     
     // MARK: - Private

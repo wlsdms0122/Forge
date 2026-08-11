@@ -29,31 +29,21 @@ struct ResourceReadCommand: ParsableCommand {
     // MARK: - Initializer
     // MARK: - Public
     func run() throws {
-        let socketPath = try resolveSocket(global)
-        let token = resolveToken(global.token)
+        let client = Client(global, context: "resource read")
         
         var params: [String: Any] = ["path": path]
         
         if let maxBytes { params["maximum_bytes"] = maxBytes }
         
-        switch callRPC(
-            socketPath: socketPath,
-            method: "resource.read",
-            params: params,
-            token: token
-        ) {
-        case .err(let type, let message):
-            dieRPC("resource read", type: type, message: message)
+        let result = client.call("resource.read", params)
         
-        case .ok(let dictionary):
-            if json {
-                printJSON(dictionary)
-                
-                return
-            }
+        if json {
+            printJSON(result)
             
-            print((dictionary["body"] as? String) ?? "")
+            return
         }
+        
+        print((result["body"] as? String) ?? "")
     }
     
     // MARK: - Private

@@ -93,8 +93,7 @@ struct ScheduleCreateCommand: ParsableCommand {
     // MARK: - Initializer
     // MARK: - Public
     func run() throws {
-        let socketPath = try resolveSocket(global)
-        let token = resolveToken(global.token)
+        let client = Client(global, context: "schedule create")
         
         var params: [String: Any] = [:]
         
@@ -117,18 +116,7 @@ struct ScheduleCreateCommand: ParsableCommand {
         if let inputs { params["inputs"] = parseJSONObjectArg(inputs, flag: "--inputs") }
         if let concurrency { params["concurrency"] = concurrency }
         
-        switch callRPC(
-            socketPath: socketPath,
-            method: "schedule.create",
-            params: params,
-            token: token
-        ) {
-        case .ok(let dict):
-            if json { printJSON(dict) } else { print(renderResultPlain(dict)) }
-        
-        case .err(let type, let message):
-            dieRPC("schedule create", type: type, message: message)
-        }
+        printResult(client.call("schedule.create", params), json: json)
     }
     
     // MARK: - Private
