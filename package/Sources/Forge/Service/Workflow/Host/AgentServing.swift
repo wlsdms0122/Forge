@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import Spec
+import Warp
 
 // The agent session is ambient — `invoke` opens it, `agent` steps inside speak
 // through it, and `parallel` children do not inherit it. The provider owns that
@@ -14,8 +14,8 @@ import Spec
 protocol AgentServing: Sendable {
     func withSession(
         _ settings: AgentSessionSettings,
-        body: @Sendable () async throws -> Spec.Value
-    ) async throws -> Spec.Value
+        body: @Sendable () async throws -> Warp.Value
+    ) async throws -> Warp.Value
 
     func send(prompt: String) async throws -> String
 }

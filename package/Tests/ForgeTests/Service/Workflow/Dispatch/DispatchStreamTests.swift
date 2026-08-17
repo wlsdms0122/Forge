@@ -27,11 +27,11 @@ struct DispatchStreamTests {
         let token = authority.mint(TokenClaims(principal: "system:rpc"))
         let sink = CollectingSink()
         let specJSON: [String: Any] = [
-            "steps": [
+            "body": [
                 ["id": "one", "shell": ["command": ["/bin/echo", "a"]]],
                 ["id": "two", "shell": ["command": ["/bin/echo", "b"]]],
             ],
-            "outputs": ["v": ["ref": "two"]],
+            "result": ["v": ["ref": "two"]],
         ]
         try await method.handle(RPCRequest(
                 id: "r-stream",
@@ -76,7 +76,7 @@ struct DispatchStreamTests {
         let token = authority.mint(TokenClaims(principal: "system:rpc"))
         let sink = CollectingSink()
         let specJSON: [String: Any] = [
-            "steps": [["id": "x", "shell": ["command": ["/bin/echo", "nope"]]]],
+            "body": [["id": "x", "shell": ["command": ["/bin/echo", "nope"]]]],
         ]
         do {
             try await method.handle(RPCRequest(
@@ -102,7 +102,7 @@ struct DispatchStreamTests {
         let token = authority.mint(TokenClaims(principal: "system:rpc"))
         let sink = CollectingSink()
         let specJSON: [String: Any] = [
-            "steps": [["id": "slow", "shell": ["command": ["/bin/sleep", "0.3"]]]],
+            "body": [["id": "slow", "shell": ["command": ["/bin/sleep", "0.3"]]]],
         ]
         let handleTask = Task {
             try await method.handle(RPCRequest(
@@ -149,7 +149,7 @@ struct DispatchStreamTests {
         let token = authority.mint(TokenClaims(principal: "system:rpc"))
         let sink = CollectingSink()
         let specJSON: [String: Any] = [
-            "steps": [["id": "slow", "shell": ["command": ["/bin/sleep", "0.3"]]]],
+            "body": [["id": "slow", "shell": ["command": ["/bin/sleep", "0.3"]]]],
         ]
         let handleTask = Task {
             try await method.handle(RPCRequest(
@@ -213,7 +213,7 @@ struct DispatchStreamTests {
         let (_, stream) = await bus.subscribe()
         let token = authority.mint(TokenClaims(principal: "system:rpc"))
         let specJSON: [String: Any] = [
-            "steps": [["id": "one", "shell": ["command": ["/bin/echo", "a"]]]],
+            "body": [["id": "one", "shell": ["command": ["/bin/echo", "a"]]]],
         ]
         let ack = try await dispatchMethod.handle(RPCRequest(
                 id: "r-async", method: "workflow.dispatch",
@@ -237,7 +237,7 @@ struct DispatchStreamTests {
         let token = authority.mint(TokenClaims(principal: "system:rpc"))
         let sink = CollectingSink()
         let specJSON: [String: Any] = [
-            "steps": [["id": "boom", "shell": ["command": ["/usr/bin/false"]]]],
+            "body": [["id": "boom", "shell": ["command": ["/usr/bin/false"]]]],
         ]
         try await method.handle(RPCRequest(
                 id: "r-fail",
@@ -286,7 +286,7 @@ struct DispatchStreamTests {
                 id: "r-cap",
                 method: "workflow.dispatch_stream",
                 params: ["token": token,
-                    "spec": ["steps": [["id": "x", "shell": ["command": ["/bin/echo", "hi"]]]]]]
+                    "spec": ["body": [["id": "x", "shell": ["command": ["/bin/echo", "hi"]]]]]]
             ), sink: sink)
         let lines = (await sink.snapshot()).map { line in line.dict }
 

@@ -31,7 +31,7 @@ struct ScheduleStoreEnabledTests {
                 concurrency: .skip,
                 enabled: true,
                 inputs: ["scope": .string("quick"), "limit": .int(5)],
-                spec: .object(["steps": .array([])])))
+                spec: .object(["body": .array([])])))
 
         // When
         try await store.setEnabled(id: created.id, enabled: false, authorizedWorkflow: "wf-x")
@@ -45,7 +45,7 @@ struct ScheduleStoreEnabledTests {
         #expect(after.concurrency == .skip, "concurrency preserved (a field that would be lost under re-serialization drift)")
         #expect(after.inputs?["scope"] == .string("quick"))
         #expect(after.inputs?["limit"] == .int(5))
-        #expect(after.spec == .object(["steps": .array([]), "name": .string("<inline>")]), "spec preserved + anonymous sigil")
+        #expect(after.spec == .object(["body": .array([]), "name": .string("<inline>")]), "spec preserved + anonymous sigil")
     }
 
     @Test("The definition file is never rewritten — even human-written comments stay intact")

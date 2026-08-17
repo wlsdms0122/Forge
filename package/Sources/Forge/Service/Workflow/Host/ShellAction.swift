@@ -6,95 +6,40 @@
 //
 
 import Foundation
-import Spec
+import Warp
 
-struct ShellAction: Spec.Action {
-    private enum CodingKeys: String, CodingKey, CaseIterable {
-        case command
-        case cwd
-        case env
-        case stdin
-        case outputs
-        case timeout
-    }
-
+struct ShellAction: Warp.Effect {
     // MARK: - Property
-    static let key = "shell"
 
-    let command: [Spec.Reference]
-    let cwd: Spec.Reference?
-    let env: [String: Spec.Reference]?
-    let stdin: Spec.Reference?
-    let outputs: [String: OutputSpec]?
-    let timeout: Double?
-
-    var referencedPaths: [[PathSegment]] {
-        command.flatMap(\.referencedPaths)
-            + (cwd?.referencedPaths ?? [])
-            + (env?.values.flatMap(\.referencedPaths) ?? [])
-            + (stdin?.referencedPaths ?? [])
-    }
 
     // MARK: - Initializer
-    // The invariants live on the one designated initializer — however a value is
-    // constructed, decoded or programmatic, the same rules hold.
-    init(
-        command: [Spec.Reference],
-        cwd: Spec.Reference? = nil,
-        env: [String: Spec.Reference]? = nil,
-        stdin: Spec.Reference? = nil,
-        outputs: [String: OutputSpec]? = nil,
-        timeout: Double? = nil
-    ) throws {
-        guard !command.isEmpty else {
+    // MARK: - Public
+    func run(_ invocation: Warp.Invocation) async throws -> Warp.Value {
+        let host = try ForgeHost.from(invocation)
+        let resolver = invocation.resolver
+
+        guard case .array(let command) = try invocation.resolve("command"), !command.isEmpty else {
             throw ValidationError("shell.command is empty")
         }
 
-        self.command = command
-        self.cwd = cwd
-        self.env = env
-        self.stdin = stdin
-        self.outputs = outputs
-        self.timeout = timeout
-    }
+        let arguments = command.map(resolver.stringify)
+        let cwd = try invocation.string("cwd")
+        let stdin = try invocation.string("stdin")
+        let stepID = invocation.label
+        let timeout = ValueBridge.number(try invocation.resolve("timeout"))
 
-    init(from decoder: Decoder) throws {
-        try Spec.KeyGate.rejectUnknownKeys(in: decoder, known: CodingKeys.self, context: "shell")
+        let env: [String: String]
 
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-
-        do {
-            try self.init(
-                command: try container.decode([Spec.Reference].self, forKey: .command),
-                cwd: try container.decodeIfPresent(Spec.Reference.self, forKey: .cwd),
-                env: try container.decodeIfPresent(
-                    [String: Spec.Reference].self,
-                    forKey: .env
-                ),
-                stdin: try container.decodeIfPresent(Spec.Reference.self, forKey: .stdin),
-                outputs: try container.decodeIfPresent(
-                    [String: OutputSpec].self,
-                    forKey: .outputs
-                ),
-                timeout: try container.decodeIfPresent(Double.self, forKey: .timeout)
-            )
-        } catch let error as ValidationError {
-            throw DecodingError.dataCorrupted(
-                .init(codingPath: container.codingPath, debugDescription: "\(error)")
-            )
+        if case .object(let written) = try invocation.resolve("env") {
+            env = written.mapValues(resolver.stringify)
+        } else {
+            env = [:]
         }
-    }
 
-    // MARK: - Public
-    func run(_ context: ActionContext) async throws -> Spec.Value {
-        let host = try ForgeHost.from(context)
-        let resolver = context.resolver
-        let arguments = try command.map { reference in try resolver.string(reference) }
-        let cwd = try cwd.map { reference in try resolver.string(reference) }
-        let env = try (env ?? [:]).mapValues { reference in try resolver.string(reference) }
-        let stdin = try stdin.map { reference in try resolver.string(reference) }
-        let declarations = outputs
-        let stepID = context.stepID
+        let declarations = try ValueBridge.decode(
+            [String: OutputSpec].self,
+            from: try invocation.resolve("outputs")
+        )
 
         let result = try await host.withStepSlot {
             try await withHostDeadline(seconds: timeout) {
@@ -129,17 +74,6 @@ struct ShellAction: Spec.Action {
         )
 
         return ValueBridge.value(extracted)
-    }
-
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-
-        try container.encode(command, forKey: .command)
-        try container.encodeIfPresent(cwd, forKey: .cwd)
-        try container.encodeIfPresent(env, forKey: .env)
-        try container.encodeIfPresent(stdin, forKey: .stdin)
-        try container.encodeIfPresent(outputs, forKey: .outputs)
-        try container.encodeIfPresent(timeout, forKey: .timeout)
     }
 
     // MARK: - Private

@@ -6,15 +6,16 @@
 //
 
 import Foundation
-import Spec
+import Warp
+import WarpIR
 
-struct ForgeHost: Sendable {
+struct ForgeHost: Warp.HostEnvironment {
     // MARK: - Property
     let shell: any ShellExecuting
     let agent: any AgentServing
     let dispatcher: any RunDispatching
     let resources: any ResourceReading
-    let loader: SpecLoader
+    let loader: Loader
     let pool: WorkflowPool
     let runID: String
 
@@ -24,7 +25,7 @@ struct ForgeHost: Sendable {
         agent: any AgentServing,
         dispatcher: any RunDispatching,
         resources: any ResourceReading,
-        loader: SpecLoader,
+        loader: Loader,
         pool: WorkflowPool,
         runID: String
     ) {
@@ -38,10 +39,10 @@ struct ForgeHost: Sendable {
     }
 
     // MARK: - Public
-    static func from(_ context: ActionContext) throws -> ForgeHost {
+    static func from(_ context: Warp.Invocation) throws -> ForgeHost {
         guard let host = context.environment as? ForgeHost else {
             throw ExecutionError(
-                "step '\(context.stepID)' needs the forge host environment"
+                "step '\(context.label)' needs the forge host environment"
                     + " — run it through the forge executor"
             )
         }
@@ -73,15 +74,15 @@ struct ForgeHost: Sendable {
     // MARK: - Private
 }
 
-// The parallel boundary severs the ambient agent session — concurrent children
-// must not share one conversation. A child that needs a session opens its own
-// `invoke` inside the branch.
-extension ForgeHost: Spec.ParallelIsolating {
-    func isolateParallelChild<T: Sendable>(
-        _ body: @Sendable () async throws -> T
+// The fan-out boundary severs the ambient agent session — pieces that run at
+// once must not share one conversation. A piece that needs a session opens its
+// own `invoke` inside itself.
+extension ForgeHost {
+    func isolateConcurrentWork<T: Sendable>(
+        _ work: @Sendable () async throws -> T
     ) async throws -> T {
         try await WorkflowExecutionState.$agentSession.withValue(nil) {
-            try await body()
+            try await work()
         }
     }
 }
@@ -90,8 +91,8 @@ extension ForgeHost: Spec.ParallelIsolating {
 // failed child run is the world answering, not the author mistyping. The host
 // also owns each failure's vocabulary as a rescue-visible value: the kernel
 // binds these payloads under the failed step's id while its rescue runs.
-extension BackendNonzeroExit: Spec.RecoverableFailure {
-    var payload: Spec.Value {
+extension BackendNonzeroExit: Warp.RecoverableFailure {
+    var payload: Warp.Value {
         .object([
             "type": .string("nonzero_exit"),
             "message": .string(message),
@@ -102,8 +103,8 @@ extension BackendNonzeroExit: Spec.RecoverableFailure {
     }
 }
 
-extension ChildRunFailed: Spec.RecoverableFailure {
-    var payload: Spec.Value {
+extension ChildRunFailed: Warp.RecoverableFailure {
+    var payload: Warp.Value {
         .object(["type": .string("child_run_failed"), "message": .string(message)])
     }
 }

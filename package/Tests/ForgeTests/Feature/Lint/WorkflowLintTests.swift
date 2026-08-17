@@ -20,9 +20,9 @@ struct WorkflowLintTests {
     func staleTemplateStringFlagged() async throws {
         // Given
         let report = try check(named: "stale", yaml: """
-        steps:
+        body:
           - id: greet
-            value: "hello, ${inputs.who}"
+            value: "hello, ${who}"
         """)
 
         // Then
@@ -36,13 +36,13 @@ struct WorkflowLintTests {
         // dialect's home; description/hint are prose
         let report = try check(named: "sanctioned", yaml: """
         description: use ${x} spelling in templates
-        inputs:
+        parameters:
           who:
             type: string
             hint: interpolated via ${who}
-        steps:
+        body:
           - id: greet
-            value: { format: "hi ${who}", with: { who: { ref: inputs.who } } }
+            value: { format: "hi ${who}", with: { who: { ref: who } } }
           - id: doc
             value: { value: "literal ${kept} text" }
         """)
@@ -56,7 +56,7 @@ struct WorkflowLintTests {
         let directory = try temporary.make("lint-\(name)")
         let file = directory.appendingPathComponent("\(name).yaml")
 
-        try yaml.write(to: file, atomically: true, encoding: .utf8)
+        try workflowFile(yaml, named: name).write(to: file, atomically: true, encoding: .utf8)
 
         return WorkflowLint.check(path: file.path)
     }

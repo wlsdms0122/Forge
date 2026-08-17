@@ -6,12 +6,12 @@
 //
 
 import Foundation
-import Spec
+import Warp
 
 protocol RunDispatching: Sendable {
     func dispatch(
         name: String?,
-        inline: Spec.Value?,
-        inputs: [String: Spec.Value]
-    ) async throws -> Spec.Value
+        inline: Warp.Value?,
+        inputs: [String: Warp.Value]
+    ) async throws -> Warp.Value
 }

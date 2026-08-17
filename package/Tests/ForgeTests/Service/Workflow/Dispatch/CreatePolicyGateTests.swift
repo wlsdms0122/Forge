@@ -15,7 +15,7 @@ struct CreatePolicyGateTests {
     private let temporary = TemporaryDirectory("creategate")
 
     private let inlineSpec: [String: Any] = [
-        "steps": [["id": "x", "shell": ["command": ["/bin/echo", "ok"]]]],
+        "body": [["id": "x", "shell": ["command": ["/bin/echo", "ok"]]]],
     ]
     
     // MARK: - Initializer

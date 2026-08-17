@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import Spec
+import Warp
 
 struct WorkflowListMethod: Sendable {
     // MARK: - Property
@@ -27,7 +27,7 @@ struct WorkflowListMethod: Sendable {
         let summary: [[String: Any]] = catalog.entries.map { entry in
             [
                 "name":        entry.name,
-                "description": entry.program.description as Any? ?? NSNull(),
+                "description": entry.module.procedures[entry.name]?.description as Any? ?? NSNull(),
                 "source":      entry.source,
             ]
         }

@@ -21,7 +21,7 @@ struct WorkflowCheckCommand: ParsableCommand {
             Catches:
               - malformed YAML / broken spec structure
               - half-spelled expression forms ({ ref: }, { value: }, { format: })
-              - { ref: inputs.X } where X is not declared
+              - { ref: X } where X is not declared
               - { ref: step.X } where step is not a visible id
               - format templates naming a binding not declared in `with`
 

@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import Spec
+import Warp
 
 actor WorkflowScheduler {
     private struct RunHandle {
@@ -305,7 +305,7 @@ actor WorkflowScheduler {
 private struct FireTarget: Sendable {
     // MARK: - Property
     let name: String
-    let program: Spec.Program
+    let module: Warp.Module
     
     // MARK: - Initializer
     // MARK: - Public
@@ -324,17 +324,22 @@ private func resolveFireTarget(
 ) async -> FireResolution {
     if let spec {
         do {
-            let program = try store.loader.lower(ValueBridge.value(spec))
+            let module = Warp.Module(
+                procedures: [
+                    WorkflowDispatchMethod.inlineSigil:
+                        try store.loader.procedure(from: ValueBridge.value(spec))
+                ]
+            )
             
-            return .resolved(FireTarget(name: name, program: program))
+            return .resolved(FireTarget(name: name, module: module))
         } catch {
             return .denied(reason: "spec_decode", detail: String(describing: error))
         }
     }
     
     switch await store.resolve(name) {
-    case .found(let program):
-        return .resolved(FireTarget(name: name, program: program))
+    case .found(let module):
+        return .resolved(FireTarget(name: name, module: module))
     
     case .invalid(let reason):
         return .denied(reason: "workflow_invalid", detail: reason)
@@ -392,7 +397,7 @@ private func dispatchScheduled(
     
     do {
         _ = try await runner.dispatch(
-            program: target.program,
+            module: target.module,
             name: target.name,
             inputs: inputs,
             principal: principal,

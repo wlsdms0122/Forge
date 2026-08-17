@@ -20,7 +20,7 @@ struct AsyncDispatchTests {
         let (method, authority) = makeDeniedMethod()
         let token = authority.mint(TokenClaims(principal: "system:rpc"))
         let specJSON: [String: Any] = [
-            "steps": [["id": "x", "shell": ["command": ["/bin/echo", "nope"]]]],
+            "body": [["id": "x", "shell": ["command": ["/bin/echo", "nope"]]]],
         ]
         do {
             _ = try await method.handle(RPCRequest(
@@ -42,11 +42,11 @@ struct AsyncDispatchTests {
         let (method, authority) = makeMethod()
         let token = authority.mint(TokenClaims(principal: "system:rpc"))
         let specJSON: [String: Any] = [
-            "steps": [
+            "body": [
                 ["id": "x",
                     "shell": ["command": ["/bin/echo", "done"]]],
             ],
-            "outputs": ["v": ["ref": "x"]],
+            "result": ["v": ["ref": "x"]],
         ]
         let result = try await method.handle(RPCRequest(
                 id: "r-sync",
@@ -66,7 +66,7 @@ struct AsyncDispatchTests {
         let (method, authority) = makeMethod()
         let token = authority.mint(TokenClaims(principal: "system:rpc"))
         let specJSON: [String: Any] = [
-            "steps": [
+            "body": [
                 ["id": "slow",
                     "shell": ["command": ["/bin/sleep", "0.3"]]],
             ],

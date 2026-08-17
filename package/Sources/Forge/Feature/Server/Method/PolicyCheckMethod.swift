@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import Spec
+import Warp
 
 struct PolicyCheckMethod: Sendable {
     // MARK: - Property

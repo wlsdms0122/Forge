@@ -6,16 +6,18 @@
 //
 
 import Foundation
-import Spec
+import Warp
+import WarpIR
+import WarpYAML
 
 // The workflow catalog in spec format — the same scan/cache/failure-ledger
-// discipline as the other stores, loading `Spec.Program` through the one forge
+// discipline as the other stores, loading `Warp.Module` through the one forge
 // loader. Identity is the file basename; a `name:` in the body is metadata and
 // must agree when present.
 actor SpecCatalog {
     struct Catalog: Sendable {
         // MARK: - Property
-        let entries: [(name: String, program: Spec.Program, source: String)]
+        let entries: [(name: String, module: Warp.Module, source: String)]
         let failures: [LoadFailure]
 
         // MARK: - Initializer
@@ -24,7 +26,7 @@ actor SpecCatalog {
     }
 
     enum Lookup {
-        case found(Spec.Program)
+        case found(Warp.Module)
         case invalid(reason: String)
         case unobserved(reason: String)
         case missing
@@ -33,7 +35,7 @@ actor SpecCatalog {
     private struct Entry {
         // MARK: - Property
         let name: String
-        let program: Spec.Program
+        let module: Warp.Module
         let mtime: Date
         let source: String
 
@@ -44,7 +46,7 @@ actor SpecCatalog {
 
     // MARK: - Property
     let directory: URL?
-    let loader: SpecLoader
+    let loader: Loader
 
     private var cache: [String: Entry] = [:]
     private var failureCache: [String: LoadFailure] = [:]
@@ -63,7 +65,7 @@ actor SpecCatalog {
 
         return Catalog(
             entries: cache.values
-                .map { entry in (entry.name, entry.program, entry.source) }
+                .map { entry in (entry.name, entry.module, entry.source) }
                 .sorted { left, right in left.name < right.name },
             failures: (Array(failureCache.values) + collisions + scanFailures)
                 .sorted { left, right in left.path < right.path }
@@ -71,7 +73,7 @@ actor SpecCatalog {
     }
 
     // MARK: - Initializer
-    init(directory: URL?, loader: SpecLoader) {
+    init(directory: URL?, loader: Loader) {
         self.directory = directory
         self.loader = loader
     }
@@ -143,9 +145,12 @@ actor SpecCatalog {
 
             do {
                 let data = try Data(contentsOf: url)
-                let program = try loader.load(data)
+                // The names the daemon supplies are declared here rather than by
+                // every workflow author, which is what the language's removed
+                // context tier used to do for us.
+                let module = ForgeSpec.seeding(try loader.load(data))
 
-                if let declared = program.name, declared != base {
+                if let declared = module.name, declared != base {
                     ledger.record(
                         source: file.source,
                         reason: "workflow name '\(declared)' must equal the file basename"
@@ -160,11 +165,29 @@ actor SpecCatalog {
                     continue
                 }
 
+                // Forge's convention on top of the language: a workflow file
+                // declares one routine and names it after the file. The language
+                // lets a module declare many — this is where a workflow says it
+                // is one thing you can run by the name you know it by.
+                guard Array(module.procedures.keys) == [base] else {
+                    ledger.record(
+                        source: file.source,
+                        reason: "a workflow file declares exactly one routine named after"
+                            + " the file — expected 'routines: { \(base): ... }', found"
+                            + " \(module.procedures.keys.sorted().map { key in "'\(key)'" })",
+                        mtime: mtime,
+                        stderrLine: "workflow routine/filename mismatch (\(file.source))",
+                        name: base
+                    )
+
+                    continue
+                }
+
                 candidates.append(
                     (
                         base,
                         file.source,
-                        Entry(name: base, program: program, mtime: mtime, source: file.source)
+                        Entry(name: base, module: module, mtime: mtime, source: file.source)
                     )
                 )
             } catch {
@@ -221,7 +244,7 @@ actor SpecCatalog {
     func resolve(_ name: String) async -> Lookup {
         await catalog()
 
-        if let entry = cache[name] { return .found(entry.program) }
+        if let entry = cache[name] { return .found(entry.module) }
 
         if let failure = failureCache.values.first(where: { failure in failure.name == name }) {
             return .invalid(reason: failure.reason)
@@ -248,13 +271,20 @@ actor SpecCatalog {
     // MARK: - Private
 }
 
-// `use` and the dispatcher resolve named specs through the same catalog the
-// daemon serves — one door, one cache, one failure ledger.
-extension SpecCatalog: SpecStore {
-    func spec(named name: String) async throws -> Spec.Program {
+// The set a link is handed. `gcc main.cpp a.cpp b.cpp` is given its whole world
+// at once and so is this — every workflow the daemon can see goes into every
+// link, and which one runs is the entry name.
+//
+// This is the one place the "everything, every time" model costs something: the
+// corpus is parsed and validated on reload rather than on demand. It is a
+// directory of workflow files, so that is cheap; if it stops being cheap the
+// answer is caching the parse, not resolving names lazily, because lazily is
+// how a duplicate symbol goes unnoticed until someone happens to call it.
+extension SpecCatalog {
+    func module(named name: String) async throws -> Warp.Module {
         switch await resolve(name) {
-        case .found(let program):
-            return program
+        case .found(let module):
+            return module
 
         case .invalid(let reason):
             throw ExecutionError("workflow '\(name)' is broken — \(reason)")
@@ -265,5 +295,26 @@ extension SpecCatalog: SpecStore {
         case .missing:
             throw ExecutionError("workflow not found: \(name)")
         }
+    }
+
+    // The workflows the daemon can see. What a link additionally needs —
+    // forge's verbs and the standard vocabulary — is `ForgeSpec.linkables`, and
+    // it is kept out of here on purpose: a caller filtering this list is
+    // filtering workflows, and dropping the vocabulary alongside one would take
+    // every verb with it.
+    func modules() async -> [Warp.Module] {
+        await catalog().entries.map(\.module)
+    }
+}
+
+// The `dlopen` door, and only that: a name reaching here came from IR the host
+// lowered while running, which linking never promised to have resolved.
+extension SpecCatalog: ProcedureCatalog {
+    func procedure(named name: String) async throws -> Warp.Procedure {
+        for module in await modules() {
+            if let procedure = module.procedures[name] { return procedure }
+        }
+
+        throw ExecutionError("routine not found: \(name)")
     }
 }

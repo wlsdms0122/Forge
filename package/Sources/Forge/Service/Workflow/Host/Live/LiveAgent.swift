@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import Spec
+import Warp
 
 // The live agent seam over forge's invoke executor. The session is ambient —
 // `withSession` binds it to the task and `send` speaks through whatever session
@@ -24,8 +24,8 @@ struct LiveAgent: AgentServing {
     // MARK: - Public
     func withSession(
         _ settings: AgentSessionSettings,
-        body: @Sendable () async throws -> Spec.Value
-    ) async throws -> Spec.Value {
+        body: @Sendable () async throws -> Warp.Value
+    ) async throws -> Warp.Value {
         // share_session is a conditional join: settings ride along as the
         // pre-injection for the fallback — with an outer session they are
         // ignored and the body joins it, without one they open a new session.
@@ -93,7 +93,7 @@ struct LiveAgent: AgentServing {
         )
     }
 
-    private static func tools(from allowed: Spec.Value?) throws -> [AgentTool]? {
+    private static func tools(from allowed: Warp.Value?) throws -> [AgentTool]? {
         guard let allowed else { return nil }
 
         switch allowed {

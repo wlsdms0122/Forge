@@ -215,7 +215,7 @@ struct ServiceScopedGateTests {
             tokenAuthority: authority)
         let streamMethod = WorkflowDispatchStreamMethod(dispatchMethod: dispatchMethod, eventBus: bus)
         let token = authority.mint(TokenClaims(principal: "system:rpc"))
-        let spec: [String: Any] = ["steps": [["id": "x", "shell": ["command": ["/bin/echo", "n"]]]]]
+        let spec: [String: Any] = ["body": [["id": "x", "shell": ["command": ["/bin/echo", "n"]]]]]
         var messages: [String] = []
         do {
             _ = try await dispatchMethod.handle(RPCRequest(

@@ -1,9 +1,12 @@
-description: E2E child — echoes its input back
-inputs:
-  tag:
-    type: string
-steps:
-- id: echo
-  value: { format: "child:${tag}", with: { tag: { ref: inputs.tag } } }
-outputs:
-  tag_out: { ref: echo }
+name: child
+procedures:
+  child:
+    description: E2E child — echoes its input back
+    parameters:
+      tag:
+        type: string
+    body:
+    - id: echo
+      value: { format: "child:${tag}", with: { tag: { ref: tag } } }
+    result:
+      tag_out: { ref: echo }

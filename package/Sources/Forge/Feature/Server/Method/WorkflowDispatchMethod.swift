@@ -6,13 +6,13 @@
 //
 
 import Foundation
-import Spec
+import Warp
 
 struct WorkflowDispatchMethod: Sendable {
     struct Prepared: Sendable {
         // MARK: - Property
         let name: String
-        let program: Spec.Program
+        let module: Warp.Module
         let inputs: [String: JSONValue]
         let principal: String
         let workflowID: String
@@ -59,7 +59,7 @@ struct WorkflowDispatchMethod: Sendable {
             workflowID: claims.workflowID,
             context: "workflow.dispatch"
         )
-        let (name, program) = try await resolveProgram(request.params)
+        let (name, module) = try await resolveProgram(request.params)
         let inputs = try decodeJSONValueDict(
             (request.params["inputs"] as? [String: Any]) ?? [:]
         )
@@ -101,7 +101,7 @@ struct WorkflowDispatchMethod: Sendable {
 
         return Prepared(
             name: name,
-            program: program,
+            module: module,
             inputs: inputs,
             principal: principal,
             workflowID: workflowID,
@@ -119,7 +119,7 @@ struct WorkflowDispatchMethod: Sendable {
         mode: DispatchMode
     ) async throws -> WorkflowRunResult {
         try await runner.dispatch(
-            program: prepared.program,
+            module: prepared.module,
             name: prepared.name,
             inputs: prepared.inputs,
             principal: prepared.principal,
@@ -203,23 +203,30 @@ struct WorkflowDispatchMethod: Sendable {
     // MARK: - Private
     private func resolveProgram(
         _ params: [String: Any]
-    ) async throws -> (String, Spec.Program) {
+    ) async throws -> (String, Warp.Module) {
         if let specObject = params["spec"] as? [String: Any] {
             guard specObject["name"] == nil else {
                 throw ProtocolError("workflow.dispatch: inline 'spec' must be anonymous — a 'name' key is not allowed (the name is fixed to '\(Self.inlineSigil)')")
             }
 
-            let program: Spec.Program
+            let module: Warp.Module
 
             do {
                 let value = ValueBridge.value(.object(try decodeJSONValueDict(specObject)))
 
-                program = try store.loader.lower(value)
+                // An inline spec is one routine, not a document that declares
+                // several — the caller already knows what to call it, and the
+                // name is fixed to the sigil.
+                module = ForgeSpec.seeding(
+                    Warp.Module(
+                        procedures: [Self.inlineSigil: try store.loader.procedure(from: value)]
+                    )
+                )
             } catch {
                 throw ProtocolError("workflow.dispatch: malformed 'spec' — \(error)")
             }
 
-            return (Self.inlineSigil, program)
+            return (Self.inlineSigil, module)
         }
 
         if let name = params["name"] as? String, !name.isEmpty {

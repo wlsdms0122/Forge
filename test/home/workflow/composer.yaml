@@ -1,11 +1,14 @@
-description: Dynamic composition — data becomes steps at run time
-steps:
-- id: made
-  dynamic:
-    compose:
-    - value:
-        id: fabricated
-        value: composed-ok
-    output: { ref: fabricated }
-outputs:
-  result: { ref: made }
+name: composer
+procedures:
+  composer:
+    description: Dynamic composition — data becomes steps at run time
+    body:
+    - id: made
+      dynamic:
+        compose:
+        - value:
+            id: fabricated
+            value: composed-ok
+        result: { ref: fabricated }
+    result:
+      result: { ref: made }

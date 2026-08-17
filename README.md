@@ -40,16 +40,16 @@ signature (`inputs`), a program (`steps`), and a public surface (`outputs`):
 ```yaml
 # review.yaml — identity comes from the basename, never the body
 description: Review a diff and answer with a verdict.
-inputs:
+parameters:
   target: string
   depth: { type: string, default: quick, oneOf: [quick, thorough] }
-steps:
+body:
   - id: diff
-    shell: { command: [git, diff, { ref: inputs.target }] }
+    shell: { command: [git, diff, { ref: target }] }
   - id: verdict
     agent: { format: "Review this diff (${d} pass):\n${body}",
-             with: { d: { ref: inputs.depth }, body: { ref: diff } } }
-outputs:
+             with: { d: { ref: depth }, body: { ref: diff } } }
+result:
   verdict: { ref: verdict }
 ```
 
@@ -64,8 +64,8 @@ action, and optionally a `when` gate and a `rescue` program:
 
 ```yaml
 - id: search
-  when: { present: { ref: inputs.query } }   # skipped → outputs null
-  shell: { command: [rg, -n, { ref: inputs.query }] }
+  when: { present: { ref: query } }   # skipped → outputs null
+  shell: { command: [rg, -n, { ref: query }] }
   rescue:                                     # runs only on recoverable failure
   - id: empty
     value: "no matches"
@@ -85,8 +85,8 @@ shapes, and a bare string is always literal text:
 value: hello                # scalar literal — strings are never re-parsed
 value: { ref: diff }        # reference — read a binding, evaluated now
 value: { value: { ref: x } }  # quotation — the payload is data, not evaluated
-value: { format: "hi ${who}", with: { who: { ref: inputs.name } } }
-value: { user: { ref: inputs.name }, tags: [a, b] }   # record / array
+value: { format: "hi ${who}", with: { who: { ref: name } } }
+value: { user: { ref: name }, tags: [a, b] }   # record / array
 ```
 
 `format` is the only string interpolation, and it is *closed*: a
@@ -102,7 +102,7 @@ subject) and one operator — and both sides are expressions:
 ```yaml
 when: { of: { ref: verdict.kind }, is: approve }
 when: { of: { ref: count }, one_of: [1, 2, 3] }
-when: { present: { ref: inputs.optional } }        # unary
+when: { present: { ref: optional } }        # unary
 when: { all: [ <Condition>, ... ] }                # and / or / not compose
 ```
 
@@ -240,15 +240,15 @@ the same id, and the next round's `where` sees the rebound value:
 
 ```yaml
 description: Produce Block Kit JSON that passes validation, or give up loudly.
-inputs:
+parameters:
   request: string
-steps:
+body:
   - id: draft
     invoke:
-      steps:
+      body:
       - id: draft
         agent: { format: "Compose Block Kit JSON for: ${r}",
-                 with: { r: { ref: inputs.request } } }
+                 with: { r: { ref: request } } }
       - id: checked
         shell: { command: [jq, -e, "."], stdin: { ref: draft } }
         rescue:
@@ -258,7 +258,7 @@ steps:
         loop:
           where: { of: { ref: checked }, starts_with: "RETRY: " }
           guard: 3
-          steps:
+          body:
           - id: fix
             agent: { format: "That failed validation — ${e}. Fix it.",
                      with: { e: { ref: checked } } }   # same session, same dialogue
@@ -267,9 +267,9 @@ steps:
             rescue:
             - id: mark
               value: { format: "RETRY: ${why}", with: { why: { ref: checked.stderr } } }
-          output: { ref: checked }
-      output: { ref: checked }
-outputs:
+          result: { ref: checked }
+      result: { ref: checked }
+result:
   blocks: { ref: draft }
 ```
 

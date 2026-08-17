@@ -6,39 +6,23 @@
 //
 
 import Foundation
-import Spec
+import Warp
 
 // A single prompt turn against the ambient agent session — invoke opens the
 // session; an agent step outside one is an authoring error.
-struct AgentAction: Spec.Action {
+struct AgentAction: Warp.Effect {
     // MARK: - Property
-    static let key = "agent"
 
-    let prompt: Spec.Reference
-
-    var referencedPaths: [[PathSegment]] { prompt.referencedPaths }
 
     // MARK: - Initializer
-    init(prompt: Spec.Reference) {
-        self.prompt = prompt
-    }
-
-    init(from decoder: Decoder) throws {
-        self.prompt = try Spec.Reference(from: decoder)
-    }
-
     // MARK: - Public
-    func run(_ context: ActionContext) async throws -> Spec.Value {
-        let host = try ForgeHost.from(context)
-        let prompt = try context.resolver.string(prompt)
+    func run(_ invocation: Warp.Invocation) async throws -> Warp.Value {
+        let host = try ForgeHost.from(invocation)
+        let prompt = try invocation.string("prompt") ?? ""
 
         return try await host.withStepSlot {
             .string(try await host.agent.send(prompt: prompt))
         }
-    }
-
-    func encode(to encoder: Encoder) throws {
-        try prompt.encode(to: encoder)
     }
 
     // MARK: - Private
