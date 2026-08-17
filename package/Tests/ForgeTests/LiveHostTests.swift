@@ -7,18 +7,19 @@
 
 import Foundation
 import Testing
-import Spec
+import Warp
+import WarpIR
 @testable import Forge
 
 // MARK: - Recording backend
 
 private final class AgentRecorder: Backend, @unchecked Sendable {
     // MARK: - Property
-    let invocations = OrderedCollector<Invocation>()
+    let invocations = OrderedCollector<Forge.Invocation>()
 
     // MARK: - Initializer
     // MARK: - Public
-    func invoke(_ invocation: Invocation) async throws -> BackendResponse {
+    func invoke(_ invocation: Forge.Invocation) async throws -> BackendResponse {
         invocations.append(invocation)
 
         return BackendResponse(
@@ -219,27 +220,27 @@ struct SpecWorkflowRunnerTests {
 
     // MARK: - Initializer
     // MARK: - Test
-    @Test("runs a program and returns a result fulfilling the outputs contract")
+    @Test("runs a procedure and returns a result fulfilling the outputs contract")
     func runReturnsOutputs() async throws {
         // Given
         let harness = try makeRunner(catalog: [
             "hello": """
             name: hello
-            inputs:
+            parameters:
               msg:
                 type: string
-            steps:
+            body:
               - id: greet
-                value: { format: "hi ${msg}", with: { msg: { ref: inputs.msg } } }
-            outputs:
+                value: { format: "hi ${msg}", with: { msg: { ref: msg } } }
+            result:
               text: { ref: greet }
             """
         ])
-        let program = try await harness.store.spec(named: "hello")
+        let module = try await harness.store.module(named: "hello")
 
         // When
         let result = try await harness.dispatch(
-            program: program,
+            module: module,
             name: "hello",
             inputs: ["msg": .string("there")]
         )
@@ -256,18 +257,18 @@ struct SpecWorkflowRunnerTests {
         let harness = try makeRunner(catalog: [
             "say": """
             name: say
-            steps:
+            body:
               - id: say
                 shell:
                   command: ["/bin/echo", "ok"]
-            outputs:
+            result:
               out: { ref: say }
             """
         ])
-        let program = try await harness.store.spec(named: "say")
+        let module = try await harness.store.module(named: "say")
 
         // When
-        let result = try await harness.dispatch(program: program, name: "say")
+        let result = try await harness.dispatch(module: module, name: "say")
 
         // Then
         #expect(result.status == .ok)
@@ -287,21 +288,21 @@ struct SpecWorkflowRunnerTests {
         let harness = try makeRunner(catalog: [
             "ask": """
             name: ask
-            steps:
+            body:
               - id: session
                 invoke:
                   model: claude
-                  steps:
+                  body:
                     - id: q
                       agent: "hello"
-            outputs:
+            result:
               reply: { ref: session }
             """
         ])
-        let program = try await harness.store.spec(named: "ask")
+        let module = try await harness.store.module(named: "ask")
 
         // When
-        let result = try await harness.dispatch(program: program, name: "ask")
+        let result = try await harness.dispatch(module: module, name: "ask")
 
         // Then
         #expect(result.status == .ok)
@@ -314,15 +315,15 @@ struct SpecWorkflowRunnerTests {
         let harness = try makeRunner(catalog: [
             "boom": """
             name: boom
-            steps:
+            body:
               - id: stop
                 abort: "boom reason"
             """
         ])
-        let program = try await harness.store.spec(named: "boom")
+        let module = try await harness.store.module(named: "boom")
 
         // When
-        let result = try await harness.dispatch(program: program, name: "boom")
+        let result = try await harness.dispatch(module: module, name: "boom")
 
         // Then
         #expect(result.status == .failed)
@@ -337,33 +338,33 @@ struct SpecWorkflowRunnerTests {
             catalog: [
                 "parent": """
                 name: parent
-                steps:
+                body:
                   - id: call
                     dispatch:
                       name: child
                       inputs:
                         msg: hello
-                outputs:
+                result:
                   got: { ref: call.echo }
                 """,
                 "child": """
                 name: child
-                inputs:
+                parameters:
                   msg:
                     type: string
-                steps:
+                body:
                   - id: reply
-                    value: { format: "child got ${msg}", with: { msg: { ref: inputs.msg } } }
-                outputs:
+                    value: { format: "child got ${msg}", with: { msg: { ref: msg } } }
+                result:
                   echo: { ref: reply }
                 """
             ],
             policy: ["cli:parent": ["parent", "child"]]
         )
-        let program = try await harness.store.spec(named: "parent")
+        let module = try await harness.store.module(named: "parent")
 
         // When
-        let result = try await harness.dispatch(program: program, name: "parent")
+        let result = try await harness.dispatch(module: module, name: "parent")
 
         // Then
         #expect(result.status == .ok)
@@ -377,27 +378,31 @@ struct SpecWorkflowRunnerTests {
             catalog: [
                 "parent": """
                 name: parent
-                steps:
+                body:
                   - id: call
-                    dispatch:
-                      name: child
-                    rescue:
-                      - id: absorb
-                        value: "swallowed"
+                    attempt:
+                      body:
+                        - id: call
+                          dispatch:
+                            name: child
+                      rescue:
+                        body:
+                          - id: absorb
+                            value: "swallowed"
                 """,
                 "child": """
                 name: child
-                steps:
+                body:
                   - id: noop
                     value: ok
                 """
             ],
             policy: ["cli:parent": ["parent"]]
         )
-        let program = try await harness.store.spec(named: "parent")
+        let module = try await harness.store.module(named: "parent")
 
         // When
-        let result = try await harness.dispatch(program: program, name: "parent")
+        let result = try await harness.dispatch(module: module, name: "parent")
 
         // Then
         #expect(result.status == .failed)
@@ -411,29 +416,33 @@ struct SpecWorkflowRunnerTests {
             catalog: [
                 "parent": """
                 name: parent
-                steps:
+                body:
                   - id: call
-                    dispatch:
-                      name: boom
-                    rescue:
-                      - id: absorb
-                        value: "rescued"
-                outputs:
+                    attempt:
+                      body:
+                        - id: call
+                          dispatch:
+                            name: boom
+                      rescue:
+                        body:
+                          - id: absorb
+                            value: "rescued"
+                result:
                   got: { ref: call }
                 """,
                 "boom": """
                 name: boom
-                steps:
+                body:
                   - id: stop
                     abort: "child gave up"
                 """
             ],
             policy: ["cli:parent": ["parent", "boom"]]
         )
-        let program = try await harness.store.spec(named: "parent")
+        let module = try await harness.store.module(named: "parent")
 
         // When
-        let result = try await harness.dispatch(program: program, name: "parent")
+        let result = try await harness.dispatch(module: module, name: "parent")
 
         // Then
         #expect(result.status == .ok)
@@ -447,14 +456,14 @@ struct SpecWorkflowRunnerTests {
             catalog: [
                 "parent": """
                 name: parent
-                steps:
+                body:
                   - id: call
                     dispatch:
                       name: child
                 """,
                 "child": """
                 name: child
-                steps:
+                body:
                   - id: noop
                     value: ok
                 """
@@ -462,10 +471,10 @@ struct SpecWorkflowRunnerTests {
             policy: ["cli:parent": ["parent", "child"]]
         )
         let (_, stream) = await harness.eventBus.subscribe()
-        let program = try await harness.store.spec(named: "parent")
+        let module = try await harness.store.module(named: "parent")
 
         // When
-        let result = try await harness.dispatch(program: program, name: "parent")
+        let result = try await harness.dispatch(module: module, name: "parent")
 
         // Then
         #expect(result.status == .ok)
@@ -489,21 +498,22 @@ struct SpecWorkflowRunnerTests {
         let harness = try makeRunner(catalog: [
             "fan": """
             name: fan
-            steps:
+            body:
               - id: session
                 invoke:
                   model: claude
-                  steps:
+                  body:
                     - id: par
                       parallel:
-                        - id: t1
-                          agent: "hello"
+                        do:
+                          - id: t1
+                            agent: "hello"
             """
         ])
-        let program = try await harness.store.spec(named: "fan")
+        let module = try await harness.store.module(named: "fan")
 
         // When
-        let result = try await harness.dispatch(program: program, name: "fan")
+        let result = try await harness.dispatch(module: module, name: "fan")
 
         // Then — the parallel boundary severed the ambient session, so the child agent fails with no session
         #expect(result.status == .failed)
@@ -516,18 +526,18 @@ struct SpecWorkflowRunnerTests {
         let harness = try makeRunner(catalog: [
             "slow": """
             name: slow
-            steps:
+            body:
               - id: nap
                 shell:
                   command: ["/bin/sleep", "10"]
             """
         ])
-        let program = try await harness.store.spec(named: "slow")
+        let module = try await harness.store.module(named: "slow")
         let started = ContinuousClock.now
         let harnessLocal = harness
         let task = Task {
             try await harnessLocal.dispatch(
-                program: program,
+                module: module,
                 name: "slow",
                 workflowID: "wf-cancelme"
             )
@@ -554,27 +564,27 @@ struct SpecWorkflowRunnerTests {
             catalog: [
                 "nullcwd": """
                 name: nullcwd
-                inputs:
+                parameters:
                   dir:
                     type: string
                     default: null
-                steps:
+                body:
                   - id: session
                     invoke:
                       model: claude
-                      cwd: { ref: inputs.dir }
-                      steps:
+                      cwd: { ref: dir }
+                      body:
                         - id: q
                           agent: "hi"
                 """,
                 "emptymode": """
                 name: emptymode
-                steps:
+                body:
                   - id: session
                     invoke:
                       model: claude
                       permission_mode: ""
-                      steps:
+                      body:
                         - id: q
                           agent: "hi"
                 """
@@ -583,10 +593,10 @@ struct SpecWorkflowRunnerTests {
         )
 
         // When
-        let nullcwd = try await harness.store.spec(named: "nullcwd")
-        let nullResult = try await harness.dispatch(program: nullcwd, name: "nullcwd")
-        let emptymode = try await harness.store.spec(named: "emptymode")
-        let emptyResult = try await harness.dispatch(program: emptymode, name: "emptymode")
+        let nullcwd = try await harness.store.module(named: "nullcwd")
+        let nullResult = try await harness.dispatch(module: nullcwd, name: "nullcwd")
+        let emptymode = try await harness.store.module(named: "emptymode")
+        let emptyResult = try await harness.dispatch(module: emptymode, name: "emptymode")
 
         // Then — null stays "unset" as-is, while an empty string is an explicit rejection
         #expect(nullResult.status == .ok)
@@ -602,24 +612,25 @@ struct SpecWorkflowRunnerTests {
             catalog: [
                 "fanshell": """
                 name: fanshell
-                steps:
+                body:
                   - id: par
                     parallel:
-                      - id: a
-                        shell:
-                          command: ["/bin/sleep", "0.2"]
-                      - id: b
-                        shell:
-                          command: ["/bin/sleep", "0.2"]
+                      do:
+                        - id: a
+                          shell:
+                            command: ["/bin/sleep", "0.2"]
+                        - id: b
+                          shell:
+                            command: ["/bin/sleep", "0.2"]
                 """
             ],
             pool: WorkflowPool(maximumConcurrentSteps: 1, maximumActiveRuns: Int.max)
         )
-        let program = try await harness.store.spec(named: "fanshell")
+        let module = try await harness.store.module(named: "fanshell")
         let started = ContinuousClock.now
 
         // When
-        let result = try await harness.dispatch(program: program, name: "fanshell")
+        let result = try await harness.dispatch(module: module, name: "fanshell")
 
         // Then
         #expect(result.status == .ok)
@@ -640,13 +651,13 @@ struct SpecWorkflowRunnerTests {
         // MARK: - Initializer
         // MARK: - Public
         func dispatch(
-            program: Spec.Program,
+            module: Warp.Module,
             name: String,
             inputs: [String: JSONValue] = [:],
             workflowID: String? = nil
         ) async throws -> WorkflowRunResult {
             try await runner.dispatch(
-                program: program,
+                module: module,
                 name: name,
                 inputs: inputs,
                 principal: "cli:\(name)",
@@ -668,7 +679,7 @@ struct SpecWorkflowRunnerTests {
         let directory = try temporary.make("catalog")
 
         for (name, yaml) in catalog {
-            try yaml.write(
+            try workflowFile(yaml, named: name).write(
                 to: directory.appendingPathComponent("\(name).yaml"),
                 atomically: true,
                 encoding: .utf8

@@ -1,24 +1,27 @@
-description: Agent seams — invoke turns, in-session continuity, and share_session inheritance
-steps:
-- id: outer
-  invoke:
-    model: claude
-    steps:
-    - id: first
-      agent: ping one
-    - id: second
-      agent: ping two
-    - id: nested
+name: agent
+procedures:
+  agent:
+    description: Agent seams — invoke turns, in-session continuity, and share_session inheritance
+    body:
+    - id: outer
       invoke:
         model: claude
-        share_session: true
-        steps:
-        - id: third
-          agent: ping three
-        output: { ref: third }
-    output:
-      first: { ref: first }
-      second: { ref: second }
-      inherited: { ref: nested }
-outputs:
-  result: { ref: outer }
+        body:
+        - id: first
+          agent: ping one
+        - id: second
+          agent: ping two
+        - id: nested
+          invoke:
+            model: claude
+            share_session: true
+            body:
+            - id: third
+              agent: ping three
+            result: { ref: third }
+        result:
+          first: { ref: first }
+          second: { ref: second }
+          inherited: { ref: nested }
+    result:
+      result: { ref: outer }

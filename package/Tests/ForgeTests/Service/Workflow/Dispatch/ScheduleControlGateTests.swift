@@ -15,7 +15,7 @@ struct ScheduleControlGateTests {
     private let temporary = TemporaryDirectory("ctlgate")
 
     private let inlineSpec: [String: Any] = [
-        "steps": [["id": "x", "shell": ["command": ["/bin/echo", "ok"]]]],
+        "body": [["id": "x", "shell": ["command": ["/bin/echo", "ok"]]]],
     ]
     
     // MARK: - Initializer

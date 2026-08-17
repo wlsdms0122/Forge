@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import Spec
+import Warp
 
 struct ScheduleCreateMethod: Sendable {
     // MARK: - Property
@@ -266,7 +266,10 @@ func resolveDispatchTarget(
         }
 
         do {
-            _ = try workflowStore.loader.lower(ValueBridge.value(specValue))
+            // An inline spec is one routine, the same shape workflow.dispatch
+            // admits — checked here so a schedule cannot be stored carrying
+            // something that will not load when it fires.
+            _ = try workflowStore.loader.procedure(from: ValueBridge.value(specValue))
         } catch {
             throw ProtocolError("\(context): malformed 'spec' — \(error)")
         }

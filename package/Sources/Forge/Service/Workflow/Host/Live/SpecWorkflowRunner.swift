@@ -6,14 +6,14 @@
 //
 
 import Foundation
-import Spec
+import Warp
 
 // The run-level driver over the kernel executor — the daemon-facing frame the
 // kernel deliberately does not own: run identity, tokens, the work registry,
 // pool slots, run started/completed/failed events and the child-run boundary.
 // It also IS the dispatch seam: a `dispatch` step asks the daemon for an
 // isolated run, and every entrance (RPC method, scheduler, child step) walks
-// through the same `dispatch(program:...)` door — authz, pool registration,
+// through the same `dispatch(module:...)` door — authz, pool registration,
 // log adoption — before a run begins.
 actor SpecWorkflowRunner {
     // MARK: - Property
@@ -59,7 +59,7 @@ actor SpecWorkflowRunner {
     // The one dispatch door: policy, pool registration and log adoption happen
     // here for every caller — RPC, scheduler and child steps alike.
     func dispatch(
-        program: Spec.Program,
+        module: Warp.Module,
         name: String,
         inputs: [String: JSONValue],
         principal: String,
@@ -98,7 +98,7 @@ actor SpecWorkflowRunner {
             await LogContext.$asyncDispatch.withValue(mode.isUnawaited) {
                 await LogContext.$parameters.withValue(parameters) {
                     await run(
-                        program: program,
+                        module: module,
                         name: name,
                         inputs: inputs,
                         origin: origin,
@@ -120,7 +120,7 @@ actor SpecWorkflowRunner {
     // Every run enters through `dispatch` — pool admission and identity live
     // there, once; this frame owns tokens, registry and event framing.
     private func run(
-        program: Spec.Program,
+        module: Warp.Module,
         name: String,
         inputs: [String: JSONValue] = [:],
         origin: DispatchOrigin = .manual,
@@ -155,7 +155,7 @@ actor SpecWorkflowRunner {
                 await WorkflowExecutionState.$accessToken.withValue(token) {
                     await WorkflowExecutionState.$accessTokenID.withValue(claims.id) {
                         await runBody(
-                            program: program,
+                            module: module,
                             name: name,
                             inputs: inputs,
                             origin: origin,
@@ -184,7 +184,7 @@ actor SpecWorkflowRunner {
     }
 
     private func runBody(
-        program: Spec.Program,
+        module: Warp.Module,
         name: String,
         inputs: [String: JSONValue],
         origin: DispatchOrigin,
@@ -206,15 +206,15 @@ actor SpecWorkflowRunner {
             inputLen: inputLength
         ))
 
-        let originScope: [String: Spec.Value] = {
-            var scope: [String: Spec.Value] = ["kind": .string(origin.kind)]
+        let originScope: [String: Warp.Value] = {
+            var scope: [String: Warp.Value] = ["kind": .string(origin.kind)]
 
             if let originID = origin.id { scope["id"] = .string(originID) }
 
             return scope
         }()
 
-        let runScope: [String: Spec.Value] = [
+        let runScope: [String: Warp.Value] = [
             "workflow_id": .string(runID),
             "root_id": .string(LogContext.rootID ?? runID)
         ]
@@ -228,8 +228,8 @@ actor SpecWorkflowRunner {
             pool: pool,
             runID: runID
         )
-        let executor = catalog.loader.makeExecutor(
-            store: catalog,
+        let executor = catalog.loader.language.makeExecutor(
+            catalog: catalog,
             observer: EventBridge(
                 workflowID: runID,
                 workflowName: name,
@@ -239,14 +239,48 @@ actor SpecWorkflowRunner {
         )
 
         do {
+            // Linking is inside the do-block on purpose: a workflow naming a
+            // sibling that has left the catalog is a run that failed, and it
+            // reports through the same ledger a failed step does.
+            // Every workflow the daemon can see goes into the link, and the
+            // name this run was asked for is the entry — `gcc *.yaml`, then
+            // start from one symbol.
+            //
+            // The module being dispatched leads, and any catalog copy declaring
+            // that same name is left out: normally it *is* that copy, and when
+            // it is not (an inline spec) the caller's is the one they meant.
+            // Two copies would be a duplicate symbol, which is right in general
+            // and wrong for exactly this case.
+            let world = await catalog.modules().filter { module in
+                module.procedures[name] == nil
+            }
+            // The entry is named qualified where the module has a name, because
+            // a bare name is ambiguous the moment anything else declares it —
+            // and forge's own verbs do: a workflow called `agent` is a real
+            // thing to want, and `forge.agent` should not take the name from it.
+            let image = try catalog.loader.language.link(
+                [module] + world + ForgeSpec.linkables,
+                entry: module.name.map { owner in "\(owner).\(name)" } ?? name
+            )
             let outputs = try await withCancelSignal(runID: runID) {
                 try await executor.run(
-                    program,
-                    inputs: inputs.mapValues { value in ValueBridge.value(value) },
-                    contexts: ["origin": originScope, "run": runScope]
+                    image,
+                    arguments: inputs.mapValues { value in ValueBridge.value(value) }
+                        .merging([
+                            "origin": .object(originScope),
+                            "run": .object(runScope)
+                        ]) { _, ambient in ambient }
                 )
             }
-            let jsonOutputs = outputs.mapValues { value in ValueBridge.json(value) }
+            // A run answers one value; this notation's `outputs:` lowers to a
+            // record, so the fields of that record are what a workflow reports.
+            let jsonOutputs: [String: JSONValue]
+
+            if case .object(let fields) = outputs {
+                jsonOutputs = fields.mapValues { value in ValueBridge.json(value) }
+            } else {
+                jsonOutputs = [:]
+            }
             let duration = (ContinuousClock.now - started).milliseconds
 
             await eventBus.publish(WorkflowEvent(
@@ -351,7 +385,7 @@ actor SpecWorkflowRunner {
     private static func failureKind(of error: any Error) -> WorkflowRunResult.RunFailure.Kind {
         if error is CancellationError { return .cancelled }
         if error is any WorkFailure { return .work }
-        if error is any Spec.RecoverableFailure { return .work }
+        if error is any Warp.RecoverableFailure { return .work }
 
         return .fault
     }
@@ -363,16 +397,16 @@ actor SpecWorkflowRunner {
 extension SpecWorkflowRunner: RunDispatching {
     func dispatch(
         name: String?,
-        inline: Spec.Value?,
-        inputs: [String: Spec.Value]
-    ) async throws -> Spec.Value {
-        let program: Spec.Program
+        inline: Warp.Value?,
+        inputs: [String: Warp.Value]
+    ) async throws -> Warp.Value {
+        let module: Warp.Module
         let childName: String
 
         if let name {
             switch await catalog.resolve(name) {
             case .found(let found):
-                program = found
+                module = found
 
             case .invalid(let reason):
                 throw WorkflowValidationError(
@@ -394,8 +428,13 @@ extension SpecWorkflowRunner: RunDispatching {
                 throw ProtocolError("dispatch: neither name nor inline spec (decoder gap)")
             }
 
-            program = try catalog.loader.lower(inline)
+            // Same shape the RPC door admits: an inline spec is one routine.
             childName = WorkflowDispatchMethod.inlineSigil
+            module = ForgeSpec.seeding(
+                Warp.Module(
+                    procedures: [childName: try catalog.loader.procedure(from: inline)]
+                )
+            )
         }
 
         let parentName = LogContext.workflowContext?.workflowName ?? "unknown"
@@ -405,7 +444,7 @@ extension SpecWorkflowRunner: RunDispatching {
         }
 
         let result = try await dispatch(
-            program: program,
+            module: module,
             name: childName,
             inputs: inputs.mapValues { value in ValueBridge.json(value) },
             principal: "cli:\(parentName)",

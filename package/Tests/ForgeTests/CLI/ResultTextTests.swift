@@ -75,7 +75,7 @@ struct ResultTextTests {
     @Test("multi-line values unfold as a block")
     func multilineValueRendersAsBlock() {
         // Given
-        let dict: [String: Any] = ["outputs": ["log": "line one\nline two"]]
+        let dict: [String: Any] = ["result": ["log": "line one\nline two"]]
         let output = renderResultPlain(dict)
 
         // Then

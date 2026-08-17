@@ -16,10 +16,10 @@ struct WorkflowDispatchTests {
 
     private var anonSpec: [String: Any] {
         [
-            "steps": [
+            "body": [
                 ["id": "x", "shell": ["command": ["/bin/echo", "ok"]]],
             ],
-            "outputs": ["v": ["ref": "x"]],
+            "result": ["v": ["ref": "x"]],
         ]
     }
 
@@ -114,7 +114,7 @@ struct WorkflowDispatchTests {
         let (method, authority, _) = try await makeMethod(policy: ["*": ["*"]])
         let token = authority.mint(TokenClaims(principal: "cli:test"))
         let badSpec: [String: Any] = [
-            "steps": [["shell": ["command": ["echo", "hi"]]]],
+            "body": [["shell": ["command": ["echo", "hi"]]]],
         ]
         do {
 
@@ -124,7 +124,7 @@ struct WorkflowDispatchTests {
         // Then
             Issue.record("A malformed spec should be rejected")
         } catch let error as ProtocolError {
-            #expect(error.message.contains("steps[0]"), "JSON path notation: \(error.message)")
+            #expect(error.message.contains("body[0]"), "JSON path notation: \(error.message)")
             #expect(error.message.contains("'id'"), "Missing key named explicitly: \(error.message)")
             #expect(!error.message.contains("CodingKeys"), "Raw Swift errors must not leak: \(error.message)")
         }
@@ -136,7 +136,7 @@ struct WorkflowDispatchTests {
         let (method, authority, _) = try await makeMethod(policy: ["*": ["*"]])
         let token = authority.mint(TokenClaims(principal: "cli:test"))
         let badSpec: [String: Any] = [
-            "steps": [
+            "body": [
                 ["id": "a", "shell": ["command": ["/bin/echo", ["ref": "nonexistent"]]]],
             ],
         ]
@@ -261,15 +261,14 @@ struct WorkflowDispatchTests {
     // MARK: - Private
 
     private func echoWorkflowYAML(name: String) -> String {
-        """
-        name: \(name)
-        steps:
+        workflowFile("""
+        body:
           - id: x
             shell:
               command: ["/bin/echo", "ok"]
-        outputs:
+        result:
           v: { ref: x }
-        """
+        """, named: name)
     }
 
     private func makeMethod(policy: [String: [String]]) async throws

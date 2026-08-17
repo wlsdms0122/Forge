@@ -6,7 +6,8 @@
 //
 
 import Foundation
-import Spec
+import Warp
+import WarpYAML
 
 package enum WorkflowLint {
     // MARK: - Property
@@ -27,10 +28,10 @@ package enum WorkflowLint {
             )
         }
 
-        let program: Spec.Program
+        let module: Warp.Module
 
         do {
-            program = try ForgeSpec.loader().load(data)
+            module = try ForgeSpec.loader().load(data)
         } catch {
             return Report(
                 path: path,
@@ -43,7 +44,7 @@ package enum WorkflowLint {
         let base = url.deletingPathExtension().lastPathComponent
         var issues: [String] = []
 
-        if let declared = program.name, declared != base {
+        if let declared = module.name, declared != base {
             issues.append(
                 "name: '\(declared)' must equal the file basename '\(base)'"
                     + " — identity is the filename (rename the file or drop the name from the body)"
@@ -63,7 +64,7 @@ package enum WorkflowLint {
     // `format` templates (the dialect's home), metadata prose, and `{ value: }`
     // quotations (the sanctioned escape for literal `${` text).
     private static func staleTemplateIssues(data: Data) -> [String] {
-        guard let tree = try? ForgeSpec.loader().decode(Spec.Value.self, from: data) else {
+        guard let tree = try? YAMLParser().parse(data) else {
             return []
         }
 
@@ -77,7 +78,7 @@ package enum WorkflowLint {
     private static let proseKeys: Set<String> = ["format", "description", "hint"]
 
     private static func walk(
-        _ value: Spec.Value,
+        _ value: Warp.Value,
         at location: String,
         into issues: inout [String]
     ) {
@@ -90,6 +91,11 @@ package enum WorkflowLint {
                         + " { value: } if the text is meant verbatim"
                 )
             }
+
+        // What a document parses to is never code, so there is nothing here to
+        // walk into.
+        case .procedure:
+            return
 
         case .array(let array):
             for (index, element) in array.enumerated() {

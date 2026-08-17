@@ -53,7 +53,7 @@ struct SchedulerFixture {
             name: name,
             yaml: """
             name: \(name)
-            steps:
+            body:
               - id: s
                 shell:
                   command: ["/bin/sh", "-c", "\(script)"]
@@ -62,7 +62,7 @@ struct SchedulerFixture {
     }
 
     func write(_ workflow: WorkflowFixture, to directory: URL) throws {
-        try workflow.yaml.write(
+        try workflowFile(workflow.yaml, named: workflow.name).write(
             to: directory.appendingPathComponent("\(workflow.name).yaml"),
             atomically: true, encoding: .utf8)
     }

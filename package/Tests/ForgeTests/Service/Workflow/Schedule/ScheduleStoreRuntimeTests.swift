@@ -334,7 +334,7 @@ struct ScheduleStoreRuntimeTests {
         every: 1m
         spec:
           name: evil-identity
-          steps: []
+          body: []
         """#.write(to: directory.appendingPathComponent("he.yaml"), atomically: true, encoding: .utf8)
         try #"""
         id: ok
@@ -362,7 +362,7 @@ struct ScheduleStoreRuntimeTests {
         workflow: wf-x
         every: 1m
         spec:
-          steps: []
+          body: []
         """#.write(to: directory.appendingPathComponent("ha.yaml"), atomically: true, encoding: .utf8)
         let store = ScheduleStore(configDir: directory, runtimeDirectory: runtimeDirectoryectory, stateFile: try temporary.file("schedule-enabled.json"))
 

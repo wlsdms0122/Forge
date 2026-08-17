@@ -23,7 +23,7 @@ inline `--spec` passed over IPC/CLI stays a JSON object — that wire format is
 unchanged; only the on-disk spec file format is YAML.)
 
 > **Scalar typing — YAML notation, JSON semantics.** Untyped value positions
-> (input `default`s, `inputs:` maps, condition operands, record/array
+> (parameter `default`s, `arguments:` maps, condition operands, record/array
 > literals) are typed by **JSON literal rules**, not YAML 1.1 resolution:
 > only lowercase `true`/`false`, `null`/`~`/empty, and JSON-shaped numbers
 > (no leading zeros) are typed — everything else is a string. So unquoted
@@ -57,17 +57,17 @@ unchanged; only the on-disk spec file format is YAML.)
 ```yaml
 # identity = file basename (<workflow-name>.yaml)
 description: ...
-inputs:
+parameters:
   <key>: <Parameter>
-steps:
+body:
   - <Step>
-outputs:
+result:
   <key>: <Expression>
 ```
 
 Required: `steps`. Everything else is optional.
 
-Absent `inputs:` means an **empty signature**, not an absent contract — a
+Absent `parameters:` means an **empty signature**, not an absent contract — a
 spec that declares nothing takes nothing, so a stray caller input is rejected
 instead of leaking into scope.
 
@@ -194,7 +194,7 @@ The identity action — the step's output is the expression's value.
 
 ```yaml
 - id: greet
-  value: { format: "hello, ${name}", with: { name: { ref: inputs.who } } }
+  value: { format: "hello, ${name}", with: { name: { ref: who } } }
 ```
 
 ### `group`
@@ -207,8 +207,8 @@ do not leak to the parent; only the group step's own output is exposed.
 ```yaml
 - id: blk
   group:
-    steps: [ <Step>, ... ]
-    output: <Expression>   # optional
+    body: [ <Step>, ... ]
+    result: <Expression>   # optional
 ```
 
 ### `branch`
@@ -220,11 +220,11 @@ Conditional then/else.
   branch:
     when: <Condition>
     then:
-      steps: [ <Step>, ... ]
-      output: <Expression>  # optional
+      body: [ <Step>, ... ]
+      result: <Expression>  # optional
     else:                    # optional
-      steps: [ <Step>, ... ]
-      output: <Expression>
+      body: [ <Step>, ... ]
+      result: <Expression>
 ```
 
 Each arm is a sub-scope like `group`. The taken arm's `output` (or `null`
@@ -241,9 +241,9 @@ primitive. Each round binds `<step-id>.index` (0-based) before evaluating
 - id: gate
   loop:
     where: { of: { ref: "gate.index" }, is_not: 2 }
-    steps: [ <Step>, ... ]
+    body: [ <Step>, ... ]
     guard: 5               # optional iteration budget
-    output: { ref: latest } # optional, resolved when the loop ends
+    result: { ref: latest } # optional, resolved when the loop ends
 ```
 
 - When `where` first answers false, the loop ends and `output` (resolved in
@@ -282,7 +282,7 @@ once, outside the loop; the body rebinds the same id**:
   loop:
     where: { of: { ref: checked }, starts_with: "RETRY: " }
     guard: 3
-    steps:
+    body:
     - id: fix
       agent: { format: "invalid — ${e}. fix it.", with: { e: { ref: checked } } }
     - id: checked             # rebinds — next round's `where` sees this one
@@ -290,7 +290,7 @@ once, outside the loop; the body rebinds the same id**:
       rescue:
       - id: mark
         value: { format: "RETRY: ${why}", with: { why: { ref: checked.stderr } } }
-    output: { ref: checked }
+    result: { ref: checked }
 ```
 
 Inside an `invoke` group the regenerating `agent` turn **continues the same
@@ -309,15 +309,15 @@ per-round results collect into the step's output array (without it, `null`).
 ```yaml
 - id: walk
   each:
-    in: { ref: inputs.items }   # must resolve to an array
-    steps:
+    in: { ref: items }   # must resolve to an array
+    body:
       - id: tagged
         value:
           format: "${index}:${item}"
           with:
             index: { ref: walk.index }
             item: { ref: walk.item }
-    output: { ref: tagged }
+    result: { ref: tagged }
 ```
 
 `in` resolving to a non-array is `ReferenceUnfit` (shape misuse), not an
@@ -357,8 +357,8 @@ output object.
 - id: sub
   use:
     spec: child
-    inputs:
-      who: { ref: inputs.who }
+    parameters:
+      who: { ref: who }
 ```
 
 ### `abort`
@@ -369,7 +369,7 @@ treats the failure, may absorb it; unhandled, the run fails with the message.
 
 ```yaml
 - id: stop
-  abort: { format: "unsupported kind: ${k}", with: { k: { ref: inputs.kind } } }
+  abort: { format: "unsupported kind: ${k}", with: { k: { ref: kind } } }
 ```
 
 ## Host actions
@@ -406,8 +406,8 @@ crossing into it through `env` (never by splicing into the script text):
     - -c
     - { value: 'printf "%s%s" "${V:-}" "${U:+ --url $U}"' }
     env:
-      V: { ref: inputs.version }
-      U: { ref: inputs.slackURL }   # absent → the whole flag vanishes
+      V: { ref: version }
+      U: { ref: slackURL }   # absent → the whole flag vanishes
 ```
 
 The `{ value: }` quotation is required exactly because the script text
@@ -437,8 +437,8 @@ runs its steps inside; `agent` steps only make sense in here.
     permission_mode: <bypass|safe|restrict>
     share_session: <bool>
     timeout: <seconds>
-    steps: [ <Step>, ... ]     # agent turns and anything between them
-    output: <Expression>       # optional; default = last step's output
+    body: [ <Step>, ... ]     # agent turns and anything between them
+    result: <Expression>       # optional; default = last step's output
 ```
 
 `model` is `"<provider>[:<model>]"`. The provider (backend registry key,
@@ -593,7 +593,7 @@ throws `HostTimeout` (recoverable).
 - id: session
   invoke:
     model: claude
-    steps:
+    body:
       - id: draft
         agent: "Turn X into a Block Kit JSON array."
       - id: checked
@@ -605,7 +605,7 @@ throws `HostTimeout` (recoverable).
               with: { why: { ref: checked.stderr } }
           - id: rechecked
             shell: { command: [jq, -e, "."], stdin: { ref: repair } }
-    output: { ref: checked }
+    result: { ref: checked }
 ```
 
 Inside the rescue, `checked` is the failure payload (so the repair turn can
@@ -690,7 +690,7 @@ files.
 - id: prompt
   resource:
     content: greeting.txt         # expression, relative to the resource root
-    inputs: { name: { ref: inputs.who } }   # optional bindings
+    inputs: { name: { ref: who } }   # optional bindings
 ```
 
 The output is the rendered string. Without `inputs`, the file must use no
@@ -721,9 +721,9 @@ the same decoder and registry the load path uses. No text is re-parsed.
 - id: run
   dynamic:
     compose:
-      - { ref: inputs.steps }         # a batch from the caller
+      - { ref: steps }         # a batch from the caller
       - value: { id: tail, value: composed-ok }   # a literal step, quoted
-    output: { ref: tail }             # optional
+    result: { ref: tail }             # optional
 ```
 
 A literal step object must be **quoted** (`- value: { …step… }`) — an
@@ -812,7 +812,7 @@ Modifiers:
 Each output is an expression, resolved in the final scope:
 
 ```yaml
-outputs:
+result:
   summary: { ref: search.summary }
   banner: { format: "run ${id}", with: { id: { ref: run.workflow_id } } }
 ```
@@ -831,7 +831,7 @@ string, so any FE that can spell an object can spell every expression):
 | Scalar literal | `plain text`, `42`, `true`, `null` | itself — a string is **always** literal text, never parsed |
 | Reference | `{ ref: items[0].name }` | resolve the path in the consuming scope |
 | Quotation | `{ value: <data> }` | the payload verbatim, never evaluated — also the escape for data that looks like a form |
-| Format | `{ format: "hi ${who}", with: { who: { ref: inputs.who } } }` | closed interpolation — the template sees only its declared bindings |
+| Format | `{ format: "hi ${who}", with: { who: { ref: who } } }` | closed interpolation — the template sees only its declared bindings |
 | Record / array | `{ <key>: <expr>, ... }`, `[ <expr>, ... ]` | elements are expressions |
 
 A record carrying `ref` / `value` / `format` / `with` keys must be exactly
@@ -869,7 +869,7 @@ The validator (run by the daemon at load time and by `forge workflow check`
 on demand) catches:
 
 - unknown keys anywhere in the grammar, and half-spelled expression forms
-- `{ ref: inputs.X }` with undeclared X, and refs to invisible step ids —
+- `{ ref: X }` with undeclared X, and refs to invisible step ids —
   on **both sides** of a condition predicate
 - format templates naming a binding not declared in `with`
 - duplicate sibling step ids, reserved-head collisions, empty `rescue`

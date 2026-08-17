@@ -21,23 +21,23 @@ struct WorkflowDescribeTests {
         // Given
         let (method, authority, directory) = try await makeMethod("schema")
         defer { try? FileManager.default.removeItem(at: directory) }
-        try #"""
+        try workflowFile(#"""
         name: echo
         description: test wf
-        inputs:
+        parameters:
           msg:
             type: string
             hint: message body
           tag:
             type: string
             default: null
-        steps:
+        body:
           - id: x
             shell:
-              command: ["/bin/echo", { ref: inputs.msg }]
-        outputs:
+              command: ["/bin/echo", { ref: msg }]
+        result:
           v: { ref: x }
-        """#.write(to: directory.appendingPathComponent("echo.yaml"),
+        """#, named: "echo").write(to: directory.appendingPathComponent("echo.yaml"),
             atomically: true, encoding: .utf8)
         let token = authority.mint(TokenClaims(principal: "system:admin"))
 
@@ -64,13 +64,13 @@ struct WorkflowDescribeTests {
         // Given
         let (method, authority, directory) = try await makeMethod("empty")
         defer { try? FileManager.default.removeItem(at: directory) }
-        try #"""
+        try workflowFile(#"""
         name: noop
-        steps:
+        body:
           - id: x
             shell:
               command: ["/bin/true"]
-        """#.write(to: directory.appendingPathComponent("noop.yaml"),
+        """#, named: "noop").write(to: directory.appendingPathComponent("noop.yaml"),
             atomically: true, encoding: .utf8)
         let token = authority.mint(TokenClaims(principal: "system:admin"))
 

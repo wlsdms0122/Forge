@@ -81,12 +81,12 @@ struct WorkflowHealthTests {
         .appendingPathComponent("forge-health-\(UUID().uuidString.prefix(6))")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
-        try #"""
-        steps:
+        try workflowFile(#"""
+        body:
           - id: x
             shell:
               command: ["/bin/echo", "ok"]
-        """#.write(
+        """#, named: "echo3").write(
             to: directory.appendingPathComponent("echo3.yaml"), atomically: true, encoding: .utf8)
         let pool = WorkflowPool(maximumConcurrentSteps: 1, maximumActiveRuns: 1)
 
@@ -103,10 +103,10 @@ struct WorkflowHealthTests {
             resources: LiveResources(store: ResourceStore(directory: nil)))
         try await pool.register(workflowID: "occupier", workflowName: "other", rootID: "occupier",
             origin: .manual, principal: "t")
-        let program = try await store.spec(named: "echo3")
+        let module = try await store.module(named: "echo3")
         do {
             _ = try await runner.dispatch(
-                program: program, name: "echo3", inputs: [:], principal: "cli:t",
+                module: module, name: "echo3", inputs: [:], principal: "cli:t",
                 origin: .rpc, mode: .awaited)
 
         // Then

@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import Spec
+import Warp
 
 // The live resource seam — the same jailed catalog the daemon watches.
 struct LiveResources: ResourceReading {
@@ -30,7 +30,7 @@ struct LiveResources: ResourceReading {
         let url = try await store.resolve(relative)
 
         guard FileManager.default.fileExists(atPath: url.path) else {
-            throw Spec.ExecutionError("resource '\(relative)' does not exist")
+            throw Warp.ExecutionError("resource '\(relative)' does not exist")
         }
 
         return url.path

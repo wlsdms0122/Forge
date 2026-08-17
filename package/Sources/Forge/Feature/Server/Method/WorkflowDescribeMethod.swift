@@ -6,12 +6,14 @@
 //
 
 import Foundation
-import Spec
+import Warp
 
 struct WorkflowDescribeMethod: Sendable {
     // MARK: - Property
     let store: SpecCatalog
     let tokenAuthority: TokenAuthority
+
+    private let contract = WorkflowContract()
 
     // MARK: - Initializer
     init(store: SpecCatalog, tokenAuthority: TokenAuthority) {
@@ -33,33 +35,23 @@ struct WorkflowDescribeMethod: Sendable {
             throw ResolutionError("workflow not found: \(name)")
         }
 
-        let program = entry.program
+        // A workflow file declares one routine named after the file — that is
+        // Forge's convention, enforced at load, and what makes this lookup total.
+        guard let routine = entry.module.procedures[entry.name] else {
+            throw ResolutionError("workflow '\(name)' declares no routine of that name")
+        }
+
         var result: [String: Any] = [
             "name":        entry.name,
-            "description": program.description as Any? ?? NSNull(),
+            "description": routine.description as Any? ?? NSNull(),
             "source":      entry.source,
         ]
 
-        if program.inputs.parameters.isEmpty {
-            result["inputs"] = [String: Any]()
-        } else {
-            result["inputs"] = try encodableToAny(program.inputs)
-        }
-
-        if let outputs = program.outputs, !outputs.isEmpty {
-            result["outputs"] = try encodableToAny(outputs)
-        } else {
-            result["outputs"] = [String: Any]()
-        }
+        result["inputs"] = try contract.inputs(of: routine.signature)
+        result["outputs"] = try contract.outputs(of: routine.result)
 
         return JSONObject(result)
     }
 
     // MARK: - Private
-}
-
-func encodableToAny<T: Encodable>(_ value: T) throws -> Any {
-    let data = try JSONEncoder().encode(value)
-
-    return try JSONSerialization.jsonObject(with: data)
 }

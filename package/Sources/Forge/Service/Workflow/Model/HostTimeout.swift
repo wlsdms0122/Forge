@@ -6,14 +6,14 @@
 //
 
 import Foundation
-import Spec
+import Warp
 
-struct HostTimeout: Spec.RecoverableFailure {
+struct HostTimeout: Warp.RecoverableFailure {
     // MARK: - Property
     let message: String
     let seconds: Double
 
-    var payload: Spec.Value {
+    var payload: Warp.Value {
         .object([
             "type": .string("timeout"),
             "message": .string(message),

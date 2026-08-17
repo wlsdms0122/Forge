@@ -47,12 +47,12 @@ struct LogContextRunTests {
         let directory = FileManager.default.temporaryDirectory
         .appendingPathComponent("forge-tracerun-\(UUID().uuidString.prefix(6))")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        try #"""
-        steps:
+        try workflowFile(#"""
+        body:
           - id: x
             shell:
               command: ["/bin/echo", "ok"]
-        """#.write(to: directory.appendingPathComponent("echo.yaml"), atomically: true, encoding: .utf8)
+        """#, named: "echo").write(to: directory.appendingPathComponent("echo.yaml"), atomically: true, encoding: .utf8)
         let store = SpecCatalog(directory: directory, loader: ForgeSpec.loader())
         let bus = WorkflowEventBus()
         let runner = SpecWorkflowRunner(
@@ -67,9 +67,9 @@ struct LogContextRunTests {
             resources: LiveResources(store: ResourceStore(directory: nil))
         )
         let (_, stream) = await bus.subscribe()
-        let program = try await store.spec(named: "echo")
+        let module = try await store.module(named: "echo")
         let result = try await runner.dispatch(
-            program: program, name: "echo", inputs: [:], principal: "cli:test", origin: .rpc,
+            module: module, name: "echo", inputs: [:], principal: "cli:test", origin: .rpc,
             mode: .awaited
         )
         var started: WorkflowEvent?

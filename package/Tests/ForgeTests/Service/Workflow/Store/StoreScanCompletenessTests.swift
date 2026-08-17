@@ -263,12 +263,12 @@ struct StoreScanCompletenessTests {
     // MARK: - Private
     
     private func writeWorkflow(named name: String, in directory: URL) throws {
-        try #"""
-        steps:
+        try workflowFile(#"""
+        body:
           - id: x
             shell:
               command: ["/bin/echo", "ok"]
-        """#.write(to: directory.appendingPathComponent("\(name).yaml"),
+        """#, named: name).write(to: directory.appendingPathComponent("\(name).yaml"),
             
             atomically: true, encoding: .utf8)
         

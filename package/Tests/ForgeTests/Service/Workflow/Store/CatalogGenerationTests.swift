@@ -15,7 +15,7 @@ struct CatalogGenerationTests {
     private let temporary = TemporaryDirectory("catalog")
 
     private let validBody = #"""
-    steps:
+    body:
       - id: x
         shell:
           command: ["/bin/echo", "ok"]
@@ -31,7 +31,7 @@ struct CatalogGenerationTests {
         // Given
         let directory = try temporary.make("wf-repair")
         defer { try? FileManager.default.removeItem(at: directory) }
-        try write(brokenBody, named: "mender", in: directory)
+        try writeWorkflow(brokenBody, named: "mender", in: directory)
         let store = SpecCatalog(directory: directory, loader: ForgeSpec.loader())
 
         // When
@@ -40,7 +40,7 @@ struct CatalogGenerationTests {
         // Then
         #expect(catalog.entries.isEmpty)
         #expect(catalog.failures.map(\.name) == ["mender"])
-        try write(validBody, named: "mender", in: directory)
+        try writeWorkflow(validBody, named: "mender", in: directory)
         catalog = await store.catalog()
         try assertAccountedForExactlyOnce(catalog, in: directory)
         #expect(catalog.entries.map(\.name) == ["mender"])
@@ -54,8 +54,8 @@ struct CatalogGenerationTests {
         defer { try? FileManager.default.removeItem(at: directory) }
 
         // When
-        try write(validBody, named: "ok", in: directory)
-        try write(brokenBody, named: "bad", in: directory)
+        try writeWorkflow(validBody, named: "ok", in: directory)
+        try writeWorkflow(brokenBody, named: "bad", in: directory)
         let catalog = await SpecCatalog(directory: directory, loader: ForgeSpec.loader()).catalog()
         try assertAccountedForExactlyOnce(catalog, in: directory)
 
@@ -70,8 +70,8 @@ struct CatalogGenerationTests {
         let directory = try temporary.make("wf-obstruction")
         let closed = directory.appendingPathComponent("closed")
         try FileManager.default.createDirectory(at: closed, withIntermediateDirectories: true)
-        try write(validBody, named: "visible", in: directory)
-        try write(validBody, named: "hidden", in: closed)
+        try writeWorkflow(validBody, named: "visible", in: directory)
+        try writeWorkflow(validBody, named: "hidden", in: closed)
         try FileManager.default.setAttributes([.posixPermissions: 0o000],
             ofItemAtPath: closed.path)
         defer {
@@ -126,6 +126,12 @@ struct CatalogGenerationTests {
     
     // MARK: - Private
     
+    // A workflow file carries the module envelope; the config directory's
+    // files (policy, schedules) are not workflows and are written as they are.
+    private func writeWorkflow(_ body: String, named name: String, in directory: URL) throws {
+        try write(workflowFile(body, named: name), named: name, in: directory)
+    }
+
     private func write(_ body: String, named name: String, in directory: URL) throws {
         try body.write(to: directory.appendingPathComponent("\(name).yaml"),
             atomically: true, encoding: .utf8)
