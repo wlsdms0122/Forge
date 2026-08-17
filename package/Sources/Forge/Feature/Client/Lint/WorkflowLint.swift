@@ -31,7 +31,12 @@ package enum WorkflowLint {
         let module: Warp.Module
 
         do {
-            module = try ForgeSpec.loader().load(data)
+            // The names the daemon supplies are declared the same way here as
+            // they are on the run path — a file that reads `run.workflow_id` is
+            // a file that runs, and a check that says otherwise is checking a
+            // different document than the one that will execute.
+            module = try ForgeSpec.loader()
+                .load(ForgeSpec.seeding(document: try YAMLParser().parse(data)))
         } catch {
             return Report(
                 path: path,

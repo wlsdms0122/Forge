@@ -430,10 +430,11 @@ extension SpecWorkflowRunner: RunDispatching {
 
             // Same shape the RPC door admits: an inline spec is one routine.
             childName = WorkflowDispatchMethod.inlineSigil
-            module = ForgeSpec.seeding(
-                Warp.Module(
-                    procedures: [childName: try catalog.loader.procedure(from: inline)]
-                )
+            module = Warp.Module(
+                procedures: [
+                    childName: try catalog.loader
+                        .procedure(from: ForgeSpec.seeding(procedure: inline))
+                ]
             )
         }
 

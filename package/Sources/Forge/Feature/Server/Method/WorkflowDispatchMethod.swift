@@ -217,10 +217,11 @@ struct WorkflowDispatchMethod: Sendable {
                 // An inline spec is one routine, not a document that declares
                 // several — the caller already knows what to call it, and the
                 // name is fixed to the sigil.
-                module = ForgeSpec.seeding(
-                    Warp.Module(
-                        procedures: [Self.inlineSigil: try store.loader.procedure(from: value)]
-                    )
+                module = Warp.Module(
+                    procedures: [
+                        Self.inlineSigil: try store.loader
+                            .procedure(from: ForgeSpec.seeding(procedure: value))
+                    ]
                 )
             } catch {
                 throw ProtocolError("workflow.dispatch: malformed 'spec' — \(error)")

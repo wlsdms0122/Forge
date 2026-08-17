@@ -98,32 +98,45 @@ enum ForgeSpec {
 
     // MARK: - Initializer
     // MARK: - Public
-    // Every procedure in a workflow document gets the ambient names, so a run can
-    // hand them over as ordinary arguments.
-    static func seeding(_ module: Module) -> Module {
-        Module(
-            name: module.name,
-            description: module.description,
-            types: module.types,
-            constants: module.constants,
-            procedures: module.procedures.mapValues { procedure in
-                var parameters = procedure.signature.parameters
+    // Every procedure in a workflow document gets the ambient names, declared
+    // in the document itself rather than added to the module afterwards:
+    // loading validates, so a name added after the load is a name validation
+    // never saw, and a file reading `run.workflow_id` would be refused by the
+    // very check that is supposed to tell an author it is fine.
+    static func seeding(document value: Value) -> Value {
+        guard case let .object(document) = value else { return value }
+        guard case let .object(procedures)? = document["procedures"] else {
+            return .object(document)
+        }
 
-                for name in ambient where parameters[name] == nil {
-                    parameters[name] = Parameter(type: .any, default: .null)
-                }
+        var seeded = document
 
-                return Procedure(
-                    description: procedure.description,
-                    signature: Signature(
-                        receiver: procedure.signature.receiver,
-                        parameters: parameters,
-                        answer: procedure.signature.answer
-                    ),
-                    implementation: procedure.implementation
-                )
-            }
-        )
+        seeded["procedures"] = .object(procedures.mapValues(seeding(procedure:)))
+
+        return .object(seeded)
+    }
+
+    // One routine, for the doors that carry a procedure rather than a document.
+    static func seeding(procedure value: Value) -> Value {
+        guard case let .object(procedure) = value else { return value }
+
+        var declared: [String: Value]
+
+        if case let .object(written)? = procedure["parameters"] {
+            declared = written
+        } else {
+            declared = [:]
+        }
+
+        for name in ambient where declared[name] == nil {
+            declared[name] = .object(["type": .string("any"), "default": .null])
+        }
+
+        var seeded = procedure
+
+        seeded["parameters"] = .object(declared)
+
+        return .object(seeded)
     }
 
     // The one loader forge configures — kernel flow plus the words forge spells

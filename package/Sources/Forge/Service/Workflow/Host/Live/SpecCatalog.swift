@@ -148,7 +148,8 @@ actor SpecCatalog {
                 // The names the daemon supplies are declared here rather than by
                 // every workflow author, which is what the language's removed
                 // context tier used to do for us.
-                let module = ForgeSpec.seeding(try loader.load(data))
+                let module = try loader
+                    .load(ForgeSpec.seeding(document: try YAMLParser().parse(data)))
 
                 if let declared = module.name, declared != base {
                     ledger.record(

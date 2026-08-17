@@ -26,7 +26,7 @@ extension Warp.Executor {
         inputs: [String: Warp.Value] = [:],
         ambient: [String: Warp.Value] = [:]
     ) async throws -> [String: Warp.Value] {
-        let world = ([module] + others).map(ForgeSpec.seeding)
+        let world = [module] + others
 
         // The two modules every link needs, unless the caller already handed
         // them over — a catalog supplies them, so adding them again would be a
