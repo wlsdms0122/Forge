@@ -8,7 +8,7 @@
 import Foundation
 import Warp
 
-// Asks the daemon for an isolated run — a host act with its own lifetime, ACL
+// Asks the daemon for an isolated run — an effect with its own lifetime, ACL
 // and slot, not a language call. `use` is the function call; this is
 // Process.run. Exactly one of `name` (catalog) or `spec` (inline) names the
 // target; the daemon settles inputs against the target's signature.
@@ -19,7 +19,7 @@ struct DispatchAction: Warp.Effect {
     // MARK: - Initializer
     // MARK: - Public
     func run(_ invocation: Warp.Invocation) async throws -> Warp.Value {
-        let host = try ForgeHost.from(invocation)
+        let environment = try ForgeEnvironment.from(invocation)
         let target = try invocation.string("name")
         let inline = try invocation.resolve("spec")
         let timeout = ValueBridge.number(try invocation.resolve("timeout"))
@@ -32,8 +32,8 @@ struct DispatchAction: Warp.Effect {
             settled = [:]
         }
 
-        return try await withHostDeadline(seconds: timeout) {
-            try await host.dispatcher.dispatch(
+        return try await withDeadline(seconds: timeout) {
+            try await environment.dispatcher.dispatch(
                 name: target,
                 inline: inline == .null ? nil : inline,
                 inputs: settled

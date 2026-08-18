@@ -1,5 +1,5 @@
 //
-//  HostTimeout.swift
+//  DeadlineExceeded.swift
 //  Forge
 //
 //  Created by JSilver on 8/9/26.
@@ -8,7 +8,7 @@
 import Foundation
 import Warp
 
-struct HostTimeout: Warp.RecoverableFailure {
+struct DeadlineExceeded: Warp.RecoverableFailure {
     // MARK: - Property
     let message: String
     let seconds: Double

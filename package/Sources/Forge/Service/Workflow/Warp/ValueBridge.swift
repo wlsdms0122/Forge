@@ -72,7 +72,7 @@ enum ValueBridge {
     }
 
     // A number however the notation wrote it — `timeout: 30` reads as int, and
-    // a host deadline does not care which spelling it arrived in.
+    // a step deadline does not care which spelling it arrived in.
     static func number(_ value: Warp.Value) -> Double? {
         switch value {
         case .double(let double):

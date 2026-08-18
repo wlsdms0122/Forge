@@ -22,10 +22,10 @@ struct ResourceAction: Warp.Effect {
     // MARK: - Initializer
     // MARK: - Public
     func run(_ invocation: Warp.Invocation) async throws -> Warp.Value {
-        let host = try ForgeHost.from(invocation)
+        let environment = try ForgeEnvironment.from(invocation)
 
         if let file = try invocation.string("path") {
-            return .string(try await host.resources.locate(file))
+            return .string(try await environment.resources.locate(file))
         }
 
         guard let file = try invocation.string("content") else {
@@ -44,7 +44,7 @@ struct ResourceAction: Warp.Effect {
             try await Self.render(
                 relative: file,
                 inputs: inputs,
-                resources: host.resources
+                resources: environment.resources
             )
         )
     }

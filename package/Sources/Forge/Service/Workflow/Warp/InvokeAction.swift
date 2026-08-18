@@ -10,7 +10,7 @@ import Warp
 
 // The agent session envelope — not a plain group. It resolves the session
 // settings (model, permissions, cwd, ...) at its boundary, opens the ambient
-// session through the host, and runs its steps inside; `agent` steps only make
+// session through the environment, and runs its steps inside; `agent` steps only make
 // sense in here.
 struct InvokeAction: Warp.Effect {
     // MARK: - Property
@@ -19,7 +19,7 @@ struct InvokeAction: Warp.Effect {
     // MARK: - Initializer
     // MARK: - Public
     func run(_ invocation: Warp.Invocation) async throws -> Warp.Value {
-        let host = try ForgeHost.from(invocation)
+        let environment = try ForgeEnvironment.from(invocation)
         let resolver = invocation.resolver
 
         // The body is a block argument rather than a value one: it must not be
@@ -52,8 +52,8 @@ struct InvokeAction: Warp.Effect {
         let block = steps.block
         let scope = invocation.scope
 
-        return try await withHostDeadline(seconds: timeout) {
-            try await host.agent.withSession(settings) {
+        return try await withDeadline(seconds: timeout) {
+            try await environment.agent.withSession(settings) {
                 try await invocation.run(block, in: scope)
             }
         }

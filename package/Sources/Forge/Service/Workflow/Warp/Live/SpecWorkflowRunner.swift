@@ -219,7 +219,7 @@ actor SpecWorkflowRunner {
             "root_id": .string(LogContext.rootID ?? runID)
         ]
         let eventBus = self.eventBus
-        let host = ForgeHost(
+        let environment = ForgeEnvironment(
             shell: shell,
             agent: agent,
             dispatcher: self,
@@ -235,7 +235,7 @@ actor SpecWorkflowRunner {
                 workflowName: name,
                 publish: { event in await eventBus.publish(event) }
             ),
-            environment: host
+            environment: environment
         )
 
         do {

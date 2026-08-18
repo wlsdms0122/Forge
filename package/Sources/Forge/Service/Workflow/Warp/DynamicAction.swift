@@ -20,7 +20,7 @@ struct DynamicAction: Warp.Effect {
     // MARK: - Initializer
     // MARK: - Public
     func run(_ invocation: Warp.Invocation) async throws -> Warp.Value {
-        let host = try ForgeHost.from(invocation)
+        let environment = try ForgeEnvironment.from(invocation)
         let resolver = invocation.resolver
         let output = invocation.block("output")?.block.result
 
@@ -35,10 +35,10 @@ struct DynamicAction: Warp.Effect {
             // can splice `{ ref: steps }` next to literal steps.
             switch value {
             case .array:
-                lowered += try host.loader.statements(from: value)
+                lowered += try environment.loader.statements(from: value)
 
             case .object:
-                lowered.append(try host.loader.statement(from: value))
+                lowered.append(try environment.loader.statement(from: value))
 
             default:
                 throw ExecutionError(

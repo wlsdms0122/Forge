@@ -15,7 +15,7 @@ struct ShellAction: Warp.Effect {
     // MARK: - Initializer
     // MARK: - Public
     func run(_ invocation: Warp.Invocation) async throws -> Warp.Value {
-        let host = try ForgeHost.from(invocation)
+        let environment = try ForgeEnvironment.from(invocation)
         let resolver = invocation.resolver
 
         guard case .array(let command) = try invocation.resolve("command"), !command.isEmpty else {
@@ -41,9 +41,9 @@ struct ShellAction: Warp.Effect {
             from: try invocation.resolve("outputs")
         )
 
-        let result = try await host.withStepSlot {
-            try await withHostDeadline(seconds: timeout) {
-                try await host.shell.run(
+        let result = try await environment.withStepSlot {
+            try await withDeadline(seconds: timeout) {
+                try await environment.shell.run(
                     executable: arguments[0],
                     args: Array(arguments.dropFirst()),
                     cwd: cwd,

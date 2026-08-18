@@ -10,7 +10,7 @@ import Foundation
 // A workflow file is a module declaring one routine named after the file.
 //
 // Tests here write a routine body — inputs, steps, outputs — because what they
-// are about is the host word inside it, not the shape of the file. This puts
+// are about is the forge word inside it, not the shape of the file. This puts
 // the envelope on. What the envelope itself accepts is Warp's own
 // `ModuleNotationTests`; what Forge additionally requires of a workflow file
 // (exactly one routine, named after the file) is `CatalogGenerationTests`.

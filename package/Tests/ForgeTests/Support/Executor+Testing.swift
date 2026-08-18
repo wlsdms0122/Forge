@@ -47,7 +47,7 @@ extension Warp.Executor {
 }
 
 extension Loader {
-    // Most Forge tests are about a host word, not about the envelope a module
+    // Most Forge tests are about a forge word, not about the envelope a module
     // is written in, so they write a routine's body and this names it.
     func loadRoutine(_ text: String, named name: String = entryName) throws -> Warp.Module {
         let body = text

@@ -1,5 +1,5 @@
 //
-//  HostActionTests.swift
+//  EffectActionTests.swift
 //  ForgeTests
 //
 //  Created by JSilver on 8/9/26.
@@ -187,7 +187,7 @@ private struct Harness {
     ) -> Warp.Executor {
         loader.language.makeExecutor(
             catalog: catalog,
-            environment: ForgeHost(
+            environment: ForgeEnvironment(
                 shell: shell ?? MockShell(recorder: recorder),
                 agent: MockAgent(recorder: recorder, reply: agentReply),
                 dispatcher: MockDispatcher(recorder: recorder, result: dispatchResult),
@@ -203,7 +203,7 @@ private struct Harness {
 }
 
 @Suite
-struct HostActionTests {
+struct EffectActionTests {
     // MARK: - Property
     // MARK: - Initializer
     // MARK: - Test
@@ -542,7 +542,7 @@ struct HostActionTests {
         }
     }
 
-    @Test("when the host vocabulary is extended, inline dispatch uses the same vocabulary")
+    @Test("when forge's vocabulary is extended, inline dispatch uses the same vocabulary")
     func inlineDispatchSpeaksWhenHostVocabularyExtends() throws {
         // Given — the inline body lowers through the loader this file is decoded
         // with, so a custom atom valid outside is valid inside too
@@ -753,7 +753,7 @@ struct HostActionTests {
         }
         let sut = harness.loader.language.makeExecutor(
             observer: bridge,
-            environment: ForgeHost(
+            environment: ForgeEnvironment(
                 shell: MockShell(recorder: harness.recorder, exitCode: 1),
                 agent: MockAgent(recorder: harness.recorder),
                 dispatcher: MockDispatcher(recorder: harness.recorder),

@@ -17,11 +17,11 @@ struct AgentAction: Warp.Effect {
     // MARK: - Initializer
     // MARK: - Public
     func run(_ invocation: Warp.Invocation) async throws -> Warp.Value {
-        let host = try ForgeHost.from(invocation)
+        let environment = try ForgeEnvironment.from(invocation)
         let prompt = try invocation.string("prompt") ?? ""
 
-        return try await host.withStepSlot {
-            .string(try await host.agent.send(prompt: prompt))
+        return try await environment.withStepSlot {
+            .string(try await environment.agent.send(prompt: prompt))
         }
     }
 

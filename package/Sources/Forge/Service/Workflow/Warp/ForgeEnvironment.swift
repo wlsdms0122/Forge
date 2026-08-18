@@ -1,5 +1,5 @@
 //
-//  ForgeHost.swift
+//  ForgeEnvironment.swift
 //  Forge
 //
 //  Created by JSilver on 8/9/26.
@@ -9,7 +9,7 @@ import Foundation
 import Warp
 import WarpIR
 
-struct ForgeHost: Warp.HostEnvironment {
+struct ForgeEnvironment: Warp.Environment {
     // MARK: - Property
     let shell: any ShellExecuting
     let agent: any AgentServing
@@ -39,15 +39,15 @@ struct ForgeHost: Warp.HostEnvironment {
     }
 
     // MARK: - Public
-    static func from(_ context: Warp.Invocation) throws -> ForgeHost {
-        guard let host = context.environment as? ForgeHost else {
+    static func from(_ context: Warp.Invocation) throws -> ForgeEnvironment {
+        guard let environment = context.environment as? ForgeEnvironment else {
             throw ExecutionError(
-                "step '\(context.label)' needs the forge host environment"
+                "step '\(context.label)' needs the forge environment"
                     + " — run it through the forge executor"
             )
         }
 
-        return host
+        return environment
     }
 
     // The daemon's step-concurrency ceiling: resource-heavy actions (shell,
@@ -77,7 +77,7 @@ struct ForgeHost: Warp.HostEnvironment {
 // The fan-out boundary severs the ambient agent session — pieces that run at
 // once must not share one conversation. A piece that needs a session opens its
 // own `invoke` inside itself.
-extension ForgeHost {
+extension ForgeEnvironment {
     func isolateConcurrentWork<T: Sendable>(
         _ work: @Sendable () async throws -> T
     ) async throws -> T {
@@ -88,7 +88,7 @@ extension ForgeHost {
 }
 
 // forge's world failures carry the kernel's rescue stamp — a nonzero exit or a
-// failed child run is the world answering, not the author mistyping. The host
+// failed child run is the world answering, not the author mistyping. forge
 // also owns each failure's vocabulary as a rescue-visible value: the kernel
 // binds these payloads under the failed step's id while its rescue runs.
 extension BackendNonzeroExit: Warp.RecoverableFailure {
@@ -111,7 +111,7 @@ extension ChildRunFailed: Warp.RecoverableFailure {
 
 // A step deadline races the body against the clock — the world running late is
 // a recoverable failure, so a rescue can answer it.
-func withHostDeadline<T: Sendable>(
+func withDeadline<T: Sendable>(
     seconds: Double?,
     body: @escaping @Sendable () async throws -> T
 ) async throws -> T {
@@ -124,7 +124,7 @@ func withHostDeadline<T: Sendable>(
         group.addTask {
             try await Task.sleep(for: .seconds(seconds))
 
-            throw HostTimeout(seconds: seconds)
+            throw DeadlineExceeded(seconds: seconds)
         }
 
         guard let first = try await group.next() else {
