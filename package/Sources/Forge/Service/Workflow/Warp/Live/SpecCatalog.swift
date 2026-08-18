@@ -308,14 +308,3 @@ extension SpecCatalog {
     }
 }
 
-// The `dlopen` door, and only that: a name reaching here came from IR forge
-// lowered while running, which linking never promised to have resolved.
-extension SpecCatalog: ProcedureCatalog {
-    func procedure(named name: String) async throws -> Warp.Procedure {
-        for module in await modules() {
-            if let procedure = module.procedures[name] { return procedure }
-        }
-
-        throw ExecutionError("procedure not found: \(name)")
-    }
-}

@@ -182,11 +182,9 @@ private struct Harness {
         shell: MockShell? = nil,
         agentReply: String = "agent-reply",
         dispatchResult: Warp.Value = .object(["ok": .bool(true)]),
-        files: [String: String] = [:],
-        catalog: (any ProcedureCatalog)? = nil
+        files: [String: String] = [:]
     ) -> Warp.Executor {
         loader.language.makeExecutor(
-            catalog: catalog,
             environment: ForgeEnvironment(
                 shell: shell ?? MockShell(recorder: recorder),
                 agent: MockAgent(recorder: recorder, reply: agentReply),
@@ -715,7 +713,7 @@ struct EffectActionTests {
         result:
           result: { ref: call.doubled }
         """)
-        let sut = harness.executor(catalog: store)
+        let sut = harness.executor()
 
         // When — the caller leads and the catalog is the rest of the world,
         // which is what the daemon hands to every link

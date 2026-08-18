@@ -229,7 +229,6 @@ actor SpecWorkflowRunner {
             runID: runID
         )
         let executor = catalog.loader.language.makeExecutor(
-            catalog: catalog,
             observer: EventBridge(
                 workflowID: runID,
                 workflowName: name,
