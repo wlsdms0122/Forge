@@ -41,7 +41,10 @@ struct WorkflowContract {
 
     // MARK: - Private
     private func parameter(_ parameter: Parameter) throws -> [String: Any] {
-        var described: [String: Any] = ["type": parameter.type.rendered]
+        // A caller wants to know what will be accepted, and a parameter that
+        // declares no type accepts anything — so the wire says `any` either way.
+        // Which half the author wrote is a fact about the document.
+        var described: [String: Any] = ["type": parameter.declared.rendered]
 
         if let oneOf = parameter.oneOf { described["oneOf"] = oneOf }
         if let hint = parameter.hint { described["hint"] = hint }
