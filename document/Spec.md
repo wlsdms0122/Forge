@@ -80,7 +80,7 @@ declares nothing can never be linked into anything.
 **One procedure per file, named after the file.** The language lets a module
 declare many; forge's catalog does not. A file named `deploy.yaml` declares
 `procedures: { deploy: ... }` and nothing else — a file declaring two, or one
-under a different name, is refused with a `routine/filename mismatch` and
+under a different name, is refused with a `procedure/filename mismatch` and
 excluded from the catalog. That is what makes a workflow one thing you can run
 by the name you know it by: the daemon links every workflow it can see and
 starts from that one symbol.
