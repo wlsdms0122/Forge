@@ -807,23 +807,3 @@ private actor Collected {
 
     // MARK: - Private
 }
-
-private struct EndsWithQuery: Warp.Query {
-    // MARK: - Property
-    let selector = "ends_with"
-    let signature = Signature(parameters: ["value": Parameter(type: .string)])
-
-    // MARK: - Initializer
-    // MARK: - Public
-    func evaluate(
-        for receiver: Warp.Value?,
-        with arguments: [String: Warp.Value]
-    ) throws -> Warp.Value? {
-        guard case let .string(text)? = receiver else { return .bool(false) }
-        guard case let .string(suffix) = arguments["value"] else { return .bool(false) }
-
-        return .bool(text.hasSuffix(suffix))
-    }
-
-    // MARK: - Private
-}
