@@ -9,12 +9,12 @@ import Foundation
 import Warp
 import WarpIR
 
-// Adapts the kernel's execution observations to forge's event stream. The
-// kernel reports statements; run-level framing (started/completed/failed) stays
+// Adapts the language's execution observations to forge's event stream. Warp
+// reports statements; run-level framing (started/completed/failed) stays
 // with whoever drives the executor.
 //
 // Two of forge's event fields have no counterpart in the language any more and
-// are reconstructed here: `absorbed` from the rescue the kernel announced, and
+// are reconstructed here: `absorbed` from the rescue the language announced, and
 // the step's word from the shape of the expression. Both belong to forge's
 // surface, which is why they are computed on this side of the seam.
 struct EventBridge: ExecutionObserver {

@@ -57,7 +57,7 @@ struct ResourceAction: Warp.Effect {
     ) async throws -> String {
         let body = try await resources.read(relative)
 
-        // The resource body is a template over the given inputs — the kernel
+        // The resource body is a template over the given inputs — the language
         // parses it and renders it against a scope holding nothing but those
         // inputs, the same closed surface `{ format: }` uses.
         let segments = try TemplateParser().parse(body)

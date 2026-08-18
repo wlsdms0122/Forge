@@ -77,7 +77,7 @@ struct DispatchActionForm: WarpIR.ConstructForm {
             }
 
             do {
-                // One routine's worth of data, not a document — the same
+                // One procedure's worth of data, not a document — the same
                 // shape the RPC door admits, checked at load so a broken
                 // inline spec is refused before anything runs.
                 _ = try loader.procedure(from: inline)

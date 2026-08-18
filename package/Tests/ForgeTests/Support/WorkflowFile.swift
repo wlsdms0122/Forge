@@ -7,13 +7,13 @@
 
 import Foundation
 
-// A workflow file is a module declaring one routine named after the file.
+// A workflow file is a module declaring one procedure named after the file.
 //
-// Tests here write a routine body — inputs, steps, outputs — because what they
+// Tests here write a procedure body — parameters, body, result — because what they
 // are about is the forge word inside it, not the shape of the file. This puts
 // the envelope on. What the envelope itself accepts is Warp's own
 // `ModuleNotationTests`; what Forge additionally requires of a workflow file
-// (exactly one routine, named after the file) is `CatalogGenerationTests`.
+// (exactly one procedure, named after the file) is `CatalogGenerationTests`.
 func workflowFile(_ body: String, named name: String) -> String {
     let lines = body
         .split(separator: "\n", omittingEmptySubsequences: false)
@@ -22,7 +22,7 @@ func workflowFile(_ body: String, named name: String) -> String {
     // A `name:` written in the body was the document's metadata, and it has
     // moved out to the module — dropping it here is the same edit an author
     // makes when migrating a file.
-    let routine = lines
+    let procedure = lines
         .drop { line in line.hasPrefix("name:") }
         .map { line in line.isEmpty ? "" : "    \(line)" }
         .joined(separator: "\n")
@@ -31,6 +31,6 @@ func workflowFile(_ body: String, named name: String) -> String {
     name: \(name)
     procedures:
       \(name):
-    \(routine)
+    \(procedure)
     """
 }

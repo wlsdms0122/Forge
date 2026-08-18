@@ -10,7 +10,7 @@ import Warp
 import WarpIR
 
 // Steps that arrived as data — `compose` resolves to step objects (typically
-// carried through a signature, as in bot-invoke) and the kernel's runtime
+// carried through a signature, as in bot-invoke) and the language's runtime
 // lowering door turns them into IR through the same decoder and registry the
 // load path uses. No text is re-parsed.
 struct DynamicAction: Warp.Effect {

@@ -211,7 +211,7 @@ struct EffectActionTests {
     func shellRunsWhenReferencesResolve() async throws {
         // Given
         let harness = Harness()
-        let spec = try harness.loader.loadRoutine("""
+        let spec = try harness.loader.loadProcedure("""
         parameters:
           who: string
         body:
@@ -240,7 +240,7 @@ struct EffectActionTests {
     func nonzeroExitRescuesWhenStepDeclaresCatch() async throws {
         // Given — a nonzero exit is the world's failure, so rescue absorbs it
         let harness = Harness()
-        let spec = try harness.loader.loadRoutine("""
+        let spec = try harness.loader.loadProcedure("""
         body:
           - id: broken
             attempt:
@@ -270,7 +270,7 @@ struct EffectActionTests {
     func outputsExtractWhenShellDeclaresThem() async throws {
         // Given
         let harness = Harness()
-        let spec = try harness.loader.loadRoutine("""
+        let spec = try harness.loader.loadProcedure("""
         body:
           - id: probe
             shell:
@@ -295,7 +295,7 @@ struct EffectActionTests {
     func timeoutRescuesWhenShellRunsLate() async throws {
         // Given
         let harness = Harness()
-        let spec = try harness.loader.loadRoutine("""
+        let spec = try harness.loader.loadProcedure("""
         body:
           - id: slow
             attempt:
@@ -326,7 +326,7 @@ struct EffectActionTests {
     func agentSpeaksWhenInvokeOpensSession() async throws {
         // Given
         let harness = Harness()
-        let spec = try harness.loader.loadRoutine("""
+        let spec = try harness.loader.loadProcedure("""
         parameters:
           topic: string
         body:
@@ -355,7 +355,7 @@ struct EffectActionTests {
     func agentFailsWhenNoSessionIsOpen() async throws {
         // Given — an agent step outside invoke is an authoring error
         let harness = Harness()
-        let spec = try harness.loader.loadRoutine("""
+        let spec = try harness.loader.loadProcedure("""
         body:
           - id: turn
             agent: "hello?"
@@ -372,7 +372,7 @@ struct EffectActionTests {
     func dispatchDelegatesWhenDaemonAnswers() async throws {
         // Given
         let harness = Harness()
-        let spec = try harness.loader.loadRoutine("""
+        let spec = try harness.loader.loadProcedure("""
         parameters:
           job: string
         body:
@@ -416,7 +416,7 @@ struct EffectActionTests {
 
         // When / Then
         #expect(throws: DecodingError.self) {
-            try harness.loader.loadRoutine(yaml)
+            try harness.loader.loadProcedure(yaml)
         }
     }
 
@@ -424,7 +424,7 @@ struct EffectActionTests {
     func carriedStepsRunWhenDynamicLowersThem() async throws {
         // Given — steps arrive as data through the signature, as bot-invoke does
         let harness = Harness()
-        let spec = try harness.loader.loadRoutine("""
+        let spec = try harness.loader.loadProcedure("""
         parameters:
           steps: array
         body:
@@ -457,7 +457,7 @@ struct EffectActionTests {
         // ambient scope plus the fragment's step results, even though the
         // fragment itself runs closed
         let harness = Harness()
-        let spec = try harness.loader.loadRoutine("""
+        let spec = try harness.loader.loadProcedure("""
         parameters:
           steps: array
         body:
@@ -493,7 +493,7 @@ struct EffectActionTests {
         // Given — an output naming nothing visible fails before the fragment's
         // side effects run
         let harness = Harness()
-        let spec = try harness.loader.loadRoutine("""
+        let spec = try harness.loader.loadProcedure("""
         parameters:
           steps: array
         body:
@@ -522,7 +522,7 @@ struct EffectActionTests {
         // Given — steps arriving as data pass the same gate loaded ones do; an
         // id of `run` would be silently shadowed by the context namespace
         let harness = Harness()
-        let spec = try harness.loader.loadRoutine("""
+        let spec = try harness.loader.loadProcedure("""
         parameters:
           steps: array
         body:
@@ -566,7 +566,7 @@ struct EffectActionTests {
 
         // When / Then
         #expect(throws: Never.self) {
-            try loader.loadRoutine(yaml)
+            try loader.loadProcedure(yaml)
         }
     }
 
@@ -575,7 +575,7 @@ struct EffectActionTests {
         // Given — the resource is a runtime value source: its inputs are live
         // step outputs
         let harness = Harness()
-        let spec = try harness.loader.loadRoutine("""
+        let spec = try harness.loader.loadProcedure("""
         body:
           - id: axes
             value: "tech, persona"
@@ -603,7 +603,7 @@ struct EffectActionTests {
         // Given — the body holds shell syntax that is not template dialect;
         // locating must never read or render it
         let harness = Harness()
-        let spec = try harness.loader.loadRoutine("""
+        let spec = try harness.loader.loadProcedure("""
         body:
           - id: script
             resource:
@@ -636,7 +636,7 @@ struct EffectActionTests {
 
         // When / Then — a location does not render, so inputs mean nothing there
         #expect(throws: DecodingError.self) {
-            try harness.loader.loadRoutine(yaml)
+            try harness.loader.loadProcedure(yaml)
         }
     }
 
@@ -644,7 +644,7 @@ struct EffectActionTests {
     func rescueReadsShellFailurePayload() async throws {
         // Given
         let harness = Harness()
-        let spec = try harness.loader.loadRoutine("""
+        let spec = try harness.loader.loadProcedure("""
         body:
           - id: risky
             attempt:
@@ -705,7 +705,7 @@ struct EffectActionTests {
         )
 
         let store = SpecCatalog(directory: directory, loader: harness.loader)
-        let caller = try harness.loader.loadRoutine("""
+        let caller = try harness.loader.loadProcedure("""
         body:
           - id: call
             call:
@@ -730,7 +730,7 @@ struct EffectActionTests {
         // Given
         let harness = Harness()
         let collected = Collected()
-        let spec = try harness.loader.loadRoutine("""
+        let spec = try harness.loader.loadProcedure("""
         body:
           - id: fine
             value: ok
@@ -784,7 +784,7 @@ struct EffectActionTests {
         #expect(rescuedEvents.first?.absorbed == true)
 
         // The ledger names a step by the word the spec wrote, not by the Swift
-        // type behind it — the kernel reports the action and forge names it.
+        // type behind it — the language reports the action and forge names it.
         let started = await collected.events.filter { event in
             event.kind == .stepStarted
         }

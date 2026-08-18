@@ -9,11 +9,10 @@ import Foundation
 import Warp
 import WarpIR
 
-// The JSON shape `workflow.describe` answers with. This used to fall out of the
-// kernel's own `Encodable` conformances, which meant an RPC contract Forge is
-// responsible for was defined by how the language happened to spell its IR.
-// Warp's IR is decode-only now, so the shape is written here, where it is
-// owned.
+// The JSON shape `workflow.describe` answers with. It is written here rather
+// than falling out of the language's own conformances: an RPC contract forge is
+// responsible for should not be defined by how the language happens to spell
+// its IR.
 struct WorkflowContract {
     // MARK: - Property
     // MARK: - Initializer
@@ -22,7 +21,7 @@ struct WorkflowContract {
 
     // MARK: - Public
     func inputs(of signature: Signature) throws -> [String: Any] {
-        // The names the daemon supplies are declared on every routine so the
+        // The names the daemon supplies are declared on every procedure so the
         // language can see them, but they are not part of the contract a caller
         // fills in — describing them would invite callers to pass them.
         try signature.parameters

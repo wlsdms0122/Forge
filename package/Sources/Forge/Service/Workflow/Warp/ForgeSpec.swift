@@ -116,7 +116,7 @@ enum ForgeSpec {
         return .object(seeded)
     }
 
-    // One routine, for the doors that carry a procedure rather than a document.
+    // One procedure, for the doors that carry one rather than a document.
     static func seeding(procedure value: Value) -> Value {
         guard case let .object(procedure) = value else { return value }
 
@@ -139,17 +139,17 @@ enum ForgeSpec {
         return .object(seeded)
     }
 
-    // The one loader forge configures — kernel flow plus the words forge spells
-    // its verbs with.
+    // The one loader forge configures — the language's constructs plus the words
+    // forge spells its verbs with.
     static func loader() -> Loader {
         let registry: ConstructRegistry
 
         do {
             registry = try ConstructRegistry.standard
-                // The kernel spells a call on a procedure value `invoke`, and
-                // forge has spent that word on a verb of its own since before the
-                // kernel had one. A spelling belongs to the table, so forge takes
-                // the word back here rather than the language giving it up.
+                // The language spells a call on a procedure value `invoke`, and
+                // forge has spent that word on a verb of its own. A spelling
+                // belongs to the table, so forge takes the word back here rather
+                // than the language giving it up.
                 .removing(InvokeForm.key)
                 .registering(ShellActionForm.self)
                 .registering(AgentActionForm.self)
@@ -158,7 +158,7 @@ enum ForgeSpec {
                 .registering(DynamicActionForm.self)
                 .registering(ResourceActionForm.self)
         } catch {
-            preconditionFailure("forge action keys collide with the kernel: \(error)")
+            preconditionFailure("forge action keys collide with the language: \(error)")
         }
 
         return Loader(registry: registry)

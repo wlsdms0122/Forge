@@ -87,9 +87,9 @@ extension ForgeEnvironment {
     }
 }
 
-// forge's world failures carry the kernel's rescue stamp — a nonzero exit or a
+// forge's world failures carry the language's rescue stamp — a nonzero exit or a
 // failed child run is the world answering, not the author mistyping. forge
-// also owns each failure's vocabulary as a rescue-visible value: the kernel
+// also owns each failure's vocabulary as a rescue-visible value: the language
 // binds these payloads under the failed step's id while its rescue runs.
 extension BackendNonzeroExit: Warp.RecoverableFailure {
     var payload: Warp.Value {

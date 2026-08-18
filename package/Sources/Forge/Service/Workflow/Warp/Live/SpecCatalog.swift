@@ -167,17 +167,17 @@ actor SpecCatalog {
                 }
 
                 // Forge's convention on top of the language: a workflow file
-                // declares one routine and names it after the file. The language
-                // lets a module declare many — this is where a workflow says it
-                // is one thing you can run by the name you know it by.
+                // declares one procedure and names it after the file. The
+                // language lets a module declare many — this is where a workflow
+                // says it is one thing you can run by the name you know it by.
                 guard Array(module.procedures.keys) == [base] else {
                     ledger.record(
                         source: file.source,
-                        reason: "a workflow file declares exactly one routine named after"
-                            + " the file — expected 'routines: { \(base): ... }', found"
-                            + " \(module.procedures.keys.sorted().map { key in "'\(key)'" })",
+                        reason: "a workflow file declares exactly one procedure named"
+                            + " after the file — expected 'procedures: { \(base): ... }',"
+                            + " found \(module.procedures.keys.sorted().map { key in "'\(key)'" })",
                         mtime: mtime,
-                        stderrLine: "workflow routine/filename mismatch (\(file.source))",
+                        stderrLine: "workflow procedure/filename mismatch (\(file.source))",
                         name: base
                     )
 
@@ -316,6 +316,6 @@ extension SpecCatalog: ProcedureCatalog {
             if let procedure = module.procedures[name] { return procedure }
         }
 
-        throw ExecutionError("routine not found: \(name)")
+        throw ExecutionError("procedure not found: \(name)")
     }
 }

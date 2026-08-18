@@ -8,7 +8,7 @@
 import Foundation
 import Warp
 
-// Two mirrors of JSON meet here — the kernel's Value and forge's JSONValue.
+// Two mirrors of JSON meet here — Warp's Value and forge's JSONValue.
 // The bridge exists only while the old engine's edges (output extraction, the
 // daemon RPC surface) still speak JSONValue; it goes with them.
 enum ValueBridge {
@@ -89,7 +89,7 @@ enum ValueBridge {
     // A Codable payload carried through the IR as data. A word's arguments are
     // values, so anything a form reads at load and a word needs at run crosses
     // here rather than riding along as a Swift field on the expression.
-    // The kernel's Value is Encodable and nothing else — reading a document is
+    // Warp's Value is Encodable and nothing else — reading a document is
     // the front end's job — so forge's own JSONValue is the crossing point in
     // both directions.
     static func value<T: Encodable>(_ payload: T) throws -> Warp.Value {

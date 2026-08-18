@@ -10,11 +10,11 @@ import Warp
 import WarpIR
 @testable import Forge
 
-// The kernel runs images, not modules — a test that hands over a module is
-// skipping the link the daemon performs. Spelling the two steps once here keeps
-// every test on the same path production takes, without the ceremony.
+// Warp runs images, not modules — a test that hands over a module is skipping
+// the link the daemon performs. Spelling the two steps once here keeps every
+// test on the same path production takes, without the ceremony.
 //
-// Forge's convention is one routine per file, named after the file, so a test
+// Forge's convention is one procedure per file, named after the file, so a test
 // module declares `entry` and starts from it.
 let entryName = "entry"
 
@@ -48,8 +48,8 @@ extension Warp.Executor {
 
 extension Loader {
     // Most Forge tests are about a forge word, not about the envelope a module
-    // is written in, so they write a routine's body and this names it.
-    func loadRoutine(_ text: String, named name: String = entryName) throws -> Warp.Module {
+    // is written in, so they write a procedure's body and this names it.
+    func loadProcedure(_ text: String, named name: String = entryName) throws -> Warp.Module {
         let body = text
             .split(separator: "\n", omittingEmptySubsequences: false)
             .map { line in line.isEmpty ? "" : "    \(line)" }

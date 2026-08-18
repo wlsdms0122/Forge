@@ -11,8 +11,8 @@ forge <subcommand> ...             client subcommands → JSON-RPC over the sock
 ```
 
 This document covers the full CLI surface and the JSON-RPC methods underneath.
-For the workflow spec (Step / Action / Condition / Expression syntax), see
-**[Spec.md](./Spec.md)**.
+For the workflow format (Statement / Construct / Condition / Expression
+syntax), see **[Spec.md](./Spec.md)**.
 
 - [1. Invocation & configuration](#1-invocation--configuration) — version, binary/socket discovery, config, env, global options, exit status
 - [2. CLI surface](#2-cli-surface) — [`serve`](#forge-serve) · [`workflow`](#forge-workflow) · [`schedule`](#forge-schedule) · [`job`](#forge-job) · [`resource`](#forge-resource) · [`service`](#forge-service) · [`status`](#forge-status) · [`policy`](#forge-policy) · [`token issue`](#forge-token-issue)
@@ -284,11 +284,10 @@ For each path: decodes the file as a `Workflow`, then runs
 followed by indented `<location>: <message>` lines. Exit code 1 if any file
 fails, 0 otherwise. Shell globs are expanded by the shell.
 
-Catches: malformed YAML, broken spec structure, half-spelled expression forms
-(`{ ref: }` / `{ value: }` / `{ format: }`), `{ ref: inputs.X }` where X is not
-declared, `{ ref: X }` where X is not a visible step id, format templates
-naming a binding not declared in `with`, and the validator's other shallow
-rules.
+Catches: malformed YAML, broken document structure, half-spelled expression
+forms (`{ ref: }` / `{ value: }` / `{ format: }`), `{ ref: X }` where X is
+neither a declared parameter nor a visible statement id, format templates naming
+a binding not declared in `with`, and the validator's other shallow rules.
 
 Does not catch (by design — see [Spec.md: Validation](./Spec.md#validation)):
 `{ ref: step.X.Y }` field-level refs, cross-workflow refs (dispatch child
@@ -664,9 +663,9 @@ mid-run the run continues (same semantics as `async=true`); interruption is
 ```
 
 `failures` lists `*.yaml` files that couldn't be loaded — YAML decode
-error or validator rejection (e.g. a `{ ref: inputs.X }` ref to an
-undeclared input). Always present (may be empty); admin surfaces broken
-workflows without grep'ing stderr.
+error or validator rejection (e.g. a `{ ref: X }` naming nothing declared).
+Always present (may be empty); admin surfaces broken workflows without
+grep'ing stderr.
 
 ### `workflow.describe`
 
@@ -678,16 +677,20 @@ workflows without grep'ing stderr.
  "outputs":{"<key>": <Expression>}}
 ```
 
-`inputs` is the declared signature map (wire format preserved — keys match
-what the workflow YAML declares); `type` ∈
-`string|int|double|bool|object|array`, and a declared `default` (even
-`null`) marks the input optional. `outputs` is the expression map; each
-value round-trips in the expression grammar — a reference comes back as
-`{"ref": "<path>"}`, quotation as `{"value": ...}`, interpolation as
-`{"format": "...", "with": {...}}`, and records/arrays/literals as
-themselves. Empty `inputs`/`outputs` are returned as `{}` (not omitted) so
-the caller can iterate without null-checks. Unknown workflow →
-ResolutionError `workflow not found: <name>`.
+`inputs` is the declared signature — the workflow procedure's `parameters:`,
+minus the two names the daemon supplies itself (`origin`, `run`), which are
+declared on every procedure but are not a caller's to fill. `type` is the
+declared type as written (`string`, `array<string>`, a record, …), and a
+declared `default` (even `null`) marks the input optional.
+
+`outputs` reads back the fields of the workflow's `result:` when it is a record,
+which is how several named answers are written; a `result:` that is anything
+else (or absent) describes as `{}`. Each value round-trips in the expression
+grammar — a reference comes back as `{"ref": "<path>"}`, quotation as
+`{"value": ...}`, interpolation as `{"format": "...", "with": {...}}`, and
+records/arrays/literals as themselves. Empty `inputs`/`outputs` are returned as
+`{}` (not omitted) so the caller can iterate without null-checks. Unknown
+workflow → ResolutionError `workflow not found: <name>`.
 
 ### `workflow.list_active`
 
@@ -1121,6 +1124,6 @@ The error envelope is `{"type": "<ErrorType>", "message": "<text>"}`.
 | `UnknownMethod` | the daemon does not know the method name |
 | `PolicyDenied` | the principal may not dispatch/control that workflow (policy/*.yaml) — retry is pointless |
 | `WorkflowValidationError` | the workflow definition failed validation (inline spec or broken catalog file) — fix the spec |
-| `InputValidationError` | a dispatch input violated the workflow's declared ParamSpec |
+| `InputValidationError` | a dispatch input violated the workflow's declared parameter |
 | `RunCapExceeded` | run cap saturation (backpressure) — retry later is meaningful |
 | `ChildRunFailed` | a `dispatch` step's child run completed as failed — message carries the child's error type |

@@ -8,8 +8,8 @@
 import Foundation
 import Warp
 
-// The run-level driver over the kernel executor — the daemon-facing frame the
-// kernel deliberately does not own: run identity, tokens, the work registry,
+// The run-level driver over the language's executor — the daemon-facing frame
+// Warp deliberately does not own: run identity, tokens, the work registry,
 // pool slots, run started/completed/failed events and the child-run boundary.
 // It also IS the dispatch seam: a `dispatch` step asks the daemon for an
 // isolated run, and every entrance (RPC method, scheduler, child step) walks
@@ -428,7 +428,7 @@ extension SpecWorkflowRunner: RunDispatching {
                 throw ProtocolError("dispatch: neither name nor inline spec (decoder gap)")
             }
 
-            // Same shape the RPC door admits: an inline spec is one routine.
+            // Same shape the RPC door admits: an inline spec is one procedure.
             childName = WorkflowDispatchMethod.inlineSigil
             module = Warp.Module(
                 procedures: [
