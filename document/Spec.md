@@ -93,7 +93,7 @@ from the body. Inline anonymous specs (`workflow.dispatch --spec` or a
 `dispatch` step's `spec`) carry no `name`, are one procedure's worth of data
 rather than a document, and are stamped `<inline>` by the daemon.
 
-`types:` declares names a parameter or `answers:` may then use. A type name
+`types:` declares names a parameter or `returns:` may then use. A type name
 declared twice across the link is a link error.
 
 `const:` binds a name to a value at load. Constants are settled once, before
@@ -113,7 +113,7 @@ operator's surface (`workflow.health`, `workflow.cancel`), not a spec field.
   parameters:               # optional
     <key>: <Parameter>
   receiver: <parameter>     # optional — which parameter this is sent to
-  answers: <Type>           # optional — what it answers, defaults to `any`
+  returns: <Type>           # optional — what it returns, defaults to `any`
   body:                     # optional
     - <Statement>
   result: <Expression>      # optional
@@ -164,7 +164,7 @@ channel:
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `type` | `string` / `int` / `double` / `bool` / `object` / `array` / `procedure` / `any`, `array<T>` / `object<T>`, a name from `types:`, a record `{ id: string }`, or `{ procedure: { parameters:, answers: } }` | required. **Enforced at the scope boundary**: a value whose type mismatches is rejected with `InputValidationError` before any step runs. Numeric values normalize to the declared representation — an integral double settles as `int`, an int settles as `double`. |
+| `type` | `string` / `int` / `double` / `bool` / `object` / `array` / `procedure` / `any`, `array<T>` / `object<T>`, a name from `types:`, a record `{ id: string }`, or `{ procedure: { parameters:, returns: } }` | required. **Enforced at the scope boundary**: a value whose type mismatches is rejected with `InputValidationError` before any step runs. Numeric values normalize to the declared representation — an integral double settles as `int`, an int settles as `double`. |
 | `default` | any | fallback when the caller omits the slot. There is no separate `required` field — a declared `default` (even `null`) makes the slot optional; leaving `default` out entirely makes it mandatory. |
 | `oneOf` | array of strings | enum constraint (camelCase, unlike the condition grammar's snake_case keys). Enforced at settle: a value outside the set is rejected with `InputValidationError`. |
 | `hint` | string | human description (`describe` surfaces this) |
@@ -1095,6 +1095,7 @@ name: tour
 procedures:
   tour:
     description: One shallow pass over the language.
+    returns: object
     parameters:
       who:
         type: string

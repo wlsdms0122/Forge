@@ -815,12 +815,12 @@ private struct EndsWithQuery: Warp.Query {
 
     // MARK: - Initializer
     // MARK: - Public
-    func answer(
-        to receiver: Warp.Value?,
+    func evaluate(
+        for receiver: Warp.Value?,
         with arguments: [String: Warp.Value]
     ) throws -> Warp.Value? {
-        guard case .string(let text)? = receiver else { return .bool(false) }
-        guard case .string(let suffix) = arguments["value"] else { return .bool(false) }
+        guard case let .string(text)? = receiver else { return .bool(false) }
+        guard case let .string(suffix) = arguments["value"] else { return .bool(false) }
 
         return .bool(text.hasSuffix(suffix))
     }
