@@ -197,7 +197,7 @@ struct ServiceScopedGateTests {
     @Test("Denial wording comes from a single owner across all gates — it does not vary per gate")
     func policyDenialMessageIsUniformAcrossServiceGates() async throws {
         // Given
-        let store = SpecCatalog(directory: nil, loader: ForgeSpec.loader())
+        let store = SpecCatalog(directory: nil, frontend: try ForgeSpec.frontend())
         let bus = WorkflowEventBus()
         let authority = TokenAuthority()
         let runner = SpecWorkflowRunner(
@@ -215,7 +215,10 @@ struct ServiceScopedGateTests {
             tokenAuthority: authority)
         let streamMethod = WorkflowDispatchStreamMethod(dispatchMethod: dispatchMethod, eventBus: bus)
         let token = authority.mint(TokenClaims(principal: "system:rpc"))
-        let spec: [String: Any] = ["body": [["id": "x", "shell": ["command": ["/bin/echo", "n"]]]]]
+        let spec: [String: Any] = [
+            "failing": ["nonzero_exit", "timeout"],
+            "body": [["let": "x", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/echo", "n"], NSNull(), NSNull(), NSNull(), NSNull(), NSNull()]]]]]
+        ]
         var messages: [String] = []
         do {
             _ = try await dispatchMethod.handle(RPCRequest(

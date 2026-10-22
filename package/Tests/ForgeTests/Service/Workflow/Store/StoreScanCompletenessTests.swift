@@ -99,7 +99,7 @@ struct StoreScanCompletenessTests {
             try? FileManager.default.removeItem(at: directory)
         }
         
-        let store = SpecCatalog(directory: directory, loader: ForgeSpec.loader())
+        let store = SpecCatalog(directory: directory, frontend: try ForgeSpec.frontend())
         guard case .found = await store.resolve("shadowed") else {
 
         // Then
@@ -152,7 +152,7 @@ struct StoreScanCompletenessTests {
             try? FileManager.default.removeItem(at: directory)
         }
         
-        let store = SpecCatalog(directory: directory, loader: ForgeSpec.loader())
+        let store = SpecCatalog(directory: directory, frontend: try ForgeSpec.frontend())
         guard case .found = await store.resolve("deleted-later") else {
 
         // Then
@@ -192,7 +192,7 @@ struct StoreScanCompletenessTests {
             try? FileManager.default.removeItem(at: directory)
         }
         
-        let store = SpecCatalog(directory: directory, loader: ForgeSpec.loader())
+        let store = SpecCatalog(directory: directory, frontend: try ForgeSpec.frontend())
         guard case .invalid = await store.resolve("dup") else {
 
         // Then
@@ -220,7 +220,7 @@ struct StoreScanCompletenessTests {
             try? FileManager.default.removeItem(at: directory)
         }
         
-        let store = SpecCatalog(directory: directory, loader: ForgeSpec.loader())
+        let store = SpecCatalog(directory: directory, frontend: try ForgeSpec.frontend())
         guard case .found = await store.resolve("ghost") else {
 
         // Then
@@ -247,7 +247,7 @@ struct StoreScanCompletenessTests {
         let directory = try temporary.make("store-complete")
         defer { try? FileManager.default.removeItem(at: directory) }
         try writeWorkflow(named: "a", in: directory)
-        let store = SpecCatalog(directory: directory, loader: ForgeSpec.loader())
+        let store = SpecCatalog(directory: directory, frontend: try ForgeSpec.frontend())
         guard case .missing = await store.resolve("nope") else {
 
         // Then
@@ -264,10 +264,10 @@ struct StoreScanCompletenessTests {
     
     private func writeWorkflow(named name: String, in directory: URL) throws {
         try workflowFile(#"""
+        failing: [nonzero_exit, timeout]
         body:
-          - id: x
-            shell:
-              command: ["/bin/echo", "ok"]
+          - let: x
+            value: { call: { procedure: Forge.shell, arguments: [ ["/bin/echo", "ok"], null, null, null, null, null ] } }
         """#, named: name).write(to: directory.appendingPathComponent("\(name).yaml"),
             
             atomically: true, encoding: .utf8)

@@ -48,12 +48,12 @@ struct LogContextRunTests {
         .appendingPathComponent("forge-tracerun-\(UUID().uuidString.prefix(6))")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         try workflowFile(#"""
+        failing: [nonzero_exit, timeout]
         body:
-          - id: x
-            shell:
-              command: ["/bin/echo", "ok"]
+          - let: x
+            value: { call: { procedure: Forge.shell, arguments: [ ["/bin/echo", "ok"], null, null, null, null, null ] } }
         """#, named: "echo").write(to: directory.appendingPathComponent("echo.yaml"), atomically: true, encoding: .utf8)
-        let store = SpecCatalog(directory: directory, loader: ForgeSpec.loader())
+        let store = SpecCatalog(directory: directory, frontend: try ForgeSpec.frontend())
         let bus = WorkflowEventBus()
         let runner = SpecWorkflowRunner(
             catalog: store,

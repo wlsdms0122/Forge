@@ -15,7 +15,8 @@ struct ScheduleControlGateTests {
     private let temporary = TemporaryDirectory("ctlgate")
 
     private let inlineSpec: [String: Any] = [
-        "body": [["id": "x", "shell": ["command": ["/bin/echo", "ok"]]]],
+        "failing": ["nonzero_exit", "timeout"],
+            "body": [["let": "x", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/echo", "ok"], NSNull(), NSNull(), NSNull(), NSNull(), NSNull()]]]]],
     ]
     
     // MARK: - Initializer
@@ -92,7 +93,7 @@ struct ScheduleControlGateTests {
             stateFile: FileManager.default.temporaryDirectory
             .appendingPathComponent("forge-sched-enabled-\(UUID().uuidString.prefix(6)).json"))
         let create = ScheduleCreateMethod(
-            store: store, workflowStore: SpecCatalog(directory: nil, loader: ForgeSpec.loader()),
+            store: store, workflowStore: SpecCatalog(directory: nil, frontend: try ForgeSpec.frontend()),
             policyStore: PolicyStore(seed: ["cli:owner": ["<inline>"]]), tokenAuthority: authority)
         let ownerToken = authority.mint(TokenClaims(principal: "cli:owner"))
         _ = try await create.handle(RPCRequest(

@@ -15,7 +15,8 @@ struct CreatePolicyGateTests {
     private let temporary = TemporaryDirectory("creategate")
 
     private let inlineSpec: [String: Any] = [
-        "body": [["id": "x", "shell": ["command": ["/bin/echo", "ok"]]]],
+        "failing": ["nonzero_exit", "timeout"],
+            "body": [["let": "x", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/echo", "ok"], NSNull(), NSNull(), NSNull(), NSNull(), NSNull()]]]]],
     ]
     
     // MARK: - Initializer
@@ -29,7 +30,7 @@ struct CreatePolicyGateTests {
         let authority = TokenAuthority()
         let method = ScheduleCreateMethod(
             store: ScheduleStore(configDir: nil, runtimeDirectory: directory, stateFile: FileManager.default.temporaryDirectory.appendingPathComponent("forge-sched-enabled-\(UUID().uuidString.prefix(6)).json")),
-            workflowStore: SpecCatalog(directory: nil, loader: ForgeSpec.loader()),
+            workflowStore: SpecCatalog(directory: nil, frontend: try ForgeSpec.frontend()),
             policyStore: PolicyStore(seed: ["cli:response": ["<inline>"]]),
             tokenAuthority: authority)
         let token = authority.mint(TokenClaims(principal: "cli:response"))
@@ -50,7 +51,7 @@ struct CreatePolicyGateTests {
         let store = ScheduleStore(configDir: nil, runtimeDirectory: directory, stateFile: FileManager.default.temporaryDirectory.appendingPathComponent("forge-sched-enabled-\(UUID().uuidString.prefix(6)).json"))
         let method = ScheduleCreateMethod(
             store: store,
-            workflowStore: SpecCatalog(directory: nil, loader: ForgeSpec.loader()),
+            workflowStore: SpecCatalog(directory: nil, frontend: try ForgeSpec.frontend()),
             policyStore: PolicyStore(seed: ["cli:response": ["worker"]]),
             tokenAuthority: authority)
         let token = authority.mint(TokenClaims(principal: "cli:<inline>"))
@@ -79,7 +80,7 @@ struct CreatePolicyGateTests {
         let store = ScheduleStore(configDir: nil, runtimeDirectory: directory, stateFile: FileManager.default.temporaryDirectory.appendingPathComponent("forge-sched-enabled-\(UUID().uuidString.prefix(6)).json"))
         let method = ScheduleCreateMethod(
             store: store,
-            workflowStore: SpecCatalog(directory: nil, loader: ForgeSpec.loader()),
+            workflowStore: SpecCatalog(directory: nil, frontend: try ForgeSpec.frontend()),
             policyStore: PolicyStore(seed: ["system:*": ["*"]]),
             tokenAuthority: authority)
         let token = authority.mint(TokenClaims(principal: "cli:response"))
@@ -106,7 +107,7 @@ struct CreatePolicyGateTests {
         let authority = TokenAuthority()
         let method = ScheduleCreateMethod(
             store: ScheduleStore(configDir: nil, runtimeDirectory: directory, stateFile: FileManager.default.temporaryDirectory.appendingPathComponent("forge-sched-enabled-\(UUID().uuidString.prefix(6)).json")),
-            workflowStore: SpecCatalog(directory: nil, loader: ForgeSpec.loader()),
+            workflowStore: SpecCatalog(directory: nil, frontend: try ForgeSpec.frontend()),
             policyStore: PolicyStore(seed: ["cli:*": ["<inline>"]]),
             tokenAuthority: authority)
         let token = authority.mint(TokenClaims(principal: "cli:response"))

@@ -17,10 +17,11 @@ struct AsyncDispatchTests {
     @Test("Policy denial throws immediately even for async dispatch")
     func asyncPolicyDenialThrowsSynchronously() async throws {
         // Given
-        let (method, authority) = makeDeniedMethod()
+        let (method, authority) = try makeDeniedMethod()
         let token = authority.mint(TokenClaims(principal: "system:rpc"))
         let specJSON: [String: Any] = [
-            "body": [["id": "x", "shell": ["command": ["/bin/echo", "nope"]]]],
+            "failing": ["nonzero_exit", "timeout"],
+            "body": [["let": "x", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/echo", "nope"], NSNull(), NSNull(), NSNull(), NSNull(), NSNull()]]]]],
         ]
         do {
             _ = try await method.handle(RPCRequest(
@@ -39,14 +40,15 @@ struct AsyncDispatchTests {
     @Test("Sync dispatch returns the completed result")
     func syncReturnsCompletedResult() async throws {
         // Given
-        let (method, authority) = makeMethod()
+        let (method, authority) = try makeMethod()
         let token = authority.mint(TokenClaims(principal: "system:rpc"))
         let specJSON: [String: Any] = [
+            "failing": ["nonzero_exit", "timeout"],
             "body": [
-                ["id": "x",
-                    "shell": ["command": ["/bin/echo", "done"]]],
+                ["let": "x", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/echo", "done"], NSNull(), NSNull(), NSNull(), NSNull(), NSNull()]]]],
             ],
-            "result": ["v": ["ref": "x"]],
+            "returns": "Dictionary<String, Any>",
+            "result": ["dictionary": [["v", ["ref": "x"]]]],
         ]
         let result = try await method.handle(RPCRequest(
                 id: "r-sync",
@@ -63,12 +65,12 @@ struct AsyncDispatchTests {
     @Test("Async dispatch returns immediately with running status")
     func asyncReturnsImmediatelyWithRunningStatus() async throws {
         // Given
-        let (method, authority) = makeMethod()
+        let (method, authority) = try makeMethod()
         let token = authority.mint(TokenClaims(principal: "system:rpc"))
         let specJSON: [String: Any] = [
+            "failing": ["nonzero_exit", "timeout"],
             "body": [
-                ["id": "slow",
-                    "shell": ["command": ["/bin/sleep", "0.3"]]],
+                ["let": "slow", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/sleep", "0.3"], NSNull(), NSNull(), NSNull(), NSNull(), NSNull()]]]],
             ],
         ]
         let startedAt = ContinuousClock.now
@@ -89,16 +91,16 @@ struct AsyncDispatchTests {
     }
     
     // MARK: - Private
-    private func makeMethod() -> (WorkflowDispatchMethod, TokenAuthority) {
-        makeMethod(policy: ["*": ["*"]])
+    private func makeMethod() throws -> (WorkflowDispatchMethod, TokenAuthority) {
+        try makeMethod(policy: ["*": ["*"]])
     }
 
-    private func makeDeniedMethod() -> (WorkflowDispatchMethod, TokenAuthority) {
-        makeMethod(policy: ["system:other": ["*"]])
+    private func makeDeniedMethod() throws -> (WorkflowDispatchMethod, TokenAuthority) {
+        try makeMethod(policy: ["system:other": ["*"]])
     }
 
-    private func makeMethod(policy: [String: [String]]) -> (WorkflowDispatchMethod, TokenAuthority) {
-        let store = SpecCatalog(directory: nil, loader: ForgeSpec.loader())
+    private func makeMethod(policy: [String: [String]]) throws -> (WorkflowDispatchMethod, TokenAuthority) {
+        let store = SpecCatalog(directory: nil, frontend: try ForgeSpec.frontend())
         let bus = WorkflowEventBus()
         let authority = TokenAuthority()
         let runner = SpecWorkflowRunner(catalog: store,

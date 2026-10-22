@@ -7,54 +7,34 @@
 
 import Foundation
 import Warp
-import WarpIR
 @testable import Forge
 
-// Warp runs images, not modules — a test that hands over a module is skipping
-// the link the daemon performs. Spelling the two steps once here keeps every
-// test on the same path production takes, without the ceremony.
-//
-// Forge's convention is one procedure per file, named after the file, so a test
-// module declares `entry` and starts from it.
 let entryName = "entry"
 
 extension Warp.Executor {
+    // Builds the module beside the others, the Forge module and the standard
+    // vocabulary, runs the entry, and returns the fields of the struct or map
+    // it returns. An optional parameter the inputs leave out is handed null.
     func run(
         _ module: Warp.Module,
         entry: String = entryName,
         beside others: [Warp.Module] = [],
-        inputs: [String: Warp.Value] = [:],
-        ambient: [String: Warp.Value] = [:]
+        inputs: [String: Warp.Value] = [:]
     ) async throws -> [String: Warp.Value] {
-        let world = [module] + others
+        let name = try Name(entry)
+        let image = try await Builder().build([module] + others + ForgeSpec.linkables())
+        var arguments: [Name: Warp.Value] = [:]
 
-        // The two modules every link needs, unless the caller already handed
-        // them over — a catalog supplies them, so adding them again would be a
-        // duplicate symbol rather than a convenience.
-        let supplied = Set(world.compactMap(\.name))
-        let vocabulary = ForgeSpec.linkables
-            .filter { module in !supplied.contains(module.name ?? "") }
-        let image = try ForgeSpec.loader().language.link(world + vocabulary, entry: entry)
-        let arguments = inputs.merging(ambient) { _, seeded in seeded }
-        let answer = try await run(image, arguments: arguments)
+        for (key, value) in inputs {
+            arguments[try Name(key)] = value
+        }
 
-        // A run answers one value; `outputs:` lowers to a record, so the fields
-        // of that record are what a test asking about named outputs means.
-        guard case .object(let outputs) = answer else { return [:] }
+        for parameter in module.procedures[name]?.signature.parameters ?? [] where arguments[parameter.name] == nil {
+            guard case .nullable = parameter.type else { continue }
 
-        return outputs
-    }
-}
+            arguments[parameter.name] = .null
+        }
 
-extension Loader {
-    // Most Forge tests are about a forge word, not about the envelope a module
-    // is written in, so they write a procedure's body and this names it.
-    func loadProcedure(_ text: String, named name: String = entryName) throws -> Warp.Module {
-        let body = text
-            .split(separator: "\n", omittingEmptySubsequences: false)
-            .map { line in line.isEmpty ? "" : "    \(line)" }
-            .joined(separator: "\n")
-
-        return try load("procedures:\n  \(name):\n\(body)")
+        return try ValueBridge.fields(try await run(image, entry: name, arguments: arguments))
     }
 }

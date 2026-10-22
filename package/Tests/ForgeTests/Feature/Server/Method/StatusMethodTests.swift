@@ -21,7 +21,7 @@ struct StatusMethodTests {
         // Given
         let home = try temporary.make("ok"); defer { try? FileManager.default.removeItem(at: home) }
         let socket = home.appendingPathComponent("forged.sock").path
-        let (method, authority) = makeMethod(home, socket: socket)
+        let (method, authority) = try makeMethod(home, socket: socket)
         let token = authority.mint(TokenClaims(principal: "system:admin"))
 
         // When
@@ -49,7 +49,7 @@ struct StatusMethodTests {
     func worksWithoutToken() async throws {
         // Given
         let home = try temporary.make("notok"); defer { try? FileManager.default.removeItem(at: home) }
-        let (method, _) = makeMethod(home, socket: home.appendingPathComponent("forged.sock").path)
+        let (method, _) = try makeMethod(home, socket: home.appendingPathComponent("forged.sock").path)
 
         // When
         let result = try await method.handle(request([:])).dict
@@ -72,7 +72,7 @@ struct StatusMethodTests {
             runtimeDirectory: home.appendingPathComponent("runtime"),
             bootedAt: .fixture,
             configSnapshot: ConfigSnapshot(report),
-            workflowStore: SpecCatalog(directory: nil, loader: ForgeSpec.loader()),
+            workflowStore: SpecCatalog(directory: nil, frontend: try ForgeSpec.frontend()),
             scheduleStore: ScheduleStore(
                 configDir: nil,
                 runtimeDirectory: nil,
@@ -95,14 +95,14 @@ struct StatusMethodTests {
 
     // MARK: - Private
     
-    private func makeMethod(_ home: URL, socket: String) -> (DaemonStatusMethod, TokenAuthority) {
+    private func makeMethod(_ home: URL, socket: String) throws -> (DaemonStatusMethod, TokenAuthority) {
         let authority = TokenAuthority()
         let method = DaemonStatusMethod(
             session: "test", socketPath: socket, runtimeDirectory: home.appendingPathComponent("runtime"),
             bootedAt: .fixture,
             configSnapshot: ConfigSnapshot((try? ConfigLoader.loadResolved(configPath: nil, sessionHome: home, environment: [:]).report)
                 ?? ConfigReport(tomlPath: nil, entries: [])),
-            workflowStore: SpecCatalog(directory: nil, loader: ForgeSpec.loader()),
+            workflowStore: SpecCatalog(directory: nil, frontend: try ForgeSpec.frontend()),
             scheduleStore: ScheduleStore(configDir: nil, runtimeDirectory: nil, stateFile: FileManager.default.temporaryDirectory.appendingPathComponent("forge-sched-enabled-\(UUID().uuidString.prefix(6)).json")),
             jobStore: JobStore(directory: nil),
             supervisor: ServiceSupervisor(services: [], runtimeDirectory: home, tokenAuthority: authority),

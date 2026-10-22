@@ -16,27 +16,19 @@ struct WorkflowDescribeTests {
 
     // MARK: - Initializer
     // MARK: - Test
-    @Test("Returns the declared input and output schema")
+    @Test("Returns the declared inputs and the return type")
     func returnsInputsAndOutputsSchema() async throws {
         // Given
         let (method, authority, directory) = try await makeMethod("schema")
         defer { try? FileManager.default.removeItem(at: directory) }
         try workflowFile(#"""
-        name: echo
-        description: test wf
-        parameters:
-          msg:
-            type: string
-            hint: message body
-          tag:
-            type: string
-            default: null
+        parameters: [ msg: String, tag: String? ]
+        failing: [nonzero_exit, timeout]
         body:
-          - id: x
-            shell:
-              command: ["/bin/echo", { ref: msg }]
-        result:
-          v: { ref: x }
+          - let: x
+            value: { call: { procedure: Forge.shell, arguments: [ ["/bin/echo", { ref: msg }], null, null, null, null, null ] } }
+        returns: "Dictionary<String, Any>"
+        result: { dictionary: [ [v, { ref: x }] ] }
         """#, named: "echo").write(to: directory.appendingPathComponent("echo.yaml"),
             atomically: true, encoding: .utf8)
         let token = authority.mint(TokenClaims(principal: "system:admin"))
@@ -46,30 +38,26 @@ struct WorkflowDescribeTests {
 
         // Then
         #expect(result.dict["name"] as? String == "echo")
-        #expect(result.dict["description"] as? String == "test wf")
         #expect(result.dict["source"] as? String == "echo.yaml")
         let inputs = result.dict["inputs"] as? [String: Any] ?? [:]
         let message = inputs["msg"] as? [String: Any] ?? [:]
-        #expect(message["type"] as? String == "string")
-        #expect(message["hint"] as? String == "message body")
+        #expect(message["type"] as? String == "String")
+        #expect(!message.keys.contains("default"))
         let tag = inputs["tag"] as? [String: Any] ?? [:]
-        #expect(tag.keys.contains("default"), "declaring default (even as null) makes this input optional")
-        let outputs = result.dict["outputs"] as? [String: Any] ?? [:]
-        let vForm = outputs["v"] as? [String: Any] ?? [:]
-        #expect(vForm["ref"] as? String == "x")
+        #expect(tag.keys.contains("default"), "an optional parameter is one a caller may leave out")
+        #expect(result.dict["returns"] as? String == "Dictionary<String, Any>")
     }
     
-    @Test("Absent schemas answer as empty objects, not null")
+    @Test("A workflow with no parameters answers empty inputs and returns Null")
     func emptyInputsAndOutputsAreEmptyObjects() async throws {
         // Given
         let (method, authority, directory) = try await makeMethod("empty")
         defer { try? FileManager.default.removeItem(at: directory) }
         try workflowFile(#"""
-        name: noop
+        failing: [nonzero_exit, timeout]
         body:
-          - id: x
-            shell:
-              command: ["/bin/true"]
+          - let: x
+            value: { call: { procedure: Forge.shell, arguments: [ ["/bin/true"], null, null, null, null, null ] } }
         """#, named: "noop").write(to: directory.appendingPathComponent("noop.yaml"),
             atomically: true, encoding: .utf8)
         let token = authority.mint(TokenClaims(principal: "system:admin"))
@@ -79,7 +67,7 @@ struct WorkflowDescribeTests {
 
         // Then
         #expect((result.dict["inputs"]  as? [String: Any])?.isEmpty == true)
-        #expect((result.dict["outputs"] as? [String: Any])?.isEmpty == true)
+        #expect(result.dict["returns"] as? String == "Null")
     }
     
     @Test("Throws when the name parameter is missing")
@@ -124,7 +112,7 @@ struct WorkflowDescribeTests {
     
     -> (WorkflowDescribeMethod, TokenAuthority, URL) {
         let directory = try temporary.make(test)
-        let store = SpecCatalog(directory: directory, loader: ForgeSpec.loader())
+        let store = SpecCatalog(directory: directory, frontend: try ForgeSpec.frontend())
         let authority = TokenAuthority()
         
         return (WorkflowDescribeMethod(store: store, tokenAuthority: authority), authority, directory)

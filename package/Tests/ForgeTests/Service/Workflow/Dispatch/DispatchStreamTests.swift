@@ -23,15 +23,17 @@ struct DispatchStreamTests {
     @Test("Streams events then emits a terminal result at the end")
     func streamsEventsThenTerminalResult() async throws {
         // Given
-        let (method, authority, _) = makeMethod()
+        let (method, authority, _) = try makeMethod()
         let token = authority.mint(TokenClaims(principal: "system:rpc"))
         let sink = CollectingSink()
         let specJSON: [String: Any] = [
+            "failing": ["nonzero_exit", "timeout"],
             "body": [
-                ["id": "one", "shell": ["command": ["/bin/echo", "a"]]],
-                ["id": "two", "shell": ["command": ["/bin/echo", "b"]]],
+                ["let": "one", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/echo", "a"], NSNull(), NSNull(), NSNull(), NSNull(), NSNull()]]]],
+                ["let": "two", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/echo", "b"], NSNull(), NSNull(), NSNull(), NSNull(), NSNull()]]]],
             ],
-            "result": ["v": ["ref": "two"]],
+            "returns": "Dictionary<String, Any>",
+            "result": ["dictionary": [["v", ["ref": "two"]]]],
         ]
         try await method.handle(RPCRequest(
                 id: "r-stream",
@@ -60,7 +62,8 @@ struct DispatchStreamTests {
         #expect(eventKinds.contains("workflow.completed"))
         let stepStarts = events.filter { event in (event["event"] as? String) == "step.started" }
         .compactMap { line in line["step"] as? String }
-        #expect(stepStarts == ["one", "two"])
+        .filter { step in !step.hasPrefix("[") }
+        #expect(stepStarts == ["one", "two"], "\(stepStarts)")
         let terminal = try #require(lines.last)
         #expect(terminal["kind"] as? String == "workflow.result")
         let result = try #require(terminal["result"] as? [String: Any])
@@ -72,11 +75,12 @@ struct DispatchStreamTests {
     @Test("Policy denial throws before the ack")
     func policyDenialThrowsBeforeAck() async throws {
         // Given
-        let (method, authority, _) = makeMethod(policySeed: ["system:other": ["*"]])
+        let (method, authority, _) = try makeMethod(policySeed: ["system:other": ["*"]])
         let token = authority.mint(TokenClaims(principal: "system:rpc"))
         let sink = CollectingSink()
         let specJSON: [String: Any] = [
-            "body": [["id": "x", "shell": ["command": ["/bin/echo", "nope"]]]],
+            "failing": ["nonzero_exit", "timeout"],
+            "body": [["let": "x", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/echo", "nope"], NSNull(), NSNull(), NSNull(), NSNull(), NSNull()]]]]],
         ]
         do {
             try await method.handle(RPCRequest(
@@ -98,11 +102,12 @@ struct DispatchStreamTests {
     @Test("Filters out foreign-node events even under the same root")
     func sameRootForeignNodeEventsFiltered() async throws {
         // Given
-        let (method, authority, bus) = makeMethod()
+        let (method, authority, bus) = try makeMethod()
         let token = authority.mint(TokenClaims(principal: "system:rpc"))
         let sink = CollectingSink()
         let specJSON: [String: Any] = [
-            "body": [["id": "slow", "shell": ["command": ["/bin/sleep", "0.3"]]]],
+            "failing": ["nonzero_exit", "timeout"],
+            "body": [["let": "slow", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/sleep", "0.3"], NSNull(), NSNull(), NSNull(), NSNull(), NSNull()]]]]],
         ]
         let handleTask = Task {
             try await method.handle(RPCRequest(
@@ -145,11 +150,12 @@ struct DispatchStreamTests {
     @Test("Unawaited runs are computed from the async edge")
     func unawaitedComputedFromAsyncEdge() async throws {
         // Given
-        let (method, authority, bus) = makeMethod()
+        let (method, authority, bus) = try makeMethod()
         let token = authority.mint(TokenClaims(principal: "system:rpc"))
         let sink = CollectingSink()
         let specJSON: [String: Any] = [
-            "body": [["id": "slow", "shell": ["command": ["/bin/sleep", "0.3"]]]],
+            "failing": ["nonzero_exit", "timeout"],
+            "body": [["let": "slow", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/sleep", "0.3"], NSNull(), NSNull(), NSNull(), NSNull(), NSNull()]]]]],
         ]
         let handleTask = Task {
             try await method.handle(RPCRequest(
@@ -193,7 +199,7 @@ struct DispatchStreamTests {
     @Test("Async dispatch marks the run as async")
     func asyncDispatchMarksRunAsync() async throws {
         // Given
-        let store = SpecCatalog(directory: nil, loader: ForgeSpec.loader())
+        let store = SpecCatalog(directory: nil, frontend: try ForgeSpec.frontend())
         let bus = WorkflowEventBus()
         let authority = TokenAuthority()
         let registry = WorkRegistry()
@@ -213,7 +219,8 @@ struct DispatchStreamTests {
         let (_, stream) = await bus.subscribe()
         let token = authority.mint(TokenClaims(principal: "system:rpc"))
         let specJSON: [String: Any] = [
-            "body": [["id": "one", "shell": ["command": ["/bin/echo", "a"]]]],
+            "failing": ["nonzero_exit", "timeout"],
+            "body": [["let": "one", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/echo", "a"], NSNull(), NSNull(), NSNull(), NSNull(), NSNull()]]]]],
         ]
         let ack = try await dispatchMethod.handle(RPCRequest(
                 id: "r-async", method: "workflow.dispatch",
@@ -233,11 +240,12 @@ struct DispatchStreamTests {
     @Test("A failed run emits a failed terminal event")
     func failedRunEmitsFailedTerminal() async throws {
         // Given
-        let (method, authority, _) = makeMethod()
+        let (method, authority, _) = try makeMethod()
         let token = authority.mint(TokenClaims(principal: "system:rpc"))
         let sink = CollectingSink()
         let specJSON: [String: Any] = [
-            "body": [["id": "boom", "shell": ["command": ["/usr/bin/false"]]]],
+            "failing": ["nonzero_exit", "timeout"],
+            "body": [["let": "boom", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/usr/bin/false"], NSNull(), NSNull(), NSNull(), NSNull(), NSNull()]]]]],
         ]
         try await method.handle(RPCRequest(
                 id: "r-fail",
@@ -259,7 +267,7 @@ struct DispatchStreamTests {
     @Test("The terminal event preserves the failure type instead of flattening it")
     func streamTerminalPreservesFailureType() async throws {
         // Given
-        let store = SpecCatalog(directory: nil, loader: ForgeSpec.loader())
+        let store = SpecCatalog(directory: nil, frontend: try ForgeSpec.frontend())
         let bus = WorkflowEventBus()
         let pool = WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: 1)
         try await pool.register(workflowID: "occupier", workflowName: "other", rootID: "occupier",
@@ -286,7 +294,8 @@ struct DispatchStreamTests {
                 id: "r-cap",
                 method: "workflow.dispatch_stream",
                 params: ["token": token,
-                    "spec": ["body": [["id": "x", "shell": ["command": ["/bin/echo", "hi"]]]]]]
+                    "spec": ["failing": ["nonzero_exit", "timeout"],
+            "body": [["let": "x", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/echo", "hi"], NSNull(), NSNull(), NSNull(), NSNull(), NSNull()]]]]]]]
             ), sink: sink)
         let lines = (await sink.snapshot()).map { line in line.dict }
 
@@ -300,12 +309,11 @@ struct DispatchStreamTests {
     }
 
     // MARK: - Private
-    private func makeMethod(policySeed: [String: [String]] = ["*": ["*"]])
-
+    private func makeMethod(policySeed: [String: [String]] = ["*": ["*"]]) throws
     -> (WorkflowDispatchStreamMethod, TokenAuthority, WorkflowEventBus)
 
     {
-        let store = SpecCatalog(directory: nil, loader: ForgeSpec.loader())
+        let store = SpecCatalog(directory: nil, frontend: try ForgeSpec.frontend())
         let bus = WorkflowEventBus()
         let authority = TokenAuthority()
         let registry = WorkRegistry()

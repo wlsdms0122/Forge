@@ -52,11 +52,10 @@ struct SchedulerFixture {
         return WorkflowFixture(
             name: name,
             yaml: """
-            name: \(name)
+            failing: [nonzero_exit, timeout]
             body:
-              - id: s
-                shell:
-                  command: ["/bin/sh", "-c", "\(script)"]
+              - let: s
+                value: { call: { procedure: Forge.shell, arguments: [ ["/bin/sh", "-c", "\(script)"], null, null, null, null, null ] } }
             """
         )
     }
@@ -75,8 +74,8 @@ struct SchedulerFixture {
         (try? String(contentsOf: marker, encoding: .utf8)) ?? ""
     }
 
-    func catalog(directory: URL?) -> SpecCatalog {
-        SpecCatalog(directory: directory, loader: ForgeSpec.loader())
+    func catalog(directory: URL?) throws -> SpecCatalog {
+        SpecCatalog(directory: directory, frontend: try ForgeSpec.frontend())
     }
 
     func runner(catalog: SpecCatalog) -> SpecWorkflowRunner {
@@ -118,7 +117,7 @@ struct SchedulerFixture {
             runtimeDirectory: try temporary.make("schedule-rt"),
             ids: seeds)
         let path = try ledgerPath ?? temporary.file("fire-ledger.json")
-        let workflowStore = catalog(directory: workflowDirectoryectory)
+        let workflowStore = try catalog(directory: workflowDirectoryectory)
 
         return WorkflowScheduler(
             workflowStore: workflowStore,
@@ -148,7 +147,7 @@ struct SchedulerFixture {
             runtimeDirectory: runtimeDirectory,
             ids: [(onceFileName as NSString).deletingPathExtension: Self.declaredWorkflow(onceYAML)])
         let ledger = FireLedger(path: try temporary.make("once-led").appendingPathComponent("l.json"))
-        let workflowStore = catalog(directory: workflowDirectoryectory)
+        let workflowStore = try catalog(directory: workflowDirectoryectory)
         let scheduler = WorkflowScheduler(
             workflowStore: workflowStore,
             store: store,

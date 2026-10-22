@@ -20,9 +20,11 @@ struct WorkflowLintTests {
     func staleTemplateStringFlagged() async throws {
         // Given
         let report = try check(named: "stale", yaml: """
+        returns: String
         body:
-          - id: greet
+          - let: greet
             value: "hello, ${who}"
+        result: { ref: greet }
         """)
 
         // Then
@@ -30,21 +32,13 @@ struct WorkflowLintTests {
         #expect(report.issues.contains { issue in issue.contains("${") }, "\(report.issues)")
     }
 
-    @Test("${} is legitimate in { value: } quotation, format templates, and prose fields")
+    @Test("${} is legitimate in a format template")
     func sanctionedSurfacesPass() async throws {
-        // Given — quotation carries literal ${} on purpose; format is the
-        // dialect's home; description/hint are prose
+        // Given
         let report = try check(named: "sanctioned", yaml: """
-        description: use ${x} spelling in templates
-        parameters:
-          who:
-            type: string
-            hint: interpolated via ${who}
-        body:
-          - id: greet
-            value: { format: "hi ${who}", with: { who: { ref: who } } }
-          - id: doc
-            value: { value: "literal ${kept} text" }
+        parameters: [ who: String ]
+        returns: String
+        result: { format: "hi ${who}", with: { who: { ref: who } } }
         """)
 
         // Then

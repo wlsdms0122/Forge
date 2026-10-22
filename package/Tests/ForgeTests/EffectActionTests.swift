@@ -8,7 +8,7 @@
 import Foundation
 import Testing
 import Warp
-import WarpIR
+import WarpYAML
 @testable import Forge
 
 private actor Recorder {
@@ -16,7 +16,7 @@ private actor Recorder {
     private(set) var shellRuns: [[String]] = []
     private(set) var prompts: [String] = []
     private(set) var sessions: [AgentSessionSettings] = []
-    private(set) var dispatches: [(name: String?, inputs: [String: Warp.Value])] = []
+    private(set) var dispatches: [(name: String, inputs: [String: Warp.Value])] = []
 
     // MARK: - Initializer
     // MARK: - Public
@@ -32,7 +32,7 @@ private actor Recorder {
         sessions.append(settings)
     }
 
-    func recordDispatch(name: String?, inputs: [String: Warp.Value]) {
+    func recordDispatch(name: String, inputs: [String: Warp.Value]) {
         dispatches.append((name, inputs))
     }
 
@@ -127,17 +127,13 @@ private struct MockDispatcher: RunDispatching {
     let result: Warp.Value
 
     // MARK: - Initializer
-    init(recorder: Recorder, result: Warp.Value = .object(["ok": .bool(true)])) {
+    init(recorder: Recorder, result: Warp.Value = .dictionary(Value.Dictionary(["ok": .bool(true)]))) {
         self.recorder = recorder
         self.result = result
     }
 
     // MARK: - Public
-    func dispatch(
-        name: String?,
-        inline: Warp.Value?,
-        inputs: [String: Warp.Value]
-    ) async throws -> Warp.Value {
+    func dispatch(name: String, inputs: [String: Warp.Value]) async throws -> Warp.Value {
         await recorder.recordDispatch(name: name, inputs: inputs)
 
         return result
@@ -174,25 +170,32 @@ private struct MockResources: ResourceReading {
 private struct Harness {
     // MARK: - Property
     let recorder = Recorder()
-    let loader = ForgeSpec.loader()
+    let frontend: YAMLFrontend
 
     // MARK: - Initializer
+    init() throws {
+        self.frontend = try ForgeSpec.frontend()
+    }
+
     // MARK: - Public
     func executor(
         shell: MockShell? = nil,
         agentReply: String = "agent-reply",
-        dispatchResult: Warp.Value = .object(["ok": .bool(true)]),
-        files: [String: String] = [:]
+        dispatchResult: Warp.Value = .dictionary(Value.Dictionary(["ok": .bool(true)])),
+        files: [String: String] = [:],
+        observer: (any ExecutionObserver)? = nil
     ) -> Warp.Executor {
-        loader.language.makeExecutor(
+        Warp.Executor(
+            observer: observer,
             environment: ForgeEnvironment(
                 shell: shell ?? MockShell(recorder: recorder),
                 agent: MockAgent(recorder: recorder, reply: agentReply),
                 dispatcher: MockDispatcher(recorder: recorder, result: dispatchResult),
                 resources: MockResources(files: files),
-                loader: loader,
                 pool: WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: Int.max),
-                runID: "wf-test"
+                runID: "wf-test",
+                rootID: "wf-root",
+                origin: .manual
             )
         )
     }
@@ -208,19 +211,24 @@ struct EffectActionTests {
     @Test("a shell step runs its command once references resolve")
     func shellRunsWhenReferencesResolve() async throws {
         // Given
-        let harness = Harness()
-        let spec = try harness.loader.loadProcedure("""
-        parameters:
-          who: string
+        let harness = try Harness()
+        let spec = try harness.frontend.workflow("""
+        parameters: [ who: String ]
+        returns: "Dictionary<String, Any>"
+        failing: [nonzero_exit, timeout]
         body:
-          - id: echo
-            shell:
-              command:
-                - echo
-                - { format: "hi ${who}", with: { who: { ref: who } } }
-              stdin: { ref: who }
-        result:
-          result: { ref: echo }
+          - let: echo
+            value:
+              call:
+                procedure: Forge.shell
+                arguments:
+                  - [ echo, { format: "hi ${who}", with: { who: { ref: who } } } ]
+                  - null
+                  - null
+                  - { ref: who }
+                  - null
+                  - null
+        result: { dictionary: [ [result, { ref: echo }] ] }
         """)
         let sut = harness.executor(
             shell: MockShell(recorder: harness.recorder, stdout: "done\n")
@@ -234,24 +242,25 @@ struct EffectActionTests {
         #expect(await harness.recorder.shellRuns == [["echo", "hi spec", "<spec"]])
     }
 
-    @Test("a nonzero exit code is absorbed by a step that declares rescue")
+    @Test("a nonzero exit code is absorbed by an attempt's rescue")
     func nonzeroExitRescuesWhenStepDeclaresCatch() async throws {
         // Given — a nonzero exit is the world's failure, so rescue absorbs it
-        let harness = Harness()
-        let spec = try harness.loader.loadProcedure("""
+        let harness = try Harness()
+        let spec = try harness.frontend.workflow("""
+        returns: "Dictionary<String, Any>"
         body:
-          - id: broken
-            attempt:
-              body:
-                - id: broken
-                  shell:
-                    command: [false]
-              rescue:
+          - var: broken
+            type: String
+            value: ""
+          - let: attempted
+            value:
+              attempt:
                 body:
-                  - id: recovery
+                  - value: { call: { procedure: Forge.shell, arguments: [ [ "false" ], null, null, null, null, null ] } }
+                rescue:
+                  - set: broken
                     value: recovered
-        result:
-          result: { ref: broken }
+        result: { dictionary: [ [result, { ref: broken }] ] }
         """)
         let sut = harness.executor(
             shell: MockShell(recorder: harness.recorder, exitCode: 1)
@@ -267,16 +276,25 @@ struct EffectActionTests {
     @Test("when shell declares outputs, values are extracted from stdout")
     func outputsExtractWhenShellDeclaresThem() async throws {
         // Given
-        let harness = Harness()
-        let spec = try harness.loader.loadProcedure("""
+        let harness = try Harness()
+        let spec = try harness.frontend.workflow("""
+        returns: "Dictionary<String, Any>"
+        failing: [nonzero_exit, timeout, cast_refused]
         body:
-          - id: probe
-            shell:
-              command: [probe]
-              outputs:
-                code: { regex: "code=(\\\\d+)", type: int }
-        result:
-          result: { ref: probe.code }
+          - let: probe
+            value:
+              call:
+                procedure: Forge.shell
+                arguments:
+                  - [ probe ]
+                  - null
+                  - null
+                  - null
+                  - { dictionary: [ [code, { dictionary: [ [regex, "code=(\\\\d+)"], [type, int] ] }] ] }
+                  - null
+          - let: fields
+            value: { as: { of: { ref: probe }, type: "Dictionary<String, Any>" } }
+        result: { dictionary: [ [result, { ref: 'fields["code"]' }] ] }
         """)
         let sut = harness.executor(
             shell: MockShell(recorder: harness.recorder, stdout: "code=42")
@@ -292,22 +310,22 @@ struct EffectActionTests {
     @Test("when shell exceeds its timeout, rescue recovers it")
     func timeoutRescuesWhenShellRunsLate() async throws {
         // Given
-        let harness = Harness()
-        let spec = try harness.loader.loadProcedure("""
+        let harness = try Harness()
+        let spec = try harness.frontend.workflow("""
+        returns: "Dictionary<String, Any>"
         body:
-          - id: slow
-            attempt:
-              body:
-                - id: slow
-                  shell:
-                    command: [sleepy]
-                    timeout: 0.05
-              rescue:
+          - var: slow
+            type: String
+            value: ""
+          - let: attempted
+            value:
+              attempt:
                 body:
-                  - id: recovery
+                  - value: { call: { procedure: Forge.shell, arguments: [ [ sleepy ], null, null, null, null, 0.05 ] } }
+                rescue:
+                  - set: slow
                     value: recovered
-        result:
-          result: { ref: slow }
+        result: { dictionary: [ [result, { ref: slow }] ] }
         """)
         let sut = harness.executor(
             shell: MockShell(recorder: harness.recorder, delaySeconds: 5)
@@ -323,20 +341,31 @@ struct EffectActionTests {
     @Test("when invoke opens a session, agent steps converse over it")
     func agentSpeaksWhenInvokeOpensSession() async throws {
         // Given
-        let harness = Harness()
-        let spec = try harness.loader.loadProcedure("""
-        parameters:
-          topic: string
+        let harness = try Harness()
+        let spec = try harness.frontend.workflow("""
+        parameters: [ topic: String ]
+        returns: "Dictionary<String, Any>"
+        failing: anything
         body:
-          - id: session
-            invoke:
-              model: claude:opus
-              body:
-                - id: turn
-                  agent: { format: "tell me about ${topic}", with: { topic: { ref: topic } } }
-              result: { ref: turn }
-        result:
-          result: { ref: session }
+          - let: session
+            value:
+              call:
+                procedure: Forge.invoke
+                arguments:
+                  - claude:opus
+                  - null
+                  - null
+                  - null
+                  - null
+                  - null
+                  - null
+                  - closure:
+                      returns: String
+                      result:
+                        call:
+                          procedure: Forge.agent
+                          arguments: [ { format: "tell me about ${topic}", with: { topic: { ref: topic } } } ]
+        result: { dictionary: [ [result, { ref: session }] ] }
         """)
         let sut = harness.executor(agentReply: "sure!")
 
@@ -352,11 +381,10 @@ struct EffectActionTests {
     @Test("with no open session, an agent step fails")
     func agentFailsWhenNoSessionIsOpen() async throws {
         // Given — an agent step outside invoke is an authoring error
-        let harness = Harness()
-        let spec = try harness.loader.loadProcedure("""
-        body:
-          - id: turn
-            agent: "hello?"
+        let harness = try Harness()
+        let spec = try harness.frontend.workflow("""
+        returns: String
+        result: { call: { procedure: Forge.agent, arguments: [ "hello?" ] } }
         """)
         let sut = harness.executor()
 
@@ -369,202 +397,42 @@ struct EffectActionTests {
     @Test("when the daemon responds, dispatch delegates execution")
     func dispatchDelegatesWhenDaemonAnswers() async throws {
         // Given
-        let harness = Harness()
-        let spec = try harness.loader.loadProcedure("""
-        parameters:
-          job: string
+        let harness = try Harness()
+        let spec = try harness.frontend.workflow("""
+        parameters: [ job: String ]
+        returns: "Dictionary<String, Any>"
+        failing: [child_run_failed, timeout]
         body:
-          - id: child
-            dispatch:
-              name: worker
-              inputs:
-                job_id: { ref: job }
-        result:
-          result: { ref: child.ok }
+          - let: child
+            value: { call: { procedure: Forge.dispatch, arguments: [ worker, { dictionary: [ [job_id, { ref: job }] ] }, null ] } }
+        result: { dictionary: [ [result, { ref: 'child["ok"]' }] ] }
         """)
-        let sut = harness.executor(dispatchResult: .object(["ok": .bool(true)]))
+        let sut = harness.executor()
 
         // When
         let outputs = try await sut.run(spec, inputs: ["job": .string("j-1")])
 
         // Then
         #expect(outputs["result"] == .bool(true))
-
         let dispatched = await harness.recorder.dispatches
-
         #expect(dispatched.count == 1)
         #expect(dispatched.first?.name == "worker")
         #expect(dispatched.first?.inputs == ["job_id": .string("j-1")])
     }
 
-    @Test("an invalid inline dispatch spec is rejected at load time")
-    func loadRejectsWhenInlineDispatchSpecIsMalformed() {
-        // Given — a broken inline target fails the load, not the run
-        let harness = Harness()
-        let yaml = """
-        body:
-          - id: child
-            dispatch:
-              spec:
-                body:
-                  - id: x
-                    value: ok
-                    fallbck: typo
-        """
+    @Test("an invalid inline spec is refused when it is read, before it runs")
+    func inlineRejectsWhenSpecIsMalformed() throws {
+        // Given — the inline door reads one procedure in the YAML notation
+        let store = SpecCatalog(directory: nil, frontend: try ForgeSpec.frontend())
+        let spec = try YAMLParser().parse("""
+        returns: String
+        result: ok
+        fallbck: typo
+        """)
 
         // When / Then
-        #expect(throws: DecodingError.self) {
-            try harness.loader.loadProcedure(yaml)
-        }
-    }
-
-    @Test("steps passed as data run once dynamic lowers them")
-    func carriedStepsRunWhenDynamicLowersThem() async throws {
-        // Given — steps arrive as data through the signature, as bot-invoke does
-        let harness = Harness()
-        let spec = try harness.loader.loadProcedure("""
-        parameters:
-          steps: array
-        body:
-          - id: x
-            dynamic:
-              compose:
-                - { ref: steps }
-        result:
-          result: { ref: x }
-        """)
-        let sut = harness.executor()
-        let carried = Warp.Value.array([
-            .object(["id": .string("first"), "value": .string("lowered")]),
-            .object(["id": .string("second"), "value": .object([
-                "format": .string("${text}!"),
-                "with": .object(["text": .object(["ref": .string("first")])])
-            ])])
-        ])
-
-        // When
-        let outputs = try await sut.run(spec, inputs: ["steps": carried])
-
-        // Then — default output is the last lowered step's output
-        #expect(outputs["result"] == .string("lowered!"))
-    }
-
-    @Test("a dynamic output sees both the enclosing scope and the fragment results")
-    func dynamicOutputSeesAmbientAndFragmentResults() async throws {
-        // Given — output is authored in the enclosing spec: it reads the
-        // ambient scope plus the fragment's step results, even though the
-        // fragment itself runs closed
-        let harness = Harness()
-        let spec = try harness.loader.loadProcedure("""
-        parameters:
-          steps: array
-        body:
-          - id: seed
-            value: ambient
-          - id: x
-            dynamic:
-              compose:
-                - { ref: steps }
-              result:
-                outer: { ref: seed }
-                inner: { ref: first }
-        result:
-          result: { ref: x }
-        """)
-        let sut = harness.executor()
-        let carried = Warp.Value.array([
-            .object(["id": .string("first"), "value": .string("lowered")])
-        ])
-
-        // When
-        let outputs = try await sut.run(spec, inputs: ["steps": carried])
-
-        // Then
-        #expect(outputs["result"] == .object([
-            "outer": .string("ambient"),
-            "inner": .string("lowered")
-        ]))
-    }
-
-    @Test("an output referencing an invisible head is rejected before the fragment runs")
-    func dynamicOutputRejectsBeforeRunningWhenHeadIsInvisible() async throws {
-        // Given — an output naming nothing visible fails before the fragment's
-        // side effects run
-        let harness = Harness()
-        let spec = try harness.loader.loadProcedure("""
-        parameters:
-          steps: array
-        body:
-          - id: x
-            dynamic:
-              compose:
-                - { ref: steps }
-              result: { ref: nowhere }
-        """)
-        let sut = harness.executor()
-        let carried = Warp.Value.array([
-            .object(["id": .string("first"), "value": .string("lowered")])
-        ])
-
-        // When / Then
-        do {
-            _ = try await sut.run(spec, inputs: ["steps": carried])
-            Issue.record("expected ExecutionError")
-        } catch let error as ExecutionError {
-            #expect(error.message.contains("nowhere"), "\(error)")
-        }
-    }
-
-    @Test("a lowered step whose id claims a reserved head is rejected")
-    func loweredStepsRejectWhenIdClaimsReservedHead() async throws {
-        // Given — steps arriving as data pass the same gate loaded ones do; an
-        // id of `run` would be silently shadowed by the context namespace
-        let harness = Harness()
-        let spec = try harness.loader.loadProcedure("""
-        parameters:
-          steps: array
-        body:
-          - id: x
-            dynamic:
-              compose:
-                - { ref: steps }
-        """)
-        let sut = harness.executor()
-        let carried = Warp.Value.array([
-            .object(["id": .string("run"), "value": .string("shadowed")])
-        ])
-
-        // When / Then
-        await #expect(throws: ExecutionError.self) {
-            try await sut.run(spec, inputs: ["steps": carried])
-        }
-    }
-
-    @Test("when forge's vocabulary is extended, inline dispatch uses the same vocabulary")
-    func inlineDispatchSpeaksWhenHostVocabularyExtends() throws {
-        // Given — the inline body lowers through the loader this file is decoded
-        // with, so a custom atom valid outside is valid inside too
-        let loader = Loader(registry: ForgeSpec.loader().registry)
-        let yaml = """
-        body:
-          - id: child
-            dispatch:
-              spec:
-                parameters:
-                  title: string
-                body:
-                  - id: gated
-                    branch:
-                      when: { of: { ref: title }, ends_with: "!" }
-                      then:
-                        body:
-                          - id: taken
-                            value: ok
-        """
-
-        // When / Then
-        #expect(throws: Never.self) {
-            try loader.loadProcedure(yaml)
+        #expect(throws: (any Error).self) {
+            try store.inline(spec)
         }
     }
 
@@ -572,18 +440,15 @@ struct EffectActionTests {
     func resourceRendersWhenInputsComeFromScope() async throws {
         // Given — the resource is a runtime value source: its inputs are live
         // step outputs
-        let harness = Harness()
-        let spec = try harness.loader.loadProcedure("""
+        let harness = try Harness()
+        let spec = try harness.frontend.workflow("""
+        returns: "Dictionary<String, Any>"
         body:
-          - id: axes
+          - let: axes
             value: "tech, persona"
-          - id: prompt
-            resource:
-              content: prompt/enrich.md
-              inputs:
-                axes: { ref: axes }
-        result:
-          result: { ref: prompt }
+          - let: prompt
+            value: { call: { procedure: Forge.resource, arguments: [ prompt/enrich.md, { dictionary: [ [axes, { ref: axes }] ] } ] } }
+        result: { dictionary: [ [result, { ref: prompt }] ] }
         """)
         let sut = harness.executor(files: [
             "prompt/enrich.md": "# enrich\naxes: ${axes}"
@@ -596,18 +461,17 @@ struct EffectActionTests {
         #expect(outputs["result"] == .string("# enrich\naxes: tech, persona"))
     }
 
-    @Test("resource path locates the file without rendering it")
+    @Test("locate finds a resource file without rendering it")
     func resourcePathLocatesWithoutRendering() async throws {
         // Given — the body holds shell syntax that is not template dialect;
         // locating must never read or render it
-        let harness = Harness()
-        let spec = try harness.loader.loadProcedure("""
+        let harness = try Harness()
+        let spec = try harness.frontend.workflow("""
+        returns: "Dictionary<String, Any>"
         body:
-          - id: script
-            resource:
-              path: script/run.sh
-        result:
-          where: { ref: script }
+          - let: script
+            value: { call: { procedure: Forge.locate, arguments: [ script/run.sh ] } }
+        result: { dictionary: [ [where, { ref: script }] ] }
         """)
         let sut = harness.executor(files: [
             "script/run.sh": "#!/bin/sh\necho \"$PATH\""
@@ -620,45 +484,35 @@ struct EffectActionTests {
         #expect(outputs["where"] == .string("/resource-root/script/run.sh"))
     }
 
-    @Test("resource path with inputs is rejected at load")
-    func resourcePathRejectsInputs() throws {
-        // Given
-        let harness = Harness()
-        let yaml = """
-        body:
-          - id: script
-            resource:
-              path: script/run.sh
-              inputs: { who: world }
-        """
-
-        // When / Then — a location does not render, so inputs mean nothing there
-        #expect(throws: DecodingError.self) {
-            try harness.loader.loadProcedure(yaml)
-        }
-    }
-
     @Test("a rescue reads the shell failure as a value")
     func rescueReadsShellFailurePayload() async throws {
         // Given
-        let harness = Harness()
-        let spec = try harness.loader.loadProcedure("""
+        let harness = try Harness()
+        let spec = try harness.frontend.workflow("""
+        returns: "Dictionary<String, Any>"
         body:
-          - id: risky
-            attempt:
-              body:
-                - id: risky
-                  shell:
-                    command: [fail-tool]
-              rescue:
+          - var: kind
+            type: Any
+            value: null
+          - var: code
+            type: Any
+            value: null
+          - var: said
+            type: Any
+            value: null
+          - let: risky
+            value:
+              attempt:
                 body:
-                  - id: why
-                    value:
-                      code: { ref: risky.exit_code }
-                      said: { ref: risky.stderr }
-        result:
-          code: { ref: risky.code }
-          said: { ref: risky.said }
+                  - value: { call: { procedure: Forge.shell, arguments: [ [ fail-tool ], null, null, null, null, null ] } }
+                rescue:
+                  - set: kind
+                    value: { ref: risky.type }
+                  - set: code
+                    value: { ref: 'risky.details["exit_code"]' }
+                  - set: said
+                    value: { ref: 'risky.details["stderr"]' }
+        result: { dictionary: [ [kind, { ref: kind }], [code, { ref: code }], [said, { ref: said }] ] }
         """)
         let sut = harness.executor(shell: MockShell(
             recorder: harness.recorder,
@@ -669,8 +523,8 @@ struct EffectActionTests {
         // When
         let outputs = try await sut.run(spec)
 
-        // Then — the failure was a value inside the rescue, and the step's
-        // final binding is the rescue's output, not the payload
+        // Then
+        #expect(outputs["kind"] == .string("nonzero_exit"))
         #expect(outputs["code"] == .int(3))
         #expect(outputs["said"] == .string("boom"))
     }
@@ -678,7 +532,7 @@ struct EffectActionTests {
     @Test("a call resolves against the modules the catalog hands to the link")
     func catalogSuppliesTheLinkSet() async throws {
         // Given
-        let harness = Harness()
+        let harness = try Harness()
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("forge-spec-store-\(UUID().uuidString)")
 
@@ -689,29 +543,22 @@ struct EffectActionTests {
         defer { try? FileManager.default.removeItem(at: directory) }
 
         try workflowFile("""
-        parameters:
-          base: int
-        body:
-          - id: echo
-            value: { ref: base }
-        result:
-          doubled: { ref: base }
+        parameters: [ base: Int ]
+        returns: "Dictionary<String, Any>"
+        result: { dictionary: [ [doubled, { ref: base }] ] }
         """, named: "callee").write(
             to: directory.appendingPathComponent("callee.yaml"),
             atomically: true,
             encoding: .utf8
         )
 
-        let store = SpecCatalog(directory: directory, loader: harness.loader)
-        let caller = try harness.loader.loadProcedure("""
+        let store = SpecCatalog(directory: directory, frontend: harness.frontend)
+        let caller = try harness.frontend.workflow("""
+        returns: "Dictionary<String, Any>"
         body:
-          - id: call
-            call:
-              procedure: callee
-              arguments:
-                base: 21
-        result:
-          result: { ref: call.doubled }
+          - let: called
+            value: { call: { procedure: callee, arguments: [ 21 ] } }
+        result: { dictionary: [ [result, { ref: 'called["doubled"]' }] ] }
         """)
         let sut = harness.executor()
 
@@ -726,22 +573,26 @@ struct EffectActionTests {
     @Test("when a step runs, events flow through the bridge")
     func eventsBridgeWhenStepsRun() async throws {
         // Given
-        let harness = Harness()
+        let harness = try Harness()
         let collected = Collected()
-        let spec = try harness.loader.loadProcedure("""
+        let spec = try harness.frontend.workflow("""
+        returns: "Dictionary<String, Any>"
         body:
-          - id: fine
+          - let: fine
             value: ok
-          - id: fragile
-            attempt:
-              body:
-                - id: broken
-                  shell:
-                    command: [broken]
-              rescue:
+          - var: recovered
+            type: String
+            value: ""
+          - let: fragile
+            value:
+              attempt:
                 body:
-                  - id: recovery
+                  - let: broken
+                    value: { call: { procedure: Forge.shell, arguments: [ [ broken ], null, null, null, null, null ] } }
+                rescue:
+                  - set: recovered
                     value: recovered
+        result: { dictionary: [ [fine, { ref: fine }], [recovered, { ref: recovered }] ] }
         """)
         let bridge = EventBridge(
             workflowID: "wf-test",
@@ -749,17 +600,9 @@ struct EffectActionTests {
         ) { event in
             await collected.append(event)
         }
-        let sut = harness.loader.language.makeExecutor(
-            observer: bridge,
-            environment: ForgeEnvironment(
-                shell: MockShell(recorder: harness.recorder, exitCode: 1),
-                agent: MockAgent(recorder: harness.recorder),
-                dispatcher: MockDispatcher(recorder: harness.recorder),
-                resources: MockResources(files: [:]),
-                loader: harness.loader,
-                pool: WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: Int.max),
-                runID: "wf-test"
-            )
+        let sut = harness.executor(
+            shell: MockShell(recorder: harness.recorder, exitCode: 1),
+            observer: bridge
         )
 
         // When
@@ -774,23 +617,17 @@ struct EffectActionTests {
 
         #expect(kinds.contains("fine:stepCompleted"))
         #expect(kinds.contains("fragile:stepFailed"))
+        #expect(kinds.contains("broken:stepStarted"))
 
         let rescuedEvents = await collected.events.filter { event in
             event.stepID == "fragile" && event.kind == .stepCompleted
         }
 
         #expect(rescuedEvents.first?.absorbed == true)
-
-        // The ledger names a step by the word the spec wrote, not by the Swift
-        // type behind it — the language reports the action and forge names it.
-        let started = await collected.events.filter { event in
-            event.kind == .stepStarted
-        }
-
-        #expect(started.first { event in event.stepID == "fine" }?.action == "value")
-        #expect(started.first { event in event.stepID == "broken" }?.action == "forge.shell")
-        #expect(started.first { event in event.stepID == "fragile" }?.action == "attempt")
     }
+
+    // MARK: - Public
+    // MARK: - Private
 }
 
 private actor Collected {

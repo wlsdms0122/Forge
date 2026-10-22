@@ -16,10 +16,12 @@ struct WorkflowDispatchTests {
 
     private var anonSpec: [String: Any] {
         [
+            "failing": ["nonzero_exit", "timeout"],
             "body": [
-                ["id": "x", "shell": ["command": ["/bin/echo", "ok"]]],
+                ["let": "x", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/echo", "ok"], NSNull(), NSNull(), NSNull(), NSNull(), NSNull()]]]],
             ],
-            "result": ["v": ["ref": "x"]],
+            "returns": "Dictionary<String, Any>",
+            "result": ["dictionary": [["v", ["ref": "x"]]]],
         ]
     }
 
@@ -125,7 +127,7 @@ struct WorkflowDispatchTests {
             Issue.record("A malformed spec should be rejected")
         } catch let error as ProtocolError {
             #expect(error.message.contains("body[0]"), "JSON path notation: \(error.message)")
-            #expect(error.message.contains("'id'"), "Missing key named explicitly: \(error.message)")
+            #expect(error.message.contains("shell"), "Unknown key named explicitly: \(error.message)")
             #expect(!error.message.contains("CodingKeys"), "Raw Swift errors must not leak: \(error.message)")
         }
     }
@@ -136,8 +138,9 @@ struct WorkflowDispatchTests {
         let (method, authority, _) = try await makeMethod(policy: ["*": ["*"]])
         let token = authority.mint(TokenClaims(principal: "cli:test"))
         let badSpec: [String: Any] = [
+            "failing": ["nonzero_exit", "timeout"],
             "body": [
-                ["id": "a", "shell": ["command": ["/bin/echo", ["ref": "nonexistent"]]]],
+                ["let": "a", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/echo", ["ref": "nonexistent"]], NSNull(), NSNull(), NSNull(), NSNull(), NSNull()]]]],
             ],
         ]
         do {
@@ -231,7 +234,7 @@ struct WorkflowDispatchTests {
         defer { try? FileManager.default.removeItem(at: directory) }
         try echoWorkflowYAML(name: "echo2").write(
             to: directory.appendingPathComponent("echo2.yaml"), atomically: true, encoding: .utf8)
-        let store = SpecCatalog(directory: directory, loader: ForgeSpec.loader())
+        let store = SpecCatalog(directory: directory, frontend: try ForgeSpec.frontend())
         let authority = TokenAuthority()
         let registry = WorkRegistry()
         let runner = SpecWorkflowRunner(
@@ -262,12 +265,12 @@ struct WorkflowDispatchTests {
 
     private func echoWorkflowYAML(name: String) -> String {
         workflowFile("""
+        failing: [nonzero_exit, timeout]
         body:
-          - id: x
-            shell:
-              command: ["/bin/echo", "ok"]
-        result:
-          v: { ref: x }
+          - let: x
+            value: { call: { procedure: Forge.shell, arguments: [ ["/bin/echo", "ok"], null, null, null, null, null ] } }
+        returns: "Dictionary<String, Any>"
+        result: { dictionary: [ [v, { ref: x }] ] }
         """, named: name)
     }
 
@@ -276,7 +279,7 @@ struct WorkflowDispatchTests {
     -> (WorkflowDispatchMethod, TokenAuthority, WorkRegistry) {
         let directory = try temporary.make("wf")
         try echoWorkflowYAML(name: "echo").write(to: directory.appendingPathComponent("echo.yaml"), atomically: true, encoding: .utf8)
-        let store = SpecCatalog(directory: directory, loader: ForgeSpec.loader())
+        let store = SpecCatalog(directory: directory, frontend: try ForgeSpec.frontend())
         let authority = TokenAuthority()
         let registry = WorkRegistry()
         let runner = SpecWorkflowRunner(

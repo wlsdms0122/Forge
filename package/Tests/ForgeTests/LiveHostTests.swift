@@ -8,7 +8,6 @@
 import Foundation
 import Testing
 import Warp
-import WarpIR
 @testable import Forge
 
 // MARK: - Recording backend
@@ -225,15 +224,9 @@ struct SpecWorkflowRunnerTests {
         // Given
         let harness = try makeRunner(catalog: [
             "hello": """
-            name: hello
-            parameters:
-              msg:
-                type: string
-            body:
-              - id: greet
-                value: { format: "hi ${msg}", with: { msg: { ref: msg } } }
-            result:
-              text: { ref: greet }
+            parameters: [ msg: String ]
+            returns: "Dictionary<String, Any>"
+            result: { dictionary: [ [text, { format: "hi ${msg}", with: { msg: { ref: msg } } }] ] }
             """
         ])
         let module = try await harness.store.module(named: "hello")
@@ -256,13 +249,12 @@ struct SpecWorkflowRunnerTests {
         // Given
         let harness = try makeRunner(catalog: [
             "say": """
-            name: say
+            returns: "Dictionary<String, Any>"
+            failing: [nonzero_exit, timeout]
             body:
-              - id: say
-                shell:
-                  command: ["/bin/echo", "ok"]
-            result:
-              out: { ref: say }
+              - let: say
+                value: { call: { procedure: Forge.shell, arguments: [ ["/bin/echo", "ok"], null, null, null, null, null ] } }
+            result: { dictionary: [ [out, { ref: say }] ] }
             """
         ])
         let module = try await harness.store.module(named: "say")
@@ -272,13 +264,10 @@ struct SpecWorkflowRunnerTests {
 
         // Then
         #expect(result.status == .ok)
-
-        guard case .string(let out)? = result.outputs["out"] else {
+        guard case let .string(out)? = result.outputs["out"] else {
             Issue.record("must be a string output: \(String(describing: result.outputs["out"]))")
-
             return
         }
-
         #expect(out.contains("ok"))
     }
 
@@ -287,16 +276,23 @@ struct SpecWorkflowRunnerTests {
         // Given
         let harness = try makeRunner(catalog: [
             "ask": """
-            name: ask
+            returns: "Dictionary<String, Any>"
+            failing: anything
             body:
-              - id: session
-                invoke:
-                  model: claude
-                  body:
-                    - id: q
-                      agent: "hello"
-            result:
-              reply: { ref: session }
+              - let: session
+                value:
+                  call:
+                    procedure: Forge.invoke
+                    arguments:
+                      - claude
+                      - null
+                      - null
+                      - null
+                      - null
+                      - null
+                      - null
+                      - { closure: { returns: String, result: { call: { procedure: Forge.agent, arguments: [ hello ] } } } }
+            result: { dictionary: [ [reply, { ref: session }] ] }
             """
         ])
         let module = try await harness.store.module(named: "ask")
@@ -314,10 +310,9 @@ struct SpecWorkflowRunnerTests {
         // Given
         let harness = try makeRunner(catalog: [
             "boom": """
-            name: boom
+            failing: [aborted]
             body:
-              - id: stop
-                abort: "boom reason"
+              - value: { abort: "boom reason" }
             """
         ])
         let module = try await harness.store.module(named: "boom")
@@ -337,26 +332,17 @@ struct SpecWorkflowRunnerTests {
         let harness = try makeRunner(
             catalog: [
                 "parent": """
-                name: parent
+                returns: "Dictionary<String, Any>"
+                failing: [child_run_failed, timeout]
                 body:
-                  - id: call
-                    dispatch:
-                      name: child
-                      inputs:
-                        msg: hello
-                result:
-                  got: { ref: call.echo }
+                  - let: call
+                    value: { call: { procedure: Forge.dispatch, arguments: [ child, { dictionary: [ [msg, hello] ] }, null ] } }
+                result: { dictionary: [ [got, { ref: 'call["echo"]' }] ] }
                 """,
                 "child": """
-                name: child
-                parameters:
-                  msg:
-                    type: string
-                body:
-                  - id: reply
-                    value: { format: "child got ${msg}", with: { msg: { ref: msg } } }
-                result:
-                  echo: { ref: reply }
+                parameters: [ msg: String ]
+                returns: "Dictionary<String, Any>"
+                result: { dictionary: [ [echo, { format: "child got ${msg}", with: { msg: { ref: msg } } }] ] }
                 """
             ],
             policy: ["cli:parent": ["parent", "child"]]
@@ -377,24 +363,22 @@ struct SpecWorkflowRunnerTests {
         let harness = try makeRunner(
             catalog: [
                 "parent": """
-                name: parent
                 body:
-                  - id: call
-                    attempt:
-                      body:
-                        - id: call
-                          dispatch:
-                            name: child
-                      rescue:
+                  - var: absorbed
+                    type: String
+                    value: ""
+                  - let: call
+                    value:
+                      attempt:
                         body:
-                          - id: absorb
-                            value: "swallowed"
+                          - value: { call: { procedure: Forge.dispatch, arguments: [ child, null, null ] } }
+                        rescue:
+                          - set: absorbed
+                            value: swallowed
                 """,
                 "child": """
-                name: child
-                body:
-                  - id: noop
-                    value: ok
+                returns: String
+                result: ok
                 """
             ],
             policy: ["cli:parent": ["parent"]]
@@ -415,26 +399,25 @@ struct SpecWorkflowRunnerTests {
         let harness = try makeRunner(
             catalog: [
                 "parent": """
-                name: parent
+                returns: "Dictionary<String, Any>"
                 body:
-                  - id: call
-                    attempt:
-                      body:
-                        - id: call
-                          dispatch:
-                            name: boom
-                      rescue:
+                  - var: got
+                    type: String
+                    value: ""
+                  - let: call
+                    value:
+                      attempt:
                         body:
-                          - id: absorb
-                            value: "rescued"
-                result:
-                  got: { ref: call }
+                          - value: { call: { procedure: Forge.dispatch, arguments: [ boom, null, null ] } }
+                        rescue:
+                          - set: got
+                            value: rescued
+                result: { dictionary: [ [got, { ref: got }] ] }
                 """,
                 "boom": """
-                name: boom
+                failing: [aborted]
                 body:
-                  - id: stop
-                    abort: "child gave up"
+                  - value: { abort: "child gave up" }
                 """
             ],
             policy: ["cli:parent": ["parent", "boom"]]
@@ -455,17 +438,13 @@ struct SpecWorkflowRunnerTests {
         let harness = try makeRunner(
             catalog: [
                 "parent": """
-                name: parent
+                failing: [child_run_failed, timeout]
                 body:
-                  - id: call
-                    dispatch:
-                      name: child
+                  - value: { call: { procedure: Forge.dispatch, arguments: [ child, null, null ] } }
                 """,
                 "child": """
-                name: child
-                body:
-                  - id: noop
-                    value: ok
+                returns: "Dictionary<String, Any>"
+                result: { dictionary: [ [said, ok] ] }
                 """
             ],
             policy: ["cli:parent": ["parent", "child"]]
@@ -478,36 +457,43 @@ struct SpecWorkflowRunnerTests {
 
         // Then
         #expect(result.status == .ok)
-
         var seen: [String] = []
-
         for await event in stream {
             seen.append("\(event.workflowName):\(event.kind)")
-
-            if event.workflowName == "parent" && event.kind == .workflowCompleted { break }
+            if event.workflowName == "parent" && [.workflowCompleted, .workflowFailed].contains(event.kind) { break }
         }
-
         #expect(seen.contains("parent:workflowStarted"))
         #expect(seen.contains("child:workflowStarted"))
         #expect(seen.contains("child:workflowCompleted"))
     }
 
-    @Test("parallel children do not inherit the outer agent session")
+    @Test("parallel pieces do not inherit the outer agent session")
     func parallelChildrenDoNotInheritAgentSession() async throws {
         // Given
         let harness = try makeRunner(catalog: [
             "fan": """
-            name: fan
+            failing: anything
             body:
-              - id: session
-                invoke:
-                  model: claude
-                  body:
-                    - id: par
-                      parallel:
-                        do:
-                          - id: t1
-                            agent: "hello"
+              - value:
+                  call:
+                    procedure: Forge.invoke
+                    arguments:
+                      - claude
+                      - null
+                      - null
+                      - null
+                      - null
+                      - null
+                      - null
+                      - closure:
+                          failing: anything
+                          returns: "Dictionary<String, String>"
+                          result:
+                            call:
+                              procedure: Standard.Concurrent.allKeyed
+                              arguments:
+                                - dictionary:
+                                    - [t1, { closure: { isolated: true, returns: String, result: { call: { procedure: Forge.agent, arguments: [ hello ] } } } }]
             """
         ])
         let module = try await harness.store.module(named: "fan")
@@ -515,7 +501,7 @@ struct SpecWorkflowRunnerTests {
         // When
         let result = try await harness.dispatch(module: module, name: "fan")
 
-        // Then — the parallel boundary severed the ambient session, so the child agent fails with no session
+        // Then — the fan-out severed the session, so the piece's agent turn has none
         #expect(result.status == .failed)
         #expect(result.error?.message.contains("no active agent session") == true)
     }
@@ -525,11 +511,9 @@ struct SpecWorkflowRunnerTests {
         // Given
         let harness = try makeRunner(catalog: [
             "slow": """
-            name: slow
+            failing: [nonzero_exit, timeout]
             body:
-              - id: nap
-                shell:
-                  command: ["/bin/sleep", "10"]
+              - value: { call: { procedure: Forge.shell, arguments: [ ["/bin/sleep", "10"], null, null, null, null, null ] } }
             """
         ])
         let module = try await harness.store.module(named: "slow")
@@ -545,9 +529,7 @@ struct SpecWorkflowRunnerTests {
 
         // When
         try await Task.sleep(for: .milliseconds(300))
-
         _ = await harness.pool.cancel(workflowID: "wf-cancelme")
-
         let result = try await task.value
 
         // Then
@@ -563,30 +545,21 @@ struct SpecWorkflowRunnerTests {
         let harness = try makeRunner(
             catalog: [
                 "nullcwd": """
-                name: nullcwd
-                parameters:
-                  dir:
-                    type: string
-                    default: null
+                parameters: [ dir: String? ]
+                failing: anything
                 body:
-                  - id: session
-                    invoke:
-                      model: claude
-                      cwd: { ref: dir }
-                      body:
-                        - id: q
-                          agent: "hi"
+                  - value:
+                      call:
+                        procedure: Forge.invoke
+                        arguments: [ claude, null, null, { ref: dir }, null, null, null, { closure: { returns: String, result: { call: { procedure: Forge.agent, arguments: [ hi ] } } } } ]
                 """,
                 "emptymode": """
-                name: emptymode
+                failing: anything
                 body:
-                  - id: session
-                    invoke:
-                      model: claude
-                      permission_mode: ""
-                      body:
-                        - id: q
-                          agent: "hi"
+                  - value:
+                      call:
+                        procedure: Forge.invoke
+                        arguments: [ claude, null, null, null, "", null, null, { closure: { returns: String, result: { call: { procedure: Forge.agent, arguments: [ hi ] } } } } ]
                 """
             ],
             backend: recorder
@@ -611,17 +584,15 @@ struct SpecWorkflowRunnerTests {
         let harness = try makeRunner(
             catalog: [
                 "fanshell": """
-                name: fanshell
+                failing: [concurrent_failed]
                 body:
-                  - id: par
-                    parallel:
-                      do:
-                        - id: a
-                          shell:
-                            command: ["/bin/sleep", "0.2"]
-                        - id: b
-                          shell:
-                            command: ["/bin/sleep", "0.2"]
+                  - value:
+                      call:
+                        procedure: Standard.Concurrent.allKeyed
+                        arguments:
+                          - dictionary:
+                              - [a, { closure: { isolated: true, failing: [nonzero_exit, timeout], returns: Any, result: { call: { procedure: Forge.shell, arguments: [ ["/bin/sleep", "0.2"], null, null, null, null, null ] } } } }]
+                              - [b, { closure: { isolated: true, failing: [nonzero_exit, timeout], returns: Any, result: { call: { procedure: Forge.shell, arguments: [ ["/bin/sleep", "0.2"], null, null, null, null, null ] } } } }]
                 """
             ],
             pool: WorkflowPool(maximumConcurrentSteps: 1, maximumActiveRuns: Int.max)
@@ -686,7 +657,7 @@ struct SpecWorkflowRunnerTests {
             )
         }
 
-        let store = SpecCatalog(directory: directory, loader: ForgeSpec.loader())
+        let store = SpecCatalog(directory: directory, frontend: try ForgeSpec.frontend())
         let eventBus = WorkflowEventBus()
         let poolLocal = pool
             ?? WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: Int.max)
