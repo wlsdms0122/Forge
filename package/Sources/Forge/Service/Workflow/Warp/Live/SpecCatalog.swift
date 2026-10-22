@@ -7,13 +7,12 @@
 
 import Foundation
 import Warp
-import WarpIR
+import WarpSyntax
 import WarpYAML
 
-// The workflow catalog in spec format — the same scan/cache/failure-ledger
-// discipline as the other stores, loading `Warp.Module` through the one forge
-// loader. Identity is the file basename; a `name:` in the body is metadata and
-// must agree when present.
+// The workflow catalog — the same scan/cache/failure-ledger discipline as the
+// other stores, each file read by the YAML front end and loaded as a document.
+// Identity is the file basename, and the file declares one procedure under it.
 actor SpecCatalog {
     struct Catalog: Sendable {
         // MARK: - Property
@@ -46,7 +45,7 @@ actor SpecCatalog {
 
     // MARK: - Property
     let directory: URL?
-    let loader: Loader
+    let frontend: YAMLFrontend
 
     private var cache: [String: Entry] = [:]
     private var failureCache: [String: LoadFailure] = [:]
@@ -73,9 +72,9 @@ actor SpecCatalog {
     }
 
     // MARK: - Initializer
-    init(directory: URL?, loader: Loader) {
+    init(directory: URL?, frontend: YAMLFrontend) {
         self.directory = directory
-        self.loader = loader
+        self.frontend = frontend
     }
 
     // MARK: - Public
@@ -144,38 +143,18 @@ actor SpecCatalog {
             let base = url.deletingPathExtension().lastPathComponent
 
             do {
-                let data = try Data(contentsOf: url)
-                // The names the daemon supplies are declared here rather than by
-                // every workflow author, which is what the language's removed
-                // context tier used to do for us.
-                let module = try loader
-                    .load(ForgeSpec.seeding(document: try YAMLParser().parse(data)))
-
-                if let declared = module.name, declared != base {
-                    ledger.record(
-                        source: file.source,
-                        reason: "workflow name '\(declared)' must equal the file basename"
-                            + " '\(base)' — identity is the filename (rename the file or drop"
-                            + " the name from the body)",
-                        mtime: mtime,
-                        stderrLine: "workflow name/filename mismatch (\(file.source)):"
-                            + " name '\(declared)' vs basename '\(base)'",
-                        name: base
-                    )
-
-                    continue
-                }
+                let module = try load(Data(contentsOf: url))
 
                 // Forge's convention on top of the language: a workflow file
                 // declares one procedure and names it after the file. The
                 // language lets a module declare many — this is where a workflow
                 // says it is one thing you can run by the name you know it by.
-                guard Array(module.procedures.keys) == [base] else {
+                guard module.procedures.keys.map(\.spelling) == [base] else {
                     ledger.record(
                         source: file.source,
                         reason: "a workflow file declares exactly one procedure named"
                             + " after the file — expected 'procedures: { \(base): ... }',"
-                            + " found \(module.procedures.keys.sorted().map { key in "'\(key)'" })",
+                            + " found \(module.procedures.keys.map(\.spelling).sorted().map { key in "'\(key)'" })",
                         mtime: mtime,
                         stderrLine: "workflow procedure/filename mismatch (\(file.source))",
                         name: base
@@ -242,6 +221,24 @@ actor SpecCatalog {
         await catalog()
     }
 
+    // A workflow file as the front end writes it, loaded the way any runtime
+    // receives a document.
+    func load(_ data: Data) throws -> Warp.Module {
+        let document = try frontend.document(from: data)
+
+        return try Loader().load(document, identity: try Identity.of(document))
+    }
+
+    // An inline spec: one procedure written in the YAML notation, run under the
+    // sigil the dispatch door fixes, which a run starts from.
+    nonisolated func inline(_ spec: Warp.Value) throws -> Warp.Module {
+        let procedure = try Loader(registry: try .yaml()).procedure(from: spec, in: .yaml)
+
+        return try Warp.Module(
+            procedures: [try Name(WorkflowDispatchMethod.inlineSigil): procedure.with(access: .public)]
+        )
+    }
+
     func resolve(_ name: String) async -> Lookup {
         await catalog()
 
@@ -284,13 +281,13 @@ actor SpecCatalog {
 extension SpecCatalog {
     func module(named name: String) async throws -> Warp.Module {
         switch await resolve(name) {
-        case .found(let module):
+        case let .found(module):
             return module
 
-        case .invalid(let reason):
+        case let .invalid(reason):
             throw ExecutionError("workflow '\(name)' is broken — \(reason)")
 
-        case .unobserved(let reason):
+        case let .unobserved(reason):
             throw ExecutionError("workflow '\(name)' could not be resolved — \(reason)")
 
         case .missing:
@@ -298,11 +295,7 @@ extension SpecCatalog {
         }
     }
 
-    // The workflows the daemon can see. What a link additionally needs —
-    // forge's verbs and the standard vocabulary — is `ForgeSpec.linkables`, and
-    // it is kept out of here on purpose: a caller filtering this list is
-    // filtering workflows, and dropping the vocabulary alongside one would take
-    // every verb with it.
+    // The workflows the daemon can see, without the vocabulary a link adds.
     func modules() async -> [Warp.Module] {
         await catalog().entries.map(\.module)
     }

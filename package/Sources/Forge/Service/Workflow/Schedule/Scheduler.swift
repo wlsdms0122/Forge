@@ -324,12 +324,7 @@ private func resolveFireTarget(
 ) async -> FireResolution {
     if let spec {
         do {
-            let module = Warp.Module(
-                procedures: [
-                    WorkflowDispatchMethod.inlineSigil:
-                        try store.loader.procedure(from: ValueBridge.value(spec))
-                ]
-            )
+            let module = try store.inline(try ValueBridge.value(spec))
             
             return .resolved(FireTarget(name: name, module: module))
         } catch {

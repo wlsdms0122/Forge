@@ -7,6 +7,7 @@
 
 import Foundation
 import Warp
+import WarpSyntax
 import WarpYAML
 
 package enum WorkflowLint {
@@ -31,12 +32,9 @@ package enum WorkflowLint {
         let module: Warp.Module
 
         do {
-            // The names the daemon supplies are declared the same way here as
-            // they are on the run path — a file that reads `run.workflow_id` is
-            // a file that runs, and a check that says otherwise is checking a
-            // different document than the one that will execute.
-            module = try ForgeSpec.loader()
-                .load(ForgeSpec.seeding(document: try YAMLParser().parse(data)))
+            let document = try ForgeSpec.frontend().document(from: data)
+
+            module = try Loader().load(document, identity: try Identity.of(document))
         } catch {
             return Report(
                 path: path,
@@ -49,10 +47,10 @@ package enum WorkflowLint {
         let base = url.deletingPathExtension().lastPathComponent
         var issues: [String] = []
 
-        if let declared = module.name, declared != base {
+        if module.procedures.keys.map(\.spelling) != [base] {
             issues.append(
-                "name: '\(declared)' must equal the file basename '\(base)'"
-                    + " — identity is the filename (rename the file or drop the name from the body)"
+                "a workflow file declares exactly one procedure named after the file"
+                    + " — expected 'procedures: { \(base): ... }'"
             )
         }
 
@@ -88,7 +86,7 @@ package enum WorkflowLint {
         into issues: inout [String]
     ) {
         switch value {
-        case .string(let string):
+        case let .string(string):
             if string.contains("${") {
                 issues.append(
                     "\(location): string contains '${' — strings are literals now;"
@@ -102,23 +100,25 @@ package enum WorkflowLint {
         case .procedure:
             return
 
-        case .array(let array):
+        case let .array(array):
             for (index, element) in array.enumerated() {
                 walk(element, at: "\(location)[\(index)]", into: &issues)
             }
 
-        case .object(let object):
-            // A single-key { value: } object is the quotation form — its
-            // payload is data by declaration, not a stale template.
-            if object.count == 1, object.keys.first == "value" { return }
+        case let .dictionary(object):
+            let entries = zip(object.keys, object.values).map { key, element in (ValueBridge.text(key), element) }
 
-            for (key, element) in object.sorted(by: { $0.key < $1.key }) {
+            // A single-key { value: } map is the quotation form — its payload
+            // is data by declaration, not a stale template.
+            if entries.count == 1, entries.first?.0 == "value" { return }
+
+            for (key, element) in entries.sorted(by: { one, other in one.0 < other.0 }) {
                 guard !Self.proseKeys.contains(key) else { continue }
 
                 walk(element, at: "\(location).\(key)", into: &issues)
             }
 
-        case .null, .bool, .int, .double:
+        case .null, .bool, .int, .double, .bytes, .struct:
             break
         }
     }

@@ -212,17 +212,9 @@ struct WorkflowDispatchMethod: Sendable {
             let module: Warp.Module
 
             do {
-                let value = ValueBridge.value(.object(try decodeJSONValueDict(specObject)))
+                let value = try ValueBridge.value(.object(try decodeJSONValueDict(specObject)))
 
-                // An inline spec is one procedure, not a document that declares
-                // several — the caller already knows what to call it, and the
-                // name is fixed to the sigil.
-                module = Warp.Module(
-                    procedures: [
-                        Self.inlineSigil: try store.loader
-                            .procedure(from: ForgeSpec.seeding(procedure: value))
-                    ]
-                )
+                module = try store.inline(value)
             } catch {
                 throw ProtocolError("workflow.dispatch: malformed 'spec' — \(error)")
             }
