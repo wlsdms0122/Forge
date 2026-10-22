@@ -9,9 +9,5 @@ import Foundation
 import Warp
 
 protocol RunDispatching: Sendable {
-    func dispatch(
-        name: String?,
-        inline: Warp.Value?,
-        inputs: [String: Warp.Value]
-    ) async throws -> Warp.Value
+    func dispatch(name: String, inputs: [String: Warp.Value]) async throws -> Warp.Value
 }

@@ -10,16 +10,14 @@ import Warp
 
 struct DeadlineExceeded: Warp.RecoverableFailure {
     // MARK: - Property
+    static let type = "timeout"
+
     let message: String
     let seconds: Double
 
-    var payload: Warp.Value {
-        .object([
-            "type": .string("timeout"),
-            "message": .string(message),
-            "seconds": .double(seconds)
-        ])
-    }
+    var type: String { Self.type }
+
+    var details: Value.Dictionary { Value.Dictionary(["seconds": .double(seconds)]) }
 
     // MARK: - Initializer
     init(seconds: Double) {

@@ -13,48 +13,83 @@ import Warp
 // session through the environment, and runs its steps inside; `agent` steps only make
 // sense in here.
 struct InvokeAction: Warp.Effect {
-    // MARK: - Property
+    enum Parameters: Int, ParameterSet {
+        case model
+        case allowed
+        case envExtra
+        case cwd
+        case permissionMode
+        case shareSession
+        case timeout
+        case body
 
+        // MARK: - Property
+        var declared: Parameter {
+            switch self {
+            case .model:
+                Parameter(name: "model", type: .nullable(.string))
+
+            case .allowed:
+                Parameter(name: "allowed", type: .any)
+
+            case .envExtra:
+                Parameter(name: "env_extra", type: .nullable(.dictionary(key: .string, value: .string)))
+
+            case .cwd:
+                Parameter(name: "cwd", type: .nullable(.string))
+
+            case .permissionMode:
+                Parameter(name: "permission_mode", type: .nullable(.string))
+
+            case .shareSession:
+                Parameter(name: "share_session", type: .nullable(.bool))
+
+            case .timeout:
+                Parameter(name: "timeout", type: .nullable(.double))
+
+            case .body:
+                Parameter(
+                    name: "body",
+                    type: .procedure(ProcedureType(returns: InvokeAction.result, failing: .anything))
+                )
+            }
+        }
+
+        // MARK: - Initializer
+        // MARK: - Public
+        // MARK: - Private
+    }
+
+    // MARK: - Property
+    // What the body returns, which is what the session returns.
+    static let result = TypeExpression.parameter(name: "Result")
 
     // MARK: - Initializer
     // MARK: - Public
-    func run(_ invocation: Warp.Invocation) async throws -> Warp.Value {
+    func run(_ invocation: Warp.Invocation<Self>) async throws -> Warp.Value {
         let environment = try ForgeEnvironment.from(invocation)
-        let resolver = invocation.resolver
 
-        // The body is a block argument rather than a value one: it must not be
-        // evaluated until the session is open.
-        guard let steps = invocation.block("steps") else {
-            throw ExecutionError("invoke has no steps")
-        }
-
-        var envExtra: [String: String] = [:]
-
-        if case .object(let written) = try invocation.resolve("env_extra") {
-            envExtra = written.mapValues(resolver.stringify)
+        // The body is a closure so that nothing in it runs before the session
+        // is open.
+        guard case let .procedure(body) = invocation[.body] else {
+            throw ExecutionError("invoke has no body")
         }
 
         let settings = AgentSessionSettings(
-            model: try invocation.string("model"),
-            allowed: try invocation.resolve("allowed"),
-            cwd: try Self.optionalNonEmptyString(
-                try invocation.resolve("cwd"),
-                field: "cwd"
-            ),
+            model: invocation.string(.model),
+            allowed: invocation[.allowed],
+            cwd: try Self.optionalNonEmptyString(invocation[.cwd], field: "cwd"),
             permissionMode: try Self.optionalNonEmptyString(
-                try invocation.resolve("permission_mode"),
+                invocation[.permissionMode],
                 field: "permission_mode"
             ),
-            envExtra: envExtra,
-            shareSession: try Self.share(try invocation.resolve("share_session"))
+            envExtra: try ValueBridge.strings(invocation[.envExtra]),
+            shareSession: try Self.share(invocation[.shareSession])
         )
-        let timeout = ValueBridge.number(try invocation.resolve("timeout"))
-        let block = steps.block
-        let scope = invocation.scope
 
-        return try await withDeadline(seconds: timeout) {
+        return try await withDeadline(seconds: ValueBridge.number(invocation[.timeout])) {
             try await environment.agent.withSession(settings) {
-                try await invocation.run(block, in: scope)
+                try await invocation.call(body)
             }
         }
     }
@@ -65,13 +100,13 @@ struct InvokeAction: Warp.Effect {
         case .null:
             return false
 
-        case .bool(let share):
+        case let .bool(share):
             return share
 
         case let other:
             throw ExecutionError(
                 "invoke.share_session must resolve to a bool or null,"
-                    + " got \(other.type)"
+                    + " got \(other.nominal)"
             )
         }
     }
@@ -86,7 +121,7 @@ struct InvokeAction: Warp.Effect {
         case .null:
             return nil
 
-        case .string(let string):
+        case let .string(string):
             guard !string.isEmpty else {
                 throw ExecutionError(
                     "invoke: \(field) must be a non-empty string, or omitted/null to"
@@ -98,7 +133,7 @@ struct InvokeAction: Warp.Effect {
 
         case let other:
             throw ExecutionError(
-                "invoke: \(field) must resolve to a string or null, got \(other.type)"
+                "invoke: \(field) must resolve to a string or null, got \(other.nominal)"
             )
         }
     }

@@ -15,28 +15,32 @@ enum ValueBridge {
     // MARK: - Property
     // MARK: - Initializer
     // MARK: - Public
-    static func value(_ json: JSONValue) -> Warp.Value {
+    static func value(_ json: JSONValue) throws -> Warp.Value {
         switch json {
         case .null:
             return .null
 
-        case .bool(let bool):
+        case let .bool(bool):
             return .bool(bool)
 
-        case .int(let int):
+        case let .int(int):
             return .int(int)
 
-        case .double(let double):
+        case let .double(double):
             return .double(double)
 
-        case .string(let string):
+        case let .string(string):
             return .string(string)
 
-        case .array(let array):
-            return .array(array.map(value))
+        case let .array(array):
+            return .array(try array.map(value))
 
-        case .object(let object):
-            return .object(object.mapValues(value))
+        case let .object(object):
+            return .dictionary(
+                try Value.Dictionary(
+                    try object.map { key, field in (key: Value.string(key), value: try value(field)) }
+                )
+            )
         }
     }
 
@@ -45,40 +49,89 @@ enum ValueBridge {
         case .null:
             return .null
 
-        case .bool(let bool):
+        case let .bool(bool):
             return .bool(bool)
 
-        case .int(let int):
+        case let .int(int):
             return .int(int)
 
-        case .double(let double):
+        case let .double(double):
             return .double(double)
 
-        case .string(let string):
+        case let .string(string):
             return .string(string)
 
-        // Nothing crosses out. A procedure is code, and the wire this bridges
-        // to carries data — a workflow that answers with one has answered with
-        // something JSON has no shape for.
+        case let .bytes(bytes):
+            return .array(bytes.map { byte in .int(Int(byte)) })
+
+        // A procedure is code, and the wire this bridges to carries data.
         case .procedure:
             return .null
 
-        case .array(let array):
+        case let .array(array):
             return .array(array.map(json))
 
-        case .object(let object):
-            return .object(object.mapValues(json))
+        case let .dictionary(dictionary):
+            return .object(
+                Dictionary(
+                    zip(dictionary.keys, dictionary.values).map { key, field in (text(key), json(field)) },
+                    uniquingKeysWith: { first, _ in first }
+                )
+            )
+
+        case let .struct(instance):
+            return .object(
+                Dictionary(
+                    zip(instance.names, instance.values).map { name, field in (name.spelling, json(field)) },
+                    uniquingKeysWith: { first, _ in first }
+                )
+            )
         }
+    }
+
+    // The fields of a struct or the entries of a map, under their names; null
+    // holds none.
+    static func fields(_ value: Warp.Value) throws -> [String: Warp.Value] {
+        switch value {
+        case .null:
+            return [:]
+
+        case let .dictionary(dictionary):
+            return Dictionary(
+                zip(dictionary.keys, dictionary.values).map { key, field in (text(key), field) },
+                uniquingKeysWith: { first, _ in first }
+            )
+
+        case let .struct(instance):
+            return Dictionary(
+                zip(instance.names, instance.values).map { name, field in (name.spelling, field) },
+                uniquingKeysWith: { first, _ in first }
+            )
+
+        case let other:
+            throw ExecutionError("a map was expected, and \(other.nominal) arrived")
+        }
+    }
+
+    // The same, each value spelled as text.
+    static func strings(_ value: Warp.Value) throws -> [String: String] {
+        try fields(value).mapValues(text)
+    }
+
+    // A value spelled the way a command line or a template wants it: a string
+    // as its characters, anything else in the language's own spelling.
+    static func text(_ value: Warp.Value) -> String {
+        Rendering(value).text()
     }
 
     // A number however the notation wrote it — `timeout: 30` reads as int, and
     // a step deadline does not care which spelling it arrived in.
     static func number(_ value: Warp.Value) -> Double? {
         switch value {
-        case .double(let double):
+        case let .double(double):
             return double
 
-        case .int(let integer):
+        case let .int(integer):
             return Double(integer)
 
         default:
@@ -86,14 +139,9 @@ enum ValueBridge {
         }
     }
 
-    // A Codable payload carried through the IR as data. A word's arguments are
-    // values, so anything a form reads at load and a word needs at run crosses
-    // here rather than riding along as a Swift field on the expression.
-    // Warp's Value is Encodable and nothing else — reading a document is
-    // the front end's job — so forge's own JSONValue is the crossing point in
-    // both directions.
+    // A Codable payload carried through as data.
     static func value<T: Encodable>(_ payload: T) throws -> Warp.Value {
-        value(try JSONDecoder().decode(JSONValue.self, from: try JSONEncoder().encode(payload)))
+        try value(try JSONDecoder().decode(JSONValue.self, from: try JSONEncoder().encode(payload)))
     }
 
     static func decode<T: Decodable>(

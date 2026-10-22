@@ -8,17 +8,25 @@
 import Foundation
 import Warp
 
-// A single prompt turn against the ambient agent session — invoke opens the
-// session; an agent step outside one is an authoring error.
+// A single prompt turn against the agent session `invoke` opened.
 struct AgentAction: Warp.Effect {
+    enum Parameters: Int, ParameterSet {
+        case prompt
+
+        // MARK: - Property
+        var declared: Parameter { Parameter(name: "prompt", type: .string) }
+
+        // MARK: - Initializer
+        // MARK: - Public
+        // MARK: - Private
+    }
+
     // MARK: - Property
-
-
     // MARK: - Initializer
     // MARK: - Public
-    func run(_ invocation: Warp.Invocation) async throws -> Warp.Value {
+    func run(_ invocation: Warp.Invocation<Self>) async throws -> Warp.Value {
         let environment = try ForgeEnvironment.from(invocation)
-        let prompt = try invocation.string("prompt") ?? ""
+        let prompt = invocation.string(.prompt) ?? ""
 
         return try await environment.withStepSlot {
             .string(try await environment.agent.send(prompt: prompt))

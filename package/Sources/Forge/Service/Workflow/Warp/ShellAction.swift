@@ -9,47 +9,67 @@ import Foundation
 import Warp
 
 struct ShellAction: Warp.Effect {
+    enum Parameters: Int, ParameterSet {
+        case command
+        case cwd
+        case env
+        case stdin
+        case outputs
+        case timeout
+
+        // MARK: - Property
+        var declared: Parameter {
+            switch self {
+            case .command:
+                Parameter(name: "command", type: .array(.string))
+
+            case .cwd:
+                Parameter(name: "cwd", type: .nullable(.string))
+
+            case .env:
+                Parameter(name: "env", type: .nullable(.dictionary(key: .string, value: .string)))
+
+            case .stdin:
+                Parameter(name: "stdin", type: .nullable(.string))
+
+            case .outputs:
+                Parameter(name: "outputs", type: .nullable(.dictionary(key: .string, value: .any)))
+
+            case .timeout:
+                Parameter(name: "timeout", type: .nullable(.double))
+            }
+        }
+
+        // MARK: - Initializer
+        // MARK: - Public
+        // MARK: - Private
+    }
+
     // MARK: - Property
-
-
     // MARK: - Initializer
     // MARK: - Public
-    func run(_ invocation: Warp.Invocation) async throws -> Warp.Value {
+    func run(_ invocation: Warp.Invocation<Self>) async throws -> Warp.Value {
         let environment = try ForgeEnvironment.from(invocation)
-        let resolver = invocation.resolver
 
-        guard case .array(let command) = try invocation.resolve("command"), !command.isEmpty else {
-            throw ValidationError("shell.command is empty")
+        guard case let .array(command) = invocation[.command], !command.isEmpty else {
+            throw ExecutionError("shell.command is empty")
         }
 
-        let arguments = command.map(resolver.stringify)
-        let cwd = try invocation.string("cwd")
-        let stdin = try invocation.string("stdin")
-        let stepID = invocation.label
-        let timeout = ValueBridge.number(try invocation.resolve("timeout"))
-
-        let env: [String: String]
-
-        if case .object(let written) = try invocation.resolve("env") {
-            env = written.mapValues(resolver.stringify)
-        } else {
-            env = [:]
-        }
-
+        let arguments = command.map(ValueBridge.text)
+        let env = try ValueBridge.strings(invocation[.env])
         let declarations = try ValueBridge.decode(
             [String: OutputSpec].self,
-            from: try invocation.resolve("outputs")
+            from: invocation[.outputs]
         )
-
         let result = try await environment.withStepSlot {
-            try await withDeadline(seconds: timeout) {
+            try await withDeadline(seconds: ValueBridge.number(invocation[.timeout])) {
                 try await environment.shell.run(
                     executable: arguments[0],
                     args: Array(arguments.dropFirst()),
-                    cwd: cwd,
+                    cwd: invocation.string(.cwd),
                     env: env,
-                    stdin: stdin,
-                    stepID: stepID
+                    stdin: invocation.string(.stdin),
+                    stepID: invocation.trace.step
                 )
             }
         }
@@ -68,12 +88,9 @@ struct ShellAction: Warp.Effect {
             )
         }
 
-        let extracted = try OutputExtractor.resolve(
-            stdout: result.stdout,
-            declarations: declarations
+        return try ValueBridge.value(
+            try OutputExtractor.resolve(stdout: result.stdout, declarations: declarations)
         )
-
-        return ValueBridge.value(extracted)
     }
 
     // MARK: - Private

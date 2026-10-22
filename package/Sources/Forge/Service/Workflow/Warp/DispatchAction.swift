@@ -8,36 +8,44 @@
 import Foundation
 import Warp
 
-// Asks the daemon for an isolated run — an effect with its own lifetime, ACL
-// and slot, not a language call. `use` is the function call; this is
-// Process.run. Exactly one of `name` (catalog) or `spec` (inline) names the
-// target; the daemon settles inputs against the target's signature.
+// Asks the daemon for an isolated run of a catalog workflow: its own lifetime,
+// policy check and slot, where a `call` stays inside this run. The daemon
+// settles the inputs against the target's signature.
 struct DispatchAction: Warp.Effect {
-    // MARK: - Property
+    enum Parameters: Int, ParameterSet {
+        case name
+        case inputs
+        case timeout
 
+        // MARK: - Property
+        var declared: Parameter {
+            switch self {
+            case .name:
+                Parameter(name: "name", type: .string)
 
-    // MARK: - Initializer
-    // MARK: - Public
-    func run(_ invocation: Warp.Invocation) async throws -> Warp.Value {
-        let environment = try ForgeEnvironment.from(invocation)
-        let target = try invocation.string("name")
-        let inline = try invocation.resolve("spec")
-        let timeout = ValueBridge.number(try invocation.resolve("timeout"))
+            case .inputs:
+                Parameter(name: "inputs", type: .nullable(.dictionary(key: .string, value: .any)))
 
-        let settled: [String: Warp.Value]
-
-        if case .object(let inputs) = try invocation.resolve("inputs") {
-            settled = inputs
-        } else {
-            settled = [:]
+            case .timeout:
+                Parameter(name: "timeout", type: .nullable(.double))
+            }
         }
 
-        return try await withDeadline(seconds: timeout) {
-            try await environment.dispatcher.dispatch(
-                name: target,
-                inline: inline == .null ? nil : inline,
-                inputs: settled
-            )
+        // MARK: - Initializer
+        // MARK: - Public
+        // MARK: - Private
+    }
+
+    // MARK: - Property
+    // MARK: - Initializer
+    // MARK: - Public
+    func run(_ invocation: Warp.Invocation<Self>) async throws -> Warp.Value {
+        let environment = try ForgeEnvironment.from(invocation)
+        let name = invocation.string(.name) ?? ""
+        let inputs = try ValueBridge.fields(invocation[.inputs])
+
+        return try await withDeadline(seconds: ValueBridge.number(invocation[.timeout])) {
+            try await environment.dispatcher.dispatch(name: name, inputs: inputs)
         }
     }
 
