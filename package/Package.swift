@@ -13,12 +13,8 @@ let package = Package(
         .executable(name: "ForgeCLI", targets: ["ForgeCLI"]),
     ],
     dependencies: [
-        // SwiftPM derives a path dependency's identity from its last path
-        // component, and both repos keep their manifest in `package/` — so
-        // pointing at that directory makes the dependency collide with Forge
-        // itself. `Warp` is a symlink to it, and goes away the moment this
-        // becomes a URL dependency.
-        .package(path: "../../Warp/Warp"),
+        .package(path: "../../warp-runtime-swift"),
+        .package(path: "../../warp-frontend-yaml"),
         .package(url: "https://github.com/LebJe/TOMLKit.git", from: "0.6.0"),
         .package(url: "https://github.com/jpsim/Yams.git", from: "5.1.0"),
         .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.3.0")
@@ -27,9 +23,10 @@ let package = Package(
         .target(
             name: "Forge",
             dependencies: [
-                .product(name: "Warp", package: "Warp"),
-                .product(name: "WarpIR", package: "Warp"),
-                .product(name: "WarpYAML", package: "Warp"),
+                .product(name: "Warp", package: "warp-runtime-swift"),
+                .product(name: "WarpSyntax", package: "warp-runtime-swift"),
+                .product(name: "WarpStandard", package: "warp-runtime-swift"),
+                .product(name: "WarpYAML", package: "warp-frontend-yaml"),
                 .product(name: "TOMLKit", package: "TOMLKit"),
                 .product(name: "Yams", package: "Yams")
             ]
