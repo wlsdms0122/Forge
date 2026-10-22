@@ -1,52 +1,47 @@
-name: host
+# Host seams: shell and resource in one pass.
 procedures:
   host:
-    description: Host seams — shell and resource in one pass
-    parameters:
-      name:
-        type: string
-        default: e2e
+    access: public
+    parameters: [ name: String? ]
+    returns: "Dictionary<String, Any>"
+    failing: [cast_refused, nonzero_exit, timeout]
     body:
-    - id: shout
-      shell:
-        command:
-        - /bin/sh
-        - -c
-        - printf 'shell:%s' "$1"
-        - _
-        - { ref: name }
-        timeout: 30
-    - id: letter
-      resource:
-        content: greeting.txt
-        inputs:
-          name: { ref: name }
-    - id: script
-      resource:
-        path: script/stamp.sh
-    - id: stamped
-      shell:
-        command:
-        - /bin/sh
-        - { ref: script }
-        - { ref: name }
-    - id: fragile
-      attempt:
-        body:
-        - id: attempted
-          shell:
-            command: [/bin/sh, -c, "echo warned >&2; exit 7"]
-        rescue:
-          body:
-          - id: excuse
-            value:
-              format: "rescued(${code}): ${said}"
-              with:
-                code: { ref: fragile.exit_code }
-                said: { ref: fragile.stderr }
-          result: { ref: excuse }
+      - var: who
+        type: String
+        value: e2e
+      - value:
+          conditional:
+            when: { present: { ref: name } }
+            then: [ { set: who, value: { as: { of: { ref: name }, type: String } } } ]
+      - let: shout
+        value:
+          call:
+            procedure: Forge.shell
+            arguments: [ [ /bin/sh, -c, "printf 'shell:%s' \"$1\"", _, { ref: who } ], null, null, null, null, 30 ]
+      - let: letter
+        value: { call: { procedure: Forge.resource, arguments: [ greeting.txt, { dictionary: [ [name, { ref: who }] ] } ] } }
+      - let: script
+        value: { call: { procedure: Forge.locate, arguments: [ script/stamp.sh ] } }
+      - let: stamped
+        value: { call: { procedure: Forge.shell, arguments: [ [ /bin/sh, { ref: script }, { ref: who } ], null, null, null, null, null ] } }
+      - var: rescued
+        type: String
+        value: ""
+      - let: fragile
+        value:
+          attempt:
+            body:
+              - value: { call: { procedure: Forge.shell, arguments: [ [ /bin/sh, -c, "echo warned >&2; exit 7" ], null, null, null, null, null ] } }
+            rescue:
+              - set: rescued
+                value:
+                  format: "rescued(${code}): ${said}"
+                  with:
+                    code: { ref: 'fragile.details["exit_code"]' }
+                    said: { ref: 'fragile.details["stderr"]' }
     result:
-      shell: { ref: shout }
-      resource: { ref: letter }
-      stamped: { ref: stamped }
-      rescued: { ref: fragile }
+      dictionary:
+        - [shell, { ref: shout }]
+        - [resource, { ref: letter }]
+        - [stamped, { ref: stamped }]
+        - [rescued, { ref: rescued }]

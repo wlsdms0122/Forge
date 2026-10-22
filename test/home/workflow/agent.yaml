@@ -1,27 +1,50 @@
-name: agent
+# Agent seams: invoke turns, in-session continuity, and share_session
+# inheritance.
 procedures:
   agent:
-    description: Agent seams — invoke turns, in-session continuity, and share_session inheritance
+    access: public
+    returns: "Dictionary<String, Any>"
+    failing: anything
     body:
-    - id: outer
-      invoke:
-        model: claude
-        body:
-        - id: first
-          agent: ping one
-        - id: second
-          agent: ping two
-        - id: nested
-          invoke:
-            model: claude
-            share_session: true
-            body:
-            - id: third
-              agent: ping three
-            result: { ref: third }
-        result:
-          first: { ref: first }
-          second: { ref: second }
-          inherited: { ref: nested }
-    result:
-      result: { ref: outer }
+      - let: outer
+        value:
+          call:
+            procedure: Forge.invoke
+            arguments:
+              - claude
+              - null
+              - null
+              - null
+              - null
+              - null
+              - null
+              - closure:
+                  returns: "Dictionary<String, Any>"
+                  failing: anything
+                  body:
+                    - let: first
+                      value: { call: { procedure: Forge.agent, arguments: [ ping one ] } }
+                    - let: second
+                      value: { call: { procedure: Forge.agent, arguments: [ ping two ] } }
+                    - let: nested
+                      value:
+                        call:
+                          procedure: Forge.invoke
+                          arguments:
+                            - claude
+                            - null
+                            - null
+                            - null
+                            - null
+                            - true
+                            - null
+                            - closure:
+                                returns: String
+                                failing: anything
+                                result: { call: { procedure: Forge.agent, arguments: [ ping three ] } }
+                  result:
+                    dictionary:
+                      - [first, { ref: first }]
+                      - [second, { ref: second }]
+                      - [inherited, { ref: nested }]
+    result: { dictionary: [ [result, { ref: outer }] ] }

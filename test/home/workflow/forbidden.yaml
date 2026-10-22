@@ -1,19 +1,20 @@
-name: forbidden
+# Policy gate: a dispatch outside the allow list must fail, and rescue must not
+# swallow it.
 procedures:
   forbidden:
-    description: Policy gate — a dispatch outside the allow list must fail, and rescue must not swallow it
+    access: public
+    returns: "Dictionary<String, Any>"
     body:
-    - id: blocked
-      attempt:
-        body:
-        - id: attempted
-          dispatch:
-            name: composer
-            timeout: 60
-        rescue:
-          body:
-          - id: swallow
-            value: should-not-swallow
-          result: { ref: swallow }
-    result:
-      result: { ref: blocked }
+      - var: blocked
+        type: Any
+        value: null
+      - let: attempted
+        value:
+          attempt:
+            body:
+              - set: blocked
+                value: { call: { procedure: Forge.dispatch, arguments: [ kernel, null, 60 ] } }
+            rescue:
+              - set: blocked
+                value: should-not-swallow
+    result: { dictionary: [ [result, { ref: blocked }] ] }

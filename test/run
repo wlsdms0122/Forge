@@ -126,7 +126,7 @@ def main():
 
         # The catalog loaded whole.
         listed = harness.forge("workflow", "list")
-        for name in ["kernel", "child", "host", "agent", "composer", "parent", "forbidden"]:
+        for name in ["kernel", "child", "host", "agent", "parent", "forbidden"]:
             check(name in listed, f"workflow list carries '{name}'", listed)
 
         # The authoring gate reads a file straight from the kit.
@@ -138,7 +138,7 @@ def main():
 
         # Kernel tour — every control-flow feature in one dispatch.
         kernel = harness.forge("workflow", "dispatch", "kernel")
-        for expected in ["hello, world", "took-a", "0:one", "1:two", "grouped",
+        for expected in ["hello, world", "took-a", "0:one", "1:two",
                          "rescued", "child:from-use", "kept-as-data"]:
             check(expected in kernel, f"kernel run yields '{expected}'", kernel)
 
@@ -159,10 +159,6 @@ def main():
         check(len(set(sessions)) == 1, "all turns share one session", str(sessions))
         check(agent.count("stub[resume:") == 2,
               "later turns resume instead of reopening", agent)
-
-        # Dynamic composition.
-        composed = harness.forge("workflow", "dispatch", "composer")
-        check("composed-ok" in composed, "dynamic composition runs", composed)
 
         # Cross-run dispatch through the policy gate.
         parent = harness.forge("workflow", "dispatch", "parent")

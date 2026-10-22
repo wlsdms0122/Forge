@@ -1,92 +1,98 @@
-name: kernel
+# Kernel language tour: every control-flow feature in one shallow pass.
 procedures:
   kernel:
-    description: Kernel language tour — every control-flow feature in one shallow pass
-    parameters:
-      who:
-        type: string
-        default: world
-      mode:
-        type: string
-        oneOf: [a, b]
-        default: a
-      items:
-        type: array
-        default: [one, two]
+    access: public
+    parameters: [ who: String?, mode: String?, items: "Array<String>?" ]
+    returns: "Dictionary<String, Any>"
+    failing: [aborted, cast_refused, concurrent_failed]
     body:
-    - id: greet
-      value: { format: "hello, ${name}", with: { name: { ref: who } } }
-    - id: quoted
-      value: { value: { ref: kept-as-data } }
-    - id: pick
-      branch:
-        when:
-          { of: { ref: mode }, is: a }
-        then:
-          body:
-          - id: chosen
-            value: took-a
-          result: { ref: chosen }
-        else:
-          body:
-          - id: chosen
-            value: took-b
-          result: { ref: chosen }
-    - id: gate
-      loop:
-        where:
-          { of: { ref: "gate.index" }, is_not: 2 }
-        body:
-        - id: latest
-          value: { ref: gate.index }
-        guard: 5
-        result: { ref: latest }
-    - id: walk
-      each:
-        in: { ref: items }
-        body:
-        - id: tagged
-          value:
-            format: "${index}:${item}"
-            with:
-              index: { ref: walk.index }
-              item: { ref: walk.item }
-        result: { ref: tagged }
-    - id: par
-      parallel:
-        do:
-        - id: left
-          value: 1
-        - id: right
-          value: 2
-    - id: blk
-      group:
-        body:
-        - id: inner
-          value: grouped
-        result: { ref: inner }
-    - id: caught
-      attempt:
-        body:
-        - id: bailing
-          abort: bail out
-        rescue:
-          body:
-          - id: recovery
-            value: rescued
-          result: { ref: recovery }
-    - id: called
-      call:
-        procedure: child
-        arguments:
-          tag: from-use
+      - var: name
+        type: String
+        value: world
+      - value:
+          conditional:
+            when: { present: { ref: who } }
+            then: [ { set: name, value: { as: { of: { ref: who }, type: String } } } ]
+      - var: picked
+        type: String
+        value: a
+      - value:
+          conditional:
+            when: { present: { ref: mode } }
+            then: [ { set: picked, value: { as: { of: { ref: mode }, type: String } } } ]
+      - var: list
+        type: "Array<String>"
+        value: [ one, two ]
+      - value:
+          conditional:
+            when: { present: { ref: items } }
+            then: [ { set: list, value: { as: { of: { ref: items }, type: "Array<String>" } } } ]
+      - let: greet
+        value: { format: "hello, ${name}", with: { name: { ref: name } } }
+      - let: quoted
+        value: { dictionary: [ [ref, kept-as-data] ] }
+      - var: pick
+        type: String
+        value: ""
+      - value:
+          cases:
+            - when: { of: { ref: picked }, is: a }
+              then: [ { set: pick, value: took-a } ]
+            - else: [ { set: pick, value: took-b } ]
+      - var: rounds
+        type: Int
+        value: 0
+      - var: latest
+        type: Int
+        value: 0
+      - value:
+          loop:
+            while: { of: { ref: rounds }, is_not: 2 }
+            body:
+              - set: latest
+                value: { ref: rounds }
+              - set: rounds
+                value: { of: { ref: rounds }, plus: 1 }
+      - var: walked
+        type: "Array<String>"
+        value: []
+      - let: walk
+        value:
+          each:
+            of: { ref: list }
+            as: item
+            index: at
+            body:
+              - set: walked
+                value: { of: { ref: walked }, appending: { format: "${at}:${item}", with: { at: { ref: at }, item: { ref: item } } } }
+      - let: par
+        value:
+          call:
+            procedure: Standard.Concurrent.allKeyed
+            arguments:
+              - dictionary:
+                  - [left, { closure: { isolated: true, returns: Int, result: 1 } }]
+                  - [right, { closure: { isolated: true, returns: Int, result: 2 } }]
+      - var: recovered
+        type: String
+        value: ""
+      - let: caught
+        value:
+          attempt:
+            body:
+              - value: { abort: bail out }
+            rescue:
+              - set: recovered
+                value: rescued
+      - let: called
+        value: { call: { procedure: child, arguments: [ from-use ] } }
     result:
-      greeting: { ref: greet }
-      quoted: { ref: quoted }
-      branch: { ref: pick }
-      loop: { ref: gate }
-      walk: { ref: walk }
-      parallel: { ref: par }
-      group: { ref: blk }
-      rescued: { ref: caught }
-      used: { ref: called.tag_out }
+      dictionary:
+        - [greeting, { ref: greet }]
+        - [quoted, { ref: quoted }]
+        - [branch, { ref: pick }]
+        - [loop, { ref: latest }]
+        - [walk, { ref: walked }]
+        - [parallel, { ref: par }]
+        - [rescued, { ref: recovered }]
+        - [used, { ref: 'called["tag_out"]' }]
