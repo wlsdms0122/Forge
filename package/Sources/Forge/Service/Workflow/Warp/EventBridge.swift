@@ -7,7 +7,6 @@
 
 import Foundation
 import Warp
-import WarpIR
 
 // Adapts the language's execution observations to forge's event stream. Warp
 // reports statements; run-level framing (started/completed/failed) stays
@@ -36,94 +35,57 @@ struct EventBridge: ExecutionObserver {
         self.publish = publish
     }
 
-    // MARK: - Public
-    func statementStarted(id: String, expression: Warp.Expression) async {
+    // MARK: - Lifecycle
+    func statementStarted(at trace: Trace) async {
         await publish(WorkflowEvent(
             kind: .stepStarted,
             workflowID: workflowID,
             workflowName: workflowName,
-            stepID: id,
-            action: name(of: expression)
+            stepID: trace.step
         ))
     }
 
-    func statementCompleted(id: String, result: Warp.Value) async {
+    func statementCompleted(at trace: Trace, result: Warp.Value) async {
         await publish(WorkflowEvent(
             kind: .stepCompleted,
             workflowID: workflowID,
             workflowName: workflowName,
-            stepID: id,
+            stepID: trace.step,
             output: ValueBridge.json(result),
-            absorbed: await rescued.absorbed(id)
+            absorbed: await rescued.absorbed(trace.step)
         ))
     }
 
-    // A rescued failure never reaches `statementFailed` — the attempt swallowed
-    // it — so the ledger's record of it is published from here, and the
-    // completion that follows reports itself as absorbed.
-    func failureRescued(name: String, error: any Error) async {
-        await rescued.record(name)
+    // A rescued failure never reaches `statementFailed`, so the ledger's record
+    // of it is published from here, and the completion that follows reports
+    // itself as absorbed.
+    func failureRescued(name: String?, error: any Error) async {
+        let step = name ?? ""
+
+        await rescued.record(step)
         await publish(WorkflowEvent(
             kind: .stepFailed,
             workflowID: workflowID,
             workflowName: workflowName,
-            stepID: name,
+            stepID: step,
             errorType: String(describing: type(of: error)),
             errorMessage: "\(error)"
         ))
     }
 
-    func statementFailed(id: String, error: any Error) async {
+    func statementFailed(at trace: Trace, error: any Error) async {
         await publish(WorkflowEvent(
             kind: .stepFailed,
             workflowID: workflowID,
             workflowName: workflowName,
-            stepID: id,
+            stepID: trace.step,
             errorType: String(describing: type(of: error)),
             errorMessage: "\(error)"
         ))
     }
 
+    // MARK: - Public
     // MARK: - Private
-    private func name(of expression: Warp.Expression) -> String {
-        switch expression {
-        // `when:` is still a modifier in forge's notation, so it wraps the
-        // construct the author actually wrote. The ledger names that one.
-        case .conditional(_, let then, let otherwise) where otherwise == nil:
-            return then.result.map { result in name(of: result) } ?? "branch"
-
-        // A selector names itself, so nothing has to pair a step back to a
-        // Swift type. What it names is the *linked* symbol — `forge.shell`, not
-        // the `shell` an author typed — because that is what ran, and two
-        // modules may spell a word the same way.
-        case .dispatch(let dispatch):
-            return dispatch.selector
-
-        case .block:
-            return "group"
-
-        case .conditional:
-            return "branch"
-
-        case .loop:
-            return "loop"
-
-        case .iteration:
-            return "each"
-
-        case .concurrent:
-            return "parallel"
-
-        case .attempt:
-            return "attempt"
-
-        case .fail:
-            return "abort"
-
-        default:
-            return "value"
-        }
-    }
 }
 
 private actor RescuedStatements {

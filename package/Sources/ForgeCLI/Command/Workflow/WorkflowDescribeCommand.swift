@@ -88,27 +88,8 @@ struct WorkflowDescribeCommand: ParsableCommand {
             }
         }
         
-        let outputs = (result["outputs"] as? [String: Any]) ?? [:]
-        
-        if !outputs.isEmpty {
-            print("  outputs:")
-            
-            for key in outputs.keys.sorted() {
-                let raw = outputs[key]
-                let rendered: String
-                
-                if let string = raw as? String {
-                    rendered = string
-                } else if let any = raw,
-                    let data = try? JSONSerialization.data(withJSONObject: any),
-                    let string = String(data: data, encoding: .utf8) {
-                    rendered = string
-                } else {
-                    rendered = ""
-                }
-                
-                print("    \(key) ← \(rendered)")
-            }
+        if let returns = result["returns"] as? String {
+            print("  returns: \(returns)")
         }
     }
     

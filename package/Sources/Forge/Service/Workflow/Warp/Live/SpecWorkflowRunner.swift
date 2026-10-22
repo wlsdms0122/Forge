@@ -206,29 +206,18 @@ actor SpecWorkflowRunner {
             inputLen: inputLength
         ))
 
-        let originScope: [String: Warp.Value] = {
-            var scope: [String: Warp.Value] = ["kind": .string(origin.kind)]
-
-            if let originID = origin.id { scope["id"] = .string(originID) }
-
-            return scope
-        }()
-
-        let runScope: [String: Warp.Value] = [
-            "workflow_id": .string(runID),
-            "root_id": .string(LogContext.rootID ?? runID)
-        ]
         let eventBus = self.eventBus
         let environment = ForgeEnvironment(
             shell: shell,
             agent: agent,
             dispatcher: self,
             resources: resources,
-            loader: catalog.loader,
             pool: pool,
-            runID: runID
+            runID: runID,
+            rootID: LogContext.rootID ?? runID,
+            origin: origin
         )
-        let executor = catalog.loader.language.makeExecutor(
+        let executor = Warp.Executor(
             observer: EventBridge(
                 workflowID: runID,
                 workflowName: name,
@@ -242,44 +231,28 @@ actor SpecWorkflowRunner {
             // sibling that has left the catalog is a run that failed, and it
             // reports through the same ledger a failed step does.
             // Every workflow the daemon can see goes into the link, and the
-            // name this run was asked for is the entry — `gcc *.yaml`, then
-            // start from one symbol.
+            // name this run was asked for is the entry.
             //
             // The module being dispatched leads, and any catalog copy declaring
             // that same name is left out: normally it *is* that copy, and when
             // it is not (an inline spec) the caller's is the one they meant.
             // Two copies would be a duplicate symbol, which is right in general
             // and wrong for exactly this case.
+            let entry = try Name(name)
             let world = await catalog.modules().filter { module in
-                module.procedures[name] == nil
+                module.procedures[entry] == nil
             }
-            // The entry is named qualified where the module has a name, because
-            // a bare name is ambiguous the moment anything else declares it —
-            // and forge's own verbs do: a workflow called `agent` is a real
-            // thing to want, and `forge.agent` should not take the name from it.
-            let image = try catalog.loader.language.link(
-                [module] + world + ForgeSpec.linkables,
-                entry: module.name.map { owner in "\(owner).\(name)" } ?? name
+            let image = try await Builder().build([module] + world + ForgeSpec.linkables())
+            let arguments = try Self.arguments(
+                inputs,
+                for: module.procedures[entry]?.signature
             )
             let outputs = try await withCancelSignal(runID: runID) {
-                try await executor.run(
-                    image,
-                    arguments: inputs.mapValues { value in ValueBridge.value(value) }
-                        .merging([
-                            "origin": .object(originScope),
-                            "run": .object(runScope)
-                        ]) { _, ambient in ambient }
-                )
+                try await executor.run(image, entry: entry, arguments: arguments)
             }
-            // A run answers one value; this notation's `outputs:` lowers to a
-            // record, so the fields of that record are what a workflow reports.
-            let jsonOutputs: [String: JSONValue]
-
-            if case .object(let fields) = outputs {
-                jsonOutputs = fields.mapValues { value in ValueBridge.json(value) }
-            } else {
-                jsonOutputs = [:]
-            }
+            // A run returns one value, and the fields of the struct or map a
+            // workflow returns are what it reports.
+            let jsonOutputs = try ValueBridge.fields(outputs).mapValues(ValueBridge.json)
             let duration = (ContinuousClock.now - started).milliseconds
 
             await eventBus.publish(WorkflowEvent(
@@ -352,6 +325,28 @@ actor SpecWorkflowRunner {
         }
     }
 
+    // The inputs a caller handed, by name, and null for every optional
+    // parameter it left out: the language takes every argument from its
+    // caller, and a caller that holds nothing there says so.
+    private static func arguments(
+        _ inputs: [String: JSONValue],
+        for signature: Signature?
+    ) throws -> [Name: Warp.Value] {
+        var arguments: [Name: Warp.Value] = [:]
+
+        for (name, value) in inputs {
+            arguments[try Name(name)] = try ValueBridge.value(value)
+        }
+
+        for parameter in signature?.parameters ?? [] where arguments[parameter.name] == nil {
+            guard case .nullable = parameter.type else { continue }
+
+            arguments[parameter.name] = .null
+        }
+
+        return arguments
+    }
+
     static func valuePreview(_ value: JSONValue) -> (String?, Int?) {
         let previewLimit = 2000
 
@@ -394,47 +389,25 @@ actor SpecWorkflowRunner {
 // lowered from the inline body the loader admitted at load time), then walked
 // through the same dispatch door as any RPC caller.
 extension SpecWorkflowRunner: RunDispatching {
-    func dispatch(
-        name: String?,
-        inline: Warp.Value?,
-        inputs: [String: Warp.Value]
-    ) async throws -> Warp.Value {
+    func dispatch(name: String, inputs: [String: Warp.Value]) async throws -> Warp.Value {
         let module: Warp.Module
-        let childName: String
 
-        if let name {
-            switch await catalog.resolve(name) {
-            case .found(let found):
-                module = found
+        switch await catalog.resolve(name) {
+        case let .found(found):
+            module = found
 
-            case .invalid(let reason):
-                throw WorkflowValidationError(
-                    "dispatch: workflow '\(name)' is broken — \(reason)"
-                )
-
-            case .unobserved(let reason):
-                throw ResolutionError(
-                    "dispatch: workflow '\(name)' could not be resolved — \(reason)"
-                )
-
-            case .missing:
-                throw DispatchTargetNotFound("dispatch: workflow '\(name)' not found")
-            }
-
-            childName = name
-        } else {
-            guard let inline else {
-                throw ProtocolError("dispatch: neither name nor inline spec (decoder gap)")
-            }
-
-            // Same shape the RPC door admits: an inline spec is one procedure.
-            childName = WorkflowDispatchMethod.inlineSigil
-            module = Warp.Module(
-                procedures: [
-                    childName: try catalog.loader
-                        .procedure(from: ForgeSpec.seeding(procedure: inline))
-                ]
+        case let .invalid(reason):
+            throw WorkflowValidationError(
+                "dispatch: workflow '\(name)' is broken — \(reason)"
             )
+
+        case let .unobserved(reason):
+            throw ResolutionError(
+                "dispatch: workflow '\(name)' could not be resolved — \(reason)"
+            )
+
+        case .missing:
+            throw DispatchTargetNotFound("dispatch: workflow '\(name)' not found")
         }
 
         let parentName = LogContext.workflowContext?.workflowName ?? "unknown"
@@ -445,7 +418,7 @@ extension SpecWorkflowRunner: RunDispatching {
 
         let result = try await dispatch(
             module: module,
-            name: childName,
+            name: name,
             inputs: inputs.mapValues { value in ValueBridge.json(value) },
             principal: "cli:\(parentName)",
             origin: .manual,
@@ -458,14 +431,14 @@ extension SpecWorkflowRunner: RunDispatching {
 
         switch result.status {
         case .ok:
-            return .object(result.outputs.mapValues { value in ValueBridge.value(value) })
+            return try ValueBridge.value(.object(result.outputs))
 
         case .failed:
             guard let failure = result.error else {
-                throw ProtocolError("dispatch '\(childName)' failed (no error detail)")
+                throw ProtocolError("dispatch '\(name)' failed (no error detail)")
             }
 
-            let summary = "dispatch '\(childName)' failed: \(failure.type) — \(failure.message)"
+            let summary = "dispatch '\(name)' failed: \(failure.type) — \(failure.message)"
 
             switch failure.kind {
             case .work:
@@ -476,7 +449,7 @@ extension SpecWorkflowRunner: RunDispatching {
 
             case .cancelled:
                 throw ChildRunCancelled(
-                    "dispatch '\(childName)' cancelled: \(failure.message)"
+                    "dispatch '\(name)' cancelled: \(failure.message)"
                 )
             }
         }

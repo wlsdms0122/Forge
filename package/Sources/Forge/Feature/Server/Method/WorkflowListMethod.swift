@@ -27,7 +27,6 @@ struct WorkflowListMethod: Sendable {
         let summary: [[String: Any]] = catalog.entries.map { entry in
             [
                 "name":        entry.name,
-                "description": entry.module.procedures[entry.name]?.description as Any? ?? NSNull(),
                 "source":      entry.source,
             ]
         }

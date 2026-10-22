@@ -37,18 +37,17 @@ struct WorkflowDescribeMethod: Sendable {
 
         // A workflow file declares one procedure named after the file — that is
         // Forge's convention, enforced at load, and what makes this lookup total.
-        guard let procedure = entry.module.procedures[entry.name] else {
+        guard let procedure = entry.module.procedures[try Name(entry.name)] else {
             throw ResolutionError("workflow '\(name)' declares no procedure of that name")
         }
 
         var result: [String: Any] = [
             "name":        entry.name,
-            "description": procedure.description as Any? ?? NSNull(),
             "source":      entry.source,
         ]
 
-        result["inputs"] = try contract.inputs(of: procedure.signature)
-        result["outputs"] = try contract.outputs(of: procedure.result)
+        result["inputs"] = contract.inputs(of: procedure.signature)
+        result["returns"] = contract.returns(of: procedure.signature)
 
         return JSONObject(result)
     }
