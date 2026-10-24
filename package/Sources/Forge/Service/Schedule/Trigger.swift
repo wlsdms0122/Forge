@@ -104,12 +104,31 @@ extension Trigger: Codable {
         }
         
         if container.contains(.every) {
+            guard !container.contains(.timezone), !container.contains(.days) else {
+                throw DecodingError.dataCorrupted(
+                    .init(
+                        codingPath: container.codingPath,
+                        debugDescription: "'every' is timezone-agnostic and takes no 'days'"
+                            + " — drop 'timezone'/'days'"
+                    )
+                )
+            }
+            
             self = .every(try container.decode(Interval.self, forKey: .every))
             
             return
         }
         
         if container.contains(.once) {
+            guard !container.contains(.days) else {
+                throw DecodingError.dataCorrupted(
+                    .init(
+                        codingPath: container.codingPath,
+                        debugDescription: "'once' takes no 'days' (one-shot) — drop 'days'"
+                    )
+                )
+            }
+            
             let raw = try container.decode(String.self, forKey: .once)
             let timezone = try Self.decodeTimezone(container, context: "once")
             
@@ -141,7 +160,7 @@ extension Trigger: Codable {
         let timezone = try Self.decodeTimezone(container, context: "at")
         var days: Set<Weekday> = []
         
-        if let list = try container.decodeIfPresent([Weekday].self, forKey: .days) {
+        if let list = try container.decodeIfPresent([String].self, forKey: .days) {
             guard !list.isEmpty else {
                 throw DecodingError.dataCorrupted(
                     .init(
@@ -152,7 +171,19 @@ extension Trigger: Codable {
                 )
             }
             
-            days = Set(list)
+            for raw in list {
+                guard let day = Weekday(rawValue: raw.lowercased()) else {
+                    throw DecodingError.dataCorrupted(
+                        .init(
+                            codingPath: container.codingPath + [CodingKeys.days],
+                            debugDescription: "unknown weekday '\(raw)'"
+                                + " — use mon/tue/wed/thu/fri/sat/sun"
+                        )
+                    )
+                }
+                
+                days.insert(day)
+            }
         }
         
         self = .at(hour: hour, minute: minute, days: days, timezone: timezone)

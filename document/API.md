@@ -810,13 +810,13 @@ the schedule record as written and read again on every fire.
 | `at` | △ | wall-clock `"HH:mm"` (24h) — repeating; requires `timezone` |
 | `once` | △ | wall-clock `"yyyy-MM-dd HH:mm:ss"` — one-shot; requires `timezone` |
 | `after` | △ | relative duration — one-shot; resolved at creation, stored as absolute |
-| `timezone` | △ | IANA id (`"Asia/Seoul"`) — required with `at`/`once`; not used by `every`/`after` (`after` displays in UTC) |
-| `days` | — | weekday filter for `at` (`["mon",…]`); omit for every day |
+| `timezone` | △ | IANA id (`"Asia/Seoul"`) — required with `at`/`once`; refused with `every`/`after` (`after` displays in UTC) |
+| `days` | — | weekday filter for `at` (`["mon",…]`, any case); omit for every day; refused with `every`/`once`/`after` |
 | `id` | — | string; auto-generated (`s-<ts>-<rand>`) if omitted |
 | `concurrency` | — | `queue` \| `skip` \| `replace`, default `queue` |
 | `inputs` | — | object passed to the workflow on fire |
 
-Exactly one of `every` / `at` / `once` / `after`. **result**
+Exactly one of `every` / `at` / `once` / `after`. A schedule file is read by the same trigger rules, without `after` and without the future check. **result**
 `{"id","workflow","trigger","runtime":true,"fire_at"?}` (`fire_at` present for
 one-shot; `workflow` is the sigil `<inline>` when created with `spec`).
 

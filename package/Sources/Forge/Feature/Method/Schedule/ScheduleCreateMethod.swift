@@ -25,128 +25,61 @@ struct ScheduleCreateMethod: Sendable {
     }
 
     // MARK: - Public
+    // The trigger the request gives, read by `Trigger`'s rules; `after` is a
+    // fire time relative to now, and a `once` must lie ahead of now.
     static func parseTrigger(_ params: [String: Any], now: Date = Date()) throws -> Trigger {
-        let everyRaw = (params["every"] as? String)
-            .flatMap { value in value.isEmpty ? nil : value }
-        let atRaw    = (params["at"]    as? String)
-            .flatMap { value in value.isEmpty ? nil : value }
-        let onceRaw  = (params["once"]  as? String)
-            .flatMap { value in value.isEmpty ? nil : value }
-        let afterRaw = (params["after"] as? String)
-            .flatMap { value in value.isEmpty ? nil : value }
-        let present = [everyRaw, atRaw, onceRaw, afterRaw].compactMap { value in value }
-
-        guard present.count == 1 else {
-            throw ProtocolError(
-                "schedule.create: exactly one of 'every' (interval) / 'at' (wall-clock 'HH:mm' + 'timezone') / 'once' (wall-clock 'yyyy-MM-dd HH:mm:ss' + 'timezone') / 'after' (relative duration) is required")
+        let fields = Trigger.CodingKeys.allCases.reduce(into: [String: Any]()) { fields, key in
+            guard let value = params[key.stringValue], (value as? String) != "" else { return }
+            
+            fields[key.stringValue] = value
         }
-
-        let hasTimezone = (params["timezone"] as? String).map { value in !value.isEmpty } ?? false
-        let hasDays = params["days"] != nil
-
-        if let every = everyRaw {
-            if hasTimezone || hasDays {
-                throw ProtocolError("schedule.create: 'every' is timezone-agnostic and takes no 'days' — drop 'timezone'/'days'")
+        
+        if let after = (params["after"] as? String).flatMap({ value in value.isEmpty ? nil : value }) {
+            guard fields.isEmpty else {
+                throw ProtocolError(
+                    "schedule.create: 'after' is a fire time relative to now and takes no"
+                        + " 'once', 'every', 'at', 'days' or 'timezone'"
+                )
             }
-
+            
             let seconds: Int
-
+            
             do {
-                seconds = try Interval.parse(every)
+                seconds = try Interval.parse(after)
             } catch {
                 throw ProtocolError(
-                    "schedule.create: 'every' must be a duration like 30s / 5m / 1h / 2d (compound 1h30m): '\(every)'")
+                    "schedule.create: 'after' must be a duration like 30s / 5m / 1h / 2d (compound 1h30m): '\(after)'")
             }
-
-            return .every(Interval(seconds: seconds))
+            
+            return .once(
+                fireAt: now.addingTimeInterval(Double(seconds)),
+                timezone: TimeZone(identifier: "UTC")!
+            )
         }
-
-        if let at = atRaw {
-            guard let (hour, minute) = Trigger.parseHHmm(at) else {
-                throw ProtocolError("schedule.create: 'at' must be 'HH:mm' (24h): '\(at)'")
-            }
-
-            let timezone = try parseTimezone(params, context: "schedule.create")
-            let days = try parseDays(params)
-
-            return .at(hour: hour, minute: minute, days: days, timezone: timezone)
-        }
-
-        if let once = onceRaw {
-            if hasDays {
-                throw ProtocolError("schedule.create: 'once' takes no 'days' (one-shot) — drop 'days'")
-            }
-
-            let timezone = try parseTimezone(params, context: "schedule.create")
-
-            guard let fireAt = Trigger.parseWallClock(once, timezone: timezone) else {
-                throw ProtocolError(
-                    "schedule.create: 'once' must be 'yyyy-MM-dd HH:mm:ss': '\(once)'")
-            }
-
-            guard fireAt > now else {
-                throw ProtocolError(
-                    "schedule.create: fire time must be in the future (\(Trigger.formatWallClock(fireAt, timezone: timezone)) \(timezone.identifier))")
-            }
-
-            return .once(fireAt: fireAt, timezone: timezone)
-        }
-
-        let after = afterRaw!
-
-        if hasTimezone || hasDays {
-            throw ProtocolError("schedule.create: 'after' is timezone-agnostic and takes no 'days' — drop 'timezone'/'days'")
-        }
-
-        let seconds: Int
-
+        
+        let trigger: Trigger
+        
         do {
-            seconds = try Interval.parse(after)
+            trigger = try JSONDecoder().decode(
+                Trigger.self,
+                from: try JSONSerialization.data(withJSONObject: fields)
+            )
         } catch {
-            throw ProtocolError(
-                "schedule.create: 'after' must be a duration like 30s / 5m / 1h / 2d (compound 1h30m): '\(after)'")
+            throw ProtocolError("schedule.create: \(friendlyDecodingError(error, root: "trigger"))")
         }
-
-        let fireAt = now.addingTimeInterval(Double(seconds))
-
-        return .once(fireAt: fireAt, timezone: TimeZone(identifier: "UTC")!)
+        
+        if case let .once(fireAt, timezone) = trigger, fireAt <= now {
+            throw ProtocolError(
+                "schedule.create: fire time must be in the future (\(Trigger.formatWallClock(fireAt, timezone: timezone)) \(timezone.identifier))")
+        }
+        
+        return trigger
     }
 
     static func fireAt(_ trigger: Trigger) -> Date? {
         if case .once(let date, _) = trigger { return date }
 
         return nil
-    }
-
-    static func parseTimezone(_ params: [String: Any], context: String) throws -> TimeZone {
-        guard let identifier = params["timezone"] as? String, !identifier.isEmpty else {
-            throw ProtocolError("\(context): 'timezone' (e.g. 'Asia/Seoul') is required for wall-clock trigger")
-        }
-
-        guard let timezone = TimeZone(identifier: identifier) else {
-            throw ProtocolError("\(context): unknown timezone identifier '\(identifier)'")
-        }
-
-        return timezone
-    }
-
-    static func parseDays(_ params: [String: Any]) throws -> Set<Weekday> {
-        guard let raw = params["days"] else { return [] }
-        guard let list = raw as? [String], !list.isEmpty else {
-            throw ProtocolError("schedule.create: 'days' must be a non-empty array of mon..sun (omit for every day)")
-        }
-
-        var out: Set<Weekday> = []
-
-        for value in list {
-            guard let weekday = Weekday(rawValue: value.lowercased()) else {
-                throw ProtocolError("schedule.create: unknown weekday '\(value)' — use mon/tue/wed/thu/fri/sat/sun")
-            }
-
-            out.insert(weekday)
-        }
-
-        return out
     }
 
     func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONObject {

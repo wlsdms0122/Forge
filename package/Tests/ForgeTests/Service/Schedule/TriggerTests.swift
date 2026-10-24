@@ -191,6 +191,17 @@ struct TriggerTests {
         #expect(throws: (any Error).self, "malformed HH:mm") { try decode(#"{"at":"9","timezone":"Asia/Seoul"}"#) }
         #expect(throws: (any Error).self, "empty days") { try decode(#"{"at":"09:20","days":[],"timezone":"Asia/Seoul"}"#) }
     }
+
+    @Test("A schedule file is held to the rules the RPC is held to")
+    func decodeRejectsMisplacedTimezoneDays() throws {
+        #expect(throws: (any Error).self, "every with timezone") { try decode(#"{"every":"1h","timezone":"Asia/Seoul"}"#) }
+        #expect(throws: (any Error).self, "every with days") { try decode(#"{"every":"1h","days":["mon"]}"#) }
+        #expect(throws: (any Error).self, "once with days") {
+            try decode(#"{"once":"2099-01-01 09:00:00","timezone":"Asia/Seoul","days":["mon"]}"#)
+        }
+        #expect(throws: (any Error).self, "unknown weekday") { try decode(#"{"at":"09:20","days":["moon"],"timezone":"Asia/Seoul"}"#) }
+        #expect(try decode(#"{"at":"09:20","days":["Mon"],"timezone":"Asia/Seoul"}"#) == .at(hour: 9, minute: 20, days: [.mon], timezone: seoul))
+    }
     
     // MARK: - Private
     private func seoulCal() -> Calendar {
