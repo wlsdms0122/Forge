@@ -40,7 +40,7 @@ struct ScheduleControlGateTests {
             #expect(String(describing: error).contains("not allowed"), "Should be a policy denial: \(error)")
         }
 
-        let still = await store.catalog().entries
+        let still = await store.reload().entries
         #expect(still.count == 1, "A rejected delete should leave the schedule in place")
     }
     
@@ -58,7 +58,7 @@ struct ScheduleControlGateTests {
 
         // Then
         #expect(result["deleted"]?.boolValue == true)
-        let remaining = await store.catalog().entries
+        let remaining = await store.reload().entries
         #expect(remaining.isEmpty, "A permitted delete should remove the schedule")
     }
     
@@ -96,7 +96,7 @@ struct ScheduleControlGateTests {
         _ = try await create.handle(RPCRequest(
                 id: "c", method: "schedule.create",
                 params: ["token": .string(ownerToken), "spec": .object(inlineSpec), "after": "1h"]), claims: try #require(authority.verify(ownerToken)))
-        let entries = await store.catalog().entries
+        let entries = await store.reload().entries
         let scheduleID = try #require(entries.first?.schedule.id)
         
         return (store, scheduleID)

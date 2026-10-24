@@ -47,7 +47,7 @@ struct PolicyPatternValidationTests {
         #expect(half, "the same principal's valid pattern must survive")
         let typo = await store.allows(principal: "cli:typoX", workflow: "anything")
         #expect(!typo)
-        let failures = await store.catalog().failures
+        let failures = await store.reload().failures
         #expect(failures.count == 2, "\(failures.map(\.reason))")
         #expect(failures.contains { failure in failure.reason.contains("cli:typo*") })
         #expect(failures.contains { failure in failure.reason.contains("*audit") })

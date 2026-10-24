@@ -106,7 +106,7 @@ actor ScheduleStore {
     }
     
     @discardableResult
-    func catalog() async -> Snapshot {
+    func reload() async -> Snapshot {
         var ledger = LoadFailureLedger(prior: failureCache)
         var candidates: [(key: String, source: String, value: Entry)] = []
         var obstructed: [LoadFailure] = []
@@ -144,11 +144,11 @@ actor ScheduleStore {
     }
     
     func all() async -> [Schedule] {
-        await catalog().entries.map(\.schedule)
+        await reload().entries.map(\.schedule)
     }
     
     func tickSnapshot() async -> TickSnapshot {
-        await catalog()
+        await reload()
         
         return TickSnapshot(
             entries: cache.values.map { entry in effective(entry) },
@@ -158,7 +158,7 @@ actor ScheduleStore {
     }
     
     func lookup(_ id: String) async -> Schedule? {
-        await catalog()
+        await reload()
         
         return cache[id].map { entry in effective(entry).schedule }
     }
@@ -282,7 +282,7 @@ actor ScheduleStore {
     }
     
     private func observedIDState(_ id: String) async -> IDState {
-        await catalog()
+        await reload()
         
         if let entry = cache[id] { return .live(entry) }
         if collidedIDs.contains(id) { return .collided }

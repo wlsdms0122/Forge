@@ -22,7 +22,7 @@ struct ScheduleListMethod: Sendable {
     func handle(_ request: RPCRequest) async throws -> JSONValue {
         let now = Date()
         let ledgerMap = await ledger.snapshot()
-        let snapshot = await store.catalog()
+        let snapshot = await store.reload()
 
         var flags: [JSONValue] = []
 

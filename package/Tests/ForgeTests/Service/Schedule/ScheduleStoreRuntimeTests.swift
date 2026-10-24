@@ -39,7 +39,7 @@ struct ScheduleStoreRuntimeTests {
         #expect(FileManager.default.fileExists(
                 atPath: runtimeDirectoryectory.appendingPathComponent("\(created.id).yaml").path))
         #expect(ScheduleIDSpace.isRuntime(created.id), "create must stamp the runtime partition — got '\(created.id)'")
-        let entries = await store.catalog().entries
+        let entries = await store.reload().entries
         guard let error = entries.first(where: { entry in entry.schedule.id == created.id }) else {
             Issue.record("created schedule not found")
             
@@ -136,7 +136,7 @@ struct ScheduleStoreRuntimeTests {
         #expect(try String(contentsOf: destFile, encoding: .utf8) == foreignYAML, "existing declaration file must not be clobbered by create")
         let other = await store.lookup("other")
         #expect(other == nil, "a declaration whose id and filename disagree is not accepted as live")
-        let failures = await store.catalog().failures
+        let failures = await store.reload().failures
         #expect(failures.contains { failure in failure.reason.contains("basename") }, "the mismatch must be loud via failures — got: \(failures.map(\.reason))")
     }
 
@@ -315,7 +315,7 @@ struct ScheduleStoreRuntimeTests {
         let store = ScheduleStore(configDir: directory, runtimeDirectory: runtimeDirectoryectory, stateFile: try temporary.file("schedule-enabled.json"))
         let created = try await store.create(Schedule(id: "nested-1", workflow: "wf",
                 trigger: .every(Interval(seconds: 60))))
-        let entries = await store.catalog().entries
+        let entries = await store.reload().entries
         let matches = entries.filter { entry in entry.schedule.id == created.id }
 
         // Then
@@ -400,7 +400,7 @@ struct ScheduleStoreRuntimeTests {
             stateFile: try temporary.file("enabled-\(UUID().uuidString.prefix(6)).json"))
 
         // When
-        let snapshot = await store.catalog()
+        let snapshot = await store.reload()
 
         // Then
         #expect(snapshot.failures.contains { failure in failure.path == "broken.yaml" }, "decode failure must surface")

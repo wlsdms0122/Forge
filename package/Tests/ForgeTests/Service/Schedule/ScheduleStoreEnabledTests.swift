@@ -125,7 +125,7 @@ struct ScheduleStoreEnabledTests {
 
         // Then
         #expect(loaded == nil, "a file declaring enabled must be refused at load")
-        let failures = await store.catalog().failures
+        let failures = await store.reload().failures
         #expect(failures.contains { failure in failure.reason.contains("enabled") }, "the refusal reason must surface via failures — got: \(failures.map(\.reason))")
     }
 
@@ -199,7 +199,7 @@ struct ScheduleStoreEnabledTests {
 
         // Then
         #expect(effective == false, "a corrupt ledger must behave as all-disabled (never toward re-firing)")
-        let failures = await store.catalog().failures
+        let failures = await store.reload().failures
         #expect(failures.contains { failure in failure.reason.contains("enabled-ledger") }, "ledger corruption must surface via failures — got: \(failures.map(\.reason))")
         #expect(!FileManager.default.fileExists(atPath: state.path), "the corrupt ledger must be quarantined away from its original location")
         let quarantined = try FileManager.default.contentsOfDirectory(
@@ -210,7 +210,7 @@ struct ScheduleStoreEnabledTests {
         let recovered = await store.lookup("cs")?.enabled
         #expect(recovered == true)
         #expect(readEnabled(state) == ["cs": "wf"], "the rewritten ledger must be a valid {id: workflow} map")
-        let cleared = await store.catalog().failures
+        let cleared = await store.reload().failures
         #expect(!cleared.contains { failure in failure.reason.contains("enabled-ledger") }, "after a valid rewrite, the corruption marker must be cleared")
     }
 

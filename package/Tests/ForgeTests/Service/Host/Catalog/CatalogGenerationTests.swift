@@ -36,13 +36,13 @@ struct CatalogGenerationTests {
         let store = try WorkflowCatalog(directory: directory)
 
         // When
-        var snapshot = await store.catalog()
+        var snapshot = await store.reload()
 
         // Then
         #expect(snapshot.entries.isEmpty)
         #expect(snapshot.failures.map(\.name) == ["mender"])
         try writeWorkflow(validBody, named: "mender", in: directory)
-        snapshot = await store.catalog()
+        snapshot = await store.reload()
         try assertAccountedForExactlyOnce(snapshot, in: directory)
         #expect(snapshot.entries.map(\.workflow.name) == ["mender"])
         #expect(snapshot.failures.isEmpty)
@@ -57,7 +57,7 @@ struct CatalogGenerationTests {
         // When
         try writeWorkflow(validBody, named: "ok", in: directory)
         try writeWorkflow(brokenBody, named: "bad", in: directory)
-        let snapshot = try await WorkflowCatalog(directory: directory).catalog()
+        let snapshot = try await WorkflowCatalog(directory: directory).reload()
         try assertAccountedForExactlyOnce(snapshot, in: directory)
 
         // Then
@@ -77,7 +77,7 @@ struct CatalogGenerationTests {
         let sut = try WorkflowCatalog(directory: directory)
 
         // When
-        let snapshot = await sut.catalog()
+        let snapshot = await sut.reload()
 
         // Then
         try assertAccountedForExactlyOnce(snapshot, in: directory)
@@ -110,7 +110,7 @@ struct CatalogGenerationTests {
         let sut = try WorkflowCatalog(directory: directory)
 
         // When
-        let snapshot = await sut.catalog()
+        let snapshot = await sut.reload()
 
         // Then
         #expect(snapshot.failures.isEmpty)
@@ -146,7 +146,7 @@ struct CatalogGenerationTests {
         let sut = try WorkflowCatalog(directory: directory)
 
         // When
-        let snapshot = await sut.catalog()
+        let snapshot = await sut.reload()
 
         // Then
         try assertAccountedForExactlyOnce(snapshot, in: directory)
@@ -173,7 +173,7 @@ struct CatalogGenerationTests {
         let sut = try WorkflowCatalog(directory: directory)
 
         // When
-        let snapshot = await sut.catalog()
+        let snapshot = await sut.reload()
 
         // Then
         #expect(snapshot.entries.map(\.workflow.name) == ["same"])
@@ -202,7 +202,7 @@ struct CatalogGenerationTests {
         }
 
         // When
-        let snapshot = try await WorkflowCatalog(directory: directory).catalog()
+        let snapshot = try await WorkflowCatalog(directory: directory).reload()
 
         // Then
         #expect(snapshot.entries.map(\.workflow.name) == ["visible"])
@@ -221,7 +221,7 @@ struct CatalogGenerationTests {
             stateFile: config.appendingPathComponent("state.json"))
 
         // When
-        let snapshot = await store.catalog()
+        let snapshot = await store.reload()
 
         // Then
         #expect(snapshot.entries.map(\.schedule.id) == ["good"])
@@ -247,7 +247,7 @@ struct CatalogGenerationTests {
             stateFile: config.appendingPathComponent("state.json"))
 
         // When
-        let snapshot = await store.catalog()
+        let snapshot = await store.reload()
 
         // Then
         #expect(snapshot.entries.map(\.schedule.id) == ["visible"])
@@ -265,7 +265,7 @@ struct CatalogGenerationTests {
             atomically: true, encoding: .utf8)
 
         // When
-        let snapshot = await PolicyStore(directory: directory).catalog()
+        let snapshot = await PolicyStore(directory: directory).reload()
 
         // Then
         #expect(snapshot.policy["admin:alice"] == ["*"])

@@ -77,7 +77,7 @@ struct PolicyStoreTests {
         let store = PolicyStore(directory: directory)
 
         // When
-        let snapshot = await store.catalog().policy
+        let snapshot = await store.reload().policy
 
         // Then
         #expect(Set(snapshot["cli:response"] ?? []) == ["capture", "search"])
@@ -161,7 +161,7 @@ struct PolicyStoreTests {
         let store = PolicyStore(directory: directory)
 
         // When
-        let failures = await store.catalog().failures
+        let failures = await store.reload().failures
 
         // Then
         #expect(failures.map(\.path) == ["broken.yaml"])

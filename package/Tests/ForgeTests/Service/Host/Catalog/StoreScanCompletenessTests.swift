@@ -132,7 +132,7 @@ struct StoreScanCompletenessTests {
             Issue.record("a nonexistent name resolved as found")
         }
         
-        let failures = await store.catalog().failures
+        let failures = await store.reload().failures
         #expect(failures.contains { failure in failure.reason.contains("scan incomplete") }, "\(failures.map(\.reason))")
     }
     
@@ -237,7 +237,7 @@ struct StoreScanCompletenessTests {
             Issue.record("a definition that became unreadable was folded into absence")
         }
         
-        let failures = await store.catalog().failures
+        let failures = await store.reload().failures
         #expect(!failures.isEmpty, "the observation failure never reached any surface")
     }
     
@@ -256,7 +256,7 @@ struct StoreScanCompletenessTests {
             return
         }
         
-        let failures = await store.catalog().failures
+        let failures = await store.reload().failures
         #expect(failures.isEmpty)
     }
     

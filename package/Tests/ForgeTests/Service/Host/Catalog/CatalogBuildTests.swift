@@ -30,7 +30,7 @@ struct CatalogBuildTests {
         guard let path = ProcessInfo.processInfo.environment["FORGE_CATALOG"] else { return }
 
         let sut = try WorkflowCatalog(directory: URL(fileURLWithPath: path).standardizedFileURL)
-        let snapshot = await sut.catalog()
+        let snapshot = await sut.reload()
 
         for entry in snapshot.entries {
             print("\(entry.source): ok")

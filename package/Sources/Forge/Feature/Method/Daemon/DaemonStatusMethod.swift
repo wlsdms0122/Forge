@@ -34,7 +34,7 @@ struct DaemonStatusMethod: Sendable {
         let schedules = await scheduleStore.all()
         let services = await supervisor.statuses()
         let registered = Set(await handlerBus.listing().map(\.0))
-        let workflowCount = await workflowStore.catalog().entries.count
+        let workflowCount = await workflowStore.reload().entries.count
         let jobCount = await jobStore.all().count
         
         let daemon: JSONValue = [

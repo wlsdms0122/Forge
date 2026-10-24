@@ -18,7 +18,7 @@ struct PolicyListMethod: Sendable {
 
     // MARK: - Public
     func handle(_ request: RPCRequest) async throws -> JSONValue {
-        let snapshot = await store.catalog()
+        let snapshot = await store.reload()
         let policy = snapshot.policy.mapValues { workflows in JSONValue.array(workflows.map(JSONValue.string)) }
         let failureSummary: [JSONValue] = snapshot.failures.map { failure in
             [

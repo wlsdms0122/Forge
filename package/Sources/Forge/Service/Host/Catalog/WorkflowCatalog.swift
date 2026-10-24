@@ -98,10 +98,10 @@ actor WorkflowCatalog {
     }
 
     // MARK: - Public
-    // The directory's catalog, the daemon's: a reload announces on stderr
-    // each failure new to it.
+    // The directory, the daemon's, reloaded where it changed and answered
+    // as a snapshot: a reload announces on stderr each failure new to it.
     @discardableResult
-    func catalog() async -> Snapshot {
+    func reload() async -> Snapshot {
         guard let directory else {
             cache.removeAll()
             failureCache.removeAll()
@@ -139,7 +139,7 @@ actor WorkflowCatalog {
     // The files at these paths read the way a reload reads the directory's,
     // for a gate that admits what the daemon admits and reports what it
     // records.
-    func catalog(of paths: [String]) async -> Snapshot {
+    func reload(of paths: [String]) async -> Snapshot {
         await observing(
             StoreScan(files: paths.map { path in ScannedFile(url: URL(fileURLWithPath: path), source: path) })
         )
@@ -147,7 +147,7 @@ actor WorkflowCatalog {
     }
 
     func all() async -> Snapshot {
-        await catalog()
+        await reload()
     }
 
     // An inline spec: one procedure written in the YAML notation, read the
@@ -165,7 +165,7 @@ actor WorkflowCatalog {
             JSONValue.object(["procedures": .object([Self.inlineSigil: .object(procedure)])])
         )
 
-        await catalog()
+        await reload()
 
         let document: Value
 
@@ -191,7 +191,7 @@ actor WorkflowCatalog {
     // them, a file declaring the name it runs by left out, since the
     // caller's is the one meant.
     func image(running module: Warp.Module, entry: Name) async throws -> Image {
-        await catalog()
+        await reload()
 
         let standing = compiled
         let files = cache
@@ -208,7 +208,7 @@ actor WorkflowCatalog {
     }
 
     func resolve(_ name: String) async -> Lookup {
-        await catalog()
+        await reload()
 
         if let entry = cache[name] { return .found(entry.workflow) }
 
@@ -540,7 +540,7 @@ extension WorkflowCatalog {
 
     // The workflows that built, without the vocabulary a link adds.
     func modules() async -> [Warp.Module] {
-        await catalog().entries.map(\.workflow.module)
+        await reload().entries.map(\.workflow.module)
     }
 }
 

@@ -41,7 +41,7 @@ package struct WorkflowLint: Sendable {
             }
         }
 
-        let snapshot = await WorkflowCatalog(directory: nil, builder: builder).catalog(of: read.map(\.path))
+        let snapshot = await WorkflowCatalog(directory: nil, builder: builder).reload(of: read.map(\.path))
         let refusals = Dictionary(
             snapshot.failures.map { failure in (failure.path, failure.reason) },
             uniquingKeysWith: { first, _ in first }

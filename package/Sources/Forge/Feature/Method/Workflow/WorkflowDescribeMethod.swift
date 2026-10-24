@@ -22,7 +22,7 @@ struct WorkflowDescribeMethod: Sendable {
             throw ProtocolError("workflow.describe: 'name' (string) required")
         }
 
-        let entries = await store.catalog().entries
+        let entries = await store.reload().entries
 
         guard let entry = entries.first(where: { entry in entry.workflow.name == name }) else {
             throw WorkflowNotFound("workflow not found: \(name)")

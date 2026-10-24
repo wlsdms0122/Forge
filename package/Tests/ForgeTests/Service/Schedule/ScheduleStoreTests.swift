@@ -73,7 +73,7 @@ struct ScheduleStoreTests {
         #expect(squat == nil, "config may not use the runtime partition prefix")
         let plain = await store.lookup("plain")
         #expect(plain == nil, "a runtime declaration cannot live without the partition stamp")
-        let failures = await store.catalog().failures
+        let failures = await store.reload().failures
         #expect(failures.filter { failure in failure.reason.contains("rename this config declaration") }.count == 1, "\(failures.map(\.reason))")
         #expect(failures.filter { failure in failure.reason.contains("must start with") }.count == 1, "\(failures.map(\.reason))")
     }
@@ -106,7 +106,7 @@ struct ScheduleStoreTests {
 
         // Then
         #expect(schedule == nil, "same id in the same partition = collision, exclude both")
-        let all = await store.catalog().entries.map(\.schedule)
+        let all = await store.reload().entries.map(\.schedule)
         #expect(!all.contains { entry in entry.id == "dup" })
     }
 

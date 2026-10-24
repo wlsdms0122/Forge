@@ -49,7 +49,7 @@ actor PolicyStore {
     
     // MARK: - Public
     @discardableResult
-    func catalog() async -> Snapshot {
+    func reload() async -> Snapshot {
         guard var files else { return currentSnapshot }
         
         var ledger = LoadFailureLedger(prior: failureCache)
@@ -114,7 +114,7 @@ actor PolicyStore {
     }
     
     func allows(principal: String, workflow: String) async -> Bool {
-        await catalog()
+        await reload()
         
         for (principalPattern, workflowPatterns) in merged {
             guard

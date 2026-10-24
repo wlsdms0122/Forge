@@ -123,7 +123,7 @@ struct SchedulerFixture {
 
         // Read before the first tick, as the daemon reads its catalog before
         // its scheduler starts.
-        await workflowStore.catalog()
+        await workflowStore.reload()
 
         return WorkflowScheduler(
             workflowStore: workflowStore,
@@ -155,7 +155,7 @@ struct SchedulerFixture {
         let ledger = FireLedger(path: try temporary.make("once-led").appendingPathComponent("l.json"))
         let workflowStore = try catalog(directory: workflowDirectoryectory)
 
-        await workflowStore.catalog()
+        await workflowStore.reload()
         let scheduler = WorkflowScheduler(
             workflowStore: workflowStore,
             store: store,

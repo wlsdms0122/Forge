@@ -64,7 +64,7 @@ struct CreatePolicyGateTests {
             #expect(String(describing: error).contains("not allowed"), "Rejection reason should be a policy denial: \(error)")
         }
 
-        let entries = await store.catalog().entries
+        let entries = await store.reload().entries
         #expect(entries.isEmpty, "A rejected registration should leave no file behind")
     }
 
@@ -92,7 +92,7 @@ struct CreatePolicyGateTests {
             #expect(String(describing: error).contains("not allowed"), "Rejection reason should be a policy denial: \(error)")
         }
 
-        let entries = await store.catalog().entries
+        let entries = await store.reload().entries
         #expect(entries.isEmpty, "A rejected registration should leave no file behind")
     }
 
