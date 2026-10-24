@@ -159,7 +159,7 @@ struct LoggingHook: PreHook, PostHook, ErrorHook {
     
     // MARK: - Private
     private static func forgeContext() -> [String: Any] {
-        LogContext.workflowContext?.asPayload ?? [:]
+        LogContext.metadata?.dict ?? [:]
     }
     
     private static func modelResolution(_ model: ModelReference) -> String {

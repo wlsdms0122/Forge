@@ -15,7 +15,7 @@ struct AgentEventLogContext: Sendable {
             nodeIdentifier: LogContext.nodeID,
             parentNodeIdentifier: LogContext.parentNodeID,
             parameters: LogContext.parameters,
-            workflow: LogContext.workflowContext
+            metadata: LogContext.metadata
         )
     }
 
@@ -23,7 +23,7 @@ struct AgentEventLogContext: Sendable {
     let nodeIdentifier: String?
     let parentNodeIdentifier: String?
     let parameters: [String: JSONValue]?
-    let workflow: WorkflowExecutionContext?
+    let metadata: LogPayload?
 
     // MARK: - Initializer
     // MARK: - Public

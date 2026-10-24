@@ -26,7 +26,7 @@ enum AgentEventLog {
                 "message": diagnostic.message
             ]
             
-            for (key, value) in LogContext.workflowContext?.asPayload ?? [:] {
+            for (key, value) in LogContext.metadata?.dict ?? [:] {
                 payload[key] = value
             }
             
@@ -68,7 +68,7 @@ enum AgentEventLog {
         if let startedAt { payload["started_at"] = Log.isoString(startedAt) }
         if let completedAt { payload["completed_at"] = Log.isoString(completedAt) }
         
-        for (key, value) in (context?.workflow ?? LogContext.workflowContext)?.asPayload ?? [:] {
+        for (key, value) in (context?.metadata ?? LogContext.metadata)?.dict ?? [:] {
             payload[key] = value
         }
         
@@ -108,7 +108,7 @@ enum AgentEventLog {
             "denied_at": Log.isoString(deniedAt)
         ]
         
-        for (key, value) in context.workflow?.asPayload ?? [:] { payload[key] = value }
+        for (key, value) in context.metadata?.dict ?? [:] { payload[key] = value }
         
         await Log.shared.append(
             "agent.tool_denied",
@@ -144,7 +144,7 @@ enum AgentEventLog {
             "usage": usage?.asDictionary as Any? ?? NSNull()
         ]
         
-        for (key, value) in LogContext.workflowContext?.asPayload ?? [:] { payload[key] = value }
+        for (key, value) in LogContext.metadata?.dict ?? [:] { payload[key] = value }
         
         await Log.shared.append(
             "agent.turn",

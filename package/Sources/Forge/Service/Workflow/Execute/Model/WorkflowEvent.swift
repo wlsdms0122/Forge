@@ -65,7 +65,7 @@ struct WorkflowEvent: Sendable {
         self.workflowID = workflowID
         self.workflowName = workflowName
         self.stepID = stepID
-        self.origin = origin ?? LogContext.workflowContext?.origin
+        self.origin = origin ?? WorkflowExecutionState.context?.origin
         self.parameters = parameters ?? LogContext.parameters
         self.inputs = inputs
         self.output = output

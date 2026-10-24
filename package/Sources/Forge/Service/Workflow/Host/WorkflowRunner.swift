@@ -150,17 +150,19 @@ actor WorkflowRunner {
             parameters: parameters
         ))
 
-        let result = await LogContext.$workflowContext.withValue(context) {
-            await LogContext.$parameters.withValue(parameters) {
-                await WorkflowExecutionState.$accessToken.withValue(token) {
-                    await WorkflowExecutionState.$accessTokenID.withValue(claims.id) {
-                        await runBody(
-                            module: module,
-                            name: name,
-                            inputs: inputs,
-                            origin: origin,
-                            runID: runID
-                        )
+        let result = await WorkflowExecutionState.$context.withValue(context) {
+            await LogContext.$metadata.withValue(LogPayload(context.asPayload)) {
+                await LogContext.$parameters.withValue(parameters) {
+                    await WorkflowExecutionState.$accessToken.withValue(token) {
+                        await WorkflowExecutionState.$accessTokenID.withValue(claims.id) {
+                            await runBody(
+                                module: module,
+                                name: name,
+                                inputs: inputs,
+                                origin: origin,
+                                runID: runID
+                            )
+                        }
                     }
                 }
             }
@@ -414,9 +416,9 @@ extension WorkflowRunner: RunDispatching {
             throw DispatchTargetNotFound("dispatch: workflow '\(name)' not found")
         }
 
-        let parentName = LogContext.workflowContext?.workflowName ?? "unknown"
+        let parentName = WorkflowExecutionState.context?.workflowName ?? "unknown"
 
-        if let parentRunID = LogContext.workflowContext?.workflowID {
+        if let parentRunID = WorkflowExecutionState.context?.workflowID {
             await pool.markStarted(workflowID: parentRunID)
         }
 
@@ -428,7 +430,7 @@ extension WorkflowRunner: RunDispatching {
             origin: .manual,
             rootID: LogContext.rootID,
             parentNodeID: LogContext.nodeID,
-            parentRunID: LogContext.workflowContext?.workflowID,
+            parentRunID: WorkflowExecutionState.context?.workflowID,
             parameters: LogContext.parameters,
             mode: .awaited
         )

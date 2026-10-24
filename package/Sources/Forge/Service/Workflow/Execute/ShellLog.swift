@@ -145,6 +145,6 @@ enum ShellLog {
 
     // MARK: - Private
     private static func forgeContext() -> [String: Any] {
-        LogContext.workflowContext?.asPayload ?? [:]
+        LogContext.metadata?.dict ?? [:]
     }
 }

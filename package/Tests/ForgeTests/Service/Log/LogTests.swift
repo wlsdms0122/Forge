@@ -60,10 +60,7 @@ struct LogTests {
     @Test("The snapshotted log context carries over intact into a detached task", .exclusive(.logSink))
     func agentEventSnapshotCrossesDetachedTaskBoundary() async throws {
         // Given
-        let workflowContext = WorkflowExecutionContext(
-            workflowID: "wf-context",
-            workflowName: "review",
-            origin: .manual)
+        let metadata: LogPayload = ["workflow_id": "wf-context", "workflow_name": "review"]
 
         // When
         let records = try await LogSinkCapture.capture("log-agent-context") { capture in
@@ -71,7 +68,7 @@ struct LogTests {
                 runID: "wf-context", parentRootID: nil, parentNodeID: nil
             ) {
                 await LogContext.$parameters.withValue(["ticket": .string("T-1")]) {
-                    LogContext.$workflowContext.withValue(workflowContext) {
+                    LogContext.$metadata.withValue(metadata) {
                         AgentEventLogContext.current
                     }
                 }

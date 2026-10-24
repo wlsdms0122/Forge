@@ -25,7 +25,7 @@ struct WorkflowLoggerTests {
         // When
         let records = try await LogSinkCapture.capture("wflogger-flow") { capture in
             await logger.start()
-            await LogContext.$workflowContext.withValue(context) {
+            await WorkflowExecutionState.$context.withValue(context) {
                 await LogContext.$parameters.withValue(["session_id": .string("C123:1745")]) {
                     await bus.publish(WorkflowEvent(kind: .workflowStarted,
                             workflowID: "wf-test-1", workflowName: "router"))
