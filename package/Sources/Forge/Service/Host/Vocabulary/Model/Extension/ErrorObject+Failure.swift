@@ -1,5 +1,5 @@
 //
-//  ErrorObject+RecoverableFailure.swift
+//  ErrorObject+Failure.swift
 //  Forge
 //
 //  Created by JSilver on 10/25/26.
