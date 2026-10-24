@@ -347,13 +347,13 @@ struct WorkflowRunnerTests {
         let task = Task {
             try await harnessLocal.dispatch(
                 workflow,
-                workflowID: "wf-cancelme"
+                runID: "wf-cancelme"
             )
         }
 
         // When
         try await Task.sleep(for: .milliseconds(300))
-        _ = await harness.pool.cancel(workflowID: "wf-cancelme")
+        _ = await harness.pool.cancel(runID: "wf-cancelme")
         let result = try await task.value
 
         // Then
@@ -388,7 +388,7 @@ struct WorkflowRunnerTests {
         let task = Task {
             try await harnessLocal.dispatch(
                 workflow,
-                workflowID: "wf-task-cancelled"
+                runID: "wf-task-cancelled"
             )
         }
 
@@ -548,14 +548,14 @@ struct WorkflowRunnerTests {
         func dispatch(
             _ workflow: Workflow,
             inputs: [String: JSONValue] = [:],
-            workflowID: String? = nil
+            runID: String? = nil
         ) async throws -> WorkflowRunResult {
             try await runner.dispatch(
                 workflow,
                 inputs: inputs,
                 principal: "cli:\(workflow.name)",
                 origin: .manual,
-                workflowID: workflowID,
+                runID: runID,
                 mode: .awaited
             )
         }

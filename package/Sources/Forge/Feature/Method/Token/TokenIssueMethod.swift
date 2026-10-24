@@ -75,7 +75,7 @@ struct TokenIssueMethod: Sendable {
             )
         }
         
-        let token = authority.mint(TokenClaims(principal: principal, workflowID: nil))
+        let token = authority.mint(TokenClaims(principal: principal, runID: nil))
         
         return ["token": .string(token), "principal": .string(principal)]
     }

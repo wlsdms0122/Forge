@@ -32,7 +32,7 @@ struct WorkflowCancelMethod: Sendable {
             context: "workflow.cancel"
         )
 
-        let cancelled = await pool.cancel(workflowID: id)
+        let cancelled = await pool.cancel(runID: id)
 
         return ["cancelled": .bool(cancelled), "workflow_id": .string(id)]
     }

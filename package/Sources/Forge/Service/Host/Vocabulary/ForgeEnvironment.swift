@@ -68,16 +68,16 @@ struct ForgeEnvironment: ConcurrentEnvironment {
     func withStepSlot<T: Sendable>(
         _ body: () async throws -> T
     ) async throws -> T {
-        try await pool.acquireStepSlot(workflowID: runID)
+        try await pool.acquireStepSlot(runID: runID)
 
         do {
             let result = try await body()
 
-            await pool.releaseStepSlot(workflowID: runID)
+            await pool.releaseStepSlot(runID: runID)
 
             return result
         } catch {
-            await pool.releaseStepSlot(workflowID: runID)
+            await pool.releaseStepSlot(runID: runID)
 
             throw error
         }

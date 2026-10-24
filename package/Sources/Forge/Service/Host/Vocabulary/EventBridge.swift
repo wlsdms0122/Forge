@@ -16,19 +16,19 @@ import Warp
 // (started/completed/failed) stays with whoever drives the executor.
 struct EventBridge: Sendable {
     // MARK: - Property
-    let workflowID: String
+    let runID: String
     let workflowName: String
     let verbs: Set<Name>
     let publish: @Sendable (WorkflowEvent) async -> Void
 
     // MARK: - Initializer
     init(
-        workflowID: String,
+        runID: String,
         workflowName: String,
         verbs: Set<Name>,
         publish: @escaping @Sendable (WorkflowEvent) async -> Void
     ) {
-        self.workflowID = workflowID
+        self.runID = runID
         self.workflowName = workflowName
         self.verbs = verbs
         self.publish = publish
@@ -45,7 +45,7 @@ struct EventBridge: Sendable {
 
         await publish(WorkflowEvent(
             kind: .stepStarted,
-            workflowID: workflowID,
+            runID: runID,
             workflowName: workflowName,
             stepID: step,
             action: (call.verb ?? invocation.selector).spelling
@@ -56,7 +56,7 @@ struct EventBridge: Sendable {
 
             await publish(WorkflowEvent(
                 kind: .stepCompleted,
-                workflowID: workflowID,
+                runID: runID,
                 workflowName: workflowName,
                 stepID: step,
                 output: ValueBridge.json(result)
@@ -66,7 +66,7 @@ struct EventBridge: Sendable {
         } catch {
             await publish(WorkflowEvent(
                 kind: .stepFailed,
-                workflowID: workflowID,
+                runID: runID,
                 workflowName: workflowName,
                 stepID: step,
                 errorType: ErrorObject(failure: error).type,

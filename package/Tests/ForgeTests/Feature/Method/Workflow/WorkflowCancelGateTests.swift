@@ -59,7 +59,7 @@ struct WorkflowCancelGateTests {
     // MARK: - Private
     private func seed() async throws -> (WorkflowCancelMethod, TokenAuthority) {
         let pool = WorkflowPool(maximumConcurrentSteps: 1)
-        try await pool.register(workflowID: "r1", workflowName: "<inline>",
+        try await pool.register(runID: "r1", workflowName: "<inline>",
             rootID: "r1",
             origin: .manual, principal: "cli:owner")
         let authority = TokenAuthority()

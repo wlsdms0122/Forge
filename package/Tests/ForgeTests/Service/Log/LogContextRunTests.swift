@@ -41,8 +41,8 @@ struct LogContextRunTests {
         #expect(adopted[2] == "wf-parent", "the parent span is the parent node")
     }
     
-    @Test("A top-level dispatch opens the trace at the workflow id")
-    func topLevelDispatchRootsTraceAtWorkflowID() async throws {
+    @Test("A top-level dispatch opens the trace at the run id")
+    func topLevelDispatchRootsTraceAtRunID() async throws {
         // Given
         let directory = FileManager.default.temporaryDirectory
         .appendingPathComponent("forge-tracerun-\(UUID().uuidString.prefix(6))")
@@ -81,8 +81,8 @@ struct LogContextRunTests {
         }
 
         // Then
-        #expect(started?.workflowID == result.workflowID)
-        #expect(started?.rootID == result.workflowID, "top-level run: root_id(trace_id) == workflow_id")
+        #expect(started?.runID == result.runID)
+        #expect(started?.rootID == result.runID, "top-level run: root_id(trace_id) == workflow_id")
     }
     
     // MARK: - Private

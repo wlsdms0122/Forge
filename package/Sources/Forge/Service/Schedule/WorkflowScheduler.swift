@@ -377,7 +377,7 @@ actor WorkflowScheduler {
                 inputs: inputs,
                 principal: principal,
                 origin: .schedule(id),
-                workflowID: runID,
+                runID: runID,
                 mode: .awaited
             )
         } catch {

@@ -9,21 +9,21 @@ import Foundation
 
 struct WorkflowExecutionContext: Sendable {
     // MARK: - Property
-    let workflowID: String
+    let runID: String
     let workflowName: String
     let origin: DispatchOrigin
     
     var asPayload: [String: Any] {
         [
-            "workflow_id": workflowID,
+            "workflow_id": runID,
             "workflow_name": workflowName,
             "origin": origin.jsonValue.jsonObject
         ]
     }
     
     // MARK: - Initializer
-    init(workflowID: String, workflowName: String, origin: DispatchOrigin) {
-        self.workflowID = workflowID
+    init(runID: String, workflowName: String, origin: DispatchOrigin) {
+        self.runID = runID
         self.workflowName = workflowName
         self.origin = origin
     }

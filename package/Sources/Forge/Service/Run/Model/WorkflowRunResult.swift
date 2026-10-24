@@ -31,7 +31,7 @@ struct WorkflowRunResult: Sendable {
     }
 
     // MARK: - Property
-    let workflowID: String
+    let runID: String
     let workflowName: String
     let status: Status
     let outputs: [String: JSONValue]

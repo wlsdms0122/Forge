@@ -272,14 +272,14 @@ actor JobStore {
         workRegistry: WorkRegistry,
         via: String
     ) async {
-        guard let workflowID = claims.workflowID,
-            await workRegistry.beginTouch(workflowID: workflowID)
+        guard let runID = claims.runID,
+            await workRegistry.beginTouch(runID: runID)
         else {
             return
         }
         
         await recordTouch(id: id, run: claims.id, via: via)
-        await workRegistry.endTouch(workflowID: workflowID)
+        await workRegistry.endTouch(runID: runID)
     }
     
     func recordTouch(id: String, run: String, via: String) async {

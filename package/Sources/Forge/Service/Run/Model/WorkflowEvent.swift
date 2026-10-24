@@ -10,7 +10,7 @@ import Foundation
 struct WorkflowEvent: Sendable {
     // MARK: - Property
     let kind: WorkflowEventKind
-    let workflowID: String
+    let runID: String
     let workflowName: String
     let stepID: String?
     let origin: DispatchOrigin?
@@ -38,7 +38,7 @@ struct WorkflowEvent: Sendable {
     var fields: [String: JSONValue] {
         var object: [String: JSONValue] = [
             "event": .string(kind.rawValue),
-            "workflow_id": .string(workflowID),
+            "workflow_id": .string(runID),
             "workflow_name": .string(workflowName),
             "ts": .int(Int(timestamp.timeIntervalSince1970))
         ]
@@ -70,7 +70,7 @@ struct WorkflowEvent: Sendable {
     // MARK: - Initializer
     init(
         kind: WorkflowEventKind,
-        workflowID: String,
+        runID: String,
         workflowName: String,
         stepID: String? = nil,
         origin: DispatchOrigin? = nil,
@@ -95,7 +95,7 @@ struct WorkflowEvent: Sendable {
         asyncDispatch: Bool? = nil
     ) {
         self.kind = kind
-        self.workflowID = workflowID
+        self.runID = runID
         self.workflowName = workflowName
         self.stepID = stepID
         self.origin = origin ?? WorkflowExecutionState.context?.origin

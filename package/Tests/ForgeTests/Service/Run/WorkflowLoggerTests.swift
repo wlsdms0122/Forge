@@ -20,7 +20,7 @@ struct WorkflowLoggerTests {
         let bus = WorkflowEventBus()
         let logger = WorkflowLogger(bus: bus)
         let context = WorkflowExecutionContext(
-            workflowID: "wf-test-1", workflowName: "router", origin: .manual)
+            runID: "wf-test-1", workflowName: "router", origin: .manual)
 
         // When
         let records = try await LogSinkCapture.capture("wflogger-flow") { capture in
@@ -28,15 +28,15 @@ struct WorkflowLoggerTests {
             await WorkflowExecutionState.$context.withValue(context) {
                 await LogContext.$parameters.withValue(["session_id": .string("C123:1745")]) {
                     await bus.publish(WorkflowEvent(kind: .workflowStarted,
-                            workflowID: "wf-test-1", workflowName: "router"))
+                            runID: "wf-test-1", workflowName: "router"))
                     await bus.publish(WorkflowEvent(kind: .stepCompleted,
-                            workflowID: "wf-test-1", workflowName: "router",
+                            runID: "wf-test-1", workflowName: "router",
                             stepID: "agent", durationMs: 120))
                     await bus.publish(WorkflowEvent(kind: .workflowCompleted,
-                            workflowID: "wf-test-1", workflowName: "router", durationMs: 130))
+                            runID: "wf-test-1", workflowName: "router", durationMs: 130))
                 }
             }
-            let records = try await capture.records(workflowID: "wf-test-1", awaiting: 3)
+            let records = try await capture.records(runID: "wf-test-1", awaiting: 3)
             await logger.stop()
 
             return records
@@ -76,10 +76,10 @@ struct WorkflowLoggerTests {
             await logger.start()
             await bus.publish(WorkflowEvent(
                     kind: .workflowStarted,
-                    workflowID: "wf-in", workflowName: "router",
+                    runID: "wf-in", workflowName: "router",
                     inputs: ["prompt": .string("hello")],
                     inputPreview: #"{"prompt":"hello"}"#, inputLen: 18))
-            let records = try await capture.records(workflowID: "wf-in", awaiting: 1)
+            let records = try await capture.records(runID: "wf-in", awaiting: 1)
             await logger.stop()
 
             return records
@@ -103,17 +103,17 @@ struct WorkflowLoggerTests {
             await logger.start()
             await bus.publish(WorkflowEvent(
                     kind: .workflowStarted,
-                    workflowID: "wf-A", workflowName: "x"
+                    runID: "wf-A", workflowName: "x"
             ))
-            let afterStart = try await capture.records(workflowID: "wf-A", awaiting: 1).count
+            let afterStart = try await capture.records(runID: "wf-A", awaiting: 1).count
             await logger.stop()
             await bus.publish(WorkflowEvent(
                     kind: .workflowCompleted,
-                    workflowID: "wf-A", workflowName: "x"
+                    runID: "wf-A", workflowName: "x"
             ))
             try await Task.sleep(for: .milliseconds(150))
 
-            return (afterStart, capture.records(workflowID: "wf-A").count)
+            return (afterStart, capture.records(runID: "wf-A").count)
         }
 
         // Then

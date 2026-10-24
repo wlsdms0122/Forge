@@ -62,7 +62,7 @@ actor WorkflowRunner {
         parentRunID: String? = nil,
         parameters: [String: JSONValue]? = nil,
         correlator: String? = nil,
-        workflowID: String? = nil,
+        runID: String? = nil,
         mode: DispatchMode
     ) async throws -> WorkflowRunResult {
         let name = workflow.name
@@ -74,10 +74,10 @@ actor WorkflowRunner {
             context: "dispatch"
         )
 
-        let runID = workflowID ?? Self.newRunID()
+        let runID = runID ?? Self.newRunID()
 
         try await pool.register(
-            workflowID: runID,
+            runID: runID,
             workflowName: name,
             rootID: rootID ?? runID,
             origin: origin,
@@ -99,13 +99,13 @@ actor WorkflowRunner {
                         principal: principal,
                         parameters: parameters,
                         correlator: correlator,
-                        workflowID: runID
+                        runID: runID
                     )
                 }
             }
         }
 
-        await pool.unregister(workflowID: runID)
+        await pool.unregister(runID: runID)
 
         return result
     }
@@ -120,21 +120,21 @@ actor WorkflowRunner {
         principal: String? = nil,
         parameters: [String: JSONValue]? = nil,
         correlator: String? = nil,
-        workflowID: String? = nil
+        runID: String? = nil
     ) async -> WorkflowRunResult {
         let name = workflow.name
-        let runID = workflowID ?? Self.newRunID()
+        let runID = runID ?? Self.newRunID()
         let context = WorkflowExecutionContext(
-            workflowID: runID,
+            runID: runID,
             workflowName: name,
             origin: origin
         )
         let principal = principal ?? "cli:\(name)"
-        let claims = TokenClaims(principal: principal, workflowID: runID)
+        let claims = TokenClaims(principal: principal, runID: runID)
         let token = tokenAuthority.mint(claims)
 
         await workRegistry.register(WorkRecord(
-            workflowID: runID,
+            runID: runID,
             workflowName: name,
             principal: principal,
             origin: origin,
@@ -159,7 +159,7 @@ actor WorkflowRunner {
             }
         }
 
-        await workRegistry.beginClose(workflowID: runID)
+        await workRegistry.beginClose(runID: runID)
 
         if let jobStore {
             await jobStore.closeRun(
@@ -171,7 +171,7 @@ actor WorkflowRunner {
             )
         }
 
-        await workRegistry.release(workflowID: runID)
+        await workRegistry.release(runID: runID)
 
         return result
     }
@@ -190,7 +190,7 @@ actor WorkflowRunner {
 
         await eventBus.publish(WorkflowEvent(
             kind: .workflowStarted,
-            workflowID: runID,
+            runID: runID,
             workflowName: name,
             origin: origin,
             parameters: LogContext.parameters,
@@ -217,7 +217,7 @@ actor WorkflowRunner {
                 rootID: LogContext.rootID ?? runID,
                 origin: origin,
                 bridge: EventBridge(
-                    workflowID: runID,
+                    runID: runID,
                     workflowName: name,
                     verbs: catalog.vocabulary.verbs,
                     publish: { event in await eventBus.publish(event) }
@@ -236,7 +236,7 @@ actor WorkflowRunner {
 
             await eventBus.publish(WorkflowEvent(
                 kind: .workflowCompleted,
-                workflowID: runID,
+                runID: runID,
                 workflowName: name,
                 origin: origin,
                 outputs: jsonOutputs,
@@ -244,7 +244,7 @@ actor WorkflowRunner {
             ))
 
             return WorkflowRunResult(
-                workflowID: runID,
+                runID: runID,
                 workflowName: name,
                 status: .ok,
                 outputs: jsonOutputs,
@@ -263,7 +263,7 @@ actor WorkflowRunner {
 
             await eventBus.publish(WorkflowEvent(
                 kind: .workflowFailed,
-                workflowID: runID,
+                runID: runID,
                 workflowName: name,
                 origin: origin,
                 errorType: failure.type,
@@ -272,7 +272,7 @@ actor WorkflowRunner {
             ))
 
             return WorkflowRunResult(
-                workflowID: runID,
+                runID: runID,
                 workflowName: name,
                 status: .failed,
                 outputs: [:],
@@ -291,7 +291,7 @@ actor WorkflowRunner {
         return try await withThrowingTaskGroup(of: T.self) { group in
             group.addTask { try await operation() }
             group.addTask {
-                await pool.awaitCancellation(workflowID: runID)
+                await pool.awaitCancellation(runID: runID)
 
                 throw RunCancelled("run '\(runID)' was cancelled")
             }
@@ -382,8 +382,8 @@ extension WorkflowRunner: RunDispatching {
 
         let parentName = WorkflowExecutionState.context?.workflowName ?? "unknown"
 
-        if let parentRunID = WorkflowExecutionState.context?.workflowID {
-            await pool.markStarted(workflowID: parentRunID)
+        if let parentRunID = WorkflowExecutionState.context?.runID {
+            await pool.markStarted(runID: parentRunID)
         }
 
         let result = try await dispatch(
@@ -393,7 +393,7 @@ extension WorkflowRunner: RunDispatching {
             origin: .manual,
             rootID: LogContext.rootID,
             parentNodeID: LogContext.nodeID,
-            parentRunID: WorkflowExecutionState.context?.workflowID,
+            parentRunID: WorkflowExecutionState.context?.runID,
             parameters: LogContext.parameters,
             mode: .awaited
         )

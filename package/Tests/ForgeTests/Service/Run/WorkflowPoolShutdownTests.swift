@@ -17,11 +17,11 @@ struct WorkflowPoolShutdownTests {
     func shutdownRefusesNewRegistrations() async throws {
         // Given
         let pool = WorkflowPool(maximumConcurrentSteps: 2, maximumActiveRuns: 8)
-        try await pool.register(workflowID: "r1", workflowName: "a", rootID: "r1",
+        try await pool.register(runID: "r1", workflowName: "a", rootID: "r1",
             origin: .rpc, principal: "cli:t")
         await pool.beginShutdown()
         do {
-            try await pool.register(workflowID: "r2", workflowName: "b", rootID: "r2",
+            try await pool.register(runID: "r2", workflowName: "b", rootID: "r2",
                 origin: .rpc, principal: "cli:t")
 
         // Then
@@ -31,7 +31,7 @@ struct WorkflowPoolShutdownTests {
             #expect(!(error is any WorkFailure), "A shutdown rejection must carry no stamp — a fallback must not fake success on a dying daemon")
         }
         
-        let hadRun = await pool.cancel(workflowID: "r1")
+        let hadRun = await pool.cancel(runID: "r1")
         #expect(hadRun)
     }
     
@@ -39,7 +39,7 @@ struct WorkflowPoolShutdownTests {
     func drainCancelsAndReportsLeftover() async throws {
         // Given
         let pool = WorkflowPool(maximumConcurrentSteps: 2, maximumActiveRuns: 8)
-        try await pool.register(workflowID: "stuck", workflowName: "w", rootID: "stuck",
+        try await pool.register(runID: "stuck", workflowName: "w", rootID: "stuck",
             origin: .rpc, principal: "cli:t")
 
         // When
@@ -47,9 +47,9 @@ struct WorkflowPoolShutdownTests {
         let leftover = await pool.drain(graceSeconds: 0.3)
 
         // Then
-        #expect(leftover.map(\.workflowID) == ["stuck"], "Unfinished runs are reported as leftover")
+        #expect(leftover.map(\.runID) == ["stuck"], "Unfinished runs are reported as leftover")
         #expect(leftover.first?.state == .cancelling, "Cancellation should be in progress")
-        await pool.unregister(workflowID: "stuck")
+        await pool.unregister(runID: "stuck")
         let empty = await pool.drain(graceSeconds: 0.3)
         #expect(empty.isEmpty)
     }

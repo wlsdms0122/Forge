@@ -9,7 +9,7 @@ import Foundation
 
 struct HandlerFrameEnvelope: Sendable {
     // MARK: - Property
-    let workflowID: String
+    let runID: String
     let origin: DispatchOrigin
     let rootID: String?
     let nodeID: String?
@@ -19,13 +19,13 @@ struct HandlerFrameEnvelope: Sendable {
     
     // MARK: - Initializer
     init(
-        workflowID: String,
+        runID: String,
         origin: DispatchOrigin,
         rootID: String?,
         nodeID: String?,
         correlator: String?
     ) {
-        self.workflowID = workflowID
+        self.runID = runID
         self.origin = origin
         self.rootID = rootID
         self.nodeID = nodeID

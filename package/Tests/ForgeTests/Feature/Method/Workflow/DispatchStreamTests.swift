@@ -48,11 +48,11 @@ struct DispatchStreamTests {
         #expect(ack["id"]?.stringValue == "r-stream")
         let ackResult = try #require(ack["result"]?.objectValue)
         #expect(ackResult["status"]?.stringValue == "streaming")
-        let wfID = try #require(ackResult["workflow_id"]?.stringValue)
+        let runID = try #require(ackResult["workflow_id"]?.stringValue)
         let events = lines.dropFirst().dropLast()
         for error in events {
             #expect(error["kind"]?.stringValue == "workflow.event")
-            #expect(error["workflow_id"]?.stringValue == wfID)
+            #expect(error["workflow_id"]?.stringValue == runID)
         }
 
         let eventKinds = events.compactMap { event in event["event"]?.stringValue }
@@ -67,7 +67,7 @@ struct DispatchStreamTests {
         #expect(terminal["kind"]?.stringValue == "workflow.result")
         let result = try #require(terminal["result"]?.objectValue)
         #expect(result["status"]?.stringValue == "ok")
-        #expect(result["workflow_id"]?.stringValue == wfID)
+        #expect(result["workflow_id"]?.stringValue == runID)
         #expect((result["outputs"]?.objectValue)?["v"] != nil)
     }
 
@@ -116,24 +116,24 @@ struct DispatchStreamTests {
                 ), claims: try #require(authority.verify(token)), sink: sink)
         }
 
-        var wfID: String?
+        var runID: String?
         for _ in 0..<100 {
             if let ack = (await sink.snapshot()).first,
             let payload = ack["result"]?.objectValue,
-            let identifier = payload["workflow_id"]?.stringValue { wfID = identifier; break }
+            let identifier = payload["workflow_id"]?.stringValue { runID = identifier; break }
             try await Task.sleep(nanoseconds: 10_000_000)
         }
 
         // Then
-        let rootID = try #require(wfID)
+        let rootID = try #require(runID)
         await bus.publish(WorkflowEvent(
-                kind: .stepStarted, workflowID: "intruder-run", workflowName: "intruder",
+                kind: .stepStarted, runID: "intruder-run", workflowName: "intruder",
                 stepID: "evil", rootID: rootID, parentRunID: "someone-elses-run"))
         await bus.publish(WorkflowEvent(
-                kind: .workflowStarted, workflowID: "child-run", workflowName: "child",
+                kind: .workflowStarted, runID: "child-run", workflowName: "child",
                 rootID: rootID, parentRunID: rootID))
         await bus.publish(WorkflowEvent(
-                kind: .stepStarted, workflowID: "grandchild-run", workflowName: "grandchild",
+                kind: .stepStarted, runID: "grandchild-run", workflowName: "grandchild",
                 stepID: "gs", rootID: rootID, parentRunID: "child-run"))
         try await handleTask.value
         let lines = await sink.snapshot()
@@ -164,24 +164,24 @@ struct DispatchStreamTests {
                 ), claims: try #require(authority.verify(token)), sink: sink)
         }
 
-        var wfID: String?
+        var runID: String?
         for _ in 0..<100 {
             if let ack = (await sink.snapshot()).first,
             let payload = ack["result"]?.objectValue,
-            let identifier = payload["workflow_id"]?.stringValue { wfID = identifier; break }
+            let identifier = payload["workflow_id"]?.stringValue { runID = identifier; break }
             try await Task.sleep(nanoseconds: 10_000_000)
         }
 
         // Then
-        let rootID = try #require(wfID)
+        let rootID = try #require(runID)
         await bus.publish(WorkflowEvent(
-                kind: .workflowStarted, workflowID: "job-run", workflowName: "worker",
+                kind: .workflowStarted, runID: "job-run", workflowName: "worker",
                 rootID: rootID, parentRunID: rootID, asyncDispatch: true))
         await bus.publish(WorkflowEvent(
-                kind: .stepStarted, workflowID: "job-child", workflowName: "bot-invoke",
+                kind: .stepStarted, runID: "job-child", workflowName: "bot-invoke",
                 stepID: "boot", rootID: rootID, parentRunID: "job-run"))
         await bus.publish(WorkflowEvent(
-                kind: .workflowStarted, workflowID: "sync-child", workflowName: "capture",
+                kind: .workflowStarted, runID: "sync-child", workflowName: "capture",
                 rootID: rootID, parentRunID: rootID))
         try await handleTask.value
         let lines = await sink.snapshot()
@@ -270,7 +270,7 @@ struct DispatchStreamTests {
         let catalog = try WorkflowCatalog(directory: nil)
         let bus = WorkflowEventBus()
         let pool = WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: 1)
-        try await pool.register(workflowID: "occupier", workflowName: "other", rootID: "occupier",
+        try await pool.register(runID: "occupier", workflowName: "other", rootID: "occupier",
             origin: .manual, principal: "t")
         let authority = TokenAuthority()
         let registry = WorkRegistry()

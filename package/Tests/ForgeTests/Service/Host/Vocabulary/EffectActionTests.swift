@@ -209,7 +209,7 @@ private struct Harness {
                 rootID: "wf-root",
                 origin: .manual,
                 bridge: EventBridge(
-                    workflowID: "wf-test",
+                    runID: "wf-test",
                     workflowName: "observed",
                     verbs: try ForgeVocabulary.shipped.get().verbs,
                     publish: publish

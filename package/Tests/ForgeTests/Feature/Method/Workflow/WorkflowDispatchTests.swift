@@ -193,7 +193,7 @@ struct WorkflowDispatchTests {
         // Given
         let (method, authority, registry) = try await makeMethod(policy: ["cli:parent": ["echo"]])
         await registry.register(WorkRecord(
-                workflowID: "wf-parent",
+                runID: "wf-parent",
                 workflowName: "parent",
                 principal: "cli:parent",
                 origin: .rpc,
@@ -202,7 +202,7 @@ struct WorkflowDispatchTests {
                 correlator: "corr-1",
                 parameters: nil
         ))
-        let token = authority.mint(TokenClaims(principal: "cli:parent", workflowID: "wf-parent"))
+        let token = authority.mint(TokenClaims(principal: "cli:parent", runID: "wf-parent"))
 
         // When
         let result = try await method.handle(request(["token": .string(token), "name": "echo"]), claims: try #require(authority.verify(token)))
@@ -236,7 +236,7 @@ struct WorkflowDispatchTests {
             ))
         let method = WorkflowDispatchMethod(runner: runner, catalog: catalog,
             workRegistry: registry)
-        let stale = authority.mint(TokenClaims(principal: "cli:gone", workflowID: "wf-gone"))
+        let stale = authority.mint(TokenClaims(principal: "cli:gone", runID: "wf-gone"))
         do {
             _ = try await method.handle(RPCRequest(id: "r1", method: "workflow.dispatch",
                     params: ["token": .string(stale), "name": "echo2"]), claims: try #require(authority.verify(stale)))

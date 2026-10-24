@@ -30,7 +30,7 @@ struct HandlerSendMethod: Sendable {
         let payload = request.params["payload"]?.objectValue ?? [:]
         let isAsync = request.params["async"]?.boolValue ?? false
         let record = try await workRegistry.requireLiveRecord(
-            workflowID: claims.workflowID,
+            runID: claims.runID,
             context: "handler.send"
         )
 
@@ -39,7 +39,7 @@ struct HandlerSendMethod: Sendable {
         }
 
         let envelope = HandlerFrameEnvelope(
-            workflowID: record?.workflowID ?? "",
+            runID: record?.runID ?? "",
             origin:    record?.origin ?? .rpc,
             rootID:    record?.rootID,
             nodeID:     record?.nodeID,

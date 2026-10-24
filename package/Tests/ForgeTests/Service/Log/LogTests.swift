@@ -86,7 +86,7 @@ struct LogTests {
                     context: context)
             }.value
 
-            return capture.records(workflowID: "wf-context")
+            return capture.records(runID: "wf-context")
         }
 
         // Then

@@ -279,7 +279,7 @@ package actor Server {
         
         if !leftover.isEmpty {
             FileHandle.standardError.write(Data(
-                "forge: shutdown drain grace expired with \(leftover.count) run(s) still live: \(leftover.map(\.workflowID).joined(separator: ", "))\n".utf8))
+                "forge: shutdown drain grace expired with \(leftover.count) run(s) still live: \(leftover.map(\.runID).joined(separator: ", "))\n".utf8))
         }
         
         await workflowLogger.stop()

@@ -13,7 +13,7 @@ struct WorkflowDispatchMethod: Sendable {
         let workflow: Workflow
         let inputs: [String: JSONValue]
         let principal: String
-        let workflowID: String
+        let runID: String
         let origin: DispatchOrigin
         let rootID: String?
         let parentNodeID: String?
@@ -21,7 +21,7 @@ struct WorkflowDispatchMethod: Sendable {
         let parameters: [String: JSONValue]?
         let correlator: String?
 
-        var effectiveRootID: String { rootID ?? workflowID }
+        var effectiveRootID: String { rootID ?? runID }
 
         // MARK: - Initializer
         // MARK: - Public
@@ -48,12 +48,12 @@ struct WorkflowDispatchMethod: Sendable {
     func prepare(_ request: RPCRequest, claims: TokenClaims) async throws -> Prepared {
         let principal = claims.principal
         let record = try await workRegistry.requireLiveRecord(
-            workflowID: claims.workflowID,
+            runID: claims.runID,
             context: "workflow.dispatch"
         )
         let workflow = try await resolveProgram(request.params)
         let inputs = request.params["inputs"]?.objectValue ?? [:]
-        let workflowID = WorkflowRunner.newRunID()
+        let runID = WorkflowRunner.newRunID()
         let rootID: String?
         let parentNodeID: String?
         let parentRunID: String?
@@ -64,10 +64,10 @@ struct WorkflowDispatchMethod: Sendable {
         if let record {
             rootID      = record.rootID
             parentNodeID = record.nodeID
-            parentRunID  = record.workflowID
+            parentRunID  = record.runID
             correlator   = record.correlator
             parameters   = record.parameters
-            origin      = DispatchOrigin(kind: "workflow", id: record.workflowID)
+            origin      = DispatchOrigin(kind: "workflow", id: record.runID)
         } else {
             let rootField = request.params["root"]
             rootID      = rootField?["root_id"]?.stringValue
@@ -88,7 +88,7 @@ struct WorkflowDispatchMethod: Sendable {
             workflow: workflow,
             inputs: inputs,
             principal: principal,
-            workflowID: workflowID,
+            runID: runID,
             origin: origin,
             rootID: rootID,
             parentNodeID: parentNodeID,
@@ -112,7 +112,7 @@ struct WorkflowDispatchMethod: Sendable {
             parentRunID: prepared.parentRunID,
             parameters: prepared.parameters,
             correlator: prepared.correlator,
-            workflowID: prepared.workflowID,
+            runID: prepared.runID,
             mode: mode
         )
     }
@@ -121,7 +121,7 @@ struct WorkflowDispatchMethod: Sendable {
         let prepared = try await prepare(request, claims: claims)
         let isAsync = request.params["async"]?.boolValue ?? false
         let principal = prepared.principal
-        let workflowID = prepared.workflowID
+        let runID = prepared.runID
 
         if !isAsync {
             return encodeResult(try await runDispatch(prepared, mode: .awaited))
@@ -144,7 +144,7 @@ struct WorkflowDispatchMethod: Sendable {
                         "dispatch.failed",
                         LogPayload([
                             "workflow":    workflowName,
-                            "workflow_id": workflowID,
+                            "workflow_id": runID,
                             "principal":   principal,
                             "error":       String(describing: error),
                         ]),
@@ -155,7 +155,7 @@ struct WorkflowDispatchMethod: Sendable {
             }
 
             return [
-                "workflow_id": .string(workflowID),
+                "workflow_id": .string(runID),
                 "name":        .string(workflowName),
                 "status":      "running"
             ]
@@ -164,7 +164,7 @@ struct WorkflowDispatchMethod: Sendable {
 
     func encodeResult(_ result: WorkflowRunResult) -> JSONValue {
         var object: [String: JSONValue] = [
-            "workflow_id": .string(result.workflowID),
+            "workflow_id": .string(result.runID),
             "name":        .string(result.workflowName),
             "status":      "ok",
             "duration_ms": .int(result.durationMs),

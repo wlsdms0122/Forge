@@ -9,7 +9,7 @@ import Foundation
 
 actor WorkRegistry {
     // MARK: - Property
-    private var byWorkflow: [String: WorkRecord] = [:]
+    private var byRun: [String: WorkRecord] = [:]
     private var closing: Set<String> = []
     private var inflightTouches: [String: Int] = [:]
     private var drainWaiters: [String: [CheckedContinuation<Void, Never>]] = [:]
@@ -20,19 +20,19 @@ actor WorkRegistry {
     
     // MARK: - Public
     func register(_ record: WorkRecord) {
-        byWorkflow[record.workflowID] = record
+        byRun[record.runID] = record
     }
     
-    func lookup(workflowID: String) -> WorkRecord? {
-        byWorkflow[workflowID]
+    func lookup(runID: String) -> WorkRecord? {
+        byRun[runID]
     }
     
-    func requireLiveRecord(workflowID: String?, context: String) throws -> WorkRecord? {
-        guard let workflowID else { return nil }
+    func requireLiveRecord(runID: String?, context: String) throws -> WorkRecord? {
+        guard let runID else { return nil }
         
-        guard let record = byWorkflow[workflowID] else {
+        guard let record = byRun[runID] else {
             throw TokenRejected(
-                "\(context): workflow token for finished run '\(workflowID)'"
+                "\(context): workflow token for finished run '\(runID)'"
                     + " — a run-scoped token dies with its run"
             )
         }
@@ -40,45 +40,45 @@ actor WorkRegistry {
         return record
     }
     
-    func updateSpan(workflowID: String, nodeID: String?) {
-        guard let record = byWorkflow[workflowID] else { return }
+    func updateSpan(runID: String, nodeID: String?) {
+        guard let record = byRun[runID] else { return }
         
-        byWorkflow[workflowID] = record.withNodeID(nodeID)
+        byRun[runID] = record.withNodeID(nodeID)
     }
     
-    func beginTouch(workflowID: String) -> Bool {
-        guard byWorkflow[workflowID] != nil, !closing.contains(workflowID) else { return false }
+    func beginTouch(runID: String) -> Bool {
+        guard byRun[runID] != nil, !closing.contains(runID) else { return false }
         
-        inflightTouches[workflowID, default: 0] += 1
+        inflightTouches[runID, default: 0] += 1
         
         return true
     }
     
-    func endTouch(workflowID: String) {
-        guard let count = inflightTouches[workflowID] else { return }
+    func endTouch(runID: String) {
+        guard let count = inflightTouches[runID] else { return }
         
         if count <= 1 {
-            inflightTouches.removeValue(forKey: workflowID)
+            inflightTouches.removeValue(forKey: runID)
             
-            for waiter in drainWaiters.removeValue(forKey: workflowID) ?? [] { waiter.resume() }
+            for waiter in drainWaiters.removeValue(forKey: runID) ?? [] { waiter.resume() }
         } else {
-            inflightTouches[workflowID] = count - 1
+            inflightTouches[runID] = count - 1
         }
     }
     
-    func beginClose(workflowID: String) async {
-        closing.insert(workflowID)
+    func beginClose(runID: String) async {
+        closing.insert(runID)
         
-        while inflightTouches[workflowID, default: 0] > 0 {
+        while inflightTouches[runID, default: 0] > 0 {
             await withCheckedContinuation { continuation in
-                drainWaiters[workflowID, default: []].append(continuation)
+                drainWaiters[runID, default: []].append(continuation)
             }
         }
     }
     
-    func release(workflowID: String) {
-        byWorkflow.removeValue(forKey: workflowID)
-        closing.remove(workflowID)
+    func release(runID: String) {
+        byRun.removeValue(forKey: runID)
+        closing.remove(runID)
     }
     
     // MARK: - Private

@@ -23,7 +23,7 @@ struct LogRecord: Decodable {
     // MARK: - Initializer
     // MARK: - Public
     /// The workflow this record belongs to. If absent, the log came from outside a workflow.
-    var workflowID: String? {
+    var runID: String? {
         guard case .string(let identifier) = payload["workflow_id"] else { return nil }
 
         return identifier

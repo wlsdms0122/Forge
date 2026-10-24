@@ -9,7 +9,7 @@ import Foundation
 
 struct WorkRecord: Sendable {
     // MARK: - Property
-    let workflowID: String
+    let runID: String
     let workflowName: String
     let principal: String
     let origin: DispatchOrigin
@@ -22,7 +22,7 @@ struct WorkRecord: Sendable {
     // MARK: - Public
     func withNodeID(_ nodeID: String?) -> WorkRecord {
         WorkRecord(
-            workflowID: workflowID,
+            runID: runID,
             workflowName: workflowName,
             principal: principal,
             origin: origin,

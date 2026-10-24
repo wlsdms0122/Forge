@@ -28,14 +28,14 @@ struct WorkRegistryTests {
 
         // When
         await registerOne(registry, span: "s-root")
-        let before = await registry.lookup(workflowID: "r-test")
+        let before = await registry.lookup(runID: "r-test")
 
         // Then
         #expect(before?.nodeID == "s-root")
-        await registry.updateSpan(workflowID: "r-test", nodeID: "s-invoke")
-        let record = await registry.lookup(workflowID: "r-test")
+        await registry.updateSpan(runID: "r-test", nodeID: "s-invoke")
+        let record = await registry.lookup(runID: "r-test")
         #expect(record?.nodeID == "s-invoke", "The span should be updated")
-        #expect(record?.workflowID == "r-test")
+        #expect(record?.runID == "r-test")
         #expect(record?.workflowName == "response")
         #expect(record?.principal == "cli:response")
         #expect(record?.rootID == "t-abc")
@@ -46,14 +46,14 @@ struct WorkRegistryTests {
         // Given
         let registry = WorkRegistry()
         await registry.register(WorkRecord(
-                workflowID: "r-full", workflowName: "wf",
+                runID: "r-full", workflowName: "wf",
                 principal: "cli:wf", origin: .schedule("sched-1"),
                 rootID: "root-1", nodeID: "n0",
                 correlator: "corr-9", parameters: ["session": .string("s1")]))
 
         // When
-        await registry.updateSpan(workflowID: "r-full", nodeID: "n1")
-        let record = await registry.lookup(workflowID: "r-full")
+        await registry.updateSpan(runID: "r-full", nodeID: "n1")
+        let record = await registry.lookup(runID: "r-full")
 
         // Then
         #expect(record?.nodeID == "n1", "Span updated")
@@ -66,7 +66,7 @@ struct WorkRegistryTests {
     @Test("Updating the span of an unknown workflow is a no-op")
     func updateSpanUnknownWorkflowIsNoop() async {
         let registry = WorkRegistry()
-        await registry.updateSpan(workflowID: "r-missing", nodeID: "s-x")
+        await registry.updateSpan(runID: "r-missing", nodeID: "s-x")
     }
     
     @Test("Release removes the record")
@@ -76,8 +76,8 @@ struct WorkRegistryTests {
 
         // When
         await registerOne(registry, span: "s-root")
-        await registry.release(workflowID: "r-test")
-        let after = await registry.lookup(workflowID: "r-test")
+        await registry.release(runID: "r-test")
+        let after = await registry.lookup(runID: "r-test")
 
         // Then
         #expect(after == nil)
@@ -91,24 +91,24 @@ struct WorkRegistryTests {
 
         // When
         await registerOne(registry, span: nil)
-        let approved = await registry.beginTouch(workflowID: "r-test")
+        let approved = await registry.beginTouch(runID: "r-test")
 
         // Then
         #expect(approved, "A touch on a live run should be approved")
         let closeDone = ClosedFlag()
         let closeTask = Task {
-            await registry.beginClose(workflowID: "r-test")
+            await registry.beginClose(runID: "r-test")
             closeDone.mark()
         }
         try? await Task.sleep(for: .milliseconds(100))
         #expect(!closeDone.isSet, "beginClose must not return while an in-flight touch remains")
-        let lateApproval = await registry.beginTouch(workflowID: "r-test")
+        let lateApproval = await registry.beginTouch(runID: "r-test")
         #expect(!lateApproval, "New touches should be rejected after transitioning to closing")
-        await registry.endTouch(workflowID: "r-test")
+        await registry.endTouch(runID: "r-test")
         await closeTask.value
         #expect(closeDone.isSet)
-        await registry.release(workflowID: "r-test")
-        let gone = await registry.beginTouch(workflowID: "r-test")
+        await registry.release(runID: "r-test")
+        let gone = await registry.beginTouch(runID: "r-test")
         #expect(!gone, "Touches after release should be rejected")
     }
     
@@ -116,8 +116,8 @@ struct WorkRegistryTests {
     func beginCloseWithoutInflightReturnsImmediately() async {
         let registry = WorkRegistry()
         await registerOne(registry, span: nil)
-        await registry.beginClose(workflowID: "r-test")
-        await registry.release(workflowID: "r-test")
+        await registry.beginClose(runID: "r-test")
+        await registry.release(runID: "r-test")
     }
     
     @Test("A finished run is not folded into an operator")
@@ -126,16 +126,16 @@ struct WorkRegistryTests {
         let registry = WorkRegistry()
 
         // When
-        let operatorRecord = try await registry.requireLiveRecord(workflowID: nil, context: "t")
+        let operatorRecord = try await registry.requireLiveRecord(runID: nil, context: "t")
 
         // Then
         #expect(operatorRecord == nil)
         await registerOne(registry, span: nil)
-        let live = try await registry.requireLiveRecord(workflowID: "r-test", context: "t")
-        #expect(live?.workflowID == "r-test")
-        await registry.release(workflowID: "r-test")
+        let live = try await registry.requireLiveRecord(runID: "r-test", context: "t")
+        #expect(live?.runID == "r-test")
+        await registry.release(runID: "r-test")
         do {
-            _ = try await registry.requireLiveRecord(workflowID: "r-test", context: "handler.send")
+            _ = try await registry.requireLiveRecord(runID: "r-test", context: "handler.send")
             Issue.record("A stale run-scoped token should be rejected")
         } catch let error as TokenRejected {
             #expect(error.message.contains("finished run"), Comment(rawValue: error.message))
@@ -145,7 +145,7 @@ struct WorkRegistryTests {
     // MARK: - Private
     private func registerOne(_ registry: WorkRegistry, span: String?) async {
         await registry.register(WorkRecord(
-                workflowID: "r-test", workflowName: "response",
+                runID: "r-test", workflowName: "response",
                 principal: "cli:response", origin: .rpc,
                 rootID: "t-abc", nodeID: span,
                 correlator: nil, parameters: nil

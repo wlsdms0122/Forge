@@ -18,16 +18,16 @@ struct TokenAuthorityTests {
     func mintVerifyRoundTrip() {
         // Given
         let authority = TokenAuthority()
-        let token = authority.mint(TokenClaims(principal: "cli:response", workflowID: "wf-1"))
+        let token = authority.mint(TokenClaims(principal: "cli:response", runID: "wf-1"))
         let claims = authority.verify(token)
 
         // Then
         #expect(claims?.principal == "cli:response")
-        #expect(claims?.workflowID == "wf-1")
+        #expect(claims?.runID == "wf-1")
     }
     
     @Test("An operator token has no workflow binding")
-    func operatorTokenHasNoWorkflowID() {
+    func operatorTokenHasNoRunID() {
         // Given
         let authority = TokenAuthority()
         let token = authority.mint(TokenClaims(principal: "system:admin"))
@@ -35,7 +35,7 @@ struct TokenAuthorityTests {
 
         // Then
         #expect(claims?.principal == "system:admin")
-        #expect(claims?.workflowID == nil)
+        #expect(claims?.runID == nil)
     }
     
     @Test("A token signed with a different seed is rejected")
@@ -53,7 +53,7 @@ struct TokenAuthorityTests {
     func tamperedPayloadRejected() {
         // Given
         let authority = TokenAuthority()
-        let token = authority.mint(TokenClaims(principal: "cli:response", workflowID: "wf-1"))
+        let token = authority.mint(TokenClaims(principal: "cli:response", runID: "wf-1"))
         let forged = (try? JSONEncoder().encode(TokenClaims(principal: "system:admin")))?
         .base64EncodedString() ?? ""
         let sig = token.split(separator: ".").last.map(String.init) ?? ""
@@ -130,7 +130,7 @@ struct TokenAuthorityTests {
     func issueRejectsCliPresenterEscalation() async {
         // Given
         let authority = TokenAuthority()
-        let cli = TokenClaims(principal: "cli:response", workflowID: "wf-1")
+        let cli = TokenClaims(principal: "cli:response", runID: "wf-1")
         let method = TokenIssueMethod(authority: authority)
         let request = RPCRequest(id: "1", method: "token.issue",
             params: ["principal": "system:admin"])

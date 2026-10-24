@@ -10,13 +10,13 @@ import Foundation
 struct TokenClaims: Sendable, Codable {
     // MARK: - Property
     let principal: String
-    let workflowID: String?
+    let runID: String?
     let id: String
 
     // MARK: - Initializer
-    init(principal: String, workflowID: String? = nil, id: String = UUID().uuidString) {
+    init(principal: String, runID: String? = nil, id: String = UUID().uuidString) {
         self.principal = principal
-        self.workflowID = workflowID
+        self.runID = runID
         self.id = id
     }
 

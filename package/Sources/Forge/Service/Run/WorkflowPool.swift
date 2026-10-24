@@ -16,7 +16,7 @@ actor WorkflowPool {
     
     struct WorkflowInfo: Sendable {
         // MARK: - Property
-        let workflowID: String
+        let runID: String
         let workflowName: String
         let rootID: String
         let origin: DispatchOrigin
@@ -38,7 +38,7 @@ actor WorkflowPool {
     struct HealthSnapshot: Sendable {
         struct WaiterWait: Sendable {
             // MARK: - Property
-            let workflowID: String
+            let runID: String
             let waitedMs: Int
             
             // MARK: - Initializer
@@ -48,7 +48,7 @@ actor WorkflowPool {
         
         struct RunAge: Sendable {
             // MARK: - Property
-            let workflowID: String
+            let runID: String
             let workflowName: String
             let state: String
             let ageMs: Int
@@ -89,7 +89,7 @@ actor WorkflowPool {
     private struct Waiter {
         // MARK: - Property
         let id: UInt64
-        let workflowID: String
+        let runID: String
         let enqueuedInstant: ContinuousClock.Instant
         let continuation: CheckedContinuation<Void, Error>
         
@@ -166,7 +166,7 @@ actor WorkflowPool {
     func drain(
         graceSeconds: Double = Subprocess.terminationGraceSeconds + 1
     ) async -> [WorkflowInfo] {
-        for info in snapshot() { cancel(workflowID: info.workflowID) }
+        for info in snapshot() { cancel(runID: info.runID) }
         
         let deadline = ContinuousClock.now + .seconds(graceSeconds)
         
@@ -179,12 +179,12 @@ actor WorkflowPool {
         return snapshot()
     }
     
-    func workflowName(of workflowID: String) -> String? {
-        workflows[workflowID]?.workflowName
+    func workflowName(of runID: String) -> String? {
+        workflows[runID]?.workflowName
     }
     
     func register(
-        workflowID: String,
+        runID: String,
         workflowName: String,
         rootID: String,
         origin: DispatchOrigin,
@@ -194,7 +194,7 @@ actor WorkflowPool {
             throw DaemonShuttingDown("register: daemon is draining for shutdown — no new runs")
         }
         
-        if workflows[workflowID] != nil { return }
+        if workflows[runID] != nil { return }
         
         guard workflows.count < maximumActiveRuns else {
             refusedRuns += 1
@@ -214,8 +214,8 @@ actor WorkflowPool {
             )
         }
         
-        workflows[workflowID] = WorkflowInfo(
-            workflowID: workflowID,
+        workflows[runID] = WorkflowInfo(
+            runID: runID,
             workflowName: workflowName,
             rootID: rootID,
             origin: origin,
@@ -234,14 +234,14 @@ actor WorkflowPool {
         }
     }
     
-    func unregister(workflowID: String) {
-        workflows.removeValue(forKey: workflowID)
-        cancelled.remove(workflowID)
+    func unregister(runID: String) {
+        workflows.removeValue(forKey: runID)
+        cancelled.remove(runID)
         
         var remaining: [Waiter] = []
         
         for waiter in waiters {
-            if waiter.workflowID == workflowID {
+            if waiter.runID == runID {
                 waiter.continuation.resume(throwing: CancellationError())
             } else {
                 remaining.append(waiter)
@@ -250,23 +250,23 @@ actor WorkflowPool {
         
         waiters = remaining
         
-        for waiter in cancelWaiters.removeValue(forKey: workflowID) ?? [] {
+        for waiter in cancelWaiters.removeValue(forKey: runID) ?? [] {
             waiter.continuation.resume()
         }
         
-        for waiter in runningWaiters.removeValue(forKey: workflowID) ?? [] {
+        for waiter in runningWaiters.removeValue(forKey: runID) ?? [] {
             waiter.continuation.resume()
         }
     }
     
-    func acquireStepSlot(workflowID: String) async throws {
-        if Task.isCancelled || cancelled.contains(workflowID) {
+    func acquireStepSlot(runID: String) async throws {
+        if Task.isCancelled || cancelled.contains(runID) {
             throw CancellationError()
         }
         
         if availableSlots > 0 && waiters.isEmpty {
             availableSlots -= 1
-            markRunning(workflowID)
+            markRunning(runID)
             
             return
         }
@@ -277,13 +277,13 @@ actor WorkflowPool {
         try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation {
                 (continuation: CheckedContinuation<Void, Error>) in
-                if Task.isCancelled || cancelled.contains(workflowID) {
+                if Task.isCancelled || cancelled.contains(runID) {
                     continuation.resume(throwing: CancellationError())
                 } else {
                     waiters.append(
                         Waiter(
                             id: id,
-                            workflowID: workflowID,
+                            runID: runID,
                             enqueuedInstant: ContinuousClock.now,
                             continuation: continuation
                         )
@@ -294,20 +294,20 @@ actor WorkflowPool {
             Task { await self.cancelStepWaiter(id: id) }
         }
         
-        markRunning(workflowID)
+        markRunning(runID)
     }
     
-    func releaseStepSlot(workflowID: String) {
-        if var info = workflows[workflowID] {
+    func releaseStepSlot(runID: String) {
+        if var info = workflows[runID] {
             if info.heldSlots > 0 { info.heldSlots -= 1 }
             
-            workflows[workflowID] = info
+            workflows[runID] = info
         }
         
         while let next = waiters.first {
             waiters.removeFirst()
             
-            if cancelled.contains(next.workflowID) {
+            if cancelled.contains(next.runID) {
                 next.continuation.resume(throwing: CancellationError())
                 
                 continue
@@ -321,22 +321,22 @@ actor WorkflowPool {
         availableSlots += 1
     }
     
-    func markStarted(workflowID: String) {
-        transitionToRunning(workflowID)
+    func markStarted(runID: String) {
+        transitionToRunning(runID)
     }
     
     @discardableResult
-    func cancel(workflowID: String) -> Bool {
-        guard var info = workflows[workflowID] else { return false }
+    func cancel(runID: String) -> Bool {
+        guard var info = workflows[runID] else { return false }
         
-        cancelled.insert(workflowID)
+        cancelled.insert(runID)
         info.state = .cancelling
-        workflows[workflowID] = info
+        workflows[runID] = info
         
         var remaining: [Waiter] = []
         
         for waiter in waiters {
-            if waiter.workflowID == workflowID {
+            if waiter.runID == runID {
                 waiter.continuation.resume(throwing: CancellationError())
             } else {
                 remaining.append(waiter)
@@ -345,57 +345,57 @@ actor WorkflowPool {
         
         waiters = remaining
         
-        for waiter in cancelWaiters.removeValue(forKey: workflowID) ?? [] {
+        for waiter in cancelWaiters.removeValue(forKey: runID) ?? [] {
             waiter.continuation.resume()
         }
         
         return true
     }
     
-    func awaitCancellation(workflowID: String) async {
-        if cancelled.contains(workflowID) { return }
+    func awaitCancellation(runID: String) async {
+        if cancelled.contains(runID) { return }
         
         let id = cancelWaiterSeq
         cancelWaiterSeq &+= 1
         
         await withTaskCancellationHandler {
             await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-                if cancelled.contains(workflowID) {
+                if cancelled.contains(runID) {
                     continuation.resume()
                 } else {
-                    cancelWaiters[workflowID, default: []].append(
+                    cancelWaiters[runID, default: []].append(
                         CancelWaiter(id: id, continuation: continuation)
                     )
                 }
             }
         } onCancel: {
-            Task { await self.dropCancelWaiter(workflowID: workflowID, id: id) }
+            Task { await self.dropCancelWaiter(runID: runID, id: id) }
         }
     }
     
-    func awaitRunning(workflowID: String) async {
-        if workflows[workflowID]?.state == .running { return }
+    func awaitRunning(runID: String) async {
+        if workflows[runID]?.state == .running { return }
         
         let id = runningWaiterSeq
         runningWaiterSeq &+= 1
         
         await withTaskCancellationHandler {
             await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-                if workflows[workflowID]?.state == .running {
+                if workflows[runID]?.state == .running {
                     continuation.resume()
                 } else {
-                    runningWaiters[workflowID, default: []].append(
+                    runningWaiters[runID, default: []].append(
                         RunningWaiter(id: id, continuation: continuation)
                     )
                 }
             }
         } onCancel: {
-            Task { await self.dropRunningWaiter(workflowID: workflowID, id: id) }
+            Task { await self.dropRunningWaiter(runID: runID, id: id) }
         }
     }
     
-    func isCancelled(workflowID: String) -> Bool {
-        cancelled.contains(workflowID)
+    func isCancelled(runID: String) -> Bool {
+        cancelled.contains(runID)
     }
     
     func health(now: ContinuousClock.Instant = ContinuousClock.now) -> HealthSnapshot {
@@ -405,7 +405,7 @@ actor WorkflowPool {
         
         let waiterWaits = waiters.map { waiter in
             HealthSnapshot.WaiterWait(
-                workflowID: waiter.workflowID,
+                runID: waiter.runID,
                 waitedMs: elapsedMs(waiter.enqueuedInstant)
             )
         }
@@ -414,7 +414,7 @@ actor WorkflowPool {
             .prefix(5)
             .map { info in
                 HealthSnapshot.RunAge(
-                    workflowID: info.workflowID,
+                    runID: info.runID,
                     workflowName: info.workflowName,
                     state: info.state.rawValue,
                     ageMs: elapsedMs(info.enqueuedInstant)
@@ -474,23 +474,23 @@ actor WorkflowPool {
             .map { entry in (rootID: entry.key, count: entry.value) }
     }
     
-    private func markRunning(_ workflowID: String) {
-        guard var info = workflows[workflowID] else { return }
+    private func markRunning(_ runID: String) {
+        guard var info = workflows[runID] else { return }
         
         info.heldSlots += 1
-        workflows[workflowID] = info
+        workflows[runID] = info
         
-        transitionToRunning(workflowID)
+        transitionToRunning(runID)
     }
     
-    private func transitionToRunning(_ workflowID: String) {
-        guard var info = workflows[workflowID], info.state == .queued else { return }
+    private func transitionToRunning(_ runID: String) {
+        guard var info = workflows[runID], info.state == .queued else { return }
         
         info.state = .running
         info.startedAt = Date()
-        workflows[workflowID] = info
+        workflows[runID] = info
         
-        for waiter in runningWaiters.removeValue(forKey: workflowID) ?? [] {
+        for waiter in runningWaiters.removeValue(forKey: runID) ?? [] {
             waiter.continuation.resume()
         }
     }
@@ -502,29 +502,29 @@ actor WorkflowPool {
         waiter.continuation.resume(throwing: CancellationError())
     }
     
-    private func dropCancelWaiter(workflowID: String, id: UInt64) {
+    private func dropCancelWaiter(runID: String, id: UInt64) {
         guard
-            var pending = cancelWaiters[workflowID],
+            var pending = cancelWaiters[runID],
             let index = pending.firstIndex(where: { waiter in waiter.id == id })
         else {
             return
         }
         
         let waiter = pending.remove(at: index)
-        cancelWaiters[workflowID] = pending.isEmpty ? nil : pending
+        cancelWaiters[runID] = pending.isEmpty ? nil : pending
         waiter.continuation.resume()
     }
     
-    private func dropRunningWaiter(workflowID: String, id: UInt64) {
+    private func dropRunningWaiter(runID: String, id: UInt64) {
         guard
-            var pending = runningWaiters[workflowID],
+            var pending = runningWaiters[runID],
             let index = pending.firstIndex(where: { waiter in waiter.id == id })
         else {
             return
         }
         
         let waiter = pending.remove(at: index)
-        runningWaiters[workflowID] = pending.isEmpty ? nil : pending
+        runningWaiters[runID] = pending.isEmpty ? nil : pending
         waiter.continuation.resume()
     }
 }

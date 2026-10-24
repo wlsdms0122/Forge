@@ -86,9 +86,9 @@ struct AsyncDispatchTests {
         // Then
         #expect(elapsedMs < 100, "async=true should return before the workflow completes (actual: \(elapsedMs)ms)")
         #expect(result["status"]?.stringValue == "running")
-        let wfID = try #require(result["workflow_id"]?.stringValue)
-        #expect(wfID.hasPrefix("wf-"), "runID should be forge-minted (wf-*): \(wfID)")
-        #expect(wfID != "r-async")
+        let runID = try #require(result["workflow_id"]?.stringValue)
+        #expect(runID.hasPrefix("wf-"), "runID should be forge-minted (wf-*): \(runID)")
+        #expect(runID != "r-async")
         try await Task.sleep(for: .milliseconds(500))
     }
     

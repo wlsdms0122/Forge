@@ -39,7 +39,7 @@ struct WorkflowDispatchStreamMethod: Sendable {
         let acknowledgement: JSONValue = [
             "id": .string(request.id),
             "result": [
-                "workflow_id": .string(prepared.workflowID),
+                "workflow_id": .string(prepared.runID),
                 "name":        .string(prepared.workflow.name),
                 "status":      "streaming"
             ]
@@ -63,7 +63,7 @@ struct WorkflowDispatchStreamMethod: Sendable {
                     "dispatch.failed",
                     LogPayload([
                         "workflow":    prepared.workflow.name,
-                        "workflow_id": prepared.workflowID,
+                        "workflow_id": prepared.runID,
                         "principal":   prepared.principal,
                         "error":       String(describing: error),
                     ]),
@@ -77,13 +77,13 @@ struct WorkflowDispatchStreamMethod: Sendable {
             return result
         }
 
-        var awaited: Set<String> = [prepared.workflowID]
+        var awaited: Set<String> = [prepared.runID]
         var unawaited: Set<String> = []
 
         for await event in stream {
             guard event.rootID == expectedRoot else { continue }
 
-            let id = event.workflowID
+            let id = event.runID
 
             if !awaited.contains(id) && !unawaited.contains(id) {
                 guard let parent = event.parentRunID,
@@ -117,7 +117,7 @@ struct WorkflowDispatchStreamMethod: Sendable {
 
         case .failure(let error):
             resultValue = [
-                "workflow_id": .string(prepared.workflowID),
+                "workflow_id": .string(prepared.runID),
                 "name":        .string(prepared.workflow.name),
                 "status":      "failed",
                 "error":       ErrorObject(error).jsonValue

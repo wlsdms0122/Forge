@@ -33,7 +33,7 @@ struct WorkflowHandlerBusTests {
         let bus = WorkflowHandlerBus()
         let handle = await bus.register(service: "svc", schema: nil, sink: sink)
         sink.handle = handle
-        let env = HandlerFrameEnvelope(workflowID: "w", origin: .manual,
+        let env = HandlerFrameEnvelope(runID: "w", origin: .manual,
             rootID: nil, nodeID: nil, correlator: nil)
         let result: JSONValue? = await withTaskGroup(of: JSONValue?.self) { group in
             group.addTask { try? await handle.send(envelope: env, payload: [:]) }

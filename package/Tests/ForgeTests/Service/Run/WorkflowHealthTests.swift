@@ -19,12 +19,12 @@ struct WorkflowHealthTests {
     func registerRefusesAtCapWithTreeDiagnostics() async throws {
         // Given
         let pool = WorkflowPool(maximumConcurrentSteps: 1, maximumActiveRuns: 2)
-        try await pool.register(workflowID: "r1", workflowName: "loop", rootID: "root-A",
+        try await pool.register(runID: "r1", workflowName: "loop", rootID: "root-A",
             origin: .manual, principal: "t")
-        try await pool.register(workflowID: "r2", workflowName: "loop", rootID: "root-A",
+        try await pool.register(runID: "r2", workflowName: "loop", rootID: "root-A",
             origin: .manual, principal: "t")
         do {
-            try await pool.register(workflowID: "r3", workflowName: "loop", rootID: "root-A",
+            try await pool.register(runID: "r3", workflowName: "loop", rootID: "root-A",
                 origin: .manual, principal: "t")
 
         // Then
@@ -44,9 +44,9 @@ struct WorkflowHealthTests {
     func registerIdempotentAtCap() async throws {
         // Given
         let pool = WorkflowPool(maximumConcurrentSteps: 1, maximumActiveRuns: 1)
-        try await pool.register(workflowID: "r1", workflowName: "wf", rootID: "r1",
+        try await pool.register(runID: "r1", workflowName: "wf", rootID: "r1",
             origin: .manual, principal: "t")
-        try await pool.register(workflowID: "r1", workflowName: "wf", rootID: "r1",
+        try await pool.register(runID: "r1", workflowName: "wf", rootID: "r1",
             origin: .manual, principal: "t")
 
         // When
@@ -61,10 +61,10 @@ struct WorkflowHealthTests {
     func capFreesOnUnregister() async throws {
         // Given
         let pool = WorkflowPool(maximumConcurrentSteps: 1, maximumActiveRuns: 1)
-        try await pool.register(workflowID: "r1", workflowName: "wf", rootID: "r1",
+        try await pool.register(runID: "r1", workflowName: "wf", rootID: "r1",
             origin: .manual, principal: "t")
-        await pool.unregister(workflowID: "r1")
-        try await pool.register(workflowID: "r2", workflowName: "wf", rootID: "r2",
+        await pool.unregister(runID: "r1")
+        try await pool.register(runID: "r2", workflowName: "wf", rootID: "r2",
             origin: .manual, principal: "t")
 
         // When
@@ -103,7 +103,7 @@ struct WorkflowHealthTests {
                 agent: LiveAgent(executor: AgentExecutor(backend: StubBackend("noop"))),
                 resources: LiveResources(store: ResourceStore(directory: nil))
             ))
-        try await pool.register(workflowID: "occupier", workflowName: "other", rootID: "occupier",
+        try await pool.register(runID: "occupier", workflowName: "other", rootID: "occupier",
             origin: .manual, principal: "t")
         let workflow = try await store.workflow(named: "echo3")
         do {
@@ -123,11 +123,11 @@ struct WorkflowHealthTests {
     func healthSnapshotAggregatesTreesAndRate() async throws {
         // Given
         let pool = WorkflowPool(maximumConcurrentSteps: 2, maximumActiveRuns: 10)
-        try await pool.register(workflowID: "a1", workflowName: "turn", rootID: "root-A",
+        try await pool.register(runID: "a1", workflowName: "turn", rootID: "root-A",
             origin: .manual, principal: "t")
-        try await pool.register(workflowID: "a2", workflowName: "bot-invoke", rootID: "root-A",
+        try await pool.register(runID: "a2", workflowName: "bot-invoke", rootID: "root-A",
             origin: .manual, principal: "t")
-        try await pool.register(workflowID: "b1", workflowName: "worker", rootID: "root-B",
+        try await pool.register(runID: "b1", workflowName: "worker", rootID: "root-B",
             origin: .manual, principal: "t")
 
         // When
@@ -151,7 +151,7 @@ struct WorkflowHealthTests {
         typealias H = WorkflowPool.HealthSnapshot
         let quiet = H(slotsMax: 5, slotsFree: 5, waiters: [], activeRuns: 1, runCap: 256,
             refusedRuns: 0,
-            oldestRuns: [.init(workflowID: "w", workflowName: "n", state: "running", ageMs: 1000)],
+            oldestRuns: [.init(runID: "w", workflowName: "n", state: "running", ageMs: 1000)],
             trees: [.init(rootID: "r", count: 1, names: ["n": 1])],
             dispatchesLast60s: 2, refusedLast60s: 0)
 
@@ -163,9 +163,9 @@ struct WorkflowHealthTests {
             dispatchesLast60s: 2, refusedLast60s: 0)
         #expect(WorkflowHealthMethod.computeFlags(pastRefusalsOnly).isEmpty, "Accumulated refusals outside the window alone do not turn on the runs_refused flag")
         let noisy = H(slotsMax: 5, slotsFree: 0,
-            waiters: [.init(workflowID: "w1", waitedMs: 61_000)],
+            waiters: [.init(runID: "w1", waitedMs: 61_000)],
             activeRuns: 20, runCap: 256, refusedRuns: 3,
-            oldestRuns: [.init(workflowID: "w2", workflowName: "n", state: "running", ageMs: 1_900_000)],
+            oldestRuns: [.init(runID: "w2", workflowName: "n", state: "running", ageMs: 1_900_000)],
             trees: [.init(rootID: "r", count: 17, names: ["loop": 17])],
             dispatchesLast60s: 31, refusedLast60s: 3)
         let flags = WorkflowHealthMethod.computeFlags(noisy)
@@ -181,10 +181,10 @@ struct WorkflowHealthTests {
     func runsRefusedWindowSelfClears() async throws {
         // Given
         let pool = WorkflowPool(maximumConcurrentSteps: 1, maximumActiveRuns: 1)
-        try await pool.register(workflowID: "r1", workflowName: "wf", rootID: "r1",
+        try await pool.register(runID: "r1", workflowName: "wf", rootID: "r1",
             origin: .manual, principal: "t")
         do {
-            try await pool.register(workflowID: "r2", workflowName: "wf", rootID: "r2",
+            try await pool.register(runID: "r2", workflowName: "wf", rootID: "r2",
                 origin: .manual, principal: "t")
 
         // Then

@@ -49,7 +49,7 @@ struct RPCRouterTests {
         // Given
         let authority = TokenAuthority()
         let sut = Self.router(authority)
-        let run = authority.mint(TokenClaims(principal: "cli:response", workflowID: "wf-1"))
+        let run = authority.mint(TokenClaims(principal: "cli:response", runID: "wf-1"))
 
         // When
         let error = await #expect(throws: ProtocolError.self) {
