@@ -51,7 +51,7 @@ struct ForgeEnvironment: ConcurrentEnvironment {
     func isolateConcurrentWork<T: Sendable>(
         _ work: @Sendable () async throws -> T
     ) async throws -> T {
-        try await WorkflowExecutionState.$agentSession.withValue(nil) {
+        try await AgentSession.$current.withValue(nil) {
             try await work()
         }
     }

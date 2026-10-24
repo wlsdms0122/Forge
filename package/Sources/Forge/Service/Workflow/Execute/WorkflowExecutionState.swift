@@ -8,7 +8,6 @@
 import Foundation
 
 enum WorkflowExecutionState {
-    @TaskLocal static var agentSession: AgentSession?
     @TaskLocal static var accessToken: String?
     @TaskLocal static var accessTokenID: String?
 }

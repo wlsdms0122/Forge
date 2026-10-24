@@ -30,7 +30,7 @@ struct LiveAgent: AgentServing {
         // pre-injection for the fallback — with an outer session they are
         // ignored and the body joins it, without one they open a new session.
         // Callers cannot know at authoring time which side they will land on.
-        if settings.shareSession, WorkflowExecutionState.agentSession != nil {
+        if settings.shareSession, AgentSession.current != nil {
             return try await body()
         }
 
@@ -38,13 +38,13 @@ struct LiveAgent: AgentServing {
         let handle = try executor.openSession(provider: agent.provider)
         let session = AgentSession(handle: handle, agent: agent)
 
-        return try await WorkflowExecutionState.$agentSession.withValue(session) {
+        return try await AgentSession.$current.withValue(session) {
             try await body()
         }
     }
 
     func send(prompt: String) async throws -> String {
-        guard let session = WorkflowExecutionState.agentSession else {
+        guard let session = AgentSession.current else {
             throw ProtocolError(
                 "agent step has no active agent session — run it inside an `invoke`'s"
                     + " steps (directly, or via dispatch from within one)"

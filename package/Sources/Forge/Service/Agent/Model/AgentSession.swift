@@ -9,6 +9,9 @@ import Foundation
 
 struct AgentSession: Sendable {
     // MARK: - Property
+    // The session the agent turns of the current task speak through.
+    @TaskLocal static var current: AgentSession?
+
     let handle: any BackendSession
     let agent: Agent
 
