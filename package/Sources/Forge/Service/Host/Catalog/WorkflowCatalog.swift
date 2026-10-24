@@ -531,7 +531,7 @@ extension WorkflowCatalog {
             throw WorkflowValidationError("workflow '\(name)' is broken — \(reason)")
 
         case let .unobserved(reason):
-            throw ResolutionError("workflow '\(name)' could not be resolved — \(reason)")
+            throw CatalogIncomplete("workflow '\(name)' could not be resolved — \(reason)")
 
         case .missing:
             throw WorkflowNotFound("workflow not found: \(name)")

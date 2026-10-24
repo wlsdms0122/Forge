@@ -1,13 +1,14 @@
 //
-//  ResolutionError.swift
+//  ScheduleDirectoryNotConfigured.swift
 //  Forge
 //
-//  Created by JSilver on 8/9/26.
+//  Created by JSilver on 10/25/26.
 //
 
 import Foundation
 
-struct ResolutionError: ForgeError {
+// The daemon has no runtime schedule directory, so it creates no schedule.
+struct ScheduleDirectoryNotConfigured: ForgeError {
     // MARK: - Property
     let message: String
 

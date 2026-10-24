@@ -103,7 +103,7 @@ actor JobStore {
     
     func create(_ job: Job) async throws {
         guard let directory else {
-            throw ResolutionError("job directory not configured — job.create is disabled")
+            throw JobStoreError.notConfigured
         }
         
         guard isStoreSafeID(job.id) else {

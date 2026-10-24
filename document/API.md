@@ -1131,9 +1131,12 @@ The error envelope is `{"type": "<ErrorType>", "message": "<text>"}` and the fie
 | `BackendNonzeroExit` | a backend exited non-zero (also carries `exit_code`, `stderr`, `stdout`) |
 | `BackendUnavailable` | a backend could not be reached (e.g. an OpenAI-compatible endpoint refused or errored) |
 | `MalformedOutput` | a backend response was not the promised shape |
-| `ResolutionError` | provider spec invalid, or a workflow name the catalog cannot answer for while its directory is not fully read |
+| `BackendNotRegistered` | an `invoke` names a provider no backend is registered for, or names none while there is not exactly one backend |
+| `CatalogIncomplete` | the catalog directory was not fully read, so the catalog cannot answer for a workflow name — retry after resolving |
 | `WorkflowNotFound` | no workflow of that name in the catalog (`workflow.dispatch`, `workflow.describe`, `schedule.create`, a `dispatch` step) |
 | `ProtocolError` | request envelope / payload malformed |
+| `ScheduleDirectoryNotConfigured` | the daemon has no runtime schedule directory, so `schedule.create` is disabled |
+| `JobStoreError` | the job directory is not configured (`job.create` and job updates are disabled), or a job file is missing or unreadable |
 | `AgentValidationError` | an `invoke`'s agent cannot be built: its model, tools or `permission_mode`, or a combination its provider cannot run — fix the workflow |
 | `AgentSessionMissing` | an `agent` step ran outside an `invoke`, where no agent session is open — fix the workflow |
 | `ResourceError` | a resource cannot be given: no `resource_directory`, a path outside it or hidden, a missing or unreadable file |

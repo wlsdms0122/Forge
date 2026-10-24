@@ -201,7 +201,7 @@ actor ScheduleStore {
     @discardableResult
     func create(_ requested: Schedule) async throws -> Schedule {
         guard let directory = runtimeDirectory else {
-            throw ResolutionError("runtime schedule directory not configured — schedule.create is disabled")
+            throw ScheduleDirectoryNotConfigured("runtime schedule directory not configured — schedule.create is disabled")
         }
         
         guard isStoreSafeID(requested.id) else {
@@ -337,7 +337,7 @@ actor ScheduleStore {
             throw ProtocolError("schedule '\(id)' state unknown — \(reason); retry after resolving")
         
         case .absent:
-            throw ResolutionError("schedule not found: \(id)")
+            throw ProtocolError("schedule not found: \(id)")
         }
     }
     

@@ -49,12 +49,12 @@ struct BackendRegistryTests {
             _ = try await executor.run(makeInv(provider: "unregistered"))
 
         // Then
-            Issue.record("expected ResolutionError")
-        } catch let error as ResolutionError {
+            Issue.record("expected BackendNotRegistered")
+        } catch let error as BackendNotRegistered {
             #expect(error.message.contains("unregistered"), "error message must name the missing provider — got: \(error.message)")
             #expect(error.message.contains("claude"), "error message must list registered providers — got: \(error.message)")
         } catch {
-            Issue.record("expected ResolutionError, got \(error)")
+            Issue.record("expected BackendNotRegistered, got \(error)")
         }
     }
     

@@ -20,7 +20,7 @@ struct BackendRegistry: Sendable {
     func resolve(provider: String?) throws -> any Backend {
         guard let provider else {
             guard byProvider.count == 1, let sole = byProvider.values.first else {
-                throw ResolutionError(
+                throw BackendNotRegistered(
                     "invoke: 'provider' is required — \(byProvider.count) backends registered (\(byProvider.keys.sorted())); forge picks no default"
                 )
             }
@@ -29,7 +29,7 @@ struct BackendRegistry: Sendable {
         }
         
         guard let backend = byProvider[provider] else {
-            throw ResolutionError(
+            throw BackendNotRegistered(
                 "no backend registered for provider '\(provider)' (have: \(byProvider.keys.sorted()))"
             )
         }
