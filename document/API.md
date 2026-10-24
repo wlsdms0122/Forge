@@ -11,8 +11,8 @@ forge <subcommand> ...             client subcommands → JSON-RPC over the sock
 ```
 
 This document covers the full CLI surface and the JSON-RPC methods underneath.
-For the workflow format (Statement / Construct / Condition / Expression
-syntax), see **[Spec.md](./Spec.md)**.
+For what a workflow file holds and the verbs Forge lends a run, see
+**[Spec.md](./Spec.md)**.
 
 - [1. Invocation & configuration](#1-invocation--configuration) — version, binary/socket discovery, config, env, global options, exit status
 - [2. CLI surface](#2-cli-surface) — [`serve`](#forge-serve) · [`workflow`](#forge-workflow) · [`schedule`](#forge-schedule) · [`job`](#forge-job) · [`resource`](#forge-resource) · [`service`](#forge-service) · [`status`](#forge-status) · [`policy`](#forge-policy) · [`token issue`](#forge-token-issue)
@@ -271,27 +271,26 @@ forge workflow cancel <workflow-id> [--json]
 
 #### `forge workflow check`
 
-Lint workflow YAML file(s) — runs the same decode + validator the daemon uses
-at load time. Local-only; does not contact the daemon. Intended for CI and
-pre-commit hooks. **No RPC counterpart.**
+Check workflow YAML file(s) the way the daemon reads them. Local-only; does
+not contact the daemon. Intended for CI and pre-commit hooks. **No RPC
+counterpart.**
 
 ```
 forge workflow check <path>...
 ```
 
-For each path: decodes the file as a `Workflow`, then runs
-`WorkflowValidator`. A line per file: `✓ <path>` or `✗ <path> — N issue(s)`
-followed by indented `<location>: <message>` lines. Exit code 1 if any file
-fails, 0 otherwise. Shell globs are expanded by the shell.
+For each path: reads the file through the YAML front end and loads the
+document it writes, then checks that the file declares one procedure named
+after the file and that no plain string holds `${` (a string is a literal;
+`format` interpolates). A line per file: `✓ <path>`, `✗ <path>: decode
+failed` followed by the refusal, or `✗ <path> — N issue(s)` followed by
+indented issue lines. Exit code 1 if any file fails, 0 otherwise. Shell globs
+are expanded by the shell.
 
-Catches: malformed YAML, broken document structure, half-spelled expression
-forms (`{ ref: }` / `{ value: }` / `{ format: }`), `{ ref: X }` where X is
-neither a declared parameter nor a visible statement id, format templates naming
-a binding not declared in `with`, and the validator's other shallow rules.
-
-Does not catch (by design — see [Spec.md: Validation](./Spec.md#validation)):
-`{ ref: step.X.Y }` field-level refs, cross-workflow refs (dispatch child
-outputs), or any ref whose validity depends on runtime JSON shape.
+Catches what the front end and the load refuse: malformed YAML, a notation
+the front end cannot read, a broken document structure. The check does not
+build, so what the build judges (types, declared failures, a call to a name
+no module declares) is refused when a run builds the workflow.
 
 ### `forge schedule`
 
@@ -637,15 +636,17 @@ lifetime and relays its progress:
 ```json
 {"id":"<client-id>","result":{"workflow_id":"...","name":"...","status":"streaming"}}
 {"kind":"workflow.event","event":"workflow.started","workflow_id":"...","workflow_name":"...","root_id":"...","ts":...}
-{"kind":"workflow.event","event":"step.started","step":"...","action":"shell|invoke|...","node_id":"...","parent_node_id":"...", ...}
+{"kind":"workflow.event","event":"step.started","step":"...","action":"Forge.shell|Forge.agent|...","node_id":"...","parent_node_id":"...", ...}
 {"kind":"workflow.event","event":"step.completed","step":"...","duration_ms":..., "output_preview":"...","output_len":..., ...}
 {"kind":"workflow.result","result":{...same shape as blocking dispatch result...}}
 ```
 
 Event lines are `WorkflowEvent` objects (`workflow.started/completed/failed`,
-`step.started/completed/failed/skipped`) filtered to this run's **root** —
-child workflows dispatched by the run (a `dispatch` step) inherit the root and
-stream too; `root_id`/`node_id`/`parent_node_id` let the consumer rebuild the
+`step.started/completed/failed/skipped`) filtered to this run's **root**. A
+step is a statement that calls one of the `Forge` module's verbs, named by its
+statement, and its `action` is the verb's full name. Child workflows
+dispatched by the run (a `Forge.dispatch` step) inherit the root and stream
+too; `root_id`/`node_id`/`parent_node_id` let the consumer rebuild the
 tree. A policy denial is returned as a plain RPC error line (no stream). If
 the run fails to even start after the ack (e.g. run cap), the terminal
 `workflow.result` line carries the real error type in `error.type` — the same

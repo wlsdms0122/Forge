@@ -299,10 +299,10 @@ jobs, RPC methods — is documented in [API.md](document/API.md).
 
 | Document | Covers |
 |----------|--------|
-| [Spec.md](document/Spec.md) | the language: top level, inputs, steps, every action, conditions, expressions, scope and validation rules |
+| [Spec.md](document/Spec.md) | what Forge adds over the Warp language and its YAML front end: the workflow file, its inputs and result, and the verbs of the `Forge` module |
 | [API.md](document/API.md) | the binary: CLI subcommands, configuration, sessions, and the JSON-RPC methods underneath |
 
-The live source of truth is the Swift decoder; both documents track it.
+`DocumentTests` holds Spec.md to the `Forge` module and runs its tour.
 
 ## Development
 
@@ -311,7 +311,7 @@ swift build --package-path package
 swift test  --package-path package          # unit + integration suites
 
 swift build -c release --package-path package
-test/run package/.build/release/ForgeCLI    # release e2e gate (~3s, 45 checks)
+test/run package/.build/release/ForgeCLI    # release e2e gate (~3s, 42 checks)
 ```
 
 The e2e gate boots a real daemon against the in-repo session home
@@ -320,9 +320,8 @@ and tears everything down. It is the last gate before a binary ships.
 
 ```
 package/    Swift package
-  Sources/Spec       the language kernel (no I/O)
   Sources/Forge      the host: daemon, shell, agent sessions, policy, config
   Sources/ForgeCLI   the `forge` command
-document/   Spec.md (the language) · API.md (CLI/RPC)
+document/   Spec.md (workflows and verbs) · API.md (CLI/RPC)
 test/       the release e2e gate — `test/run <binary>`
 ```

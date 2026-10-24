@@ -13,22 +13,20 @@ struct WorkflowCheckCommand: ParsableCommand {
     // MARK: - Property
     static let configuration = CommandConfiguration(
         commandName: "check",
-        abstract: "Lint workflow YAML file(s) — decode + validator. Runs without a daemon.",
+        abstract: "Check workflow YAML file(s) the way the daemon reads them. Runs without a daemon.",
         discussion: """
-            Decodes each file as a Workflow then runs the same WorkflowValidator
-            the daemon uses at load time. Designed for CI / pre-commit hooks.
+            Reads each file through the YAML front end and loads the document it
+            writes, as the daemon does. Designed for CI / pre-commit hooks.
 
             Catches:
-              - malformed YAML / broken spec structure
-              - half-spelled expression forms ({ ref: }, { value: }, { format: })
-              - { ref: X } where X is not declared
-              - { ref: step.X } where step is not a visible id
-              - format templates naming a binding not declared in `with`
+              - malformed YAML, a notation the front end cannot read
+              - a document the load refuses
+              - a file that does not declare one procedure named after it
+              - ${ in a plain string, which ships as text
 
-            Does NOT catch (intentional limits):
-              - { ref: step.X.Y } — Y (output key) is not checked
-              - cross-workflow refs (dispatch child outputs)
-              - refs that depend on runtime JSON shape
+            Does not build, so what the build judges (types, declared
+            failures, calls to names no module declares) shows when a run
+            builds the workflow.
 
             Exits with code 1 if any file fails. Multiple paths may be passed;
             the shell expands globs.
