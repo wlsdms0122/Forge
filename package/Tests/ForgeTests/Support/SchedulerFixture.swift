@@ -99,10 +99,10 @@ struct SchedulerFixture {
         scheduleYAML: [String: String],
         ledgerPath: URL? = nil
     ) async throws -> WorkflowScheduler {
-        let workflowDirectoryectory = try temporary.make("wf")
+        let workflowDirectory = try temporary.make("wf")
 
         for workflow in workflows {
-            try write(workflow, to: workflowDirectoryectory)
+            try write(workflow, to: workflowDirectory)
         }
 
         let scheduleDirectoryectory = try temporary.make("schedule")
@@ -119,7 +119,7 @@ struct SchedulerFixture {
             runtimeDirectory: try temporary.make("schedule-rt"),
             ids: seeds)
         let path = try ledgerPath ?? temporary.file("fire-ledger.json")
-        let catalog = try self.catalog(directory: workflowDirectoryectory)
+        let catalog = try self.catalog(directory: workflowDirectory)
 
         // Read before the first tick, as the daemon reads its catalog before
         // its scheduler starts.
@@ -143,8 +143,8 @@ struct SchedulerFixture {
         runtimeOwned: Bool = false
     ) async throws -> (scheduler: WorkflowScheduler, ledger: FireLedger, onceFile: URL) {
         let workflow = markerWorkflow(name: "wfonce", marker: marker, tag: "1", sleep: 0.1)
-        let workflowDirectoryectory = try temporary.make("once-wf")
-        try write(workflow, to: workflowDirectoryectory)
+        let workflowDirectory = try temporary.make("once-wf")
+        try write(workflow, to: workflowDirectory)
         let onceFile = (runtimeOwned ? runtimeDirectory : configDir)
             .appendingPathComponent(onceFileName)
         try onceYAML.write(to: onceFile, atomically: true, encoding: .utf8)
@@ -153,7 +153,7 @@ struct SchedulerFixture {
             runtimeDirectory: runtimeDirectory,
             ids: [(onceFileName as NSString).deletingPathExtension: Self.declaredWorkflow(onceYAML)])
         let ledger = FireLedger(path: try temporary.make("once-led").appendingPathComponent("l.json"))
-        let catalog = try self.catalog(directory: workflowDirectoryectory)
+        let catalog = try self.catalog(directory: workflowDirectory)
 
         await catalog.reload()
         let scheduler = WorkflowScheduler(
