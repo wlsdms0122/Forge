@@ -27,7 +27,7 @@ struct BackendCancellationTests {
         let backend = ClaudeBackend(executable: exe.path)
         let agent = try Agent(model: "anthropic:m", allowed: [])
         let task = Task<BackendResponse, Error> {
-            try await backend.invoke(Invocation(id: "t", agent: agent, prompt: "go"))
+            try await backend.invoke(AgentInvocation(id: "t", agent: agent, prompt: "go"))
         }
         try await Task.sleep(for: .milliseconds(300))
         task.cancel()

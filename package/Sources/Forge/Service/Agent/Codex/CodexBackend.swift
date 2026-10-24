@@ -68,7 +68,7 @@ struct CodexBackend: Backend {
     
     func openSession() -> any BackendSession { CodexSession() }
     
-    func invoke(_ invocation: Invocation) async throws -> BackendResponse {
+    func invoke(_ invocation: AgentInvocation) async throws -> BackendResponse {
         let translated = try translator.translate(invocation.agent)
         let native = translated.value
         
@@ -171,7 +171,7 @@ struct CodexBackend: Backend {
     // MARK: - Private
     private static func logTools(
         _ completed: [ToolEvent],
-        invocation: Invocation,
+        invocation: AgentInvocation,
         model: String,
         turn: Int,
         context: AgentEventLogContext

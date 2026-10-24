@@ -35,7 +35,7 @@ struct ResourceAction: ForgeAction {
 
     // MARK: - Initializer
     // MARK: - Public
-    func act(_ invocation: Warp.Invocation<Self>, in environment: ForgeEnvironment) async throws -> Warp.Value {
+    func act(_ invocation: Invocation<Self>, in environment: ForgeEnvironment) async throws -> Warp.Value {
         let body = try await environment.capabilities.resources.read(ValueBridge.text(invocation[.content]))
 
         return .string(

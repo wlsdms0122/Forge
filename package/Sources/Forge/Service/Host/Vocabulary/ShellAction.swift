@@ -51,7 +51,7 @@ struct ShellAction: ForgeAction {
 
     // MARK: - Initializer
     // MARK: - Public
-    func act(_ invocation: Warp.Invocation<Self>, in environment: ForgeEnvironment) async throws -> Warp.Value {
+    func act(_ invocation: Invocation<Self>, in environment: ForgeEnvironment) async throws -> Warp.Value {
         guard case let .array(command) = invocation[.command], !command.isEmpty else {
             throw ExecutionError("shell.command is empty")
         }

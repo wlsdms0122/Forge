@@ -138,7 +138,7 @@ struct AgentLoopTruncationTests {
         try! Agent(model: "local:m", allowed: allowed)
     }
     
-    private func invocation() -> Invocation {
-        Invocation(id: "t", agent: agent(), prompt: "go")
+    private func invocation() -> AgentInvocation {
+        AgentInvocation(id: "t", agent: agent(), prompt: "go")
     }
 }

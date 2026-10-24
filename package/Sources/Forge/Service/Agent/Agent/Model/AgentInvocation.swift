@@ -1,5 +1,5 @@
 //
-//  Invocation.swift
+//  AgentInvocation.swift
 //  Forge
 //
 //  Created by JSilver on 8/9/26.
@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct Invocation: Sendable, Equatable {
+struct AgentInvocation: Sendable, Equatable {
     // MARK: - Property
     let id: String
     let agent: Agent
@@ -31,7 +31,7 @@ struct Invocation: Sendable, Equatable {
     }
 
     // MARK: - Public
-    static func == (left: Invocation, right: Invocation) -> Bool {
+    static func == (left: AgentInvocation, right: AgentInvocation) -> Bool {
         left.id == right.id && left.agent == right.agent && left.prompt == right.prompt
     }
 

@@ -12,7 +12,7 @@ import Testing
 struct BackendRegistryTests {
     private struct TaggedBackend: Backend {
         let tag: String
-        func invoke(_ invocation: Invocation) async throws -> BackendResponse {
+        func invoke(_ invocation: AgentInvocation) async throws -> BackendResponse {
             BackendResponse(text: "from:\(tag)", usage: nil, toolEvents: [], stdoutLength: 0, durationMs: 1)
         }
     }
@@ -59,8 +59,8 @@ struct BackendRegistryTests {
     }
     
     // MARK: - Private
-    private func makeInv(provider: String) -> Invocation {
-        Invocation(
+    private func makeInv(provider: String) -> AgentInvocation {
+        AgentInvocation(
             id: "i",
             agent: try! Agent(model: "\(provider):x"),
             prompt: "hi"

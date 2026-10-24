@@ -22,7 +22,7 @@ struct StubBackend: Backend {
     }
 
     // MARK: - Public
-    func invoke(_ invocation: Invocation) async throws -> BackendResponse {
+    func invoke(_ invocation: AgentInvocation) async throws -> BackendResponse {
         BackendResponse(text: text, usage: nil, toolEvents: [], stdoutLength: 0, durationMs: 1)
     }
 

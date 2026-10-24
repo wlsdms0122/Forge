@@ -10,11 +10,11 @@ import Foundation
 
 final class AgentRecorder: Backend, @unchecked Sendable {
     // MARK: - Property
-    let invocations = OrderedCollector<Forge.Invocation>()
+    let invocations = OrderedCollector<AgentInvocation>()
 
     // MARK: - Initializer
     // MARK: - Public
-    func invoke(_ invocation: Forge.Invocation) async throws -> BackendResponse {
+    func invoke(_ invocation: AgentInvocation) async throws -> BackendResponse {
         invocations.append(invocation)
 
         return BackendResponse(

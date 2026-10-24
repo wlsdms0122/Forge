@@ -52,7 +52,7 @@ struct LiveAgent: AgentServing {
         }
 
         return try await LogContext.childNode {
-            let invocation = Invocation(
+            let invocation = AgentInvocation(
                 id: UUID().uuidString,
                 agent: session.agent,
                 prompt: prompt,

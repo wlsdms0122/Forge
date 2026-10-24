@@ -8,7 +8,7 @@
 import Foundation
 
 protocol Backend: Sendable {
-    func invoke(_ invocation: Invocation) async throws -> BackendResponse
+    func invoke(_ invocation: AgentInvocation) async throws -> BackendResponse
     func openSession() -> any BackendSession
 }
 

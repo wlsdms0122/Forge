@@ -37,7 +37,7 @@ struct EventBridge: Sendable {
     // MARK: - Public
     // The step of the verb this native runs for, around what `body` does.
     func step<P: NativeProcedure>(
-        of invocation: Warp.Invocation<P>,
+        of invocation: Invocation<P>,
         _ body: () async throws -> Warp.Value
     ) async throws -> Warp.Value {
         let call = invocation.trace.call(sentFrom: verbs)

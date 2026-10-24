@@ -104,7 +104,7 @@ struct AgentLoopBackend: Backend {
         AgentLoopSession()
     }
     
-    func invoke(_ invocation: Invocation) async throws -> BackendResponse {
+    func invoke(_ invocation: AgentInvocation) async throws -> BackendResponse {
         let translated = try translator.translate(invocation.agent)
         let native = translated.value
         

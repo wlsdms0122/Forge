@@ -32,7 +32,7 @@ struct ClaudeSessionEstablishedTests {
         do {
 
         // When
-            _ = try await backend.invoke(Invocation(id: "t0", agent: agent, prompt: "go", session: session))
+            _ = try await backend.invoke(AgentInvocation(id: "t0", agent: agent, prompt: "go", session: session))
 
         // Then
             Issue.record("turn 0 should have thrown on nonzero exit")
@@ -40,7 +40,7 @@ struct ClaudeSessionEstablishedTests {
         }
         #expect(session.established, "once run has returned (regardless of exit code) the session id is claimed → established must be true")
         do {
-            _ = try await backend.invoke(Invocation(id: "t1", agent: agent, prompt: "go2", session: session))
+            _ = try await backend.invoke(AgentInvocation(id: "t1", agent: agent, prompt: "go2", session: session))
             Issue.record("turn 1 should also throw (fake always exits 1)")
         } catch is BackendNonzeroExit {
         }

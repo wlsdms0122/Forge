@@ -68,7 +68,7 @@ struct InvokeAction: ForgeAction {
 
     // MARK: - Initializer
     // MARK: - Public
-    func act(_ invocation: Warp.Invocation<Self>, in environment: ForgeEnvironment) async throws -> Warp.Value {
+    func act(_ invocation: Invocation<Self>, in environment: ForgeEnvironment) async throws -> Warp.Value {
         // The body is a closure so that nothing in it runs before the session
         // is open.
         guard case let .procedure(body) = invocation[.body] else {

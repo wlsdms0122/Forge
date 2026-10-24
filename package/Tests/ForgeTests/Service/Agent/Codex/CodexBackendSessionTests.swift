@@ -30,7 +30,7 @@ struct CodexBackendSessionTests {
         var firstTurnFailed = false
         do {
             _ = try await backend.invoke(
-                Invocation(id: "t0", agent: agent, prompt: "first", session: session))
+                AgentInvocation(id: "t0", agent: agent, prompt: "first", session: session))
         } catch is BackendNonzeroExit {
             firstTurnFailed = true
         }
@@ -39,7 +39,7 @@ struct CodexBackendSessionTests {
         #expect(firstTurnFailed)
         #expect(session.threadIdentifier == "thread-created-before-failure")
         let response = try await backend.invoke(
-            Invocation(id: "t1", agent: agent, prompt: "second", session: session))
+            AgentInvocation(id: "t1", agent: agent, prompt: "second", session: session))
         #expect(response.text == "resumed")
         #expect(session.turnIndex == 1)
         let lines = try String(contentsOfFile: logPath, encoding: .utf8)
@@ -79,7 +79,7 @@ struct CodexBackendSessionTests {
             model: "codex",
             allowed: [.command(try commandPattern(["echo", "*"]))])
         let response = try await backend.invoke(
-            Invocation(id: "observed-invocation", agent: agent, prompt: "echo twice"))
+            AgentInvocation(id: "observed-invocation", agent: agent, prompt: "echo twice"))
 
         // When
         await Log.shared.setSink(nil)
@@ -136,14 +136,14 @@ struct CodexBackendSessionTests {
         let agent = try Agent(model: "codex")
         let session = CodexSession()
         let first = try await backend.invoke(
-            Invocation(id: "t0", agent: agent, prompt: "first", session: session))
+            AgentInvocation(id: "t0", agent: agent, prompt: "first", session: session))
 
         // Then
         #expect(first.usage?["input_tokens"] == 20)
         #expect(first.usage?["cache_read_tokens"] == 80)
         #expect(first.usage?["output_tokens"] == 30)
         let second = try await backend.invoke(
-            Invocation(id: "t1", agent: agent, prompt: "second", session: session))
+            AgentInvocation(id: "t1", agent: agent, prompt: "second", session: session))
         #expect(second.usage?["input_tokens"] == 30)
         #expect(second.usage?["cache_read_tokens"] == 170)
         #expect(second.usage?["output_tokens"] == 60)
@@ -169,7 +169,7 @@ struct CodexBackendSessionTests {
             [.posixPermissions: 0o755], ofItemAtPath: executable.path)
         let backend = CodexBackend(executable: executable.path)
         let response = try await backend.invoke(
-            Invocation(id: "solo", agent: Agent(model: "codex"), prompt: "hello"))
+            AgentInvocation(id: "solo", agent: Agent(model: "codex"), prompt: "hello"))
 
         // Then
         #expect(response.usage?["input_tokens"] == 20)
@@ -198,7 +198,7 @@ struct CodexBackendSessionTests {
         let session = CodexSession()
         var failedLoudly = false
         do {
-            _ = try await backend.invoke(Invocation(
+            _ = try await backend.invoke(AgentInvocation(
                     id: "incomplete", agent: Agent(model: "codex"), prompt: "hello", session: session))
         } catch is BackendProtocolViolation {
             failedLoudly = true
@@ -230,7 +230,7 @@ struct CodexBackendSessionTests {
             [.posixPermissions: 0o755], ofItemAtPath: executable.path)
         let backend = CodexBackend(executable: executable.path)
         await #expect(throws: BackendProtocolViolation.self) {
-            _ = try await backend.invoke(Invocation(
+            _ = try await backend.invoke(AgentInvocation(
                     id: "malformed", agent: Agent(model: "codex"), prompt: "hello"))
         }
     }

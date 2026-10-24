@@ -25,7 +25,7 @@ struct ClaudeBackendToolCaptureTests {
             allowed: [])
 
         // When
-        let result = try await backend.invoke(Invocation(id: "t", agent: agent, prompt: "go"))
+        let result = try await backend.invoke(AgentInvocation(id: "t", agent: agent, prompt: "go"))
 
         // Then
         #expect(result.text == "done")

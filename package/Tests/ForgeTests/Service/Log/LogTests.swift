@@ -105,7 +105,7 @@ struct LogTests {
             backends: BackendRegistry(["local": ResolvedModelFailureBackend()]),
             preHooks: [logging],
             errorHooks: [logging])
-        let invocation = Invocation(
+        let invocation = AgentInvocation(
             id: "translated-failure",
             agent: try Agent(model: "local"),
             prompt: "hello")
@@ -128,7 +128,7 @@ struct LogTests {
 }
 
 private struct ResolvedModelFailureBackend: Backend {
-    func invoke(_ invocation: Invocation) async throws -> BackendResponse {
+    func invoke(_ invocation: AgentInvocation) async throws -> BackendResponse {
         invocation.executionContext.record(modelReference: try ModelReference(
                 provider: "local", model: "qwen3:8b"))
         throw BackendUnavailable("offline")

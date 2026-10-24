@@ -26,7 +26,7 @@ struct LocateAction: ForgeAction {
 
     // MARK: - Initializer
     // MARK: - Public
-    func act(_ invocation: Warp.Invocation<Self>, in environment: ForgeEnvironment) async throws -> Warp.Value {
+    func act(_ invocation: Invocation<Self>, in environment: ForgeEnvironment) async throws -> Warp.Value {
         return .string(try await environment.capabilities.resources.locate(ValueBridge.text(invocation[.path])))
     }
 

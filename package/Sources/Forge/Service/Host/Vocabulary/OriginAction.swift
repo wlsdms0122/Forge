@@ -18,7 +18,7 @@ struct OriginAction: ForgeAction {
 
     // MARK: - Initializer
     // MARK: - Public
-    func act(_ invocation: Warp.Invocation<Self>, in environment: ForgeEnvironment) async throws -> Warp.Value {
+    func act(_ invocation: Invocation<Self>, in environment: ForgeEnvironment) async throws -> Warp.Value {
         return try Value.holding(
             [
                 (name: "kind", value: .string(environment.origin.kind)),

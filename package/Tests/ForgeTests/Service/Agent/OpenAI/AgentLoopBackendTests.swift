@@ -77,8 +77,8 @@ struct AgentLoopBackendTests {
         let session = backend.openSession()
 
         // When
-        _ = try await backend.invoke(Invocation(id: "t0", agent: agent, prompt: "turn-zero", session: session))
-        _ = try await backend.invoke(Invocation(id: "t1", agent: agent, prompt: "turn-one", session: session))
+        _ = try await backend.invoke(AgentInvocation(id: "t0", agent: agent, prompt: "turn-zero", session: session))
+        _ = try await backend.invoke(AgentInvocation(id: "t1", agent: agent, prompt: "turn-one", session: session))
         let users = await transport.lastMessages.filter { message in message.role == .user }.map { message in message.content }
 
         // Then
@@ -94,13 +94,13 @@ struct AgentLoopBackendTests {
         let session = backend.openSession()
         do {
             _ = try await backend.invoke(
-                Invocation(id: "failed", agent: agent, prompt: "first", session: session))
+                AgentInvocation(id: "failed", agent: agent, prompt: "first", session: session))
 
         // Then
             Issue.record("first transport call must fail")
         } catch is BackendUnavailable {}
         _ = try await backend.invoke(
-            Invocation(id: "retry", agent: agent, prompt: "second", session: session))
+            AgentInvocation(id: "retry", agent: agent, prompt: "second", session: session))
         let users = await transport.lastMessages
         .filter { message in message.role == .user }.map { message in message.content }
         #expect(users == ["first", "second"])
@@ -116,13 +116,13 @@ struct AgentLoopBackendTests {
         let session = backend.openSession()
         do {
             _ = try await backend.invoke(
-                Invocation(id: "die-mid", agent: agent, prompt: "first", session: session))
+                AgentInvocation(id: "die-mid", agent: agent, prompt: "first", session: session))
 
         // Then
             Issue.record("the second transport call should fail")
         } catch is BackendUnavailable {}
         _ = try? await backend.invoke(
-            Invocation(id: "retry", agent: agent, prompt: "second", session: session))
+            AgentInvocation(id: "retry", agent: agent, prompt: "second", session: session))
         let seen = await transport.lastMessages
         #expect(seen.contains { message in message.role == .tool && message.content.contains("kept-evidence") }, "if executed tool results vanish from the session, the next turn's model is unaware of its own bash side effects")
         #expect(seen.contains { message in message.role == .assistant && !(message.toolCalls ?? []).isEmpty }, "the assistant tool_calls turn must be preserved too")
@@ -267,7 +267,7 @@ struct AgentLoopBackendTests {
         let agent = try Agent(
             model: "local:llama3.1:8b",
             allowed: [.command(try commandPattern(["echo", "*"]))])
-        let invocation = Invocation(
+        let invocation = AgentInvocation(
             id: "live", agent: agent,
             prompt: "You run executables via the run_command tool. "
             + "Its only argument is a JSON string array field named 'argv'.\n\n"
@@ -310,8 +310,8 @@ struct AgentLoopBackendTests {
         try! Agent(model: "local:m", allowed: allowed)
     }
     
-    private func invocation(_ p: Agent) -> Invocation {
-        Invocation(id: "t", agent: p, prompt: "go")
+    private func invocation(_ p: Agent) -> AgentInvocation {
+        AgentInvocation(id: "t", agent: p, prompt: "go")
     }
     
     private func commandCall(_ command: String, id: String = "c1") -> ChatCompletion {

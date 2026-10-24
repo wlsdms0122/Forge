@@ -18,7 +18,7 @@ struct EchoBackend: Backend {
 
     // MARK: - Initializer
     // MARK: - Public
-    func invoke(_ invocation: Invocation) async throws -> BackendResponse {
+    func invoke(_ invocation: AgentInvocation) async throws -> BackendResponse {
         prompts.append(invocation.prompt)
 
         return BackendResponse(

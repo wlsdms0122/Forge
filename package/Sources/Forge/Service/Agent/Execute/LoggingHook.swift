@@ -22,7 +22,7 @@ struct LoggingHook: PreHook, PostHook, ErrorHook {
     }
     
     // MARK: - Public
-    func before(_ invocation: Invocation) async throws -> Invocation {
+    func before(_ invocation: AgentInvocation) async throws -> AgentInvocation {
         let model = invocation.agent.model
         var payload: [String: Any] = [
             "id": invocation.id,
@@ -44,7 +44,7 @@ struct LoggingHook: PreHook, PostHook, ErrorHook {
         return invocation
     }
     
-    func after(_ invocation: Invocation, _ response: BackendResponse) async {
+    func after(_ invocation: AgentInvocation, _ response: BackendResponse) async {
         let model = response.modelReference
             ?? invocation.executionContext.modelReference
             ?? invocation.agent.model
@@ -71,7 +71,7 @@ struct LoggingHook: PreHook, PostHook, ErrorHook {
         )
     }
     
-    func onError(_ invocation: Invocation, _ error: any Error) async -> ErrorAction {
+    func onError(_ invocation: AgentInvocation, _ error: any Error) async -> ErrorAction {
         let model = invocation.executionContext.modelReference ?? invocation.agent.model
         let resolvedModel = model.displayName
         let stage: String

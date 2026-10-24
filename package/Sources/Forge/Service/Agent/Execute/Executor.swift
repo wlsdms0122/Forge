@@ -34,7 +34,7 @@ struct Executor: Sendable {
         return backend.openSession()
     }
     
-    func run(_ original: Invocation) async throws -> InvocationResult {
+    func run(_ original: AgentInvocation) async throws -> InvocationResult {
         let started = ContinuousClock.now
         var invocation = original
         
