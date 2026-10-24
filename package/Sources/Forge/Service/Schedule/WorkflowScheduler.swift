@@ -21,7 +21,7 @@ actor WorkflowScheduler {
     // MARK: - Property
     static let pendingCloseGraceSeconds: TimeInterval = 60
     
-    let workflowStore: WorkflowCatalog
+    let catalog: WorkflowCatalog
     let store: ScheduleStore
     let ledger: FireLedger
     let runner: WorkflowRunner
@@ -35,13 +35,13 @@ actor WorkflowScheduler {
     
     // MARK: - Initializer
     init(
-        workflowStore: WorkflowCatalog,
+        catalog: WorkflowCatalog,
         store: ScheduleStore,
         ledger: FireLedger,
         runner: WorkflowRunner,
         tickIntervalSeconds: Int = 5
     ) {
-        self.workflowStore = workflowStore
+        self.catalog = catalog
         self.store = store
         self.ledger = ledger
         self.runner = runner
@@ -214,7 +214,7 @@ actor WorkflowScheduler {
         switch await resolveFireTarget(
             name: schedule.workflow,
             spec: schedule.spec,
-            store: workflowStore
+            catalog: catalog
         ) {
         case .resolved(let resolved):
             target = resolved
@@ -264,7 +264,7 @@ actor WorkflowScheduler {
     
     private func fireOnce(_ schedule: Schedule) {
         let runnerLocal = runner
-        let storeLocal = workflowStore
+        let catalogLocal = catalog
         let ledgerLocal = ledger
         
         Task.detached {
@@ -273,7 +273,7 @@ actor WorkflowScheduler {
             switch await resolveFireTarget(
                 name: schedule.workflow,
                 spec: schedule.spec,
-                store: storeLocal
+                catalog: catalogLocal
             ) {
             case .resolved(let resolved):
                 target = resolved
@@ -304,17 +304,17 @@ actor WorkflowScheduler {
 private func resolveFireTarget(
     name: String,
     spec: JSONValue?,
-    store: WorkflowCatalog
+    catalog: WorkflowCatalog
 ) async -> FireResolution {
     if let spec {
         do {
-            return .resolved(try await store.inline(spec))
+            return .resolved(try await catalog.inline(spec))
         } catch {
             return .denied(reason: "spec_decode", detail: String(describing: error))
         }
     }
     
-    switch await store.resolve(name) {
+    switch await catalog.resolve(name) {
     case .found(let workflow):
         return .resolved(workflow)
     

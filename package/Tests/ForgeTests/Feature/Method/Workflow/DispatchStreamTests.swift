@@ -198,12 +198,12 @@ struct DispatchStreamTests {
     @Test("Async dispatch marks the run as async")
     func asyncDispatchMarksRunAsync() async throws {
         // Given
-        let store = try WorkflowCatalog(directory: nil)
+        let catalog = try WorkflowCatalog(directory: nil)
         let bus = WorkflowEventBus()
         let authority = TokenAuthority()
         let registry = WorkRegistry()
         let runner = WorkflowRunner(
-            catalog: store,
+            catalog: catalog,
             eventBus: bus,
             policyStore: PolicyStore(seed: ["*": ["*"]]),
             pool: WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: Int.max),
@@ -214,7 +214,7 @@ struct DispatchStreamTests {
                 agent: LiveAgent(executor: AgentExecutor(backend: StubBackend("noop"))),
                 resources: LiveResources(store: ResourceStore(directory: nil))
             ))
-        let dispatchMethod = WorkflowDispatchMethod(runner: runner, store: store,
+        let dispatchMethod = WorkflowDispatchMethod(runner: runner, catalog: catalog,
             workRegistry: registry)
         let (_, stream) = await bus.subscribe()
         let token = authority.mint(TokenClaims(principal: "system:rpc"))
@@ -267,7 +267,7 @@ struct DispatchStreamTests {
     @Test("The terminal event preserves the failure type instead of flattening it")
     func streamTerminalPreservesFailureType() async throws {
         // Given
-        let store = try WorkflowCatalog(directory: nil)
+        let catalog = try WorkflowCatalog(directory: nil)
         let bus = WorkflowEventBus()
         let pool = WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: 1)
         try await pool.register(workflowID: "occupier", workflowName: "other", rootID: "occupier",
@@ -275,7 +275,7 @@ struct DispatchStreamTests {
         let authority = TokenAuthority()
         let registry = WorkRegistry()
         let runner = WorkflowRunner(
-            catalog: store,
+            catalog: catalog,
             eventBus: bus,
             policyStore: PolicyStore(seed: ["*": ["*"]]),
             pool: pool,
@@ -286,7 +286,7 @@ struct DispatchStreamTests {
                 agent: LiveAgent(executor: AgentExecutor(backend: StubBackend("stub"))),
                 resources: LiveResources(store: ResourceStore(directory: nil))
             ))
-        let dispatchMethod = WorkflowDispatchMethod(runner: runner, store: store,
+        let dispatchMethod = WorkflowDispatchMethod(runner: runner, catalog: catalog,
             workRegistry: registry)
         let method = WorkflowDispatchStreamMethod(dispatchMethod: dispatchMethod, eventBus: bus)
         let token = authority.mint(TokenClaims(principal: "system:rpc"))
@@ -314,12 +314,12 @@ struct DispatchStreamTests {
     -> (WorkflowDispatchStreamMethod, TokenAuthority, WorkflowEventBus)
 
     {
-        let store = try WorkflowCatalog(directory: nil)
+        let catalog = try WorkflowCatalog(directory: nil)
         let bus = WorkflowEventBus()
         let authority = TokenAuthority()
         let registry = WorkRegistry()
         let runner = WorkflowRunner(
-            catalog: store,
+            catalog: catalog,
             eventBus: bus,
             policyStore: PolicyStore(seed: policySeed),
             pool: WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: Int.max),
@@ -330,7 +330,7 @@ struct DispatchStreamTests {
                 agent: LiveAgent(executor: AgentExecutor(backend: StubBackend("noop"))),
                 resources: LiveResources(store: ResourceStore(directory: nil))
             ))
-        let dispatchMethod = WorkflowDispatchMethod(runner: runner, store: store,
+        let dispatchMethod = WorkflowDispatchMethod(runner: runner, catalog: catalog,
             workRegistry: registry)
         let method = WorkflowDispatchStreamMethod(dispatchMethod: dispatchMethod, eventBus: bus)
 

@@ -9,16 +9,16 @@ import Foundation
 
 struct WorkflowListMethod: Sendable {
     // MARK: - Property
-    let store: WorkflowCatalog
+    let catalog: WorkflowCatalog
 
     // MARK: - Initializer
-    init(store: WorkflowCatalog) {
-        self.store = store
+    init(catalog: WorkflowCatalog) {
+        self.catalog = catalog
     }
 
     // MARK: - Public
     func handle(_ request: RPCRequest) async throws -> JSONValue {
-        let snapshot = await store.reload()
+        let snapshot = await catalog.reload()
         let summary: [JSONValue] = snapshot.entries.map { entry in
             var listed: [String: JSONValue] = [
                 "name":   .string(entry.workflow.name),

@@ -219,11 +219,11 @@ struct WorkflowDispatchTests {
         defer { try? FileManager.default.removeItem(at: directory) }
         try echoWorkflowYAML(name: "echo2").write(
             to: directory.appendingPathComponent("echo2.yaml"), atomically: true, encoding: .utf8)
-        let store = try WorkflowCatalog(directory: directory)
+        let catalog = try WorkflowCatalog(directory: directory)
         let authority = TokenAuthority()
         let registry = WorkRegistry()
         let runner = WorkflowRunner(
-            catalog: store,
+            catalog: catalog,
             eventBus: WorkflowEventBus(),
             policyStore: PolicyStore(seed: ["*": ["*"]]),
             pool: WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: Int.max),
@@ -234,7 +234,7 @@ struct WorkflowDispatchTests {
                 agent: LiveAgent(executor: AgentExecutor(backend: StubBackend())),
                 resources: LiveResources(store: ResourceStore(directory: nil))
             ))
-        let method = WorkflowDispatchMethod(runner: runner, store: store,
+        let method = WorkflowDispatchMethod(runner: runner, catalog: catalog,
             workRegistry: registry)
         let stale = authority.mint(TokenClaims(principal: "cli:gone", workflowID: "wf-gone"))
         do {
@@ -266,11 +266,11 @@ struct WorkflowDispatchTests {
     -> (WorkflowDispatchMethod, TokenAuthority, WorkRegistry) {
         let directory = try temporary.make("wf")
         try echoWorkflowYAML(name: "echo").write(to: directory.appendingPathComponent("echo.yaml"), atomically: true, encoding: .utf8)
-        let store = try WorkflowCatalog(directory: directory)
+        let catalog = try WorkflowCatalog(directory: directory)
         let authority = TokenAuthority()
         let registry = WorkRegistry()
         let runner = WorkflowRunner(
-            catalog: store,
+            catalog: catalog,
             eventBus: WorkflowEventBus(),
             policyStore: PolicyStore(seed: policy),
             pool: WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: Int.max),
@@ -281,7 +281,7 @@ struct WorkflowDispatchTests {
                 agent: LiveAgent(executor: AgentExecutor(backend: StubBackend("noop"))),
                 resources: LiveResources(store: ResourceStore(directory: nil))
             ))
-        let method = WorkflowDispatchMethod(runner: runner, store: store,
+        let method = WorkflowDispatchMethod(runner: runner, catalog: catalog,
             workRegistry: registry)
 
         return (method, authority, registry)

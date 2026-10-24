@@ -11,7 +11,7 @@ package actor Server {
     // MARK: - Property
     let config: ForgeConfig
     let bootedAt: Date
-    let workflowStore: WorkflowCatalog
+    let catalog: WorkflowCatalog
     let scheduleStore: ScheduleStore
     let fireLedger: FireLedger
     let runtimeScheduleDirectory: URL
@@ -84,7 +84,7 @@ package actor Server {
             postHooks: postHooks,
             errorHooks: errorHooks
         )
-        let workflowStoreLocal = WorkflowCatalog(
+        let catalogLocal = WorkflowCatalog(
             directory: config.workflowDirectory,
             builder: WorkflowBuilder(vocabulary: vocabulary)
         )
@@ -111,7 +111,7 @@ package actor Server {
             maximumActiveRuns: config.pool.maximumActiveRuns
         )
         let runnerLocal = WorkflowRunner(
-            catalog: workflowStoreLocal,
+            catalog: catalogLocal,
             eventBus: bus,
             policyStore: policyStoreLocal,
             pool: pool,
@@ -125,13 +125,13 @@ package actor Server {
             )
         )
         let scheduler = WorkflowScheduler(
-            workflowStore: workflowStoreLocal,
+            catalog: catalogLocal,
             store: scheduleStore,
             ledger: fireLedger,
             runner: runnerLocal
         )
         
-        self.workflowStore = workflowStoreLocal
+        self.catalog = catalogLocal
         self.scheduleStore = scheduleStore
         self.fireLedger = fireLedger
         self.runtimeScheduleDirectory = runtimeScheduleDirectory
@@ -159,7 +159,7 @@ package actor Server {
             runtimeDirectory: config.runtimeDirectory,
             bootedAt: self.bootedAt,
             configSnapshot: configSnapshot,
-            workflowStore: workflowStoreLocal,
+            catalog: catalogLocal,
             scheduleStore: scheduleStore,
             jobStore: jobStoreLocal,
             supervisor: supervisorLocal,
@@ -167,7 +167,7 @@ package actor Server {
         )
         let workflow = WorkflowNamespace(
             runner: runnerLocal,
-            catalog: workflowStoreLocal,
+            catalog: catalogLocal,
             workRegistry: workRegistryLocal,
             pool: pool,
             policyStore: policyStoreLocal,
@@ -176,7 +176,7 @@ package actor Server {
         let schedule = ScheduleNamespace(
             store: scheduleStore,
             ledger: fireLedger,
-            catalog: workflowStoreLocal,
+            catalog: catalogLocal,
             policyStore: policyStoreLocal
         )
         let job = JobNamespace(store: jobStoreLocal, workRegistry: workRegistryLocal)
@@ -227,7 +227,7 @@ package actor Server {
         await Log.shared.setSink(config.logJSONL)
         await Log.shared.setErrorSink(config.errorLog)
         await Log.shared.setMaxBytes(config.logMaximumBytes)
-        await workflowStore.reload()
+        await catalog.reload()
         await scheduleStore.ensureRuntimeDirectory()
         await scheduleStore.reload()
         await jobStore.reload()

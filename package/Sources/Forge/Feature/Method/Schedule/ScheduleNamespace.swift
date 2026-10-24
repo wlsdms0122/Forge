@@ -21,7 +21,7 @@ struct ScheduleNamespace: Sendable {
     ) {
         let list = ScheduleListMethod(store: store, ledger: ledger)
         let setEnabled = ScheduleSetEnabledMethod(store: store, policyStore: policyStore)
-        let create = ScheduleCreateMethod(store: store, workflowStore: catalog, policyStore: policyStore)
+        let create = ScheduleCreateMethod(store: store, catalog: catalog, policyStore: policyStore)
         let delete = ScheduleDeleteMethod(store: store, policyStore: policyStore)
 
         self.methods = [

@@ -9,11 +9,11 @@ import Foundation
 
 struct WorkflowDescribeMethod: Sendable {
     // MARK: - Property
-    let store: WorkflowCatalog
+    let catalog: WorkflowCatalog
 
     // MARK: - Initializer
-    init(store: WorkflowCatalog) {
-        self.store = store
+    init(catalog: WorkflowCatalog) {
+        self.catalog = catalog
     }
 
     // MARK: - Public
@@ -22,7 +22,7 @@ struct WorkflowDescribeMethod: Sendable {
             throw ProtocolError("workflow.describe: 'name' (string) required")
         }
 
-        let entries = await store.reload().entries
+        let entries = await catalog.reload().entries
 
         guard let entry = entries.first(where: { entry in entry.workflow.name == name }) else {
             throw WorkflowNotFound("workflow not found: \(name)")

@@ -30,17 +30,17 @@ struct WorkflowDispatchMethod: Sendable {
 
     // MARK: - Property
     let runner: WorkflowRunner
-    let store: WorkflowCatalog
+    let catalog: WorkflowCatalog
     let workRegistry: WorkRegistry
 
     // MARK: - Initializer
     init(
         runner: WorkflowRunner,
-        store: WorkflowCatalog,
+        catalog: WorkflowCatalog,
         workRegistry: WorkRegistry
     ) {
         self.runner = runner
-        self.store = store
+        self.catalog = catalog
         self.workRegistry = workRegistry
     }
 
@@ -189,14 +189,14 @@ struct WorkflowDispatchMethod: Sendable {
             }
 
             do {
-                return try await store.inline(.object(spec))
+                return try await catalog.inline(.object(spec))
             } catch {
                 throw ProtocolError("workflow.dispatch: malformed 'spec' — \(error)")
             }
         }
 
         if let name = params["name"]?.stringValue, !name.isEmpty {
-            return try await store.workflow(named: name)
+            return try await catalog.workflow(named: name)
         }
 
         throw ProtocolError("workflow.dispatch: one of 'spec' or 'name' is required")

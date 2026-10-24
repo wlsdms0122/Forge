@@ -114,15 +114,15 @@ struct WorkflowSchedulerConcurrencyTests {
         let workflow = fixture.markerWorkflow(name: "wfr", marker: marker, tag: "S", sleep: 1.5, endTag: "E")
         let wfDir = try fixture.temporary.make("den-rep-wf")
         try fixture.write(workflow, to: wfDir)
-        let workflowStore = try fixture.catalog(directory: wfDir)
+        let catalog = try fixture.catalog(directory: wfDir)
         let schedDir = try fixture.temporary.make("den-rep-sched")
         try "id: r\nworkflow: wfr\nevery: 1s\nconcurrency: replace\n"
         .write(to: schedDir.appendingPathComponent("r.yaml"), atomically: true, encoding: .utf8)
         let scheduler = WorkflowScheduler(
-            workflowStore: workflowStore,
+            catalog: catalog,
             store: try fixture.scheduleStore(configDir: schedDir, runtimeDirectory: try fixture.temporary.make("sched-rt-b"), ids: ["r": "wfr"]),
             ledger: FireLedger(path: try fixture.temporary.make("den-rep-led").appendingPathComponent("l.json")),
-            runner: fixture.runner(catalog: workflowStore),
+            runner: fixture.runner(catalog: catalog),
             tickIntervalSeconds: 1
         )
 

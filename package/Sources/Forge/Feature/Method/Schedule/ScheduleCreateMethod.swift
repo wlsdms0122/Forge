@@ -10,17 +10,17 @@ import Foundation
 struct ScheduleCreateMethod: Sendable {
     // MARK: - Property
     let store: ScheduleStore
-    let workflowStore: WorkflowCatalog
+    let catalog: WorkflowCatalog
     let policyStore: PolicyStore
 
     // MARK: - Initializer
     init(
         store: ScheduleStore,
-        workflowStore: WorkflowCatalog,
+        catalog: WorkflowCatalog,
         policyStore: PolicyStore
     ) {
         self.store = store
-        self.workflowStore = workflowStore
+        self.catalog = catalog
         self.policyStore = policyStore
     }
 
@@ -86,7 +86,7 @@ struct ScheduleCreateMethod: Sendable {
         let (workflowName, specJSON) = try await resolveDispatchTarget(
             params: request.params,
             context: "schedule.create",
-            workflowStore: workflowStore
+            catalog: catalog
         )
 
         try await DispatchAuthorization.requireDispatch(
@@ -208,7 +208,7 @@ struct ScheduleCreateMethod: Sendable {
 func resolveDispatchTarget(
     params: [String: JSONValue],
     context: String,
-    workflowStore: WorkflowCatalog
+    catalog: WorkflowCatalog
 ) async throws -> (name: String, spec: JSONValue?) {
     let nameParam = params["workflow"]?.stringValue
         .flatMap { value in value.isEmpty ? nil : value }
@@ -216,7 +216,7 @@ func resolveDispatchTarget(
 
     switch (nameParam, specParam) {
     case let (name?, nil):
-        _ = try await workflowStore.workflow(named: name)
+        _ = try await catalog.workflow(named: name)
 
         return (name, nil)
 
@@ -234,7 +234,7 @@ func resolveDispatchTarget(
             // An inline spec is one procedure, the same shape workflow.dispatch
             // admits — checked here so a schedule cannot be stored carrying
             // something that will not load when it fires.
-            _ = try await workflowStore.inline(specValue)
+            _ = try await catalog.inline(specValue)
         } catch {
             throw ProtocolError("\(context): malformed 'spec' — \(error)")
         }

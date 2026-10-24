@@ -197,11 +197,11 @@ struct ServiceScopedGateTests {
     @Test("Denial wording comes from a single owner across all gates — it does not vary per gate")
     func policyDenialMessageIsUniformAcrossServiceGates() async throws {
         // Given
-        let store = try WorkflowCatalog(directory: nil)
+        let catalog = try WorkflowCatalog(directory: nil)
         let bus = WorkflowEventBus()
         let authority = TokenAuthority()
         let runner = WorkflowRunner(
-            catalog: store,
+            catalog: catalog,
             eventBus: bus,
             policyStore: PolicyStore(seed: ["system:other": ["*"]]),
             pool: WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: Int.max),
@@ -212,7 +212,7 @@ struct ServiceScopedGateTests {
                 agent: LiveAgent(executor: AgentExecutor(backend: StubBackend("noop"))),
                 resources: LiveResources(store: ResourceStore(directory: nil))
             ))
-        let dispatchMethod = WorkflowDispatchMethod(runner: runner, store: store,
+        let dispatchMethod = WorkflowDispatchMethod(runner: runner, catalog: catalog,
             workRegistry: WorkRegistry())
         let streamMethod = WorkflowDispatchStreamMethod(dispatchMethod: dispatchMethod, eventBus: bus)
         let token = authority.mint(TokenClaims(principal: "system:rpc"))

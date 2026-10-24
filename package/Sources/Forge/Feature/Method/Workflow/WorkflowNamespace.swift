@@ -21,10 +21,10 @@ struct WorkflowNamespace: Sendable {
         policyStore: PolicyStore,
         eventBus: WorkflowEventBus
     ) {
-        let dispatch = WorkflowDispatchMethod(runner: runner, store: catalog, workRegistry: workRegistry)
+        let dispatch = WorkflowDispatchMethod(runner: runner, catalog: catalog, workRegistry: workRegistry)
         let dispatchStream = WorkflowDispatchStreamMethod(dispatchMethod: dispatch, eventBus: eventBus)
-        let list = WorkflowListMethod(store: catalog)
-        let describe = WorkflowDescribeMethod(store: catalog)
+        let list = WorkflowListMethod(catalog: catalog)
+        let describe = WorkflowDescribeMethod(catalog: catalog)
         let listActive = WorkflowListActiveMethod(pool: pool)
         let health = WorkflowHealthMethod(pool: pool)
         let cancel = WorkflowCancelMethod(pool: pool, policyStore: policyStore)
