@@ -101,8 +101,6 @@ actor ScheduleStore {
     
     @discardableResult
     func catalog() async -> Catalog {
-        let fileManager = FileManager.default
-        
         var byPath: [URL: Entry] = [:]
         
         for entry in cache.values { byPath[entry.path] = entry }
@@ -129,11 +127,6 @@ actor ScheduleStore {
         let (live, collided) = partitionUniqueKeys(candidates)
         collisions = collisionFailures(kind: "schedule id", collided, standing: collisions, recording: &ledger)
         collidedIDs = Set(collided.map(\.key))
-        
-        for directory in [configDir, runtimeDirectory].compactMap({ directory in directory })
-        where fileManager.fileExists(atPath: directory.path) {
-            ledger.recordLegacyJSONSpecs(in: directory, kind: "schedule")
-        }
         
         failureCache = ledger.fresh
         failedIDs = Set(failureCache.keys.map { source in

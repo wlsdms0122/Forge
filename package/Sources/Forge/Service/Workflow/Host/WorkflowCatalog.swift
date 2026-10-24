@@ -67,7 +67,6 @@ actor WorkflowCatalog {
 
     private var cache: [String: Entry] = [:]
     private var failureCache: [String: LoadFailure] = [:]
-    private var legacyFailures: [String: LoadFailure] = [:]
     private var collisions: [LoadFailure] = []
     private var collidedNames: [String: [String]] = [:]
     private var scanObstructions: [StoreScan.Obstruction] = []
@@ -102,7 +101,7 @@ actor WorkflowCatalog {
             entries: cache.values
                 .map { entry in (entry.name, entry.module, entry.source, entry.documentation) }
                 .sorted { left, right in left.name < right.name },
-            failures: (Array(failureCache.values) + Array(legacyFailures.values) + collisions + scanFailures)
+            failures: (Array(failureCache.values) + collisions + scanFailures)
                 .sorted { left, right in left.path < right.path }
         )
     }
@@ -120,7 +119,6 @@ actor WorkflowCatalog {
         guard let directory else {
             cache.removeAll()
             failureCache.removeAll()
-            legacyFailures.removeAll()
             collisions.removeAll()
             collidedNames.removeAll()
             scanObstructions.removeAll()
@@ -145,14 +143,9 @@ actor WorkflowCatalog {
             return currentCatalog
         }
 
-        var legacy = LoadFailureLedger(prior: legacyFailures)
-
-        legacy.recordLegacyJSONSpecs(in: directory, kind: "workflow")
-        legacyFailures = legacy.fresh
-
         let observed = await observing(scanStoreFiles(in: directory, pathExtension: specFileExtension))
 
-        FileHandle.standardError.write(Data((legacy.announcement + observed.announcement).utf8))
+        FileHandle.standardError.write(Data(observed.announcement.utf8))
 
         return observed.catalog
     }

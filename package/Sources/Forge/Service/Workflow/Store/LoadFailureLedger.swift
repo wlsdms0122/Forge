@@ -58,28 +58,5 @@ struct LoadFailureLedger {
         announcements.append(reason)
     }
     
-    mutating func recordLegacyJSONSpecs(in directory: URL, kind: String) {
-        let fileManager = FileManager.default
-        
-        for file in scanStoreFiles(in: directory, pathExtension: "json").files {
-            guard let attributes = try? fileManager.attributesOfItem(atPath: file.url.path),
-                let mtime = attributes[.modificationDate] as? Date
-            else {
-                continue
-            }
-            
-            if reuse(source: file.source, mtime: mtime) { continue }
-            
-            let reason = "legacy JSON spec ignored — \(kind) files are *.\(specFileExtension); convert or remove"
-            
-            record(
-                source: file.source,
-                reason: reason,
-                mtime: mtime,
-                stderrLine: "\(reason) (\(file.source))"
-            )
-        }
-    }
-    
     // MARK: - Private
 }

@@ -227,8 +227,8 @@ those flags apply.
 
 List registered workflows. Plain output shows one workflow per line; a
 trailing `FAILED (N):` block lists the files the catalog left out, each with
-its refusal: one that could not be read or is a legacy JSON spec, one the
-front end, the load or the file convention refused, and one the build refused
+its refusal: one that could not be read, one the front end, the load or the
+file convention refused, and one the build refused
 (`build: …`). RPC: `workflow.list`.
 
 ```

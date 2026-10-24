@@ -127,7 +127,6 @@ actor PolicyStore {
         }
         
         cache = fresh
-        ledger.recordLegacyJSONSpecs(in: directory, kind: "policy")
         failureCache = ledger.fresh
         FileHandle.standardError.write(Data(ledger.announcement.utf8))
         
