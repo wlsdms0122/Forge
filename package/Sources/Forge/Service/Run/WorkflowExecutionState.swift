@@ -10,5 +10,4 @@ import Foundation
 enum WorkflowExecutionState {
     @TaskLocal static var context: WorkflowExecutionContext?
     @TaskLocal static var accessToken: String?
-    @TaskLocal static var accessTokenID: String?
 }

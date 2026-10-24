@@ -148,14 +148,12 @@ actor WorkflowRunner {
             await LogContext.$metadata.withValue(LogPayload(context.asPayload)) {
                 await LogContext.$parameters.withValue(parameters) {
                     await WorkflowExecutionState.$accessToken.withValue(token) {
-                        await WorkflowExecutionState.$accessTokenID.withValue(claims.id) {
-                            await runBody(
-                                workflow,
-                                inputs: inputs,
-                                origin: origin,
-                                runID: runID
-                            )
-                        }
+                        await runBody(
+                            workflow,
+                            inputs: inputs,
+                            origin: origin,
+                            runID: runID
+                        )
                     }
                 }
             }
