@@ -226,8 +226,10 @@ those flags apply.
 #### `forge workflow list`
 
 List registered workflows. Plain output shows one workflow per line; a
-trailing `FAILED (N):` block lists files that failed to load (YAML decode
-error or validator rejection). RPC: `workflow.list`.
+trailing `FAILED (N):` block lists the files the catalog left out, each with
+its refusal: one that could not be read or is a legacy JSON spec, one the
+front end, the load or the file convention refused, and one the build refused
+(`build: …`). RPC: `workflow.list`.
 
 ```
 forge workflow list [--json]
@@ -790,9 +792,10 @@ Fire target via `workflow` (registered name) or `spec` (anonymous inline) —
 same rules as `workflow.dispatch`: mutually exclusive, `spec` rejects a
 `name` key and runs under the `<inline>` sigil. At create time the spec is
 read the way a catalog file is, through the YAML front end leaning on
-Forge's library and on the catalog's files, and loaded, so a refusal
-surfaces up front rather than at fire time. The spec is stored on the
-schedule record as written and read again on every fire.
+Forge's library and on the catalog's files, and loaded, so what the front
+end or the load refuses surfaces at create time. It is not built there: a
+refusal of the build surfaces when the schedule fires. The spec is stored on
+the schedule record as written and read again on every fire.
 
 **params**
 
