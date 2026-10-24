@@ -12,13 +12,13 @@ struct WorkflowDescribeCommand: ParsableCommand {
     // MARK: - Property
     static let configuration = CommandConfiguration(
         commandName: "describe",
-        abstract: "Show a single workflow's calling contract — description, inputs, outputs.",
+        abstract: "Show a single workflow's calling contract — description, inputs, return type.",
         discussion: """
-            Returns the full schema needed to dispatch a workflow without grep'ing
-            the YAML file: inputs (type/default/hint — a declared default, even
-            `null`, marks the input optional) and outputs mapping.
-            Counterpart to `service describe`. Plain output is human-readable;
-            pass --json to parse.
+            Returns what dispatching a workflow needs without grep'ing the YAML
+            file: its inputs (the type, where an Optional type is one a caller
+            may leave out; the default the file writes; the hint) and its return
+            type. Counterpart to `service describe`. Plain output is
+            human-readable; pass --json to parse.
             """
     )
     
@@ -64,17 +64,7 @@ struct WorkflowDescribeCommand: ParsableCommand {
                 
                 if let type = spec["type"] as? String { bits.append(type) }
                 
-                if spec.keys.contains("default") {
-                    bits.append("optional")
-                    
-                    if let value = spec["default"], !(value is NSNull) {
-                        bits.append("default=\(renderPlainValue(value))")
-                    }
-                }
-                
-                if let one = spec["oneOf"] as? [Any] {
-                    bits.append("one_of=\(renderPlainValue(one))")
-                }
+                if let value = spec["default"] { bits.append("default=\(renderPlainValue(value))") }
                 
                 let header = bits.isEmpty
                     ? key
