@@ -9,7 +9,7 @@ procedures:
       - let: outer
         value:
           call:
-            procedure: Forge.invoke
+            procedure: Forge.Native.invoke
             arguments:
               - claude
               - null
@@ -23,13 +23,13 @@ procedures:
                   failing: anything
                   body:
                     - let: first
-                      value: { call: { procedure: Forge.agent, arguments: [ ping one ] } }
+                      value: { call: { procedure: Forge.Native.agent, arguments: [ ping one ] } }
                     - let: second
-                      value: { call: { procedure: Forge.agent, arguments: [ ping two ] } }
+                      value: { call: { procedure: Forge.Native.agent, arguments: [ ping two ] } }
                     - let: nested
                       value:
                         call:
-                          procedure: Forge.invoke
+                          procedure: Forge.Native.invoke
                           arguments:
                             - claude
                             - null
@@ -41,7 +41,7 @@ procedures:
                             - closure:
                                 returns: String
                                 failing: anything
-                                result: { call: { procedure: Forge.agent, arguments: [ ping three ] } }
+                                result: { call: { procedure: Forge.Native.agent, arguments: [ ping three ] } }
                   result:
                     dictionary:
                       - [first, { ref: first }]

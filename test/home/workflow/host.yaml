@@ -16,14 +16,14 @@ procedures:
       - let: shout
         value:
           call:
-            procedure: Forge.shell
+            procedure: Forge.Native.shell
             arguments: [ [ /bin/sh, -c, "printf 'shell:%s' \"$1\"", _, { ref: who } ], null, null, null, 30 ]
       - let: letter
-        value: { call: { procedure: Forge.resource, arguments: [ greeting.txt, { dictionary: [ [name, { ref: who }] ] } ] } }
+        value: { call: { procedure: Forge.Native.resource, arguments: [ greeting.txt, { dictionary: [ [name, { ref: who }] ] } ] } }
       - let: script
-        value: { call: { procedure: Forge.locate, arguments: [ script/stamp.sh ] } }
+        value: { call: { procedure: Forge.Native.locate, arguments: [ script/stamp.sh ] } }
       - let: stamped
-        value: { call: { procedure: Forge.shell, arguments: [ [ /bin/sh, { ref: script }, { ref: who } ], null, null, null, null ] } }
+        value: { call: { procedure: Forge.Native.shell, arguments: [ [ /bin/sh, { ref: script }, { ref: who } ], null, null, null, null ] } }
       - var: rescued
         type: String
         value: ""
@@ -31,7 +31,7 @@ procedures:
         value:
           attempt:
             body:
-              - value: { call: { procedure: Forge.shell, arguments: [ [ /bin/sh, -c, "echo warned >&2; exit 7" ], null, null, null, null ] } }
+              - value: { call: { procedure: Forge.Native.shell, arguments: [ [ /bin/sh, -c, "echo warned >&2; exit 7" ], null, null, null, null ] } }
             rescue:
               - set: rescued
                 value:

@@ -220,7 +220,7 @@ struct EffectActionTests {
           - let: echo
             value:
               call:
-                procedure: Forge.shell
+                procedure: Forge.Native.shell
                 arguments:
                   - [ echo, { format: "hi ${who}", with: { who: { ref: who } } } ]
                   - null
@@ -255,7 +255,7 @@ struct EffectActionTests {
             value:
               attempt:
                 body:
-                  - value: { call: { procedure: Forge.shell, arguments: [ [ "false" ], null, null, null, null ] } }
+                  - value: { call: { procedure: Forge.Native.shell, arguments: [ [ "false" ], null, null, null, null ] } }
                 rescue:
                   - set: broken
                     value: recovered
@@ -281,11 +281,11 @@ struct EffectActionTests {
         failing: [nonzero_exit, timeout]
         body:
           - let: probe
-            value: { call: { procedure: Forge.shell, arguments: [ [ probe ], null, null, null, null ] } }
+            value: { call: { procedure: Forge.Native.shell, arguments: [ [ probe ], null, null, null, null ] } }
           - let: fields
             value:
               call:
-                procedure: Forge.extract
+                procedure: Forge.Native.extract
                 arguments:
                   - { ref: probe }
                   - { dictionary: [ [code, { dictionary: [ [regex, "code=(\\\\d+)"], [type, int] ] }] ] }
@@ -317,7 +317,7 @@ struct EffectActionTests {
             value:
               attempt:
                 body:
-                  - value: { call: { procedure: Forge.shell, arguments: [ [ sleepy ], null, null, null, 0.05 ] } }
+                  - value: { call: { procedure: Forge.Native.shell, arguments: [ [ sleepy ], null, null, null, 0.05 ] } }
                 rescue:
                   - set: slow
                     value: recovered
@@ -346,7 +346,7 @@ struct EffectActionTests {
           - let: session
             value:
               call:
-                procedure: Forge.invoke
+                procedure: Forge.Native.invoke
                 arguments:
                   - claude:opus
                   - null
@@ -359,7 +359,7 @@ struct EffectActionTests {
                       returns: String
                       result:
                         call:
-                          procedure: Forge.agent
+                          procedure: Forge.Native.agent
                           arguments: [ { format: "tell me about ${topic}", with: { topic: { ref: topic } } } ]
         result: { dictionary: [ [result, { ref: session }] ] }
         """)
@@ -380,7 +380,7 @@ struct EffectActionTests {
         let harness = Harness()
         let spec = try harness.frontend.workflow("""
         returns: String
-        result: { call: { procedure: Forge.agent, arguments: [ "hello?" ] } }
+        result: { call: { procedure: Forge.Native.agent, arguments: [ "hello?" ] } }
         """)
         let sut = harness.executor()
 
@@ -400,7 +400,7 @@ struct EffectActionTests {
         failing: [child_run_failed, timeout]
         body:
           - let: child
-            value: { call: { procedure: Forge.dispatch, arguments: [ worker, { dictionary: [ [job_id, { ref: job }] ] }, null ] } }
+            value: { call: { procedure: Forge.Native.dispatch, arguments: [ worker, { dictionary: [ [job_id, { ref: job }] ] }, null ] } }
         result: { dictionary: [ [result, { ref: 'child["ok"]' }] ] }
         """)
         let sut = harness.executor()
@@ -443,7 +443,7 @@ struct EffectActionTests {
           - let: axes
             value: "tech, persona"
           - let: prompt
-            value: { call: { procedure: Forge.resource, arguments: [ prompt/enrich.md, { dictionary: [ [axes, { ref: axes }] ] } ] } }
+            value: { call: { procedure: Forge.Native.resource, arguments: [ prompt/enrich.md, { dictionary: [ [axes, { ref: axes }] ] } ] } }
         result: { dictionary: [ [result, { ref: prompt }] ] }
         """)
         let sut = harness.executor(files: [
@@ -465,7 +465,7 @@ struct EffectActionTests {
         returns: "Dictionary<String, Any>"
         body:
           - let: prompt
-            value: { call: { procedure: Forge.resource, arguments: [ prompt/enrich.md, { dictionary: [ [axes, null] ] } ] } }
+            value: { call: { procedure: Forge.Native.resource, arguments: [ prompt/enrich.md, { dictionary: [ [axes, null] ] } ] } }
         result: { dictionary: [ [result, { ref: prompt }] ] }
         """)
         let sut = harness.executor(files: [
@@ -488,7 +488,7 @@ struct EffectActionTests {
         returns: "Dictionary<String, Any>"
         body:
           - let: script
-            value: { call: { procedure: Forge.locate, arguments: [ script/run.sh ] } }
+            value: { call: { procedure: Forge.Native.locate, arguments: [ script/run.sh ] } }
         result: { dictionary: [ [where, { ref: script }] ] }
         """)
         let sut = harness.executor(files: [
@@ -522,7 +522,7 @@ struct EffectActionTests {
             value:
               attempt:
                 body:
-                  - value: { call: { procedure: Forge.shell, arguments: [ [ fail-tool ], null, null, null, null ] } }
+                  - value: { call: { procedure: Forge.Native.shell, arguments: [ [ fail-tool ], null, null, null, null ] } }
                 rescue:
                   - set: kind
                     value: { ref: risky.type }
@@ -599,7 +599,7 @@ struct EffectActionTests {
           - let: fine
             value: ok
           - let: run
-            value: { call: { procedure: Forge.run, arguments: [] } }
+            value: { call: { procedure: Forge.Native.run, arguments: [] } }
           - var: recovered
             type: String
             value: ""
@@ -608,7 +608,7 @@ struct EffectActionTests {
               attempt:
                 body:
                   - let: broken
-                    value: { call: { procedure: Forge.shell, arguments: [ [ broken ], null, null, null, null ] } }
+                    value: { call: { procedure: Forge.Native.shell, arguments: [ [ broken ], null, null, null, null ] } }
                 rescue:
                   - set: recovered
                     value: recovered
@@ -617,7 +617,7 @@ struct EffectActionTests {
         let bridge = EventBridge(
             workflowID: "wf-test",
             workflowName: "observed",
-            verbs: Set(try ForgeSpec.vocabulary().procedures.keys)
+            verbs: Set(try ForgeSpec.natives().procedures.keys)
         ) { event in
             await collected.append(event)
         }
@@ -635,9 +635,9 @@ struct EffectActionTests {
         }
 
         #expect(steps == [
-            "run:step.started:Forge.run",
+            "run:step.started:Forge.Native.run",
             "run:step.completed:",
-            "broken:step.started:Forge.shell",
+            "broken:step.started:Forge.Native.shell",
             "broken:step.failed:"
         ])
     }

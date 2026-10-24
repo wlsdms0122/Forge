@@ -21,14 +21,14 @@ enum ForgeSpec {
     // The verbs forge reaches the world with, as native procedures. Each one
     // runs outside the program, may run beside another, and says what it fails
     // with.
-    static func vocabulary() throws -> Module {
+    static func natives() throws -> Module {
         try Module(
             types: [
                 runType: .struct(["workflow_id": .string, "root_id": .string]),
                 originType: .struct(["kind": .string, "id": .optional(.string)])
             ],
             procedures: [
-                "Forge.shell": Procedure(
+                "Forge.Native.shell": Procedure(
                     signature: Signature(
                         of: ShellAction.self,
                         returns: .string,
@@ -37,7 +37,7 @@ enum ForgeSpec {
                     ),
                     implementation: .effect(ShellAction())
                 ),
-                "Forge.extract": Procedure(
+                "Forge.Native.extract": Procedure(
                     signature: Signature(
                         of: ExtractQuery.self,
                         returns: .dictionary(key: .string, value: .any),
@@ -46,11 +46,11 @@ enum ForgeSpec {
                     ),
                     implementation: .query(ExtractQuery())
                 ),
-                "Forge.agent": Procedure(
+                "Forge.Native.agent": Procedure(
                     signature: Signature(of: AgentAction.self, returns: .string, isolation: .isolated),
                     implementation: .effect(AgentAction())
                 ),
-                "Forge.invoke": Procedure(
+                "Forge.Native.invoke": Procedure(
                     signature: Signature(
                         of: InvokeAction.self,
                         returns: InvokeAction.result,
@@ -59,7 +59,7 @@ enum ForgeSpec {
                     ),
                     implementation: .effect(InvokeAction())
                 ),
-                "Forge.dispatch": Procedure(
+                "Forge.Native.dispatch": Procedure(
                     signature: Signature(
                         of: DispatchAction.self,
                         returns: .dictionary(key: .string, value: .any),
@@ -68,19 +68,19 @@ enum ForgeSpec {
                     ),
                     implementation: .effect(DispatchAction())
                 ),
-                "Forge.resource": Procedure(
+                "Forge.Native.resource": Procedure(
                     signature: Signature(of: ResourceAction.self, returns: .string, isolation: .isolated),
                     implementation: .effect(ResourceAction())
                 ),
-                "Forge.locate": Procedure(
+                "Forge.Native.locate": Procedure(
                     signature: Signature(of: LocateAction.self, returns: .string, isolation: .isolated),
                     implementation: .effect(LocateAction())
                 ),
-                "Forge.run": Procedure(
+                "Forge.Native.run": Procedure(
                     signature: Signature(of: RunAction.self, returns: .named(runType), isolation: .isolated),
                     implementation: .effect(RunAction())
                 ),
-                "Forge.origin": Procedure(
+                "Forge.Native.origin": Procedure(
                     signature: Signature(of: OriginAction.self, returns: .named(originType), isolation: .isolated),
                     implementation: .effect(OriginAction())
                 )
@@ -91,7 +91,7 @@ enum ForgeSpec {
     // What every link holds beside the workflows: forge's verbs and the
     // standard vocabulary.
     static func linkables() throws -> [Module] {
-        [try vocabulary()] + Module.standard
+        [try natives()] + Module.standard
     }
 
     // The one front end forge reads a workflow with.

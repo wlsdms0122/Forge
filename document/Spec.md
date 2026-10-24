@@ -17,7 +17,7 @@ from it.
 Every run is built from the dispatched workflow, every other workflow in the
 catalog, the `Forge` module and the standard vocabulary. A workflow calls
 another one in the same run with `call`, by its name, and starts another run
-with `Forge.dispatch`.
+with `Forge.Native.dispatch`.
 
 - **Inputs** are the procedure's parameters. A caller hands them by name. An
   input of an optional type (`String?`) may be left out, and the daemon hands
@@ -42,9 +42,9 @@ The verbs are native procedures. They are called like any procedure, every
 argument written in the order the procedure declares it, null where an
 optional one says nothing. Each one may run beside another in a fan-out.
 
-### `Forge.shell`
+### `Forge.Native.shell`
 
-`Forge.shell(command: Array<String>, cwd: String?, env: Dictionary<String, String>?, stdin: String?, timeout: Double?) -> String`,
+`Forge.Native.shell(command: Array<String>, cwd: String?, env: Dictionary<String, String>?, stdin: String?, timeout: Double?) -> String`,
 failing `nonzero_exit`, `timeout`.
 
 Runs `command[0]` with the rest as its arguments, holding one of the daemon's
@@ -53,17 +53,17 @@ fails with `nonzero_exit`, whose details are `exit_code`, `stderr` and
 `stdout`. A command still running after `timeout` seconds fails with
 `timeout`, whose details are `seconds`.
 
-### `Forge.extract`
+### `Forge.Native.extract`
 
-`Forge.extract(text: String, outputs: Dictionary<String, Any>) -> Dictionary<String, Any>`, const.
+`Forge.Native.extract(text: String, outputs: Dictionary<String, Any>) -> Dictionary<String, Any>`, const.
 
 Reads the values `outputs` names out of `text` (see *Output extractors*) and
 returns them by name, with the whole text under `_raw`. It reaches nothing
 outside the run.
 
-### `Forge.invoke`
+### `Forge.Native.invoke`
 
-`Forge.invoke<Result>(model: String?, allowed: Any, env_extra: Dictionary<String, String>?, cwd: String?, permission_mode: String?, share_session: Bool?, timeout: Double?, body: () throws -> Result) -> Result`,
+`Forge.Native.invoke<Result>(model: String?, allowed: Any, env_extra: Dictionary<String, String>?, cwd: String?, permission_mode: String?, share_session: Bool?, timeout: Double?, body: () throws -> Result) -> Result`,
 failing anything.
 
 Opens an agent session with these settings and calls `body` inside it; what
@@ -74,17 +74,17 @@ empty string is refused. `share_session: true` reuses the session of an
 enclosing `invoke` where there is one. A session still open after `timeout`
 seconds fails with `timeout`.
 
-### `Forge.agent`
+### `Forge.Native.agent`
 
-`Forge.agent(prompt: String) -> String`.
+`Forge.Native.agent(prompt: String) -> String`.
 
-One prompt turn in the session the enclosing `Forge.invoke` opened, holding a
+One prompt turn in the session the enclosing `Forge.Native.invoke` opened, holding a
 step slot. Outside a session it is refused. A piece of a fan-out speaks to no
 session it did not open.
 
-### `Forge.dispatch`
+### `Forge.Native.dispatch`
 
-`Forge.dispatch(name: String, inputs: Dictionary<String, Any>?, timeout: Double?) -> Dictionary<String, Any>`,
+`Forge.Native.dispatch(name: String, inputs: Dictionary<String, Any>?, timeout: Double?) -> Dictionary<String, Any>`,
 failing `child_run_failed`, `timeout`.
 
 Runs the catalog workflow `name` as a run of its own, with its own policy
@@ -93,9 +93,9 @@ work fails with `child_run_failed`, which a rescue may take. A child the
 policy refuses, or one that faults or is cancelled, fails the parent past any
 rescue.
 
-### `Forge.resource`
+### `Forge.Native.resource`
 
-`Forge.resource(content: String, inputs: Dictionary<String, Any>?) -> String`.
+`Forge.Native.resource(content: String, inputs: Dictionary<String, Any>?) -> String`.
 
 Reads the resource file `content`, relative to the resource directory, and
 renders it as a template over `inputs`: `${name}` stands for the input of that
@@ -103,21 +103,21 @@ name and `$${` writes `${`. A null input is written `null`, as the language's
 `format` writes it, and a name the inputs do not hold is refused. An input
 that must not be null is declared without `?`.
 
-### `Forge.locate`
+### `Forge.Native.locate`
 
-`Forge.locate(path: String) -> String`.
+`Forge.Native.locate(path: String) -> String`.
 
 The absolute path of the resource file `path`, which is not read.
 
-### `Forge.run`
+### `Forge.Native.run`
 
-`Forge.run() -> Forge.Run`, where `Forge.Run` is `{ workflow_id: String, root_id: String }`.
+`Forge.Native.run() -> Forge.Run`, where `Forge.Run` is `{ workflow_id: String, root_id: String }`.
 
 This run's id, and the id of the run that started the chain.
 
-### `Forge.origin`
+### `Forge.Native.origin`
 
-`Forge.origin() -> Forge.Origin`, where `Forge.Origin` is `{ kind: String, id: String? }`.
+`Forge.Native.origin() -> Forge.Origin`, where `Forge.Origin` is `{ kind: String, id: String? }`.
 
 What started this run, and the id of the schedule or caller where there is one.
 
@@ -140,7 +140,7 @@ and the piece writes what it returns:
 
 ## Output extractors
 
-`Forge.extract` reads a text, usually what `Forge.shell` returned; every other
+`Forge.Native.extract` reads a text, usually what `Forge.Native.shell` returned; every other
 verb speaks structured values already. The `outputs` argument is a map from a
 name to an extractor. Shorthand (bare JSONPath):
 

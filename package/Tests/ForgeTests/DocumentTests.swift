@@ -24,7 +24,7 @@ struct DocumentTests {
     // MARK: - Test
     @Test("every verb the Forge module declares has a section")
     func everyWordIsDocumented() throws {
-        let missing = Set(try ForgeSpec.vocabulary().procedures.keys.map(\.spelling))
+        let missing = Set(try ForgeSpec.natives().procedures.keys.map(\.spelling))
             .subtracting(document.sections)
             .sorted()
 
@@ -33,7 +33,7 @@ struct DocumentTests {
 
     @Test("every verb the reference documents is one the Forge module declares")
     func everyDocumentedWordExists() throws {
-        let declared = Set(try ForgeSpec.vocabulary().procedures.keys.map(\.spelling))
+        let declared = Set(try ForgeSpec.natives().procedures.keys.map(\.spelling))
         let phantom = document.sections.subtracting(declared).sorted()
 
         #expect(phantom.isEmpty, "Spec.md documents verbs the Forge module does not declare: \(phantom)")

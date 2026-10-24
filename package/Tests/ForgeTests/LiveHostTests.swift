@@ -277,7 +277,7 @@ struct SpecWorkflowRunnerTests {
             failing: [nonzero_exit, timeout]
             body:
               - let: say
-                value: { call: { procedure: Forge.shell, arguments: [ ["/bin/echo", "ok"], null, null, null, null ] } }
+                value: { call: { procedure: Forge.Native.shell, arguments: [ ["/bin/echo", "ok"], null, null, null, null ] } }
             result: { dictionary: [ [out, { ref: say }] ] }
             """
         ])
@@ -306,7 +306,7 @@ struct SpecWorkflowRunnerTests {
               - let: session
                 value:
                   call:
-                    procedure: Forge.invoke
+                    procedure: Forge.Native.invoke
                     arguments:
                       - claude
                       - null
@@ -315,7 +315,7 @@ struct SpecWorkflowRunnerTests {
                       - null
                       - null
                       - null
-                      - { closure: { returns: String, result: { call: { procedure: Forge.agent, arguments: [ hello ] } } } }
+                      - { closure: { returns: String, result: { call: { procedure: Forge.Native.agent, arguments: [ hello ] } } } }
             result: { dictionary: [ [reply, { ref: session }] ] }
             """
         ])
@@ -360,7 +360,7 @@ struct SpecWorkflowRunnerTests {
                 failing: [child_run_failed, timeout]
                 body:
                   - let: call
-                    value: { call: { procedure: Forge.dispatch, arguments: [ child, { dictionary: [ [msg, hello] ] }, null ] } }
+                    value: { call: { procedure: Forge.Native.dispatch, arguments: [ child, { dictionary: [ [msg, hello] ] }, null ] } }
                 result: { dictionary: [ [got, { ref: 'call["echo"]' }] ] }
                 """,
                 "child": """
@@ -395,7 +395,7 @@ struct SpecWorkflowRunnerTests {
                     value:
                       attempt:
                         body:
-                          - value: { call: { procedure: Forge.dispatch, arguments: [ child, null, null ] } }
+                          - value: { call: { procedure: Forge.Native.dispatch, arguments: [ child, null, null ] } }
                         rescue:
                           - set: absorbed
                             value: swallowed
@@ -432,7 +432,7 @@ struct SpecWorkflowRunnerTests {
                     value:
                       attempt:
                         body:
-                          - value: { call: { procedure: Forge.dispatch, arguments: [ boom, null, null ] } }
+                          - value: { call: { procedure: Forge.Native.dispatch, arguments: [ boom, null, null ] } }
                         rescue:
                           - set: got
                             value: rescued
@@ -464,7 +464,7 @@ struct SpecWorkflowRunnerTests {
                 "parent": """
                 failing: [child_run_failed, timeout]
                 body:
-                  - value: { call: { procedure: Forge.dispatch, arguments: [ child, null, null ] } }
+                  - value: { call: { procedure: Forge.Native.dispatch, arguments: [ child, null, null ] } }
                 """,
                 "child": """
                 returns: "Dictionary<String, Any>"
@@ -500,7 +500,7 @@ struct SpecWorkflowRunnerTests {
             body:
               - value:
                   call:
-                    procedure: Forge.invoke
+                    procedure: Forge.Native.invoke
                     arguments:
                       - claude
                       - null
@@ -517,7 +517,7 @@ struct SpecWorkflowRunnerTests {
                               procedure: Standard.Concurrent.allKeyed
                               arguments:
                                 - dictionary:
-                                    - [t1, { closure: { isolated: true, returns: String, result: { call: { procedure: Forge.agent, arguments: [ hello ] } } } }]
+                                    - [t1, { closure: { isolated: true, returns: String, result: { call: { procedure: Forge.Native.agent, arguments: [ hello ] } } } }]
             """
         ])
         let module = try await harness.store.module(named: "fan")
@@ -537,7 +537,7 @@ struct SpecWorkflowRunnerTests {
             "slow": """
             failing: [nonzero_exit, timeout]
             body:
-              - value: { call: { procedure: Forge.shell, arguments: [ ["/bin/sleep", "10"], null, null, null, null ] } }
+              - value: { call: { procedure: Forge.Native.shell, arguments: [ ["/bin/sleep", "10"], null, null, null, null ] } }
             """
         ])
         let module = try await harness.store.module(named: "slow")
@@ -574,16 +574,16 @@ struct SpecWorkflowRunnerTests {
                 body:
                   - value:
                       call:
-                        procedure: Forge.invoke
-                        arguments: [ claude, null, null, { ref: dir }, null, null, null, { closure: { returns: String, result: { call: { procedure: Forge.agent, arguments: [ hi ] } } } } ]
+                        procedure: Forge.Native.invoke
+                        arguments: [ claude, null, null, { ref: dir }, null, null, null, { closure: { returns: String, result: { call: { procedure: Forge.Native.agent, arguments: [ hi ] } } } } ]
                 """,
                 "emptymode": """
                 failing: anything
                 body:
                   - value:
                       call:
-                        procedure: Forge.invoke
-                        arguments: [ claude, null, null, null, "", null, null, { closure: { returns: String, result: { call: { procedure: Forge.agent, arguments: [ hi ] } } } } ]
+                        procedure: Forge.Native.invoke
+                        arguments: [ claude, null, null, null, "", null, null, { closure: { returns: String, result: { call: { procedure: Forge.Native.agent, arguments: [ hi ] } } } } ]
                 """
             ],
             backend: recorder
@@ -615,8 +615,8 @@ struct SpecWorkflowRunnerTests {
                         procedure: Standard.Concurrent.allKeyed
                         arguments:
                           - dictionary:
-                              - [a, { closure: { isolated: true, failing: [nonzero_exit, timeout], returns: Any, result: { call: { procedure: Forge.shell, arguments: [ ["/bin/sleep", "0.2"], null, null, null, null ] } } } }]
-                              - [b, { closure: { isolated: true, failing: [nonzero_exit, timeout], returns: Any, result: { call: { procedure: Forge.shell, arguments: [ ["/bin/sleep", "0.2"], null, null, null, null ] } } } }]
+                              - [a, { closure: { isolated: true, failing: [nonzero_exit, timeout], returns: Any, result: { call: { procedure: Forge.Native.shell, arguments: [ ["/bin/sleep", "0.2"], null, null, null, null ] } } } }]
+                              - [b, { closure: { isolated: true, failing: [nonzero_exit, timeout], returns: Any, result: { call: { procedure: Forge.Native.shell, arguments: [ ["/bin/sleep", "0.2"], null, null, null, null ] } } } }]
                 """
             ],
             pool: WorkflowPool(maximumConcurrentSteps: 1, maximumActiveRuns: Int.max)

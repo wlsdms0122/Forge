@@ -18,7 +18,7 @@ struct CatalogGenerationTests {
     failing: [nonzero_exit, timeout]
     body:
       - let: x
-        value: { call: { procedure: Forge.shell, arguments: [ ["/bin/echo", "ok"], null, null, null, null ] } }
+        value: { call: { procedure: Forge.Native.shell, arguments: [ ["/bin/echo", "ok"], null, null, null, null ] } }
     """#
     
     private let brokenBody = "steps: notalist\n"

@@ -85,7 +85,7 @@ struct WorkflowHealthTests {
         failing: [nonzero_exit, timeout]
         body:
           - let: x
-            value: { call: { procedure: Forge.shell, arguments: [ ["/bin/echo", "ok"], null, null, null, null ] } }
+            value: { call: { procedure: Forge.Native.shell, arguments: [ ["/bin/echo", "ok"], null, null, null, null ] } }
         """#, named: "echo3").write(
             to: directory.appendingPathComponent("echo3.yaml"), atomically: true, encoding: .utf8)
         let pool = WorkflowPool(maximumConcurrentSteps: 1, maximumActiveRuns: 1)
