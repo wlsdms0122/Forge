@@ -17,15 +17,11 @@ enum ForgeSpec {
     static let runType: Name = "Forge.Run"
     static let originType: Name = "Forge.Origin"
 
-    // Forge's grammar: the library document the package carries, written in
+    // Forge's grammar: the library document the binary carries, written in
     // the YAML notation over the native verbs and spent once. A workflow
     // leans on it and every link holds it.
     private static let shipped = Result {
-        guard let url = Bundle.module.url(forResource: "Forge", withExtension: "yaml") else {
-            throw CocoaError(.fileNoSuchFile, userInfo: [NSFilePathErrorKey: "Forge.yaml"])
-        }
-
-        return try YAMLFrontend().document(from: try Data(contentsOf: url))
+        try YAMLFrontend().document(from: Library.text)
     }
 
     // The library loaded the way a runtime receives it.
@@ -38,6 +34,16 @@ enum ForgeSpec {
     // The front end leaning on the library.
     private static let leaning = Result {
         YAMLFrontend(symbols: try SymbolTable(documents: [try shipped.get()]))
+    }
+
+    // The library, the natives and std compiled once a process, and the
+    // native code they bring: they are fixed for its life, so a build of
+    // workflows compiles the workflows and links them beside these.
+    private static let vocabulary = Task {
+        let modules = try linkables()
+        let supplying = try Supplying(modules)
+
+        return (compiled: try await Builder().compile(modules, against: [], supplying: supplying), supplying: supplying)
     }
 
     // MARK: - Initializer
@@ -128,6 +134,21 @@ enum ForgeSpec {
     // verbs under it and the standard vocabulary.
     static func linkables() throws -> [Module] {
         [try loaded.get(), try natives()] + Module.standard
+    }
+
+    // Workflows compiled against the vocabulary and the workflows already
+    // compiled beside it, in the order they are handed.
+    static func compiled(_ modules: [Module], beside standing: [Compiled] = []) async throws -> [Compiled] {
+        let vocabulary = try await vocabulary.value
+
+        return try await Builder().compile(modules, against: vocabulary.compiled + standing, supplying: vocabulary.supplying)
+    }
+
+    // The image of compiled workflows linked beside the vocabulary.
+    static func linked(_ compiled: [Compiled]) async throws -> Image {
+        let vocabulary = try await vocabulary.value
+
+        return try Builder().link(vocabulary.compiled + compiled, supplying: vocabulary.supplying)
     }
 
     // The one front end forge reads a workflow with, leaning on the library.

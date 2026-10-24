@@ -29,9 +29,6 @@ let package = Package(
                 .product(name: "WarpYAML", package: "warp-frontend-yaml"),
                 .product(name: "TOMLKit", package: "TOMLKit"),
                 .product(name: "Yams", package: "Yams")
-            ],
-            resources: [
-                .copy("Service/Workflow/Warp/Forge.yaml")
             ]
         ),
         .executableTarget(

@@ -17,6 +17,30 @@ struct ForgeSpecTests {
     // MARK: - Property
     // MARK: - Initializer
     // MARK: - Test
+    @Test("what ships is what lib/Forge.yaml holds")
+    func whatShipsIsWhatTheRepositoryHolds() throws {
+        // Given
+        let file = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()   // Warp
+            .deletingLastPathComponent()   // Workflow
+            .deletingLastPathComponent()   // Service
+            .deletingLastPathComponent()   // ForgeTests
+            .deletingLastPathComponent()   // Tests
+            .deletingLastPathComponent()   // package
+            .deletingLastPathComponent()   // the repository
+            .appendingPathComponent("lib")
+            .appendingPathComponent("Forge.yaml")
+
+        // When
+        let written = try String(contentsOf: file, encoding: .utf8)
+
+        // Then
+        #expect(
+            Library.text == written.trimmingCharacters(in: .newlines),
+            "lib/Forge.yaml differs from what ships. Run tool/embed-library.sh"
+        )
+    }
+
     @Test("each verb of the library stands over the native of its name, and every native has one")
     func everyVerbStandsOverItsNative() throws {
         // Given

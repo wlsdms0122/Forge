@@ -63,10 +63,10 @@ procedures:
 ## The `Forge` library
 
 The verbs are the procedures of Forge's library, a document in the front
-end's notation that the daemon carries (`Forge.yaml` in the package) and that
-every workflow leans on. A verb is written by its short name, and its
-arguments by name, in any order; an optional one left out is null, and one
-with a default takes it:
+end's notation (`lib/Forge.yaml`) that the binary carries and every workflow
+leans on. A verb is written by its short name, and its arguments by name, in
+any order; an optional one left out is null, and one with a default takes
+it:
 
 ```yaml
 - let: listed

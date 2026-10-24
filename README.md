@@ -276,11 +276,18 @@ The e2e gate boots a real daemon against the in-repo session home
 (`test/home`) with a stub agent, walks every user-facing feature shallowly,
 and tears everything down. It is the last gate before a binary ships.
 
+The library is edited in `lib/Forge.yaml`. The binary carries a copy of it,
+`Library.swift`, which `tool/embed-library.sh` writes; run it after an edit.
+`ForgeSpecTests` holds the copy to the file, so an edit that was not
+embedded is a red test.
+
 ```
 package/    Swift package
   Sources/Forge      the host: daemon, shell, agent sessions, policy, config,
-                     and the library (Forge.yaml) the verbs are written in
+                     and the embedded copy of the library
   Sources/ForgeCLI   the `forge` command
+lib/        Forge.yaml, the library the verbs are written in
+tool/       embed-library.sh, which copies lib/ into the package
 document/   Spec.md (workflows and verbs) · API.md (CLI/RPC)
 test/       the release e2e gate — `test/run <binary>`
 ```
