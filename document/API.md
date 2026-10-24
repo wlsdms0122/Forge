@@ -1130,6 +1130,5 @@ The error envelope is `{"type": "<ErrorType>", "message": "<text>"}`.
 | `UnknownMethod` | the daemon does not know the method name |
 | `PolicyDenied` | the principal may not dispatch/control that workflow (policy/*.yaml) — retry is pointless |
 | `WorkflowValidationError` | the workflow definition failed validation (inline spec or broken catalog file) — fix the spec |
-| `InputValidationError` | a dispatch input violated the workflow's declared parameter |
 | `RunCapExceeded` | run cap saturation (backpressure) — retry later is meaningful |
 | `ChildRunFailed` | a `dispatch` step's child run completed as failed — message carries the child's error type |
