@@ -39,7 +39,7 @@ struct ResourceReadCommand: ParsableCommand {
         let result = client.call("resource.read", params)
         
         if json {
-            printJSON(result)
+            result.printJSON()
             
             return
         }

@@ -30,7 +30,7 @@ struct ServiceListCommand: ParsableCommand {
         let services = result["services"]?.arrayValue ?? []
         
         if json {
-            printJSON(["services": .array(services)])
+            JSONValue.object(["services": .array(services)]).printJSON()
             
             return
         }

@@ -34,7 +34,7 @@ struct ScheduleDeleteCommand: ParsableCommand {
     func run() throws {
         let client = Client(global, context: "schedule delete")
         
-        printResult(client.call("schedule.delete", ["id": .string(id)]), json: json)
+        client.call("schedule.delete", ["id": .string(id)]).printResult(json: json)
     }
     
     // MARK: - Private

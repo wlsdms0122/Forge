@@ -29,7 +29,7 @@ struct JobShowCommand: ParsableCommand {
     func run() throws {
         let client = Client(global, context: "job show")
         
-        printResult(client.call("job.show", ["id": .string(id)]), json: json)
+        client.call("job.show", ["id": .string(id)]).printResult(json: json)
     }
     
     // MARK: - Private

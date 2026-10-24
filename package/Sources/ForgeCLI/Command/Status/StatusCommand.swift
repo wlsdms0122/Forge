@@ -38,7 +38,7 @@ struct StatusCommand: ParsableCommand {
         
         case .ok(let result):
             if json {
-                printJSON(result)
+                result.printJSON()
                 
                 return
             }

@@ -44,7 +44,7 @@ struct ServiceDescribeCommand: ParsableCommand {
             die("service describe: '\(name)' not registered", code: 5)
         }
         
-        if json { printJSON(entry) } else { printServicePlain(entry) }
+        if json { entry.printJSON() } else { printServicePlain(entry) }
     }
     
     // MARK: - Private

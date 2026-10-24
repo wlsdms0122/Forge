@@ -38,7 +38,7 @@ struct WorkflowDescribeCommand: ParsableCommand {
         let result = client.call("workflow.describe", ["name": .string(name)])
         
         if json {
-            printJSON(result)
+            result.printJSON()
             
             return
         }

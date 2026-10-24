@@ -77,7 +77,7 @@ struct ServiceSendCommand: ParsableCommand {
             "async": .bool(isAsync)
         ]
         
-        printResult(client.call("handler.send", params), json: json)
+        client.call("handler.send", params).printResult(json: json)
         
         Self.exit()
     }

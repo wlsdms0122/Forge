@@ -44,7 +44,7 @@ struct JobListCommand: ParsableCommand {
         let result = client.call("job.list", params)
         
         if json {
-            printJSON(result)
+            result.printJSON()
             
             return
         }

@@ -27,7 +27,7 @@ struct PolicyListCommand: ParsableCommand {
         let result = client.call("policy.list")
         
         if json {
-            printJSON(result)
+            result.printJSON()
             
             return
         }

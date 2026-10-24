@@ -27,7 +27,7 @@ struct ResourceListCommand: ParsableCommand {
         let result = client.call("resource.list")
         
         if json {
-            printJSON(result)
+            result.printJSON()
             
             return
         }

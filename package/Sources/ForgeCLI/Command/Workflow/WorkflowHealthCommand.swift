@@ -28,7 +28,7 @@ struct WorkflowHealthCommand: ParsableCommand {
         let result = client.call("workflow.health")
         
         if json {
-            printJSON(result)
+            result.printJSON()
             
             return
         }

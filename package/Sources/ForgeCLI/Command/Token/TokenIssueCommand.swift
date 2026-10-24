@@ -30,7 +30,7 @@ struct TokenIssueCommand: ParsableCommand {
         let result = client.call("token.issue", ["principal": .string(principal)])
         
         if json {
-            printJSON(result)
+            result.printJSON()
         } else {
             print(result["token"]?.stringValue ?? "")
         }

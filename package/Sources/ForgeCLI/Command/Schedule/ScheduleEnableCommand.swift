@@ -29,10 +29,8 @@ struct ScheduleEnableCommand: ParsableCommand {
     func run() throws {
         let client = Client(global, context: "schedule enable")
         
-        printResult(
-            client.call("schedule.set_enabled", ["id": .string(id), "enabled": true]),
-            json: json
-        )
+        client.call("schedule.set_enabled", ["id": .string(id), "enabled": true])
+            .printResult(json: json)
     }
     
     // MARK: - Private

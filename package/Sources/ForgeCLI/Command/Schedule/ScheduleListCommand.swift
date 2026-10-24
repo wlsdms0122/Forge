@@ -28,7 +28,7 @@ struct ScheduleListCommand: ParsableCommand {
         let result = client.call("schedule.list")
         
         if json {
-            printJSON(result)
+            result.printJSON()
             
             return
         }

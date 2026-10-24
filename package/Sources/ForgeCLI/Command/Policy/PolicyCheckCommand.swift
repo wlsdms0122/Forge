@@ -41,7 +41,7 @@ struct PolicyCheckCommand: ParsableCommand {
         let result = client.call("policy.check", ["principal": .string(principal), "workflow": .string(workflow)])
         
         if json {
-            printJSON(result)
+            result.printJSON()
             
             return
         }

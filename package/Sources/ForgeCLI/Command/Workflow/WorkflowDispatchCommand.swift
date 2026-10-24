@@ -140,7 +140,7 @@ struct WorkflowDispatchCommand: ParsableCommand {
             runStream(client, params: params)
         }
         
-        printResult(client.call("workflow.dispatch", params), json: json)
+        client.call("workflow.dispatch", params).printResult(json: json)
         
         Self.exit()
     }

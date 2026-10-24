@@ -34,7 +34,7 @@ struct ServiceStatusCommand: ParsableCommand {
         let result = client.call("service.status")
         
         if json {
-            printJSON(result)
+            result.printJSON()
             
             return
         }

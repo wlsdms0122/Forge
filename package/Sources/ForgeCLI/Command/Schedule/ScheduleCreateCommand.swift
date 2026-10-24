@@ -120,7 +120,7 @@ struct ScheduleCreateCommand: ParsableCommand {
         if let inputs { params["inputs"] = JSONValue(objectArgument: inputs, flag: "--inputs") }
         if let concurrency { params["concurrency"] = .string(concurrency) }
         
-        printResult(client.call("schedule.create", params), json: json)
+        client.call("schedule.create", params).printResult(json: json)
     }
     
     // MARK: - Private
