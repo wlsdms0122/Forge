@@ -16,7 +16,7 @@ struct DispatchService: Sendable {
     
     // MARK: - Initializer
     init(methods: [RPCMethod], authority: TokenAuthority) {
-        self.methods = Dictionary(methods.map { method in (method.name, method) }) { first, _ in first }
+        self.methods = Dictionary(uniqueKeysWithValues: methods.map { method in (method.name, method) })
         self.authority = authority
     }
     
