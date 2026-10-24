@@ -163,6 +163,28 @@ actor ScheduleStore {
         return cache[id].map { entry in effective(entry).schedule }
     }
     
+    // The schedule `id`, when the caller may dispatch its workflow: control
+    // of a schedule is dispatch of the workflow it fires.
+    func requireControl(
+        of id: String,
+        claims: TokenClaims,
+        policyStore: PolicyStore,
+        context: String
+    ) async throws -> Schedule {
+        guard let schedule = await lookup(id) else {
+            throw ProtocolError("\(context): schedule not found: \(id)")
+        }
+        
+        try await DispatchAuthorization.requireDispatch(
+            claims: claims,
+            workflow: schedule.workflow,
+            policyStore: policyStore,
+            context: context
+        )
+        
+        return schedule
+    }
+    
     func setEnabled(id: String, enabled: Bool, authorizedWorkflow: String) async throws {
         let entry = try await requireLive(id)
         try requireIdentity(entry, id: id, authorizedWorkflow: authorizedWorkflow)

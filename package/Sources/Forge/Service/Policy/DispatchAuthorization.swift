@@ -35,28 +35,6 @@ enum DispatchAuthorization {
         }
     }
     
-    @discardableResult
-    static func requireScheduleControl(
-        claims: TokenClaims,
-        scheduleID: String,
-        store: ScheduleStore,
-        policyStore: PolicyStore,
-        context: String
-    ) async throws -> Schedule {
-        guard let schedule = await store.lookup(scheduleID) else {
-            throw ProtocolError("\(context): schedule not found: \(scheduleID)")
-        }
-        
-        try await requireDispatch(
-            claims: claims,
-            workflow: schedule.workflow,
-            policyStore: policyStore,
-            context: context
-        )
-        
-        return schedule
-    }
-    
     static func requireRunControl(
         claims: TokenClaims,
         runID: String,

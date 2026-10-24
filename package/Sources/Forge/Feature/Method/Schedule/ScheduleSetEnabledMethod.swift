@@ -28,10 +28,9 @@ struct ScheduleSetEnabledMethod: Sendable {
             throw ProtocolError("schedule.set_enabled: 'enabled' (bool) required")
         }
 
-        let authorized = try await DispatchAuthorization.requireScheduleControl(
+        let authorized = try await store.requireControl(
+            of: id,
             claims: claims,
-            scheduleID: id,
-            store: store,
             policyStore: policyStore,
             context: "schedule.set_enabled"
         )
