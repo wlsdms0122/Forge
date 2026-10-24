@@ -146,113 +146,6 @@ package actor Server {
         self.workflowHandlerBus = handlerBus
         self.workRegistry = workRegistryLocal
         
-        let workflowDispatchMethod = WorkflowDispatchMethod(
-            runner: runnerLocal,
-            store: workflowStoreLocal,
-            workRegistry: workRegistryLocal,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let workflowDispatchStreamMethod = WorkflowDispatchStreamMethod(
-            dispatchMethod: workflowDispatchMethod,
-            eventBus: bus
-        )
-        let workflowListMethod = WorkflowListMethod(
-            store: workflowStoreLocal,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let workflowDescribeMethod = WorkflowDescribeMethod(
-            store: workflowStoreLocal,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let workflowHealthMethod = WorkflowHealthMethod(
-            pool: pool,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let workflowListActiveMethod = WorkflowListActiveMethod(
-            pool: pool,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let workflowCancelMethod = WorkflowCancelMethod(
-            pool: pool,
-            policyStore: policyStoreLocal,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let scheduleListMethod = ScheduleListMethod(
-            store: scheduleStore,
-            ledger: fireLedger,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let scheduleSetEnabledMethod = ScheduleSetEnabledMethod(
-            store: scheduleStore,
-            policyStore: policyStoreLocal,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let scheduleCreateMethod = ScheduleCreateMethod(
-            store: scheduleStore,
-            workflowStore: workflowStoreLocal,
-            policyStore: policyStoreLocal,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let scheduleDeleteMethod = ScheduleDeleteMethod(
-            store: scheduleStore,
-            policyStore: policyStoreLocal,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let jobCreateMethod = JobCreateMethod(
-            store: jobStoreLocal,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let jobShowMethod = JobShowMethod(
-            store: jobStoreLocal,
-            tokenAuthority: tokenAuthorityLocal,
-            workRegistry: workRegistryLocal
-        )
-        let jobListMethod = JobListMethod(
-            store: jobStoreLocal,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let jobUpdateMethod = JobUpdateMethod(
-            store: jobStoreLocal,
-            tokenAuthority: tokenAuthorityLocal,
-            workRegistry: workRegistryLocal
-        )
-        let jobDeleteMethod = JobDeleteMethod(
-            store: jobStoreLocal,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let resourceListMethod = ResourceListMethod(
-            store: resourceStore,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let resourceReadMethod = ResourceReadMethod(
-            store: resourceStore,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let policyListMethod = PolicyListMethod(
-            store: policyStoreLocal,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let policyCheckMethod = PolicyCheckMethod(
-            store: policyStoreLocal,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let sessionSendMethod = SessionSendMethod(
-            handlerBus: handlerBus,
-            workRegistry: workRegistryLocal,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let sessionHandlerAck = SessionHandlerAckMethod(
-            handlerBus: handlerBus,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let sessionListMethod = SessionListMethod(
-            handlerBus: handlerBus,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let sessionHandlerRegisterMethod = SessionHandlerRegisterMethod(
-            handlerBus: handlerBus,
-            tokenAuthority: tokenAuthorityLocal
-        )
         let supervisorLocal = ServiceSupervisor(
             services: config.services,
             runtimeDirectory: config.runtimeDirectory,
@@ -260,31 +153,6 @@ package actor Server {
         )
         self.serviceSupervisor = supervisorLocal
         
-        let serviceRunMethod = ServiceRunMethod(
-            supervisor: supervisorLocal,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let serviceShutdownMethod = ServiceShutdownMethod(
-            supervisor: supervisorLocal,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let serviceRestartMethod = ServiceRestartMethod(
-            supervisor: supervisorLocal,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let serviceStatusMethod = ServiceStatusMethod(
-            supervisor: supervisorLocal,
-            handlerBus: handlerBus,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let serviceReloadMethod = ServiceReloadMethod(
-            supervisor: supervisorLocal,
-            tokenAuthority: tokenAuthorityLocal,
-            configPath: configPath,
-            sessionHome: sessionHome,
-            configSnapshot: configSnapshot
-        )
-        let tokenIssueMethod = TokenIssueMethod(authority: tokenAuthorityLocal)
         let daemonStatusMethod = DaemonStatusMethod(
             session: session,
             socketPath: socketPath,
@@ -297,49 +165,47 @@ package actor Server {
             supervisor: supervisorLocal,
             handlerBus: handlerBus
         )
-        
-        let handlerMap: [String: DispatchService.Handler] = [
-            "workflow.dispatch":      { request in try await workflowDispatchMethod.handle(request) },
-            "workflow.list":          { request in try await workflowListMethod.handle(request) },
-            "workflow.describe":      { request in try await workflowDescribeMethod.handle(request) },
-            "workflow.list_active":   { request in try await workflowListActiveMethod.handle(request) },
-            "workflow.health":        { request in try await workflowHealthMethod.handle(request) },
-            "workflow.cancel":        { request in try await workflowCancelMethod.handle(request) },
-            "schedule.list":          { request in try await scheduleListMethod.handle(request) },
-            "schedule.set_enabled":   { request in try await scheduleSetEnabledMethod.handle(request) },
-            "schedule.create":        { request in try await scheduleCreateMethod.handle(request) },
-            "schedule.delete":        { request in try await scheduleDeleteMethod.handle(request) },
-            "job.create":             { request in try await jobCreateMethod.handle(request) },
-            "job.show":               { request in try await jobShowMethod.handle(request) },
-            "job.list":               { request in try await jobListMethod.handle(request) },
-            "job.update":             { request in try await jobUpdateMethod.handle(request) },
-            "job.delete":             { request in try await jobDeleteMethod.handle(request) },
-            "resource.list":          { request in try await resourceListMethod.handle(request) },
-            "resource.read":          { request in try await resourceReadMethod.handle(request) },
-            "policy.list":            { request in try await policyListMethod.handle(request) },
-            "policy.check":           { request in try await policyCheckMethod.handle(request) },
-            "token.issue":            { request in try await tokenIssueMethod.handle(request) },
-            "daemon.status":          { request in try await daemonStatusMethod.handle(request) },
-            "session.send":           { request in try await sessionSendMethod.handle(request) },
-            "session.handler.ack":    { request in try await sessionHandlerAck.handle(request) },
-            "session.list":           { request in try await sessionListMethod.handle(request) },
-            "service.run":            { request in try await serviceRunMethod.handle(request) },
-            "service.shutdown":       { request in try await serviceShutdownMethod.handle(request) },
-            "service.restart":        { request in try await serviceRestartMethod.handle(request) },
-            "service.status":         { request in try await serviceStatusMethod.handle(request) },
-            "service.reload":         { request in try await serviceReloadMethod.handle(request) },
-        ]
-        
+        let workflow = WorkflowNamespace(
+            runner: runnerLocal,
+            catalog: workflowStoreLocal,
+            workRegistry: workRegistryLocal,
+            pool: pool,
+            policyStore: policyStoreLocal,
+            eventBus: bus
+        )
+        let schedule = ScheduleNamespace(
+            store: scheduleStore,
+            ledger: fireLedger,
+            catalog: workflowStoreLocal,
+            policyStore: policyStoreLocal
+        )
+        let job = JobNamespace(store: jobStoreLocal, workRegistry: workRegistryLocal)
+        let resource = ResourceNamespace(store: resourceStore)
+        let policy = PolicyNamespace(store: policyStoreLocal)
+        let token = TokenNamespace(authority: tokenAuthorityLocal)
+        let daemon = DaemonNamespace(status: daemonStatusMethod)
+        let sessionMessaging = SessionNamespace(
+            handlerBus: handlerBus,
+            workRegistry: workRegistryLocal
+        )
+        let service = ServiceNamespace(
+            supervisor: supervisorLocal,
+            handlerBus: handlerBus,
+            configPath: configPath,
+            sessionHome: sessionHome,
+            configSnapshot: configSnapshot
+        )
         let dispatch = DispatchService(
-            handlers: handlerMap,
-            streamingHandlers: [
-                "session.handler.register": { request, sink in
-                    try await sessionHandlerRegisterMethod.handle(request, sink: sink)
-                },
-                "workflow.dispatch_stream": { request, sink in
-                    try await workflowDispatchStreamMethod.handle(request, sink: sink)
-                },
-            ]
+            methods: workflow.methods
+                + schedule.methods
+                + job.methods
+                + resource.methods
+                + policy.methods
+                + token.methods
+                + daemon.methods
+                + sessionMessaging.methods
+                + service.methods,
+            authority: tokenAuthorityLocal
         )
         
         self.socketServer = UnixSocketServer(path: socketPath)

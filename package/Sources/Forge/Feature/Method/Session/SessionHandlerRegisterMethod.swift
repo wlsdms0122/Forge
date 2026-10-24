@@ -10,21 +10,18 @@ import Foundation
 struct SessionHandlerRegisterMethod: Sendable {
     // MARK: - Property
     let handlerBus: WorkflowHandlerBus
-    let tokenAuthority: TokenAuthority
 
     // MARK: - Initializer
-    init(handlerBus: WorkflowHandlerBus, tokenAuthority: TokenAuthority) {
+    init(handlerBus: WorkflowHandlerBus) {
         self.handlerBus = handlerBus
-        self.tokenAuthority = tokenAuthority
     }
 
     // MARK: - Public
-    func handle(_ request: RPCRequest, sink: any EventSink) async throws {
-        let claims = try tokenAuthority.requireOperatorClaims(
-            request.params,
-            method: "session.handler.register"
-        )
-
+    func handle(
+        _ request: RPCRequest,
+        claims: TokenClaims,
+        sink: any EventSink
+    ) async throws {
         guard let service = request.params["service"] as? String, !service.isEmpty else {
             throw ProtocolError("session.handler.register: 'service' (string) required")
         }

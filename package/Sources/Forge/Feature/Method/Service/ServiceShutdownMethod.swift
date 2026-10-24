@@ -10,16 +10,10 @@ import Foundation
 struct ServiceShutdownMethod: Sendable {
     // MARK: - Property
     let supervisor: ServiceSupervisor
-    let tokenAuthority: TokenAuthority
 
     // MARK: - Initializer
     // MARK: - Public
-    func handle(_ request: RPCRequest) async throws -> JSONObject {
-        let claims = try tokenAuthority.requireOperatorClaims(
-            request.params,
-            method: "service.shutdown"
-        )
-
+    func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONObject {
         guard let name = request.params["name"] as? String, !name.isEmpty else {
             throw ProtocolError("service.shutdown: 'name' (string) required")
         }

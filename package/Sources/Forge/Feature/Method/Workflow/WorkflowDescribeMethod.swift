@@ -10,18 +10,14 @@ import Foundation
 struct WorkflowDescribeMethod: Sendable {
     // MARK: - Property
     let store: WorkflowCatalog
-    let tokenAuthority: TokenAuthority
 
     // MARK: - Initializer
-    init(store: WorkflowCatalog, tokenAuthority: TokenAuthority) {
+    init(store: WorkflowCatalog) {
         self.store = store
-        self.tokenAuthority = tokenAuthority
     }
 
     // MARK: - Public
     func handle(_ request: RPCRequest) async throws -> JSONObject {
-        _ = try tokenAuthority.requireClaims(request.params)
-
         guard let name = request.params["name"] as? String, !name.isEmpty else {
             throw ProtocolError("workflow.describe: 'name' (string) required")
         }

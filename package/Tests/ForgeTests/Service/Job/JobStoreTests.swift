@@ -208,12 +208,12 @@ struct JobStoreTests {
         defer { try? FileManager.default.removeItem(at: directory) }
         let authority = TokenAuthority()
         let store = JobStore(directory: directory)
-        let method = JobCreateMethod(store: store, tokenAuthority: authority)
+        let method = JobCreateMethod(store: store)
         let token = authority.mint(TokenClaims(principal: "cli:response"))
         do {
             _ = try await method.handle(RPCRequest(
                     id: "c1", method: "job.create",
-                    params: ["token": token, "title": "child", "parent_job": "ghost"]))
+                    params: ["token": token, "title": "child", "parent_job": "ghost"]), claims: try #require(authority.verify(token)))
             Issue.record("create against a missing parent must be refused")
         } catch {
             #expect(String(describing: error).contains("parent job not found"), "the refusal reason must be the missing parent: \(error)")
@@ -224,7 +224,7 @@ struct JobStoreTests {
         try await store.create(makeJob("par"))
         let result = try await method.handle(RPCRequest(
                 id: "c2", method: "job.create",
-                params: ["token": token, "title": "child", "parent_job": "par"]))
+                params: ["token": token, "title": "child", "parent_job": "par"]), claims: try #require(authority.verify(token)))
         let childID = try #require(result.dict["id"] as? String)
         let child = await store.lookup(childID)
         #expect(child?.parentJob == "par")

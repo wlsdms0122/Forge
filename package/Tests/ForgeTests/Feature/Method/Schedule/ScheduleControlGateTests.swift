@@ -28,12 +28,11 @@ struct ScheduleControlGateTests {
         let authority = TokenAuthority()
         let (store, id) = try await seedSchedule(directory, authority)
         let del = ScheduleDeleteMethod(
-            store: store, policyStore: PolicyStore(seed: ["cli:owner": ["<inline>"]]),
-            tokenAuthority: authority)
+            store: store, policyStore: PolicyStore(seed: ["cli:owner": ["<inline>"]]))
         let attacker = authority.mint(TokenClaims(principal: "cli:attacker"))
         do {
             _ = try await del.handle(RPCRequest(id: "d", method: "schedule.delete",
-                    params: ["token": attacker, "id": id]))
+                    params: ["token": attacker, "id": id]), claims: try #require(authority.verify(attacker)))
 
         // Then
             Issue.record("Delete by an out-of-scope principal should be rejected")
@@ -52,11 +51,10 @@ struct ScheduleControlGateTests {
         let authority = TokenAuthority()
         let (store, id) = try await seedSchedule(directory, authority)
         let del = ScheduleDeleteMethod(
-            store: store, policyStore: PolicyStore(seed: ["cli:owner": ["<inline>"]]),
-            tokenAuthority: authority)
+            store: store, policyStore: PolicyStore(seed: ["cli:owner": ["<inline>"]]))
         let owner = authority.mint(TokenClaims(principal: "cli:owner"))
         let result = try await del.handle(RPCRequest(id: "d", method: "schedule.delete",
-                params: ["token": owner, "id": id]))
+                params: ["token": owner, "id": id]), claims: try #require(authority.verify(owner)))
 
         // Then
         #expect(result.dict["deleted"] as? Bool == true)
@@ -71,12 +69,11 @@ struct ScheduleControlGateTests {
         let authority = TokenAuthority()
         let (store, id) = try await seedSchedule(directory, authority)
         let toggle = ScheduleSetEnabledMethod(
-            store: store, policyStore: PolicyStore(seed: ["cli:owner": ["<inline>"]]),
-            tokenAuthority: authority)
+            store: store, policyStore: PolicyStore(seed: ["cli:owner": ["<inline>"]]))
         let attacker = authority.mint(TokenClaims(principal: "cli:attacker"))
         do {
             _ = try await toggle.handle(RPCRequest(id: "t", method: "schedule.set_enabled",
-                    params: ["token": attacker, "id": id, "enabled": false]))
+                    params: ["token": attacker, "id": id, "enabled": false]), claims: try #require(authority.verify(attacker)))
 
         // Then
             Issue.record("Toggle by an out-of-scope principal should be rejected")
@@ -94,11 +91,11 @@ struct ScheduleControlGateTests {
             .appendingPathComponent("forge-sched-enabled-\(UUID().uuidString.prefix(6)).json"))
         let create = ScheduleCreateMethod(
             store: store, workflowStore: try WorkflowCatalog(directory: nil),
-            policyStore: PolicyStore(seed: ["cli:owner": ["<inline>"]]), tokenAuthority: authority)
+            policyStore: PolicyStore(seed: ["cli:owner": ["<inline>"]]))
         let ownerToken = authority.mint(TokenClaims(principal: "cli:owner"))
         _ = try await create.handle(RPCRequest(
                 id: "c", method: "schedule.create",
-                params: ["token": ownerToken, "spec": inlineSpec, "after": "1h"]))
+                params: ["token": ownerToken, "spec": inlineSpec, "after": "1h"]), claims: try #require(authority.verify(ownerToken)))
         let entries = await store.catalog().entries
         let scheduleID = try #require(entries.first?.schedule.id)
         

@@ -10,18 +10,14 @@ import Foundation
 struct WorkflowListActiveMethod: Sendable {
     // MARK: - Property
     let pool: WorkflowPool
-    let tokenAuthority: TokenAuthority
 
     // MARK: - Initializer
-    init(pool: WorkflowPool, tokenAuthority: TokenAuthority) {
+    init(pool: WorkflowPool) {
         self.pool = pool
-        self.tokenAuthority = tokenAuthority
     }
 
     // MARK: - Public
     func handle(_ request: RPCRequest) async throws -> JSONObject {
-        _ = try tokenAuthority.requireClaims(request.params)
-
         let snapshot = await pool.snapshot()
         let slots  = await pool.configuredSlots
         let free   = await pool.freeSlots

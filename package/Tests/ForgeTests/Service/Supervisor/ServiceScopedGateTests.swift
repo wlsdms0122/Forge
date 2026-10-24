@@ -58,7 +58,7 @@ struct ServiceScopedGateTests {
         // Given
         let authority = TokenAuthority()
         let bus = WorkflowHandlerBus()
-        let method = SessionHandlerRegisterMethod(handlerBus: bus, tokenAuthority: authority)
+        let method = SessionHandlerRegisterMethod(handlerBus: bus)
         let jira = authority.mint(TokenClaims(principal: "service:jira"))
         actor ErrorBox {
             var error: Error?
@@ -71,7 +71,7 @@ struct ServiceScopedGateTests {
             do {
                 try await method.handle(
                     RPCRequest(id: "r", method: "session.handler.register",
-                        params: ["token": jira, "service": "slack"]),
+                        params: ["token": jira, "service": "slack"]), claims: try #require(authority.verify(jira)),
                     sink: CollectingSink())
             } catch { await box.set(error) }
         }
@@ -98,12 +98,12 @@ struct ServiceScopedGateTests {
         // Given
         let authority = TokenAuthority()
         let bus = WorkflowHandlerBus()
-        let method = SessionHandlerRegisterMethod(handlerBus: bus, tokenAuthority: authority)
+        let method = SessionHandlerRegisterMethod(handlerBus: bus)
         let slack = authority.mint(TokenClaims(principal: "service:slack"))
         let task = Task {
             try await method.handle(
                 RPCRequest(id: "r", method: "session.handler.register",
-                    params: ["token": slack, "service": "slack"]),
+                    params: ["token": slack, "service": "slack"]), claims: try #require(authority.verify(slack)),
                 sink: CollectingSink())
         }
         
@@ -123,12 +123,12 @@ struct ServiceScopedGateTests {
     func ackRejectsCrossServiceToken() async throws {
         // Given
         let authority = TokenAuthority()
-        let ack = SessionHandlerAckMethod(handlerBus: WorkflowHandlerBus(), tokenAuthority: authority)
+        let ack = SessionHandlerAckMethod(handlerBus: WorkflowHandlerBus())
         let jira = authority.mint(TokenClaims(principal: "service:jira"))
         do {
             _ = try await ack.handle(RPCRequest(
                     id: "a", method: "session.handler.ack",
-                    params: ["token": jira, "service": "slack", "message_id": "m1", "result": [String: Any]()]))
+                    params: ["token": jira, "service": "slack", "message_id": "m1", "result": [String: Any]()]), claims: try #require(authority.verify(jira)))
 
         // Then
             Issue.record("slack ack with a service:jira token must be rejected")
@@ -144,11 +144,11 @@ struct ServiceScopedGateTests {
         let authority = TokenAuthority()
         let sup = ServiceSupervisor(services: [], runtimeDirectory: FileManager.default.temporaryDirectory,
             tokenAuthority: authority)
-        let method = ServiceShutdownMethod(supervisor: sup, tokenAuthority: authority)
+        let method = ServiceShutdownMethod(supervisor: sup)
         let jira = authority.mint(TokenClaims(principal: "service:jira"))
         do {
             _ = try await method.handle(RPCRequest(
-                    id: "s", method: "service.shutdown", params: ["token": jira, "name": "slack"]))
+                    id: "s", method: "service.shutdown", params: ["token": jira, "name": "slack"]), claims: try #require(authority.verify(jira)))
 
         // Then
             Issue.record("slack shutdown with a service:jira token must be rejected")
@@ -161,11 +161,11 @@ struct ServiceScopedGateTests {
     func ackAllowsOwnServiceToken() async throws {
         // Given
         let authority = TokenAuthority()
-        let ack = SessionHandlerAckMethod(handlerBus: WorkflowHandlerBus(), tokenAuthority: authority)
+        let ack = SessionHandlerAckMethod(handlerBus: WorkflowHandlerBus())
         let slack = authority.mint(TokenClaims(principal: "service:slack"))
         let result = try await ack.handle(RPCRequest(
                 id: "a", method: "session.handler.ack",
-                params: ["token": slack, "service": "slack", "message_id": "m1", "result": [String: Any]()]))
+                params: ["token": slack, "service": "slack", "message_id": "m1", "result": [String: Any]()]), claims: try #require(authority.verify(slack)))
 
         // Then
         #expect(result.dict["ok"] as? Bool == true)
@@ -178,14 +178,14 @@ struct ServiceScopedGateTests {
         let authority = TokenAuthority()
         let sup = ServiceSupervisor(services: [], runtimeDirectory: FileManager.default.temporaryDirectory,
             tokenAuthority: authority)
-        let method = ServiceReloadMethod(supervisor: sup, tokenAuthority: authority,
+        let method = ServiceReloadMethod(supervisor: sup,
             configPath: nil,
             sessionHome: FileManager.default.temporaryDirectory,
             configSnapshot: ConfigSnapshot(ConfigReport(tomlPath: nil, entries: [])))
         let jira = authority.mint(TokenClaims(principal: "service:jira"))
         do {
             _ = try await method.handle(RPCRequest(
-                    id: "g", method: "service.reload", params: ["token": jira]))
+                    id: "g", method: "service.reload", params: ["token": jira]), claims: try #require(authority.verify(jira)))
 
         // Then
             Issue.record("global reload with a service token must be rejected")
@@ -213,8 +213,7 @@ struct ServiceScopedGateTests {
                 resources: LiveResources(store: ResourceStore(directory: nil))
             ))
         let dispatchMethod = WorkflowDispatchMethod(runner: runner, store: store,
-            workRegistry: WorkRegistry(),
-            tokenAuthority: authority)
+            workRegistry: WorkRegistry())
         let streamMethod = WorkflowDispatchStreamMethod(dispatchMethod: dispatchMethod, eventBus: bus)
         let token = authority.mint(TokenClaims(principal: "system:rpc"))
         let spec: [String: Any] = [
@@ -225,7 +224,7 @@ struct ServiceScopedGateTests {
         do {
             _ = try await dispatchMethod.handle(RPCRequest(
                     id: "r-async", method: "workflow.dispatch",
-                    params: ["token": token, "spec": spec, "async": true]))
+                    params: ["token": token, "spec": spec, "async": true]), claims: try #require(authority.verify(token)))
 
         // Then
             Issue.record("async gate should deny")
@@ -233,7 +232,7 @@ struct ServiceScopedGateTests {
         do {
             try await streamMethod.handle(RPCRequest(
                     id: "r-stream", method: "workflow.dispatch_stream",
-                    params: ["token": token, "spec": spec]), sink: CollectingSink())
+                    params: ["token": token, "spec": spec]), claims: try #require(authority.verify(token)), sink: CollectingSink())
             Issue.record("stream gate should deny")
         } catch let denial as PolicyDenied { messages.append(denial.message) }
         #expect(messages.count == 2)

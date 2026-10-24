@@ -21,7 +21,7 @@ struct WorkflowCancelGateTests {
         do {
             _ = try await method.handle(RPCRequest(
                     id: "x", method: "workflow.cancel",
-                    params: ["token": attacker, "workflow_id": "r1"]))
+                    params: ["token": attacker, "workflow_id": "r1"]), claims: try #require(authority.verify(attacker)))
 
         // Then
             Issue.record("Run-control by an out-of-scope principal should be rejected")
@@ -37,7 +37,7 @@ struct WorkflowCancelGateTests {
         let owner = authority.mint(TokenClaims(principal: "cli:owner"))
         let result = try await method.handle(RPCRequest(
                 id: "x", method: "workflow.cancel",
-                params: ["token": owner, "workflow_id": "r1"]))
+                params: ["token": owner, "workflow_id": "r1"]), claims: try #require(authority.verify(owner)))
 
         // Then
         #expect(result.dict["cancelled"] as? Bool == true, "A permitted principal should be able to cancel a run within its authority")
@@ -50,7 +50,7 @@ struct WorkflowCancelGateTests {
         let attacker = authority.mint(TokenClaims(principal: "cli:attacker"))
         let result = try await method.handle(RPCRequest(
                 id: "x", method: "workflow.cancel",
-                params: ["token": attacker, "workflow_id": "does-not-exist"]))
+                params: ["token": attacker, "workflow_id": "does-not-exist"]), claims: try #require(authority.verify(attacker)))
 
         // Then
         #expect(result.dict["cancelled"] as? Bool == false)
@@ -64,8 +64,7 @@ struct WorkflowCancelGateTests {
             origin: .manual, principal: "cli:owner")
         let authority = TokenAuthority()
         let method = WorkflowCancelMethod(
-            pool: pool, policyStore: PolicyStore(seed: ["cli:owner": ["<inline>"]]),
-            tokenAuthority: authority)
+            pool: pool, policyStore: PolicyStore(seed: ["cli:owner": ["<inline>"]]))
         
         return (method, authority)
     }

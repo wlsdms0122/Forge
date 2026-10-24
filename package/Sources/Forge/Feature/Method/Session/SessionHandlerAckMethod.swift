@@ -10,21 +10,14 @@ import Foundation
 struct SessionHandlerAckMethod: Sendable {
     // MARK: - Property
     let handlerBus: WorkflowHandlerBus
-    let tokenAuthority: TokenAuthority
 
     // MARK: - Initializer
-    init(handlerBus: WorkflowHandlerBus, tokenAuthority: TokenAuthority) {
+    init(handlerBus: WorkflowHandlerBus) {
         self.handlerBus = handlerBus
-        self.tokenAuthority = tokenAuthority
     }
 
     // MARK: - Public
-    func handle(_ request: RPCRequest) async throws -> JSONObject {
-        let claims = try tokenAuthority.requireOperatorClaims(
-            request.params,
-            method: "session.handler.ack"
-        )
-
+    func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONObject {
         guard let service = request.params["service"] as? String, !service.isEmpty else {
             throw ProtocolError("session.handler.ack: 'service' required")
         }

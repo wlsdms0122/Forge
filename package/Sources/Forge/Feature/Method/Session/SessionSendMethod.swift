@@ -11,23 +11,18 @@ struct SessionSendMethod: Sendable {
     // MARK: - Property
     let handlerBus: WorkflowHandlerBus
     let workRegistry: WorkRegistry
-    let tokenAuthority: TokenAuthority
 
     // MARK: - Initializer
     init(
         handlerBus: WorkflowHandlerBus,
-        workRegistry: WorkRegistry,
-        tokenAuthority: TokenAuthority
+        workRegistry: WorkRegistry
     ) {
         self.handlerBus = handlerBus
         self.workRegistry = workRegistry
-        self.tokenAuthority = tokenAuthority
     }
 
     // MARK: - Public
-    func handle(_ request: RPCRequest) async throws -> JSONObject {
-        let claims = try tokenAuthority.requireClaims(request.params)
-
+    func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONObject {
         guard let service = request.params["service"] as? String, !service.isEmpty else {
             throw ProtocolError("session.send: 'service' (string) required")
         }

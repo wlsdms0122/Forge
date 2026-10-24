@@ -39,7 +39,7 @@ struct DispatchStreamTests {
                 id: "r-stream",
                 method: "workflow.dispatch_stream",
                 params: ["token": token, "spec": specJSON]
-            ), sink: sink)
+            ), claims: try #require(authority.verify(token)), sink: sink)
         let lines = (await sink.snapshot()).map { line in line.dict }
 
         // Then
@@ -86,7 +86,7 @@ struct DispatchStreamTests {
                     id: "r-denied",
                     method: "workflow.dispatch_stream",
                     params: ["token": token, "spec": specJSON]
-                ), sink: sink)
+                ), claims: try #require(authority.verify(token)), sink: sink)
 
         // Then
             Issue.record("Policy denial should throw")
@@ -113,7 +113,7 @@ struct DispatchStreamTests {
                     id: "r-subtree",
                     method: "workflow.dispatch_stream",
                     params: ["token": token, "spec": specJSON]
-                ), sink: sink)
+                ), claims: try #require(authority.verify(token)), sink: sink)
         }
 
         var wfID: String?
@@ -161,7 +161,7 @@ struct DispatchStreamTests {
                     id: "r-detached",
                     method: "workflow.dispatch_stream",
                     params: ["token": token, "spec": specJSON]
-                ), sink: sink)
+                ), claims: try #require(authority.verify(token)), sink: sink)
         }
 
         var wfID: String?
@@ -215,8 +215,7 @@ struct DispatchStreamTests {
                 resources: LiveResources(store: ResourceStore(directory: nil))
             ))
         let dispatchMethod = WorkflowDispatchMethod(runner: runner, store: store,
-            workRegistry: registry,
-            tokenAuthority: authority)
+            workRegistry: registry)
         let (_, stream) = await bus.subscribe()
         let token = authority.mint(TokenClaims(principal: "system:rpc"))
         let specJSON: [String: Any] = [
@@ -226,7 +225,7 @@ struct DispatchStreamTests {
         let ack = try await dispatchMethod.handle(RPCRequest(
                 id: "r-async", method: "workflow.dispatch",
                 params: ["token": token, "spec": specJSON, "async": true]
-        ))
+        ), claims: try #require(authority.verify(token)))
 
         // Then
         #expect(ack.dict["status"] as? String == "running")
@@ -252,7 +251,7 @@ struct DispatchStreamTests {
                 id: "r-fail",
                 method: "workflow.dispatch_stream",
                 params: ["token": token, "spec": specJSON]
-            ), sink: sink)
+            ), claims: try #require(authority.verify(token)), sink: sink)
         let lines = (await sink.snapshot()).map { line in line.dict }
 
         // Then
@@ -288,8 +287,7 @@ struct DispatchStreamTests {
                 resources: LiveResources(store: ResourceStore(directory: nil))
             ))
         let dispatchMethod = WorkflowDispatchMethod(runner: runner, store: store,
-            workRegistry: registry,
-            tokenAuthority: authority)
+            workRegistry: registry)
         let method = WorkflowDispatchStreamMethod(dispatchMethod: dispatchMethod, eventBus: bus)
         let token = authority.mint(TokenClaims(principal: "system:rpc"))
         let sink = CollectingSink()
@@ -299,7 +297,7 @@ struct DispatchStreamTests {
                 params: ["token": token,
                     "spec": ["failing": ["nonzero_exit", "timeout"],
             "body": [["let": "x", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/echo", "hi"]]]]]]]]
-            ), sink: sink)
+            ), claims: try #require(authority.verify(token)), sink: sink)
         let lines = (await sink.snapshot()).map { line in line.dict }
 
         // Then
@@ -333,8 +331,7 @@ struct DispatchStreamTests {
                 resources: LiveResources(store: ResourceStore(directory: nil))
             ))
         let dispatchMethod = WorkflowDispatchMethod(runner: runner, store: store,
-            workRegistry: registry,
-            tokenAuthority: authority)
+            workRegistry: registry)
         let method = WorkflowDispatchStreamMethod(dispatchMethod: dispatchMethod, eventBus: bus)
 
         return (method, authority, bus)

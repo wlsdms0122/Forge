@@ -10,19 +10,13 @@ import Foundation
 struct ServiceReloadMethod: Sendable {
     // MARK: - Property
     let supervisor: ServiceSupervisor
-    let tokenAuthority: TokenAuthority
     let configPath: String?
     let sessionHome: URL
     let configSnapshot: ConfigSnapshot
 
     // MARK: - Initializer
     // MARK: - Public
-    func handle(_ request: RPCRequest) async throws -> JSONObject {
-        let claims = try tokenAuthority.requireOperatorClaims(
-            request.params,
-            method: "service.reload"
-        )
-
+    func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONObject {
         try ServiceAuthz.requireGlobal(claims: claims, method: "service.reload")
 
         let (config, report) = try ConfigLoader.loadResolved(

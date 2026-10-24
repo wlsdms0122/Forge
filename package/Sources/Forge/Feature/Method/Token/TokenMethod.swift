@@ -46,9 +46,7 @@ struct TokenIssueMethod: Sendable {
         presenter == "system:admin" || presenter.hasPrefix("admin:")
     }
     
-    func handle(_ request: RPCRequest) async throws -> JSONObject {
-        let claims = try authority.requireClaims(request.params)
-        
+    func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONObject {
         guard
             let principal = request.params["principal"] as? String,
             !principal.isEmpty

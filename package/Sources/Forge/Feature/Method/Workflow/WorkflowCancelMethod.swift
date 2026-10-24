@@ -11,19 +11,15 @@ struct WorkflowCancelMethod: Sendable {
     // MARK: - Property
     let pool: WorkflowPool
     let policyStore: PolicyStore
-    let tokenAuthority: TokenAuthority
 
     // MARK: - Initializer
-    init(pool: WorkflowPool, policyStore: PolicyStore, tokenAuthority: TokenAuthority) {
+    init(pool: WorkflowPool, policyStore: PolicyStore) {
         self.pool = pool
         self.policyStore = policyStore
-        self.tokenAuthority = tokenAuthority
     }
 
     // MARK: - Public
-    func handle(_ request: RPCRequest) async throws -> JSONObject {
-        let claims = try tokenAuthority.requireClaims(request.params)
-
+    func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONObject {
         guard let id = request.params["workflow_id"] as? String, !id.isEmpty else {
             throw ProtocolError("workflow.cancel: 'workflow_id' (string) required")
         }

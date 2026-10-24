@@ -31,12 +31,11 @@ struct CreatePolicyGateTests {
         let method = ScheduleCreateMethod(
             store: ScheduleStore(configDir: nil, runtimeDirectory: directory, stateFile: FileManager.default.temporaryDirectory.appendingPathComponent("forge-sched-enabled-\(UUID().uuidString.prefix(6)).json")),
             workflowStore: try WorkflowCatalog(directory: nil),
-            policyStore: PolicyStore(seed: ["cli:response": ["<inline>"]]),
-            tokenAuthority: authority)
+            policyStore: PolicyStore(seed: ["cli:response": ["<inline>"]]))
         let token = authority.mint(TokenClaims(principal: "cli:response"))
         let result = try await method.handle(RPCRequest(
                 id: "q1", method: "schedule.create",
-                params: ["token": token, "spec": inlineSpec, "after": "1h"]))
+                params: ["token": token, "spec": inlineSpec, "after": "1h"]), claims: try #require(authority.verify(token)))
 
         // Then
         #expect(result.dict["workflow"] as? String == "<inline>")
@@ -52,13 +51,12 @@ struct CreatePolicyGateTests {
         let method = ScheduleCreateMethod(
             store: store,
             workflowStore: try WorkflowCatalog(directory: nil),
-            policyStore: PolicyStore(seed: ["cli:response": ["worker"]]),
-            tokenAuthority: authority)
+            policyStore: PolicyStore(seed: ["cli:response": ["worker"]]))
         let token = authority.mint(TokenClaims(principal: "cli:<inline>"))
         do {
             _ = try await method.handle(RPCRequest(
                     id: "q2", method: "schedule.create",
-                    params: ["token": token, "spec": inlineSpec, "after": "1h"]))
+                    params: ["token": token, "spec": inlineSpec, "after": "1h"]), claims: try #require(authority.verify(token)))
 
         // Then
             Issue.record("Registration by a principal absent from the policy should be rejected")
@@ -81,13 +79,12 @@ struct CreatePolicyGateTests {
         let method = ScheduleCreateMethod(
             store: store,
             workflowStore: try WorkflowCatalog(directory: nil),
-            policyStore: PolicyStore(seed: ["system:*": ["*"]]),
-            tokenAuthority: authority)
+            policyStore: PolicyStore(seed: ["system:*": ["*"]]))
         let token = authority.mint(TokenClaims(principal: "cli:response"))
         do {
             _ = try await method.handle(RPCRequest(
                     id: "q3", method: "schedule.create",
-                    params: ["token": token, "spec": inlineSpec, "every": "1h"]))
+                    params: ["token": token, "spec": inlineSpec, "every": "1h"]), claims: try #require(authority.verify(token)))
 
         // Then
             Issue.record("Registration by a principal absent from the policy should be rejected")
@@ -108,12 +105,11 @@ struct CreatePolicyGateTests {
         let method = ScheduleCreateMethod(
             store: ScheduleStore(configDir: nil, runtimeDirectory: directory, stateFile: FileManager.default.temporaryDirectory.appendingPathComponent("forge-sched-enabled-\(UUID().uuidString.prefix(6)).json")),
             workflowStore: try WorkflowCatalog(directory: nil),
-            policyStore: PolicyStore(seed: ["cli:*": ["<inline>"]]),
-            tokenAuthority: authority)
+            policyStore: PolicyStore(seed: ["cli:*": ["<inline>"]]))
         let token = authority.mint(TokenClaims(principal: "cli:response"))
         let result = try await method.handle(RPCRequest(
                 id: "q4", method: "schedule.create",
-                params: ["token": token, "spec": inlineSpec, "every": "1h"]))
+                params: ["token": token, "spec": inlineSpec, "every": "1h"]), claims: try #require(authority.verify(token)))
 
         // Then
         #expect(result.dict["workflow"] as? String == "<inline>")

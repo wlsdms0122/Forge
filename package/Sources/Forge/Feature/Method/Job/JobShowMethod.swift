@@ -48,19 +48,16 @@ func recordTouchIfLiveRun(
 struct JobShowMethod: Sendable {
     // MARK: - Property
     let store: JobStore
-    let tokenAuthority: TokenAuthority
     let workRegistry: WorkRegistry
 
     // MARK: - Initializer
-    init(store: JobStore, tokenAuthority: TokenAuthority, workRegistry: WorkRegistry) {
+    init(store: JobStore, workRegistry: WorkRegistry) {
         self.store = store
-        self.tokenAuthority = tokenAuthority
         self.workRegistry = workRegistry
     }
 
     // MARK: - Public
-    func handle(_ request: RPCRequest) async throws -> JSONObject {
-        let claims = try tokenAuthority.requireClaims(request.params)
+    func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONObject {
         let id = try requireID(request.params, "job.show")
 
         guard let job = await store.lookup(id) else {

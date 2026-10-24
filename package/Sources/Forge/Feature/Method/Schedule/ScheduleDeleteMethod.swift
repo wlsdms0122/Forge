@@ -11,19 +11,15 @@ struct ScheduleDeleteMethod: Sendable {
     // MARK: - Property
     let store: ScheduleStore
     let policyStore: PolicyStore
-    let tokenAuthority: TokenAuthority
 
     // MARK: - Initializer
-    init(store: ScheduleStore, policyStore: PolicyStore, tokenAuthority: TokenAuthority) {
+    init(store: ScheduleStore, policyStore: PolicyStore) {
         self.store = store
         self.policyStore = policyStore
-        self.tokenAuthority = tokenAuthority
     }
 
     // MARK: - Public
-    func handle(_ request: RPCRequest) async throws -> JSONObject {
-        let claims = try tokenAuthority.requireClaims(request.params)
-
+    func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONObject {
         guard let id = request.params["id"] as? String, !id.isEmpty else {
             throw ProtocolError("schedule.delete: 'id' (string) required")
         }

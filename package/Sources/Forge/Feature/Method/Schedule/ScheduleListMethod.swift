@@ -11,19 +11,15 @@ struct ScheduleListMethod: Sendable {
     // MARK: - Property
     let store: ScheduleStore
     let ledger: FireLedger
-    let tokenAuthority: TokenAuthority
 
     // MARK: - Initializer
-    init(store: ScheduleStore, ledger: FireLedger, tokenAuthority: TokenAuthority) {
+    init(store: ScheduleStore, ledger: FireLedger) {
         self.store = store
         self.ledger = ledger
-        self.tokenAuthority = tokenAuthority
     }
 
     // MARK: - Public
     func handle(_ request: RPCRequest) async throws -> JSONObject {
-        _ = try tokenAuthority.requireClaims(request.params)
-
         let now = Date()
         let ledgerMap = await ledger.snapshot()
         let catalog = await store.catalog()

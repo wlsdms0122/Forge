@@ -17,18 +17,14 @@ func intParam(_ params: [String: Any], _ key: String) -> Int? {
 struct JobCreateMethod: Sendable {
     // MARK: - Property
     let store: JobStore
-    let tokenAuthority: TokenAuthority
 
     // MARK: - Initializer
-    init(store: JobStore, tokenAuthority: TokenAuthority) {
+    init(store: JobStore) {
         self.store = store
-        self.tokenAuthority = tokenAuthority
     }
 
     // MARK: - Public
-    func handle(_ request: RPCRequest) async throws -> JSONObject {
-        let claims = try tokenAuthority.requireClaims(request.params)
-
+    func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONObject {
         guard let title = request.params["title"] as? String, !title.isEmpty else {
             throw ProtocolError("job.create: 'title' (string) required")
         }

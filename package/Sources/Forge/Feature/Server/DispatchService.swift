@@ -8,38 +8,60 @@
 import Foundation
 
 struct DispatchService: Sendable {
-    typealias Handler = @Sendable (RPCRequest) async throws -> JSONObject
     typealias StreamingHandler = @Sendable (RPCRequest, any EventSink) async throws -> Void
     
     // MARK: - Property
-    let handlers: [String: Handler]
-    let streamingHandlers: [String: StreamingHandler]
+    let methods: [String: RPCMethod]
+    let authority: TokenAuthority
     
     // MARK: - Initializer
-    init(
-        handlers: [String: Handler] = [:],
-        streamingHandlers: [String: StreamingHandler] = [:]
-    ) {
-        self.handlers = handlers
-        self.streamingHandlers = streamingHandlers
+    init(methods: [RPCMethod], authority: TokenAuthority) {
+        self.methods = Dictionary(methods.map { method in (method.name, method) }) { first, _ in first }
+        self.authority = authority
     }
     
     // MARK: - Public
     func dispatch(_ request: RPCRequest) async throws -> JSONObject {
-        guard let handler = handlers[request.method] else {
+        switch methods[request.method]?.handler {
+        case let .open(handle):
+            return try await handle(request)
+        
+        case let .unary(access, handle):
+            return try await handle(request, try claims(of: request, access: access))
+        
+        case .streaming, nil:
             throw UnknownMethod("unknown method: \(request.method)")
         }
-        
-        return try await handler(request)
     }
     
     func streamingHandler(for method: String) -> StreamingHandler? {
-        streamingHandlers[method]
-    }
-    
-    func isStreaming(_ method: String) -> Bool {
-        streamingHandlers[method] != nil
+        guard case let .streaming(access, handle) = methods[method]?.handler else { return nil }
+        
+        return { request, sink in
+            try await handle(request, try claims(of: request, access: access), sink)
+        }
     }
     
     // MARK: - Private
+    private func claims(of request: RPCRequest, access: RPCMethod.Access) throws -> TokenClaims {
+        guard let token = request.params["token"] as? String, !token.isEmpty else {
+            throw ProtocolError("'token' (string) required — issue one with `forge token issue`")
+        }
+        
+        guard let claims = authority.verify(token) else {
+            throw TokenRejected(
+                "token verification failed — signature does not match this daemon's seed"
+                    + " (reissue required)"
+            )
+        }
+        
+        if case .operator = access, claims.principal.hasPrefix("cli:") {
+            throw ProtocolError(
+                "\(request.method): a workflow subprocess token cannot perform this operator action"
+                    + " — use an operator/service token"
+            )
+        }
+        
+        return claims
+    }
 }

@@ -19,8 +19,12 @@ struct WorkflowDispatchStreamMethod: Sendable {
     }
 
     // MARK: - Public
-    func handle(_ request: RPCRequest, sink: any EventSink) async throws {
-        let prepared = try await dispatchMethod.prepare(request)
+    func handle(
+        _ request: RPCRequest,
+        claims: TokenClaims,
+        sink: any EventSink
+    ) async throws {
+        let prepared = try await dispatchMethod.prepare(request, claims: claims)
 
         try await DispatchAuthz.requireDispatch(
             principal: prepared.principal,

@@ -10,24 +10,19 @@ import Foundation
 struct ResourceReadMethod: Sendable {
     // MARK: - Property
     let store: ResourceStore
-    let tokenAuthority: TokenAuthority
     let defaultMaxBytes: Int
 
     // MARK: - Initializer
     init(
         store: ResourceStore,
-        tokenAuthority: TokenAuthority,
         defaultMaxBytes: Int = 64 * 1024
     ) {
         self.store = store
-        self.tokenAuthority = tokenAuthority
         self.defaultMaxBytes = defaultMaxBytes
     }
 
     // MARK: - Public
     func handle(_ request: RPCRequest) async throws -> JSONObject {
-        _ = try tokenAuthority.requireClaims(request.params)
-
         guard let path = request.params["path"] as? String, !path.isEmpty else {
             throw ProtocolError("resource.read: 'path' (string) required")
         }

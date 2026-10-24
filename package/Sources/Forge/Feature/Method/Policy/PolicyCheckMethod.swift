@@ -10,18 +10,14 @@ import Foundation
 struct PolicyCheckMethod: Sendable {
     // MARK: - Property
     let store: PolicyStore
-    let tokenAuthority: TokenAuthority
 
     // MARK: - Initializer
-    init(store: PolicyStore, tokenAuthority: TokenAuthority) {
+    init(store: PolicyStore) {
         self.store = store
-        self.tokenAuthority = tokenAuthority
     }
 
     // MARK: - Public
     func handle(_ request: RPCRequest) async throws -> JSONObject {
-        _ = try tokenAuthority.requireClaims(request.params)
-
         guard let principal = request.params["principal"] as? String, !principal.isEmpty else {
             throw ProtocolError("policy.check: 'principal' (string) required")
         }

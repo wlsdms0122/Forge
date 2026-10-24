@@ -10,18 +10,14 @@ import Foundation
 struct ResourceListMethod: Sendable {
     // MARK: - Property
     let store: ResourceStore
-    let tokenAuthority: TokenAuthority
 
     // MARK: - Initializer
-    init(store: ResourceStore, tokenAuthority: TokenAuthority) {
+    init(store: ResourceStore) {
         self.store = store
-        self.tokenAuthority = tokenAuthority
     }
 
     // MARK: - Public
     func handle(_ request: RPCRequest) async throws -> JSONObject {
-        _ = try tokenAuthority.requireClaims(request.params)
-
         let entries = await store.all()
         let rows: [[String: Any]] = entries.map { entry in
             [

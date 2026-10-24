@@ -35,7 +35,7 @@ struct WorkflowDispatchTests {
         let token = authority.mint(TokenClaims(principal: "cli:test"))
 
         // When
-        let result = try await method.handle(request(["token": token, "spec": anonSpec]))
+        let result = try await method.handle(request(["token": token, "spec": anonSpec]), claims: try #require(authority.verify(token)))
 
         // Then
         #expect(result.dict["status"] as? String == "ok")
@@ -49,14 +49,14 @@ struct WorkflowDispatchTests {
         let token = authority.mint(TokenClaims(principal: "cli:test"))
         let wireID = "fc-client-collide"
         let first = try await method.handle(RPCRequest(id: wireID, method: "workflow.dispatch",
-                params: ["token": token, "spec": anonSpec]))
+                params: ["token": token, "spec": anonSpec]), claims: try #require(authority.verify(token)))
 
         // Then
         let firstID = try #require(first.dict["workflow_id"] as? String)
         #expect(firstID.hasPrefix("wf-"), "runID should be forge-minted (wf-*) — borrowing the wire id is forbidden (finding J): \(firstID)")
         #expect(firstID != wireID, "runID must not equal the client wire id")
         let second = try await method.handle(RPCRequest(id: wireID, method: "workflow.dispatch",
-                params: ["token": token, "spec": anonSpec]))
+                params: ["token": token, "spec": anonSpec]), claims: try #require(authority.verify(token)))
         let secondID = try #require(second.dict["workflow_id"] as? String)
         #expect(firstID != secondID, "Two dispatches with the same wire id sharing a runID means cross-run contamination (finding J)")
     }
@@ -71,7 +71,7 @@ struct WorkflowDispatchTests {
         do {
 
         // When
-            _ = try await method.handle(request(["token": token, "spec": named]))
+            _ = try await method.handle(request(["token": token, "spec": named]), claims: try #require(authority.verify(token)))
 
         // Then
             Issue.record("An inline spec with a name key should be rejected")
@@ -88,7 +88,7 @@ struct WorkflowDispatchTests {
         do {
 
         // When
-            _ = try await method.handle(request(["token": token, "spec": anonSpec]))
+            _ = try await method.handle(request(["token": token, "spec": anonSpec]), claims: try #require(authority.verify(token)))
 
         // Then
             Issue.record("Should be rejected without an <inline> policy")
@@ -104,7 +104,7 @@ struct WorkflowDispatchTests {
         let token = authority.mint(TokenClaims(principal: "cli:anything"))
 
         // When
-        let result = try await method.handle(request(["token": token, "spec": anonSpec]))
+        let result = try await method.handle(request(["token": token, "spec": anonSpec]), claims: try #require(authority.verify(token)))
 
         // Then
         #expect(result.dict["status"] as? String == "ok")
@@ -121,7 +121,7 @@ struct WorkflowDispatchTests {
         do {
 
         // When
-            _ = try await method.handle(request(["token": token, "spec": badSpec]))
+            _ = try await method.handle(request(["token": token, "spec": badSpec]), claims: try #require(authority.verify(token)))
 
         // Then
             Issue.record("A malformed spec should be rejected")
@@ -146,7 +146,7 @@ struct WorkflowDispatchTests {
         do {
 
         // When
-            _ = try await method.handle(request(["token": token, "spec": badSpec]))
+            _ = try await method.handle(request(["token": token, "spec": badSpec]), claims: try #require(authority.verify(token)))
 
         // Then
             Issue.record("A spec containing an undeclared ref should be rejected at dispatch")
@@ -164,7 +164,7 @@ struct WorkflowDispatchTests {
         let token = authority.mint(TokenClaims(principal: "cli:test"))
 
         // When
-        let result = try await method.handle(request(["token": token, "name": "echo"]))
+        let result = try await method.handle(request(["token": token, "name": "echo"]), claims: try #require(authority.verify(token)))
 
         // Then
         #expect(result.dict["status"] as? String == "ok")
@@ -179,7 +179,7 @@ struct WorkflowDispatchTests {
         do {
 
         // When
-            _ = try await method.handle(request(["token": token]))
+            _ = try await method.handle(request(["token": token]), claims: try #require(authority.verify(token)))
 
         // Then
             Issue.record("Should be rejected when neither name nor spec is present")
@@ -188,21 +188,6 @@ struct WorkflowDispatchTests {
     }
 
     // MARK: - token
-    @Test("Cannot dispatch without a token")
-    func tokenRequired() async throws {
-        // Given
-        let (method, _, _) = try await makeMethod(policy: ["*": ["*"]])
-        do {
-
-        // When
-            _ = try await method.handle(request(["name": "echo"]))
-
-        // Then
-            Issue.record("Should be rejected without a token")
-        } catch is ProtocolError {
-        }
-    }
-
     @Test("Calling with a workflow token attaches as a nested run")
     func workflowTokenDispatchesAsNested() async throws {
         // Given
@@ -220,7 +205,7 @@ struct WorkflowDispatchTests {
         let token = authority.mint(TokenClaims(principal: "cli:parent", workflowID: "wf-parent"))
 
         // When
-        let result = try await method.handle(request(["token": token, "name": "echo"]))
+        let result = try await method.handle(request(["token": token, "name": "echo"]), claims: try #require(authority.verify(token)))
 
         // Then
         #expect(result.dict["status"] as? String == "ok")
@@ -250,11 +235,11 @@ struct WorkflowDispatchTests {
                 resources: LiveResources(store: ResourceStore(directory: nil))
             ))
         let method = WorkflowDispatchMethod(runner: runner, store: store,
-            workRegistry: registry, tokenAuthority: authority)
+            workRegistry: registry)
         let stale = authority.mint(TokenClaims(principal: "cli:gone", workflowID: "wf-gone"))
         do {
             _ = try await method.handle(RPCRequest(id: "r1", method: "workflow.dispatch",
-                    params: ["token": stale, "name": "echo2"]))
+                    params: ["token": stale, "name": "echo2"]), claims: try #require(authority.verify(stale)))
 
         // Then
             Issue.record("A stale run token should be rejected")
@@ -297,7 +282,7 @@ struct WorkflowDispatchTests {
                 resources: LiveResources(store: ResourceStore(directory: nil))
             ))
         let method = WorkflowDispatchMethod(runner: runner, store: store,
-            workRegistry: registry, tokenAuthority: authority)
+            workRegistry: registry)
 
         return (method, authority, registry)
     }

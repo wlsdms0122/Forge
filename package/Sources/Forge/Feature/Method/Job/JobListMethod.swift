@@ -10,17 +10,14 @@ import Foundation
 struct JobListMethod: Sendable {
     // MARK: - Property
     let store: JobStore
-    let tokenAuthority: TokenAuthority
 
     // MARK: - Initializer
-    init(store: JobStore, tokenAuthority: TokenAuthority) {
+    init(store: JobStore) {
         self.store = store
-        self.tokenAuthority = tokenAuthority
     }
 
     // MARK: - Public
-    func handle(_ request: RPCRequest) async throws -> JSONObject {
-        let claims = try tokenAuthority.requireClaims(request.params)
+    func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONObject {
         var jobs = await store.all()
 
         if let status = request.params["status"] as? String, !status.isEmpty {

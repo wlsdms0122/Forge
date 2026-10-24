@@ -28,7 +28,7 @@ struct AsyncDispatchTests {
                     id: "r-async-denied",
                     method: "workflow.dispatch",
                     params: ["token": token, "spec": specJSON, "async": true]
-            ))
+            ), claims: try #require(authority.verify(token)))
 
         // Then
             Issue.record("Policy denial should throw immediately even when async")
@@ -54,7 +54,7 @@ struct AsyncDispatchTests {
                 id: "r-sync",
                 method: "workflow.dispatch",
                 params: ["token": token, "spec": specJSON, "async": false]
-        ))
+        ), claims: try #require(authority.verify(token)))
 
         // Then
         #expect(result.dict["status"] as? String == "ok")
@@ -80,7 +80,7 @@ struct AsyncDispatchTests {
                 id: "r-async",
                 method: "workflow.dispatch",
                 params: ["token": token, "spec": specJSON, "async": true]
-        ))
+        ), claims: try #require(authority.verify(token)))
         let elapsedMs = (ContinuousClock.now - startedAt).milliseconds
 
         // Then
@@ -117,7 +117,7 @@ struct AsyncDispatchTests {
                 resources: LiveResources(store: ResourceStore(directory: nil))
             ))
         let method = WorkflowDispatchMethod(runner: runner, store: store,
-            workRegistry: WorkRegistry(), tokenAuthority: authority)
+            workRegistry: WorkRegistry())
 
         return (method, authority)
     }

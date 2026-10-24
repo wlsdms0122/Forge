@@ -23,12 +23,10 @@ struct WorkflowHealthMethod: Sendable {
 
     // MARK: - Property
     let pool: WorkflowPool
-    let tokenAuthority: TokenAuthority
 
     // MARK: - Initializer
-    init(pool: WorkflowPool, tokenAuthority: TokenAuthority) {
+    init(pool: WorkflowPool) {
         self.pool = pool
-        self.tokenAuthority = tokenAuthority
     }
 
     // MARK: - Public
@@ -84,8 +82,6 @@ struct WorkflowHealthMethod: Sendable {
     }
 
     func handle(_ request: RPCRequest) async throws -> JSONObject {
-        _ = try tokenAuthority.requireClaims(request.params)
-
         let health = await pool.health()
 
         return [

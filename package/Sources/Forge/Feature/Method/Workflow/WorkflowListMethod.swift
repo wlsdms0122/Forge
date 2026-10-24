@@ -10,18 +10,14 @@ import Foundation
 struct WorkflowListMethod: Sendable {
     // MARK: - Property
     let store: WorkflowCatalog
-    let tokenAuthority: TokenAuthority
 
     // MARK: - Initializer
-    init(store: WorkflowCatalog, tokenAuthority: TokenAuthority) {
+    init(store: WorkflowCatalog) {
         self.store = store
-        self.tokenAuthority = tokenAuthority
     }
 
     // MARK: - Public
     func handle(_ request: RPCRequest) async throws -> JSONObject {
-        _ = try tokenAuthority.requireClaims(request.params)
-
         let catalog = await store.catalog()
         let summary: [[String: Any]] = catalog.entries.map { entry in
             var listed: [String: Any] = [

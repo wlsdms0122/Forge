@@ -32,24 +32,20 @@ struct WorkflowDispatchMethod: Sendable {
     let runner: WorkflowRunner
     let store: WorkflowCatalog
     let workRegistry: WorkRegistry
-    let tokenAuthority: TokenAuthority
 
     // MARK: - Initializer
     init(
         runner: WorkflowRunner,
         store: WorkflowCatalog,
-        workRegistry: WorkRegistry,
-        tokenAuthority: TokenAuthority
+        workRegistry: WorkRegistry
     ) {
         self.runner = runner
         self.store = store
         self.workRegistry = workRegistry
-        self.tokenAuthority = tokenAuthority
     }
 
     // MARK: - Public
-    func prepare(_ request: RPCRequest) async throws -> Prepared {
-        let claims = try tokenAuthority.requireClaims(request.params)
+    func prepare(_ request: RPCRequest, claims: TokenClaims) async throws -> Prepared {
         let principal = claims.principal
         let record = try await workRegistry.requireLiveRecord(
             workflowID: claims.workflowID,
@@ -128,8 +124,8 @@ struct WorkflowDispatchMethod: Sendable {
         )
     }
 
-    func handle(_ request: RPCRequest) async throws -> JSONObject {
-        let prepared = try await prepare(request)
+    func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONObject {
+        let prepared = try await prepare(request, claims: claims)
         let isAsync = (request.params["async"] as? Bool) ?? false
         let principal = prepared.principal
         let workflowID = prepared.workflowID

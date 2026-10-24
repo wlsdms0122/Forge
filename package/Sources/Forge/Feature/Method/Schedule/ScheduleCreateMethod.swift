@@ -12,19 +12,16 @@ struct ScheduleCreateMethod: Sendable {
     let store: ScheduleStore
     let workflowStore: WorkflowCatalog
     let policyStore: PolicyStore
-    let tokenAuthority: TokenAuthority
 
     // MARK: - Initializer
     init(
         store: ScheduleStore,
         workflowStore: WorkflowCatalog,
-        policyStore: PolicyStore,
-        tokenAuthority: TokenAuthority
+        policyStore: PolicyStore
     ) {
         self.store = store
         self.workflowStore = workflowStore
         self.policyStore = policyStore
-        self.tokenAuthority = tokenAuthority
     }
 
     // MARK: - Public
@@ -152,8 +149,7 @@ struct ScheduleCreateMethod: Sendable {
         return out
     }
 
-    func handle(_ request: RPCRequest) async throws -> JSONObject {
-        let claims = try tokenAuthority.requireClaims(request.params)
+    func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONObject {
         let (workflowName, specJSON) = try await resolveDispatchTarget(
             params: request.params,
             context: "schedule.create",

@@ -10,18 +10,14 @@ import Foundation
 struct SessionListMethod: Sendable {
     // MARK: - Property
     let handlerBus: WorkflowHandlerBus
-    let tokenAuthority: TokenAuthority
 
     // MARK: - Initializer
-    init(handlerBus: WorkflowHandlerBus, tokenAuthority: TokenAuthority) {
+    init(handlerBus: WorkflowHandlerBus) {
         self.handlerBus = handlerBus
-        self.tokenAuthority = tokenAuthority
     }
 
     // MARK: - Public
     func handle(_ request: RPCRequest) async throws -> JSONObject {
-        _ = try tokenAuthority.requireClaims(request.params)
-
         let entries = await handlerBus.listing()
         var services: [[String: Any]] = entries.map { name, schema in
             var row: [String: Any] = ["service": name]

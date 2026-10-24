@@ -62,7 +62,7 @@ struct WorkflowDescribeTests {
         """#, named: "greet").write(to: directory.appendingPathComponent("greet.yaml"),
             atomically: true, encoding: .utf8)
         let token = authority.mint(TokenClaims(principal: "system:admin"))
-        let list = WorkflowListMethod(store: method.store, tokenAuthority: authority)
+        let list = WorkflowListMethod(store: method.store)
 
         // When
         let described = try await method.handle(request(["token": token, "name": "greet"]))
@@ -145,7 +145,7 @@ struct WorkflowDescribeTests {
         let store = try WorkflowCatalog(directory: directory)
         let authority = TokenAuthority()
         
-        return (WorkflowDescribeMethod(store: store, tokenAuthority: authority), authority, directory)
+        return (WorkflowDescribeMethod(store: store), authority, directory)
     }
     
     private func request(_ params: [String: Any]) -> RPCRequest {
