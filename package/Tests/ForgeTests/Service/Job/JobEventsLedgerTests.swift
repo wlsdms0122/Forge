@@ -256,9 +256,9 @@ struct JobEventsLedgerTests {
         #expect(job?.events.map(\.kind) == [.runAttached])
         #expect(job?.events.first?.run == "tok-r", "attachment key = accessor id (same as comment.by)")
         #expect(job?.events.first?.detail == "job.show")
-        let dict = shown.dict["job"] as? [String: Any]
-        #expect((dict?["events"] as? [[String: Any]])?.count ?? 0 == 0)
-        #expect(dict?["open"] as? Bool == false, "show's open is false for a ticket with only one's own attachment")
+        let dict = shown["job"]?.objectValue
+        #expect((dict?["events"]?.arrayValue)?.count ?? 0 == 0)
+        #expect(dict?["open"]?.boolValue == false, "show's open is false for a ticket with only one's own attachment")
         _ = try await update.handle(RPCRequest(id: "r3", method: "job.update",
                 params: ["token": runToken, "id": "jr",
                     "note": "working"]), claims: try #require(authority.verify(runToken)))
@@ -272,7 +272,7 @@ struct JobEventsLedgerTests {
                     "note": "also here"]), claims: try #require(authority.verify(otherToken)))
         let shown2 = try await show.handle(RPCRequest(id: "r5", method: "job.show",
                 params: ["token": runToken, "id": "jr"]), claims: try #require(authority.verify(runToken)))
-        #expect((shown2.dict["job"] as? [String: Any])?["open"] as? Bool == true, "someone else's open attachment shows as open")
+        #expect((shown2["job"]?.objectValue)?["open"]?.boolValue == true, "someone else's open attachment shows as open")
         let deadToken = authority.mint(TokenClaims(principal: "cli:worker", workflowID: "wf-dead", id: "tok-d"))
         _ = try await update.handle(RPCRequest(id: "r6", method: "job.update",
                 params: ["token": deadToken, "id": "jr",

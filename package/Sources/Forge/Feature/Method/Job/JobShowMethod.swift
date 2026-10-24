@@ -7,21 +7,8 @@
 
 import Foundation
 
-private func jobToAny(_ job: Job) -> [String: Any] {
-    let encoder = JSONEncoder()
-    encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
-
-    guard let data = try? encoder.encode(job),
-        let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-    else {
-        return ["id": job.id]
-    }
-
-    return object
-}
-
-func requireID(_ params: [String: Any], _ context: String) throws -> String {
-    guard let id = params["id"] as? String, !id.isEmpty else {
+func requireID(_ params: [String: JSONValue], _ context: String) throws -> String {
+    guard let id = params["id"]?.stringValue, !id.isEmpty else {
         throw ProtocolError("\(context): 'id' (string) required")
     }
 
@@ -57,8 +44,8 @@ struct JobShowMethod: Sendable {
     }
 
     // MARK: - Public
-    func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONObject {
-        let id = try requireID(request.rawParams, "job.show")
+    func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONValue {
+        let id = try requireID(request.params, "job.show")
 
         guard let job = await store.lookup(id) else {
             throw ProtocolError("job not found: \(id)")
@@ -72,24 +59,28 @@ struct JobShowMethod: Sendable {
             via: "job.show"
         )
 
-        var dictionary = jobToAny(job)
-        dictionary["open"] = job.isOpen(excluding: claims.id)
+        var dictionary = try JSONValue(encoding: job).objectValue ?? [:]
+        dictionary["open"] = .bool(job.isOpen(excluding: claims.id))
 
         if !job.children.isEmpty {
-            var detail: [[String: Any]] = []
+            var detail: [JSONValue] = []
 
             for childID in job.children {
                 if let child = await store.lookup(childID) {
-                    detail.append(["id": child.id, "title": child.title, "status": child.status])
+                    detail.append([
+                        "id": .string(child.id),
+                        "title": .string(child.title),
+                        "status": .string(child.status)
+                    ])
                 } else {
-                    detail.append(["id": childID, "status": "missing"])
+                    detail.append(["id": .string(childID), "status": "missing"])
                 }
             }
 
-            dictionary["children_detail"] = detail
+            dictionary["children_detail"] = .array(detail)
         }
 
-        return ["job": dictionary]
+        return ["job": .object(dictionary)]
     }
 
     // MARK: - Private

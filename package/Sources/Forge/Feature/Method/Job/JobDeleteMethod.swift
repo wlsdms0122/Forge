@@ -17,11 +17,11 @@ struct JobDeleteMethod: Sendable {
     }
 
     // MARK: - Public
-    func handle(_ request: RPCRequest) async throws -> JSONObject {
-        let id = try requireID(request.rawParams, "job.delete")
+    func handle(_ request: RPCRequest) async throws -> JSONValue {
+        let id = try requireID(request.params, "job.delete")
         try await store.delete(id: id)
 
-        return ["id": id, "deleted": true]
+        return ["id": .string(id), "deleted": true]
     }
 
     // MARK: - Private

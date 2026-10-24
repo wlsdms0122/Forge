@@ -19,8 +19,8 @@ struct JobUpdateMethod: Sendable {
     }
 
     // MARK: - Public
-    func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONObject {
-        let id = try requireID(request.rawParams, "job.update")
+    func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONValue {
+        let id = try requireID(request.params, "job.update")
         let by = claims.id
 
         await recordTouchIfLiveRun(
@@ -31,28 +31,28 @@ struct JobUpdateMethod: Sendable {
             via: "job.update"
         )
 
-        if let note = request.rawParams["note"] as? String, !note.isEmpty {
+        if let note = request.params["note"]?.stringValue, !note.isEmpty {
             try await store.addComment(id: id, by: by, note: note)
         }
 
-        if let brief = request.rawParams["brief"] as? String, !brief.isEmpty {
+        if let brief = request.params["brief"]?.stringValue, !brief.isEmpty {
             try await store.setBrief(id: id, by: by, brief)
         }
 
-        if let ref = request.rawParams["ref"] as? String, !ref.isEmpty {
-            let refNote = (request.rawParams["ref_note"] as? String)
+        if let ref = request.params["ref"]?.stringValue, !ref.isEmpty {
+            let refNote = request.params["ref_note"]?.stringValue
                 .flatMap { value in value.isEmpty ? nil : value }
             try await store.appendRef(id: id, by: by, ref: ref, note: refNote)
         }
 
-        if let item = intParam(request.rawParams, "item") {
-            let status = (request.rawParams["item_status"] as? String)
+        if let item = request.params["item"]?.intValue {
+            let status = request.params["item_status"]?.stringValue
                 .flatMap { value in value.isEmpty ? nil : value } ?? "done"
-            let desc = request.rawParams["item_desc"] as? String
+            let desc = request.params["item_desc"]?.stringValue
             try await store.setPlanItem(id: id, by: by, item: item, desc: desc, status: status)
         }
 
-        if let status = request.rawParams["status"] as? String, !status.isEmpty {
+        if let status = request.params["status"]?.stringValue, !status.isEmpty {
             try await store.setStatus(id: id, by: by, status)
         }
 
@@ -60,7 +60,7 @@ struct JobUpdateMethod: Sendable {
             throw ProtocolError("job not found: \(id)")
         }
 
-        return ["id": id, "status": job.status]
+        return ["id": .string(id), "status": .string(job.status)]
     }
 
     // MARK: - Private

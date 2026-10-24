@@ -225,7 +225,7 @@ struct JobStoreTests {
         let result = try await method.handle(RPCRequest(
                 id: "c2", method: "job.create",
                 params: ["token": token, "title": "child", "parent_job": "par"]), claims: try #require(authority.verify(token)))
-        let childID = try #require(result.dict["id"] as? String)
+        let childID = try #require(result["id"]?.stringValue)
         let child = await store.lookup(childID)
         #expect(child?.parentJob == "par")
         let parent = await store.lookup("par")

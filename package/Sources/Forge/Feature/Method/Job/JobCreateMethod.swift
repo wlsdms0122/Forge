@@ -7,12 +7,7 @@
 
 import Foundation
 
-func intParam(_ params: [String: Any], _ key: String) -> Int? {
-    if let integer = params[key] as? Int { return integer }
-    if let number = params[key] as? NSNumber { return number.intValue }
 
-    return nil
-}
 
 struct JobCreateMethod: Sendable {
     // MARK: - Property
@@ -24,65 +19,60 @@ struct JobCreateMethod: Sendable {
     }
 
     // MARK: - Public
-    func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONObject {
-        guard let title = request.rawParams["title"] as? String, !title.isEmpty else {
+    func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONValue {
+        guard let title = request.params["title"]?.stringValue, !title.isEmpty else {
             throw ProtocolError("job.create: 'title' (string) required")
         }
 
         let now = ISO8601.string(Date())
 
-        var origin: [String: JSONValue]?
-
-        if let rawOrigin = request.rawParams["origin"] as? [String: Any] {
-            origin = try decodeJSONValueDict(rawOrigin)
-        }
-
-        let brief = (request.rawParams["brief"] as? String) ?? ""
+        let origin = request.params["origin"]?.objectValue
+        let brief = request.params["brief"]?.stringValue ?? ""
 
         var refs: [Job.Ref] = []
 
-        if let rawRefs = request.rawParams["refs"] as? [Any] {
+        if let rawRefs = request.params["refs"]?.arrayValue {
             refs = try rawRefs.enumerated().map { index, item in
-                if let string = item as? String { return Job.Ref(ref: string) }
+                if let string = item.stringValue { return Job.Ref(ref: string) }
 
-                guard let dictionary = item as? [String: Any],
-                    let ref = dictionary["ref"] as? String, !ref.isEmpty
+                guard let dictionary = item.objectValue,
+                    let ref = dictionary["ref"]?.stringValue, !ref.isEmpty
                 else {
                     throw ProtocolError("job.create: refs[\(index)] needs 'ref' (string) — shape: {\"ref\":\"...\",\"note\"?:\"...\"} or a plain string")
                 }
 
-                return Job.Ref(ref: ref, note: dictionary["note"] as? String)
+                return Job.Ref(ref: ref, note: dictionary["note"]?.stringValue)
             }
-        } else if request.rawParams["refs"] != nil {
+        } else if request.params["refs"] != nil {
             throw ProtocolError("job.create: 'refs' must be a JSON array of {ref,note?} objects or strings")
         }
 
         var planEntries: [Job.Plan.Entry] = []
 
-        if let rawPlan = request.rawParams["plan"] as? [Any] {
+        if let rawPlan = request.params["plan"]?.arrayValue {
             for (index, item) in rawPlan.enumerated() {
-                if let string = item as? String {
+                if let string = item.stringValue {
                     planEntries.append(.auto(desc: string, status: "todo"))
 
                     continue
                 }
 
-                guard let dictionary = item as? [String: Any] else {
+                guard let dictionary = item.objectValue else {
                     throw ProtocolError("job.create: plan[\(index)] must be {\"id\"?:int,\"desc\":\"...\",\"status\"?:\"...\"} or a plain string")
                 }
 
-                guard let desc = dictionary["desc"] as? String, !desc.isEmpty else {
+                guard let desc = dictionary["desc"]?.stringValue, !desc.isEmpty else {
                     throw ProtocolError("job.create: plan[\(index)] needs 'desc' (string)")
                 }
 
-                var itemID = intParam(dictionary, "id")
+                var itemID = dictionary["id"]?.intValue
 
-                if itemID == nil, let string = dictionary["id"] as? String { itemID = Int(string) }
+                if itemID == nil, let string = dictionary["id"]?.stringValue { itemID = Int(string) }
                 if itemID == nil, dictionary["id"] != nil {
                     throw ProtocolError("job.create: plan[\(index)].id must be an integer — omit it to auto-number")
                 }
 
-                let status = (dictionary["status"] as? String) ?? "todo"
+                let status = dictionary["status"]?.stringValue ?? "todo"
 
                 if let itemID {
                     planEntries.append(
@@ -92,7 +82,7 @@ struct JobCreateMethod: Sendable {
                     planEntries.append(.auto(desc: desc, status: status))
                 }
             }
-        } else if request.rawParams["plan"] != nil {
+        } else if request.params["plan"] != nil {
             throw ProtocolError("job.create: 'plan' must be a JSON array of {id?,desc,status?} objects or strings")
         }
 
@@ -104,19 +94,19 @@ struct JobCreateMethod: Sendable {
             throw ProtocolError("job.create: \(error.message)")
         }
 
-        let parentJob = (request.rawParams["parent_job"] as? String)
+        let parentJob = request.params["parent_job"]?.stringValue
             .flatMap { value in value.isEmpty ? nil : value }
 
         if let parentJob, await store.lookup(parentJob) == nil {
             throw ProtocolError("job.create: parent job not found: '\(parentJob)'")
         }
 
-        let status = (request.rawParams["status"] as? String)
+        let status = request.params["status"]?.stringValue
             .flatMap { value in value.isEmpty ? nil : value } ?? "open"
 
         let id: String
 
-        if let given = request.rawParams["id"] as? String, !given.isEmpty {
+        if let given = request.params["id"]?.stringValue, !given.isEmpty {
             id = given
         } else {
             id = "j-" + UUID().uuidString.prefix(8).lowercased()
@@ -148,7 +138,7 @@ struct JobCreateMethod: Sendable {
             )
         }
 
-        return ["job_id": id, "id": id, "title": title, "status": status]
+        return ["job_id": .string(id), "id": .string(id), "title": .string(title), "status": .string(status)]
     }
 
     // MARK: - Private
