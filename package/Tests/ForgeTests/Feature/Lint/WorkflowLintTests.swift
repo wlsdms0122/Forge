@@ -45,6 +45,33 @@ struct WorkflowLintTests {
         #expect(report.ok, "\(report.issues)")
     }
 
+    @Test("${} under a nameless statement is flagged, since value: is a statement, not a quotation")
+    func staleTemplateUnderNamelessStatementFlagged() async throws {
+        // Given
+        let report = try check(named: "nameless", yaml: """
+        failing: [aborted]
+        body:
+          - value: { abort: "failed for ${who}" }
+        """)
+
+        // Then
+        #expect(report.issues.contains { issue in issue.contains("body[0].value.abort") }, "\(report.issues)")
+    }
+
+    @Test("${} in a description or a hint is prose beside the document")
+    func proseKeysPass() async throws {
+        // Given
+        let report = try check(named: "prose", yaml: """
+        description: "renders ${who}"
+        parameters: [ who: { type: String, hint: "the ${name} to greet" } ]
+        returns: String
+        result: { ref: who }
+        """)
+
+        // Then
+        #expect(report.ok, "\(report.issues)")
+    }
+
     // MARK: - Private
     private func check(named name: String, yaml: String) throws -> WorkflowLint.Report {
         let directory = try temporary.make("lint-\(name)")

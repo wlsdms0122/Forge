@@ -60,12 +60,12 @@ package enum WorkflowLint {
     }
 
     // MARK: - Private
-    // A string in a spec is a literal — an old-grammar `${...}` inside one is
-    // no longer a reference and would silently ship as text. The language stays
-    // inert on purpose (runtime-lowered data may legitimately carry `${`), so
-    // the authored-file gate is where the migration trap gets loud. Exempt:
-    // `format` templates (the dialect's home), metadata prose, and `{ value: }`
-    // quotations (the sanctioned escape for literal `${` text).
+    // A string in a workflow is a literal, so a `${...}` inside one ships as
+    // text. The language takes it as text on purpose (data may carry `${`),
+    // and the authored file is where an interpolation written as a plain
+    // string gets loud. Exempt: a `format` template, whose `$$` writes `$`,
+    // and the prose the front end takes beside the document (`description`,
+    // `hint`).
     private static func staleTemplateIssues(data: Data) -> [String] {
         guard let tree = try? YAMLParser().parse(data) else {
             return []
@@ -89,9 +89,8 @@ package enum WorkflowLint {
         case let .string(string):
             if string.contains("${") {
                 issues.append(
-                    "\(location): string contains '${' — strings are literals now;"
-                        + " use { format:, with: } to interpolate, or wrap in"
-                        + " { value: } if the text is meant verbatim"
+                    "\(location): string contains '${', and a string is a literal;"
+                        + " use { format:, with: } to interpolate, where '$$' writes '$'"
                 )
             }
 
@@ -107,10 +106,6 @@ package enum WorkflowLint {
 
         case let .dictionary(object):
             let entries = zip(object.keys, object.values).map { key, element in (ValueBridge.text(key), element) }
-
-            // A single-key { value: } map is the quotation form — its payload
-            // is data by declaration, not a stale template.
-            if entries.count == 1, entries.first?.0 == "value" { return }
 
             for (key, element) in entries.sorted(by: { one, other in one.0 < other.0 }) {
                 guard !Self.proseKeys.contains(key) else { continue }
