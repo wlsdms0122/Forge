@@ -64,6 +64,25 @@ struct LogSinkCapture {
         records().filter { record in record.workflowID == workflowID }
     }
 
+    /// The records of a run once `count` of them are in the file, or the ones there when `timeout` passes.
+    func records(
+        workflowID: String,
+        awaiting count: Int,
+        timeout: Duration = .seconds(10)
+    ) async throws -> [LogRecord] {
+        let deadline = ContinuousClock.now + timeout
+
+        while ContinuousClock.now < deadline {
+            let found = records(workflowID: workflowID)
+
+            if found.count >= count { return found }
+
+            try await Task.sleep(for: .milliseconds(10))
+        }
+
+        return records(workflowID: workflowID)
+    }
+
     // MARK: - Private
     private init(_ name: String) throws {
         directory = TemporaryDirectory(name)

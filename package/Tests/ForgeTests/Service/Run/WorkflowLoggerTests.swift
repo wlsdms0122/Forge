@@ -36,10 +36,10 @@ struct WorkflowLoggerTests {
                             workflowID: "wf-test-1", workflowName: "router", durationMs: 130))
                 }
             }
-            try await Task.sleep(for: .milliseconds(200))
+            let records = try await capture.records(workflowID: "wf-test-1", awaiting: 3)
             await logger.stop()
 
-            return capture.records(workflowID: "wf-test-1")
+            return records
         }
 
         // Then
@@ -79,10 +79,10 @@ struct WorkflowLoggerTests {
                     workflowID: "wf-in", workflowName: "router",
                     inputs: ["prompt": .string("hello")],
                     inputPreview: #"{"prompt":"hello"}"#, inputLen: 18))
-            try await Task.sleep(for: .milliseconds(200))
+            let records = try await capture.records(workflowID: "wf-in", awaiting: 1)
             await logger.stop()
 
-            return capture.records(workflowID: "wf-in")
+            return records
         }
 
         // Then
@@ -105,9 +105,8 @@ struct WorkflowLoggerTests {
                     kind: .workflowStarted,
                     workflowID: "wf-A", workflowName: "x"
             ))
-            try await Task.sleep(for: .milliseconds(150))
+            let afterStart = try await capture.records(workflowID: "wf-A", awaiting: 1).count
             await logger.stop()
-            let afterStart = capture.records(workflowID: "wf-A").count
             await bus.publish(WorkflowEvent(
                     kind: .workflowCompleted,
                     workflowID: "wf-A", workflowName: "x"
