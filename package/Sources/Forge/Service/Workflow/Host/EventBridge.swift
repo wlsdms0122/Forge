@@ -9,7 +9,7 @@ import Foundation
 import Warp
 
 // Publishes forge's steps on its event stream. A step is a call of a verb
-// that acts outside the program, from its native's start to its return or
+// that reaches outside the program, from its native's start to its return or
 // throw, and each such native announces its own (`ForgeAction`). The step is
 // named by the statement that called the verb, and its action is the verb;
 // a native a workflow calls directly is its own verb. Run-level framing

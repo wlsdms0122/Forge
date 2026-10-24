@@ -87,7 +87,7 @@ Under each verb is the native procedure the daemon implements,
 `Forge.Native.<verb>`, which takes every argument by position, defaults
 settled. A workflow writes the library's verbs.
 
-A step is a call of a verb that acts outside the program, from its native's start to its return or throw.
+A step is a call of a verb that reaches outside the program, from its native's start to its return or throw.
 
 ### `Forge.shell`
 

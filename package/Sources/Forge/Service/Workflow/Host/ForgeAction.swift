@@ -8,7 +8,7 @@
 import Foundation
 import Warp
 
-// A native verb that acts outside the program. Each run of one is the step
+// A native verb that reaches outside the program. Each run of one is the step
 // of the verb it serves, announced from here: started when it starts, and
 // completed with what it returns or failed with what it throws.
 protocol ForgeAction: Warp.Effect {
