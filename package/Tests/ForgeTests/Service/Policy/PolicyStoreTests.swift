@@ -147,7 +147,7 @@ struct PolicyStoreTests {
         let result = await allows(store, "cli:sneaky", "anything")
 
         // Then
-        #expect(!result, "leading-dot hidden files are excluded via skipsHiddenFiles (consistent with the write gate isStoreSafeID)")
+        #expect(!result, "leading-dot hidden files are excluded via skipsHiddenFiles (consistent with the write gate StoreScan.isSafeID)")
     }
     
     @Test("A broken file surfaces via failures and valid files keep loading")

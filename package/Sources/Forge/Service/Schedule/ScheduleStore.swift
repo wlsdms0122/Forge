@@ -203,7 +203,7 @@ actor ScheduleStore {
             throw ScheduleDirectoryNotConfigured("runtime schedule directory not configured — schedule.create is disabled")
         }
         
-        guard isStoreSafeID(requested.id) else {
+        guard StoreScan.isSafeID(requested.id) else {
             throw ProtocolError("schedule id must match [A-Za-z0-9._-] with no leading dot: '\(requested.id)'")
         }
         
@@ -228,7 +228,7 @@ actor ScheduleStore {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         try write(
             schedule,
-            to: directory.appendingPathComponent("\(schedule.id).\(specFileExtension)")
+            to: directory.appendingPathComponent("\(schedule.id).\(StoreScan.specFileExtension)")
         )
         
         if schedule.enabled {

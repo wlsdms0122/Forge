@@ -221,16 +221,6 @@ struct ScheduleStoreRuntimeTests {
         } catch {  }
     }
 
-    @Test("An id starting with a dot is not safe")
-    func storeSafeIDRejectsLeadingDot() {
-        #expect(!isStoreSafeID(".hidden"), "a leading dot makes the file hidden, unreadable on reload, so it is rejected")
-        #expect(!isStoreSafeID("."))
-        #expect(!isStoreSafeID(".."))
-        #expect(!isStoreSafeID(""))
-        #expect(isStoreSafeID("v1.2"), "an interior dot is allowed")
-        #expect(isStoreSafeID("my-job_1"))
-    }
-
     @Test("Create rejects an id starting with a dot")
     func createRejectsLeadingDotID() async throws {
         // Given

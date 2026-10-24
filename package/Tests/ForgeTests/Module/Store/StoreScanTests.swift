@@ -51,7 +51,7 @@ struct StoreScanTests {
             try? FileManager.default.removeItem(at: directory)
         }
         
-        let scan = StoreScan(directory: directory, pathExtension: specFileExtension)
+        let scan = StoreScan(directory: directory, pathExtension: StoreScan.specFileExtension)
 
         // Then
         #expect(scan.files.map(\.source) == ["open/visible.yaml"])
@@ -67,7 +67,7 @@ struct StoreScanTests {
         // Given
         let directory = try temporary.make("gone-scope")
         try FileManager.default.removeItem(at: directory)
-        let scan = StoreScan(directory: directory, pathExtension: specFileExtension)
+        let scan = StoreScan(directory: directory, pathExtension: StoreScan.specFileExtension)
 
         // Then
         #expect(scan.obstructions.map(\.scope) == [""])
@@ -80,7 +80,7 @@ struct StoreScanTests {
         let directory = try temporary.make("complete")
         defer { try? FileManager.default.removeItem(at: directory) }
         try writeFile(named: "a", in: directory)
-        let scan = StoreScan(directory: directory, pathExtension: specFileExtension)
+        let scan = StoreScan(directory: directory, pathExtension: StoreScan.specFileExtension)
 
         // Then
         #expect(scan.isComplete)
@@ -92,11 +92,21 @@ struct StoreScanTests {
         // Given
         let directory = try temporary.make("gone")
         try FileManager.default.removeItem(at: directory)
-        let scan = StoreScan(directory: directory, pathExtension: specFileExtension)
+        let scan = StoreScan(directory: directory, pathExtension: StoreScan.specFileExtension)
 
         // Then
         #expect(scan.files.isEmpty)
         #expect(!scan.isComplete)
+    }
+
+    @Test("An id starting with a dot is not safe")
+    func safeIDRejectsLeadingDot() {
+        #expect(!StoreScan.isSafeID(".hidden"), "a leading dot makes the file hidden, unreadable on reload, so it is rejected")
+        #expect(!StoreScan.isSafeID("."))
+        #expect(!StoreScan.isSafeID(".."))
+        #expect(!StoreScan.isSafeID(""))
+        #expect(StoreScan.isSafeID("v1.2"), "an interior dot is allowed")
+        #expect(StoreScan.isSafeID("my-job_1"))
     }
 
     // MARK: - Public

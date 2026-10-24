@@ -106,7 +106,7 @@ actor JobStore {
             throw JobStoreError.notConfigured
         }
         
-        guard isStoreSafeID(job.id) else {
+        guard StoreScan.isSafeID(job.id) else {
             throw ProtocolError(
                 "job id must match [A-Za-z0-9._-] with no leading dot: '\(job.id)'"
             )

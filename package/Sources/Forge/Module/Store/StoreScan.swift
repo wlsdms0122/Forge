@@ -7,8 +7,6 @@
 
 import Foundation
 
-let specFileExtension = "yaml"
-
 struct StoreScan {
     struct Obstruction {
         // MARK: - Property
@@ -36,6 +34,8 @@ struct StoreScan {
     }
     
     // MARK: - Property
+    static let specFileExtension = "yaml"
+    
     let files: [ScannedFile]
     
     var obstructions: [Obstruction]
@@ -98,6 +98,18 @@ struct StoreScan {
     }
     
     // MARK: - Public
+    // Whether a file named after the id is one a scan reads back: no leading
+    // dot, since the scan skips hidden files, and no path separator.
+    static func isSafeID(_ id: String) -> Bool {
+        !id.isEmpty && !id.hasPrefix(".") && id.allSatisfy { character in
+            character.isLetter
+                || character.isNumber
+                || character == "."
+                || character == "_"
+                || character == "-"
+        }
+    }
+    
     func isUnobserved(source: String) -> Bool {
         obstructions.contains { obstruction in obstruction.covers(source: source) }
     }
@@ -130,14 +142,4 @@ struct StoreScan {
     }
     
     // MARK: - Private
-}
-
-func isStoreSafeID(_ id: String) -> Bool {
-    !id.isEmpty && !id.hasPrefix(".") && id.allSatisfy { character in
-        character.isLetter
-            || character.isNumber
-            || character == "."
-            || character == "_"
-            || character == "-"
-    }
 }

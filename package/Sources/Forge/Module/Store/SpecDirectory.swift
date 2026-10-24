@@ -49,7 +49,7 @@ struct SpecDirectory<Value> {
     private var decoded: [URL: Loaded] = [:]
     
     // MARK: - Initializer
-    init(directory: URL, pathExtension: String = specFileExtension, kind: String) {
+    init(directory: URL, pathExtension: String = StoreScan.specFileExtension, kind: String) {
         self.directory = directory
         self.pathExtension = pathExtension
         self.kind = kind

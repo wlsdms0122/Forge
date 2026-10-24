@@ -129,7 +129,7 @@ actor WorkflowCatalog {
             return currentSnapshot
         }
 
-        let observed = await observing(StoreScan(directory: directory, pathExtension: specFileExtension))
+        let observed = await observing(StoreScan(directory: directory, pathExtension: StoreScan.specFileExtension))
 
         FileHandle.standardError.write(Data(observed.announcement.utf8))
 
