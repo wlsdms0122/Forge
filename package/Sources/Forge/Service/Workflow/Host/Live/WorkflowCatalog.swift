@@ -390,7 +390,7 @@ actor WorkflowCatalog {
                     let module = try Loader().load(document, identity: try Identity.of(document))
                     let documentation = try leaning.frontend.documentation(from: text)
 
-                    if let breach = convention(module, named: base, text: text) {
+                    if let breach = try convention(module, named: base) {
                         ledger.record(
                             source: file.file.source,
                             reason: breach.reason,
@@ -436,17 +436,15 @@ actor WorkflowCatalog {
     }
 
     // Forge's convention on top of the language: a workflow file declares one
-    // procedure, names it after the file, and takes a name the library, std
-    // and the notation do not give, since another workflow calls it by that
-    // name. The
-    // language lets a module declare many; this is where a workflow says it
-    // is one thing you can run by the name you know it by. The breach, where
-    // the file makes one.
+    // procedure, names it after the file, and takes a name that shadows
+    // nothing the library, std and the notation give, since another workflow
+    // calls it by that name. The language lets a module declare many; this is
+    // where a workflow says it is one thing you can run by the name you know
+    // it by. The breach, where the file makes one.
     private func convention(
         _ module: Warp.Module,
-        named base: String,
-        text: String
-    ) -> (reason: String, line: String)? {
+        named base: String
+    ) throws -> (reason: String, line: String)? {
         let declared = module.procedures.keys.map(\.spelling).sorted()
 
         guard declared == [base], let name = module.procedures.keys.first else {
@@ -458,9 +456,10 @@ actor WorkflowCatalog {
             )
         }
 
-        if let refusal = ForgeVocabulary.refusal(calling: name, declaredIn: text) {
+        if let shadowed = try ForgeVocabulary.frontend().shadowing(name, as: .procedure) {
             return (
-                "a workflow is called by its name, and another workflow writing '\(base)' reads it otherwise: \(refusal)",
+                "a workflow is called by its name, and one named so shadows what the library, std or the notation"
+                    + " give: \(shadowed)",
                 "workflow named like the vocabulary"
             )
         }

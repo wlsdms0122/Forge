@@ -153,7 +153,7 @@ struct CatalogGenerationTests {
         #expect(catalog.entries.map(\.name) == ["sized", "who"])
         #expect(catalog.failures.compactMap(\.name) == ["count", "run"])
         #expect(catalog.failures.allSatisfy { failure in failure.reason.hasPrefix("a workflow is called by its name") })
-        #expect(catalog.failures.last?.reason.contains("'run' is declared by Forge.run and run") == true)
+        #expect(catalog.failures.last?.reason.contains("'run' is the short name of Forge.run") == true)
     }
 
     @Test("A workflow named by a key the notation spells is refused at its own file, and the files writing that key read it as the notation does")
