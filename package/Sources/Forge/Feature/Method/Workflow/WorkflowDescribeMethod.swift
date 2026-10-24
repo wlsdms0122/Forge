@@ -22,21 +22,22 @@ struct WorkflowDescribeMethod: Sendable {
             throw ProtocolError("workflow.describe: 'name' (string) required")
         }
 
+        let workflow = try await catalog.workflow(named: name)
         let entries = await catalog.reload().entries
 
-        guard let entry = entries.first(where: { entry in entry.workflow.name == name }) else {
+        guard let source = entries.first(where: { entry in entry.workflow.name == name })?.source else {
             throw WorkflowNotFound("workflow not found: \(name)")
         }
 
-        let contract = entry.workflow.contract
+        let contract = workflow.contract
         var result: [String: JSONValue] = [
-            "name":    .string(entry.workflow.name),
-            "source":  .string(entry.source),
+            "name":    .string(workflow.name),
+            "source":  .string(source),
             "inputs":  .object(Self.inputs(of: contract)),
             "returns": .string(contract.returns)
         ]
 
-        result["description"] = entry.workflow.description.map(JSONValue.string)
+        result["description"] = workflow.description.map(JSONValue.string)
 
         return .object(result)
     }

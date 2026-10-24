@@ -136,6 +136,29 @@ struct WorkflowDescribeTests {
         }
     }
     
+    @Test("Names a broken workflow as broken, the way dispatch does")
+    func brokenWorkflowThrowsValidationError() async throws {
+        // Given
+        let (method, authority, directory) = try await makeMethod("broken")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try "body: [".write(
+            to: directory.appendingPathComponent("broken.yaml"),
+            atomically: true,
+            encoding: .utf8
+        )
+        let token = authority.mint(TokenClaims(principal: "system:admin"))
+        do {
+
+        // When
+            _ = try await method.handle(request(["token": .string(token), "name": "broken"]))
+
+        // Then
+            Issue.record("expected WorkflowValidationError")
+        } catch let error as WorkflowValidationError {
+            #expect(error.message.contains("broken"), Comment(rawValue: error.message))
+        }
+    }
+    
     // MARK: - Private
     
     private func makeMethod(_ test: String) async throws
