@@ -26,7 +26,7 @@ struct ScheduleStoreEnabledTests {
         let stateFile = runtimeDirectoryectory.appendingPathComponent("enabled-overrides.json")
         let store = ScheduleStore(configDir: directory, runtimeDirectory: runtimeDirectoryectory, stateFile: stateFile)
         let created = try await store.create(Schedule(
-                id: "tog", workflow: "wf-x",
+                id: "tog", workflow: WorkflowCatalog.inlineSigil,
                 trigger: .every(Interval(seconds: 90)),
                 concurrency: .skip,
                 enabled: true,
@@ -34,13 +34,17 @@ struct ScheduleStoreEnabledTests {
                 spec: .object(["body": .array([])])))
 
         // When
-        try await store.setEnabled(id: created.id, enabled: false, authorizedWorkflow: "wf-x")
+        try await store.setEnabled(
+            id: created.id,
+            enabled: false,
+            authorizedWorkflow: WorkflowCatalog.inlineSigil
+        )
         let fetched = await store.lookup(created.id)
 
         // Then
         let after = try #require(fetched)
         #expect(after.enabled == false, "enabled must be toggled via the ledger stamp")
-        #expect(after.workflow == "wf-x")
+        #expect(after.workflow == WorkflowCatalog.inlineSigil)
         #expect(after.trigger == .every(Interval(seconds: 90)))
         #expect(after.concurrency == .skip, "concurrency preserved (a field that would be lost under re-serialization drift)")
         #expect(after.inputs?["scope"] == .string("quick"))

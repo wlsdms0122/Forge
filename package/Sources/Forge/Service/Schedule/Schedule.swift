@@ -84,6 +84,17 @@ struct Schedule: Sendable, Codable {
                 )
             }
             
+            guard workflow == WorkflowCatalog.inlineSigil else {
+                throw DecodingError.dataCorrupted(
+                    .init(
+                        codingPath: container.codingPath + [CodingKeys.workflow],
+                        debugDescription: "a schedule with an inline 'spec' runs as"
+                            + " '\(WorkflowCatalog.inlineSigil)' — 'workflow' must be"
+                            + " '\(WorkflowCatalog.inlineSigil)', got '\(workflow)'"
+                    )
+                )
+            }
+            
             self.spec = .object(object)
         } else {
             self.spec = nil

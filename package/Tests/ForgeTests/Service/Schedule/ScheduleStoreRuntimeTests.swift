@@ -359,7 +359,7 @@ struct ScheduleStoreRuntimeTests {
         let runtimeDirectoryectory = try temporary.make("rt-anon"); defer { try? FileManager.default.removeItem(at: runtimeDirectoryectory) }
         try #"""
         id: ha
-        workflow: wf-x
+        workflow: "<inline>"
         every: 1m
         spec:
           body: []

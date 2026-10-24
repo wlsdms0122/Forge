@@ -792,7 +792,7 @@ target workflow (`policy/*.yaml`, checked against the resolved name —
 
 Fire target via `workflow` (registered name) or `spec` (anonymous inline) —
 same rules as `workflow.dispatch`: mutually exclusive, `spec` rejects a
-`name` key and runs under the `<inline>` sigil. At create time the spec is
+`name` key and runs under the `<inline>` sigil. A schedule file that gives a `spec` writes `workflow: "<inline>"`; any other name is a load failure. At create time the spec is
 read the way a catalog file is, through the YAML front end leaning on
 Forge's library and on the catalog's files, and loaded, so what the front
 end or the load refuses surfaces at create time. It is not built there: a
