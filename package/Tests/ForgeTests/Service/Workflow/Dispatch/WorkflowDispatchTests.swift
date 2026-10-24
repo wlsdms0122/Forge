@@ -39,7 +39,7 @@ struct WorkflowDispatchTests {
 
         // Then
         #expect(result.dict["status"] as? String == "ok")
-        #expect(result.dict["name"] as? String == WorkflowDispatchMethod.inlineSigil, "The result name of an inline run is fixed to the sigil")
+        #expect(result.dict["name"] as? String == WorkflowCatalog.inlineSigil, "The result name of an inline run is fixed to the sigil")
     }
 
     @Test("Run id is freshly minted — the wire id is not borrowed")
@@ -93,7 +93,7 @@ struct WorkflowDispatchTests {
         // Then
             Issue.record("Should be rejected without an <inline> policy")
         } catch let error as PolicyDenied {
-            #expect(error.message.contains(WorkflowDispatchMethod.inlineSigil), "The denial reason should include the sigil: \(error.message)")
+            #expect(error.message.contains(WorkflowCatalog.inlineSigil), "The denial reason should include the sigil: \(error.message)")
         }
     }
 

@@ -565,7 +565,7 @@ struct EffectActionTests {
 
         // When
         let module = try await store.inline(spec)
-        let outputs = try await sut.run(module, entry: WorkflowDispatchMethod.inlineSigil, beside: await store.modules())
+        let outputs = try await sut.run(module, entry: WorkflowCatalog.inlineSigil, beside: await store.modules())
 
         // Then
         #expect(outputs["result"] == .string("said hi"))

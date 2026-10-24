@@ -63,6 +63,9 @@ actor WorkflowCatalog {
     }
 
     // MARK: - Property
+    // The name an inline spec's one procedure is declared under.
+    static let inlineSigil = "<inline>"
+
     let directory: URL?
 
     private var cache: [String: Entry] = [:]
@@ -166,8 +169,8 @@ actor WorkflowCatalog {
 
     // An inline spec: one procedure written in the YAML notation, read the
     // way a catalog file is, leaning on the library and on the catalog's
-    // files, and declared public under the sigil the dispatch door fixes,
-    // which a run starts from.
+    // files, and declared public under the inline sigil, which a run starts
+    // from.
     func inline(_ spec: JSONValue) async throws -> Warp.Module {
         guard case var .object(procedure) = spec else {
             throw WorkflowValidationError("an inline spec is one procedure, written as an object")
@@ -176,7 +179,7 @@ actor WorkflowCatalog {
         procedure["access"] = .string("public")
 
         let text = try JSONEncoder().encode(
-            JSONValue.object(["procedures": .object([WorkflowDispatchMethod.inlineSigil: .object(procedure)])])
+            JSONValue.object(["procedures": .object([Self.inlineSigil: .object(procedure)])])
         )
 
         await catalog()

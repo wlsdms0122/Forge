@@ -31,8 +31,6 @@ struct WorkflowDispatchMethod: Sendable {
     }
 
     // MARK: - Property
-    static let inlineSigil = "<inline>"
-
     let runner: WorkflowRunner
     let store: WorkflowCatalog
     let workRegistry: WorkRegistry
@@ -206,7 +204,7 @@ struct WorkflowDispatchMethod: Sendable {
     ) async throws -> (String, Warp.Module) {
         if let specObject = params["spec"] as? [String: Any] {
             guard specObject["name"] == nil else {
-                throw ProtocolError("workflow.dispatch: inline 'spec' must be anonymous — a 'name' key is not allowed (the name is fixed to '\(Self.inlineSigil)')")
+                throw ProtocolError("workflow.dispatch: inline 'spec' must be anonymous — a 'name' key is not allowed (the name is fixed to '\(WorkflowCatalog.inlineSigil)')")
             }
 
             let module: Warp.Module
@@ -217,7 +215,7 @@ struct WorkflowDispatchMethod: Sendable {
                 throw ProtocolError("workflow.dispatch: malformed 'spec' — \(error)")
             }
 
-            return (Self.inlineSigil, module)
+            return (WorkflowCatalog.inlineSigil, module)
         }
 
         if let name = params["name"] as? String, !name.isEmpty {

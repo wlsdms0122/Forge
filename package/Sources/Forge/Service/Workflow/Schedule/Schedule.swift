@@ -79,7 +79,7 @@ struct Schedule: Sendable, Codable {
                     .init(
                         codingPath: container.codingPath + [CodingKeys.spec],
                         debugDescription: "inline 'spec' must be anonymous — a 'name' key is"
-                            + " not allowed (name is fixed to '\(WorkflowDispatchMethod.inlineSigil)')"
+                            + " not allowed (name is fixed to '\(WorkflowCatalog.inlineSigil)')"
                     )
                 )
             }

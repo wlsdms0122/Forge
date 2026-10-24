@@ -253,7 +253,7 @@ func resolveDispatchTarget(
     case let (nil, raw?):
         guard raw["name"] == nil else {
             throw ProtocolError(
-                "\(context): inline 'spec' must be anonymous — a 'name' key is not allowed (the name is fixed to '\(WorkflowDispatchMethod.inlineSigil)')")
+                "\(context): inline 'spec' must be anonymous — a 'name' key is not allowed (the name is fixed to '\(WorkflowCatalog.inlineSigil)')")
         }
 
         let specValue: JSONValue
@@ -273,7 +273,7 @@ func resolveDispatchTarget(
             throw ProtocolError("\(context): malformed 'spec' — \(error)")
         }
 
-        return (WorkflowDispatchMethod.inlineSigil, specValue)
+        return (WorkflowCatalog.inlineSigil, specValue)
 
     case (.some, .some):
         throw ProtocolError(
