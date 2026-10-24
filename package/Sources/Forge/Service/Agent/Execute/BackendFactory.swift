@@ -9,19 +9,19 @@ import Foundation
 
 enum BackendFactory {
     // MARK: - Property
-    static let knownKinds = ["claude-cli", "codex-cli", "openai-compat"]
-    
     // MARK: - Initializer
     // MARK: - Public
     static func make(_ provider: ProviderConfig) -> (any Backend)? {
-        switch provider.kind {
-        case "claude-cli":
+        guard let kind = BackendKind(rawValue: provider.kind) else { return nil }
+        
+        switch kind {
+        case .claudeCLI:
             return ClaudeBackend(executable: provider.settings["executable"] ?? "claude")
         
-        case "codex-cli":
+        case .codexCLI:
             return CodexBackend(executable: provider.settings["executable"] ?? "codex")
         
-        case "openai-compat":
+        case .openAICompatible:
             guard let endpoint = provider.settings["endpoint"],
                 let url = URL(string: endpoint)
             else {
@@ -34,9 +34,6 @@ enum BackendFactory {
             )
             
             return AgentLoopBackend(transport: transport)
-        
-        default:
-            return nil
         }
     }
     

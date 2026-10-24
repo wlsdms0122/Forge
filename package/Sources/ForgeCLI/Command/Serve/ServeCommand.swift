@@ -46,7 +46,7 @@ struct ServeCommand: AsyncParsableCommand {
                         `<sessionHome>/log`; this project points them at the shared log/ tree.
                 [pool]  maximum_concurrent_steps (default 4) — leaf-step concurrency cap.
                         maximum_active_runs (default 256) — concurrent registered-run cap.
-                [providers.<name>]  backend instances; `kind` = claude-cli|codex-cli|openai-compat.
+                [providers.<name>]  backend instances; `kind` = \(BackendKind.allCases.map(\.rawValue).joined(separator: "|")).
                         Silent → a single `claude` (claude-cli) default. Declaring any
                         drops that default, so list `claude` explicitly alongside others.
                         Secrets via env FORGE_PROVIDER_<NAME>_API_KEY only.
