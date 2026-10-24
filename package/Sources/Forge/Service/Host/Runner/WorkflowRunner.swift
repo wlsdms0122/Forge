@@ -252,6 +252,12 @@ actor WorkflowRunner {
                 error: nil
             )
         } catch {
+            // A run's task cancelled (a schedule dropped, the daemon stopping,
+            // a client gone) is a cancelled run, whichever child of the
+            // cancel signal's group throws first.
+            let error = error is CancellationError
+                ? RunCancelled("run '\(runID)' was cancelled")
+                : error
             let duration = (ContinuousClock.now - started).milliseconds
             let failure = ErrorObject(failure: error)
 
@@ -360,7 +366,7 @@ actor WorkflowRunner {
     }
 
     private static func failureKind(of error: any Error) -> WorkflowRunResult.RunFailure.Kind {
-        if error is RunCancelled || error is CancellationError { return .cancelled }
+        if error is RunCancelled { return .cancelled }
         if error is any WorkFailure { return .work }
         if error is any Warp.RecoverableFailure { return .work }
 

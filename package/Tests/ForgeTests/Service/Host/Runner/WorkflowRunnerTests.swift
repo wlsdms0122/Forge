@@ -363,6 +363,77 @@ struct WorkflowRunnerTests {
         #expect(ContinuousClock.now - started < .seconds(8))
     }
 
+    @Test("a run whose task is cancelled reports RunCancelled")
+    func taskCancelledRunReportsRunCancelled() async throws {
+        // Given
+        let harness = try makeRunner(
+            catalog: [
+                "ask": """
+                returns: "Dictionary<String, Any>"
+                failing: anything
+                body:
+                  - let: reply
+                    value:
+                      call:
+                        procedure: invoke
+                        arguments: { model: claude, body: { closure: { returns: String, result: { agent: hello } } } }
+                result: { dictionary: [ [reply, { ref: reply }] ] }
+                """
+            ],
+            backend: SleepingBackend()
+        )
+        let workflow = try await harness.store.workflow(named: "ask")
+        let started = ContinuousClock.now
+        let harnessLocal = harness
+        let task = Task {
+            try await harnessLocal.dispatch(
+                workflow,
+                workflowID: "wf-task-cancelled"
+            )
+        }
+
+        // When
+        try await Task.sleep(for: .milliseconds(300))
+        task.cancel()
+        let result = try await task.value
+
+        // Then
+        #expect(result.status == .failed)
+        #expect(result.error?.kind == .cancelled)
+        #expect(result.error?.object.type == "RunCancelled")
+        #expect(ContinuousClock.now - started < .seconds(8))
+    }
+
+    @Test("a run that meets Swift's CancellationError reports RunCancelled")
+    func cancellationErrorReportsRunCancelled() async throws {
+        // Given
+        let harness = try makeRunner(
+            catalog: [
+                "ask": """
+                returns: "Dictionary<String, Any>"
+                failing: anything
+                body:
+                  - let: reply
+                    value:
+                      call:
+                        procedure: invoke
+                        arguments: { model: claude, body: { closure: { returns: String, result: { agent: hello } } } }
+                result: { dictionary: [ [reply, { ref: reply }] ] }
+                """
+            ],
+            backend: CancelledBackend()
+        )
+        let workflow = try await harness.store.workflow(named: "ask")
+
+        // When
+        let result = try await harness.dispatch(workflow)
+
+        // Then
+        #expect(result.status == .failed)
+        #expect(result.error?.kind == .cancelled)
+        #expect(result.error?.object.type == "RunCancelled")
+    }
+
     @Test("for invoke, cwd null means unset, and an empty permission_mode is an author error")
     func invokeNullCwdUnsetAndEmptyPermissionModeRejects() async throws {
         // Given
@@ -437,6 +508,34 @@ struct WorkflowRunnerTests {
     }
 
     // MARK: - Private
+    // A backend whose call ends only by cancellation, which it meets as
+    // Swift's `CancellationError`.
+    private struct SleepingBackend: Backend {
+        // MARK: - Property
+        // MARK: - Initializer
+        // MARK: - Public
+        func invoke(_ invocation: AgentInvocation) async throws -> BackendResponse {
+            try await Task.sleep(for: .seconds(10))
+
+            return BackendResponse(text: "", usage: nil, toolEvents: [], stdoutLength: 0, durationMs: 1)
+        }
+
+        // MARK: - Private
+    }
+
+    // A backend whose call is cancelled underneath it, as a transport
+    // reports a cancelled request.
+    private struct CancelledBackend: Backend {
+        // MARK: - Property
+        // MARK: - Initializer
+        // MARK: - Public
+        func invoke(_ invocation: AgentInvocation) async throws -> BackendResponse {
+            throw CancellationError()
+        }
+
+        // MARK: - Private
+    }
+
     private struct Harness {
         // MARK: - Property
         let runner: WorkflowRunner
