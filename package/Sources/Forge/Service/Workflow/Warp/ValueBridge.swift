@@ -150,13 +150,12 @@ enum ValueBridge {
         try value(try JSONDecoder().decode(JSONValue.self, from: try JSONEncoder().encode(payload)))
     }
 
+    // A value read back as a Codable payload: the other way of `value(_:)`.
     static func decode<T: Decodable>(
         _ type: T.Type,
         from value: Warp.Value
-    ) throws -> T? {
-        guard value != .null else { return nil }
-
-        return try JSONDecoder().decode(
+    ) throws -> T {
+        try JSONDecoder().decode(
             type,
             from: try JSONEncoder().encode(json(value))
         )

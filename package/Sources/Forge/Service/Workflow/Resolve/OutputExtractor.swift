@@ -11,15 +11,15 @@ enum OutputExtractor {
     // MARK: - Property
     // MARK: - Initializer
     // MARK: - Public
+    // The values the declarations name, read out of the text. What the
+    // declarations themselves get wrong is refused before the text is read,
+    // as the workflow's defect; a text that does not hold what they ask
+    // fails with `OutputResolutionError`.
     static func extract(
         stdout: String,
         declarations: [String: OutputSpec]
     ) throws -> JSONValue {
-        if declarations["_raw"] != nil {
-            throw OutputResolutionError(
-                "outputs key `_raw` is reserved (auto-injected with raw stdout)"
-            )
-        }
+        try refuseDefects(in: declarations)
         
         var parsedJSON: JSONValue? = nil
         var jsonParseError: String? = nil
@@ -38,29 +38,51 @@ enum OutputExtractor {
         
         var result: [String: JSONValue] = ["_raw": .string(stdout)]
         
-        for key in declarations.keys.sorted() {
-            let spec = declarations[key]!
-            
-            do {
-                let extracted = try evaluate(
-                    spec: spec,
-                    key: key,
-                    stdout: stdout,
-                    parsedJSON: parsedJSON,
-                    jsonParseError: jsonParseError
-                )
-                result[key] = extracted
-            } catch let error as OutputResolutionError {
-                throw error
-            } catch {
-                throw OutputResolutionError("outputs.\(key): \(error)")
-            }
+        for (key, spec) in declarations.sorted(by: { left, right in left.key < right.key }) {
+            result[key] = try evaluate(
+                spec: spec,
+                key: key,
+                stdout: stdout,
+                parsedJSON: parsedJSON,
+                jsonParseError: jsonParseError
+            )
         }
         
         return .object(result)
     }
     
     // MARK: - Private
+    // What no text can make right: the key the raw text stands under, and a
+    // path or a regex that does not parse.
+    private static func refuseDefects(in declarations: [String: OutputSpec]) throws {
+        if declarations["_raw"] != nil {
+            throw WorkflowValidationError(
+                "outputs key `_raw` is reserved (auto-injected with raw stdout)"
+            )
+        }
+        
+        for (key, spec) in declarations.sorted(by: { left, right in left.key < right.key }) {
+            switch spec.extractor {
+            case .path(let expression):
+                do {
+                    _ = try JSONPath.tokenize(expression)
+                } catch {
+                    throw WorkflowValidationError("outputs.\(key): \(error)")
+                }
+            
+            case .regex(let pattern):
+                do {
+                    _ = try NSRegularExpression(pattern: pattern, options: [.anchorsMatchLines])
+                } catch {
+                    throw WorkflowValidationError("outputs.\(key): invalid regex `\(pattern)`: \(error)")
+                }
+            
+            case .line:
+                break
+            }
+        }
+    }
+    
     private static func evaluate(
         spec: OutputSpec,
         key: String,
@@ -88,8 +110,6 @@ enum OutputExtractor {
                 } else {
                     throw OutputResolutionError("outputs.\(key): \(message)")
                 }
-            } catch {
-                throw OutputResolutionError("outputs.\(key): \(error)")
             }
         
         case .regex(let pattern):
@@ -118,13 +138,7 @@ enum OutputExtractor {
         key: String,
         canOmit: Bool
     ) throws -> JSONValue? {
-        let regex: NSRegularExpression
-        
-        do {
-            regex = try NSRegularExpression(pattern: pattern, options: [.anchorsMatchLines])
-        } catch {
-            throw OutputResolutionError("outputs.\(key): invalid regex `\(pattern)`: \(error)")
-        }
+        let regex = try NSRegularExpression(pattern: pattern, options: [.anchorsMatchLines])
         
         let range = NSRange(stdout.startIndex..<stdout.endIndex, in: stdout)
         

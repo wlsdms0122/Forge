@@ -331,6 +331,37 @@ struct EffectActionTests {
         #expect(outputs["refused"] == .string("extract_refused"))
     }
 
+    @Test("an outputs map that does not parse is the workflow's defect, which no rescue takes")
+    func extractDefectIsNotRescued() async throws {
+        // Given
+        let harness = Harness()
+        let spec = try harness.frontend.workflow("""
+        returns: "Dictionary<String, Any>"
+        body:
+          - var: refused
+            type: String
+            value: ""
+          - let: reading
+            value:
+              attempt:
+                body:
+                  - value: { call: { procedure: extract, arguments: { text: "code=7", outputs: { dictionary: [ [code, { dictionary: [ [regex, "code=("] ] }] ] } } } }
+                rescue:
+                  - set: refused
+                    value: { ref: reading.type }
+        result: { dictionary: [ [refused, { ref: refused }] ] }
+        """)
+        let sut = harness.executor()
+
+        // When
+        let error = await #expect(throws: (any Error).self) {
+            try await sut.run(spec)
+        }
+
+        // Then
+        #expect("\(String(describing: error))".contains("invalid regex"))
+    }
+
     @Test("when shell exceeds its timeout, rescue recovers it")
     func timeoutRescuesWhenShellRunsLate() async throws {
         // Given

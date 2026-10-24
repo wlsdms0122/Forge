@@ -329,21 +329,24 @@ struct OutputExtractorTests {
         #expect(error is OutputResolutionError)
     }
     
-    @Test("The reserved _raw key cannot be used in declarations")
-    func reservedRawKeyRejected() throws {
-        let stdout = "{}"
-        let declarations = ["_raw": OutputSpec(extractor: .path("$"))]
+    @Test("The reserved _raw key, a path and a regex that do not parse are the workflow's defect, refused before the text is read", arguments: [
+        ("_raw", OutputSpec(extractor: .path("$")), "_raw"),
+        ("code", OutputSpec(extractor: .path("a.b")), "JSONPath syntax"),
+        ("code", OutputSpec(extractor: .regex("(")), "invalid regex")
+    ])
+    func declarationDefectsAreRefused(key: String, spec: OutputSpec, said: String) throws {
+        // Given
+        let declarations = [key: spec]
+
+        // When
         let error = try #require(throws: (any Error).self) {
-            try OutputExtractor.extract(stdout: stdout, declarations: declarations)
+            try OutputExtractor.extract(stdout: "not even JSON", declarations: declarations)
         }
-        
-        guard let resolutionError = error as? OutputResolutionError else {
-            Issue.record()
-            
-            return
-        }
-        
-        #expect(resolutionError.message.contains("_raw"))
+
+        // Then
+        let defect = try #require(error as? WorkflowValidationError)
+
+        #expect(defect.message.contains(said), "\(defect.message)")
     }
     
     // MARK: - Codable round-trip

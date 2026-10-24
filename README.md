@@ -150,7 +150,8 @@ Three things stay apart:
   failed child run, an expired deadline, a text that does not hold what an
   extraction asks, an author's own `abort`. Each is declared under
   `failing`, and exactly this class is what a `rescue` may take.
-- **Fault**: what no declaration admits, a policy denial, cancellation.
+- **Fault**: what no declaration admits, a policy denial, cancellation, an
+  extractor that does not parse.
   Never taken by a rescue, so a rescue cannot swallow a defect that happened
   to sit near a timeout.
 

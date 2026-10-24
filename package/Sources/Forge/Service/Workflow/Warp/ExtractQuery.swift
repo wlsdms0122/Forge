@@ -35,7 +35,15 @@ struct ExtractQuery: Warp.Query {
     // MARK: - Initializer
     // MARK: - Public
     func evaluate(_ question: Warp.Question<Self>) async throws -> Warp.Value {
-        let declarations = try ValueBridge.decode([String: OutputSpec].self, from: question[.outputs]) ?? [:]
+        let declarations: [String: OutputSpec]
+
+        // A map that is no extractor is the workflow's defect, which no text
+        // makes right.
+        do {
+            declarations = try ValueBridge.decode([String: OutputSpec].self, from: question[.outputs])
+        } catch {
+            throw WorkflowValidationError("outputs: \(error)")
+        }
 
         return try ValueBridge.value(
             try OutputExtractor.extract(stdout: ValueBridge.text(question[.text]), declarations: declarations)

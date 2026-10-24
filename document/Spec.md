@@ -108,7 +108,9 @@ returns them by name, with the whole text under `_raw`. It reaches nothing
 outside the run. A text that does not hold what `outputs` asks (a path that
 is not there and has no `default`, a regex that does not match, a value that
 does not coerce to its type) fails with `extract_refused`, which a rescue may
-take.
+take. What `outputs` itself gets wrong (a map that is no extractor, the key
+`_raw`, a path or a regex that does not parse) is the workflow's defect: it
+is refused before the text is read, and no rescue takes it.
 
 ### `Forge.invoke`
 
