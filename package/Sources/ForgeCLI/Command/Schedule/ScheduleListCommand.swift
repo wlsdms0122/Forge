@@ -9,30 +9,6 @@ import ArgumentParser
 import Foundation
 import Forge
 
-private func renderTrigger(_ trigger: JSONValue?) -> String {
-    guard let trigger else { return "?" }
-    
-    if let every = trigger["every"]?.stringValue { return "every \(every)" }
-    
-    if let once = trigger["once"]?.stringValue {
-        let timezone = trigger["timezone"]?.stringValue ?? "?"
-        
-        return "once \(once) \(timezone)"
-    }
-    
-    if let at = trigger["at"]?.stringValue {
-        let timezone = trigger["timezone"]?.stringValue ?? "?"
-        
-        if let days = trigger["days"]?.arrayValue?.compactMap(\.stringValue), !days.isEmpty {
-            return "at \(at) [\(days.joined(separator: ","))] \(timezone)"
-        }
-        
-        return "at \(at) daily \(timezone)"
-    }
-    
-    return "?"
-}
-
 struct ScheduleListCommand: ParsableCommand {
     // MARK: - Property
     static let configuration = CommandConfiguration(
@@ -87,4 +63,27 @@ struct ScheduleListCommand: ParsableCommand {
     }
     
     // MARK: - Private
+    private func renderTrigger(_ trigger: JSONValue?) -> String {
+        guard let trigger else { return "?" }
+        
+        if let every = trigger["every"]?.stringValue { return "every \(every)" }
+        
+        if let once = trigger["once"]?.stringValue {
+            let timezone = trigger["timezone"]?.stringValue ?? "?"
+            
+            return "once \(once) \(timezone)"
+        }
+        
+        if let at = trigger["at"]?.stringValue {
+            let timezone = trigger["timezone"]?.stringValue ?? "?"
+            
+            if let days = trigger["days"]?.arrayValue?.compactMap(\.stringValue), !days.isEmpty {
+                return "at \(at) [\(days.joined(separator: ","))] \(timezone)"
+            }
+            
+            return "at \(at) daily \(timezone)"
+        }
+        
+        return "?"
+    }
 }

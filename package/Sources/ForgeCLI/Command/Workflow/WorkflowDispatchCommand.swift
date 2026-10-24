@@ -176,10 +176,10 @@ struct WorkflowDispatchCommand: ParsableCommand {
             client.fail(type: type, message: message)
         }
         
-        emitStdoutLine(String(decoding: ackFrame, as: UTF8.self))
+        FileHandle.standardOutput.write(line: String(decoding: ackFrame, as: UTF8.self))
         
         while let frame = socket.readFrame() {
-            emitStdoutLine(String(decoding: frame, as: UTF8.self))
+            FileHandle.standardOutput.write(line: String(decoding: frame, as: UTF8.self))
             
             if let object = try? JSONDecoder().decode(JSONValue.self, from: frame),
                 object["kind"]?.stringValue == "workflow.result" {

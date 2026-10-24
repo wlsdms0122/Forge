@@ -38,7 +38,7 @@ final class ServiceBridge: @unchecked Sendable {
     // MARK: - Private
     private func readerLoop() {
         guard let socket = connectRegisterOnce() else {
-            emitStderr("forge service: connect/register failed — exiting")
+            FileHandle.standardError.write(line: "forge service: connect/register failed — exiting")
             exit(1)
         }
         
@@ -51,7 +51,7 @@ final class ServiceBridge: @unchecked Sendable {
             
             if let object = try? JSONDecoder().decode(JSONValue.self, from: frame),
                 object["kind"]?.stringValue == "handler.message" {
-                emitStdoutLine(String(decoding: frame, as: UTF8.self))
+                FileHandle.standardOutput.write(line: String(decoding: frame, as: UTF8.self))
             }
         }
         
@@ -60,7 +60,7 @@ final class ServiceBridge: @unchecked Sendable {
         
         if isStopped() { return }
         
-        emitStderr("forge service: connection lost — exiting")
+        FileHandle.standardError.write(line: "forge service: connection lost — exiting")
         exit(1)
     }
     
@@ -88,13 +88,13 @@ final class ServiceBridge: @unchecked Sendable {
         }
         
         if case .err(let type, let message) = RPC.parseFrame(ackFrame) {
-            emitStderr("forge service: register failed: \(type): \(message)")
+            FileHandle.standardError.write(line: "forge service: register failed: \(type): \(message)")
             socket.close()
             
             return nil
         }
         
-        emitStderr("forge service: registered service=\(service)")
+        FileHandle.standardError.write(line: "forge service: registered service=\(service)")
         
         return socket
     }
@@ -108,7 +108,7 @@ final class ServiceBridge: @unchecked Sendable {
                 let object = try? JSONValue(jsonObject: line),
                 let messageID = object["message_id"]?.stringValue
             else {
-                emitStderr("forge service: bad ack line dropped")
+                FileHandle.standardError.write(line: "forge service: bad ack line dropped")
                 
                 continue
             }
@@ -137,7 +137,7 @@ final class ServiceBridge: @unchecked Sendable {
             lock.unlock()
             
             if socket == nil || !(socket!.writeLine(requestData)) {
-                emitStderr("forge service: ack drop — connection closed")
+                FileHandle.standardError.write(line: "forge service: ack drop — connection closed")
             }
         }
         
