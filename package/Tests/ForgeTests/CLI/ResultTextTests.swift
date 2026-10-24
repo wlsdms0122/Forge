@@ -6,6 +6,7 @@
 //
 
 import Testing
+@testable import Forge
 @testable import ForgeCLI
 
 @Suite("ResultText Tests")
@@ -16,7 +17,7 @@ struct ResultTextTests {
     @Test("a workflow result shows the declared outputs")
     func workflowResultShowsOutputs() {
         // Given
-        let dict: [String: Any] = [
+        let dict: [String: JSONValue] = [
             "workflow_id": "wf-A4057576",
             "name": "<inline>",
             "status": "ok",
@@ -36,7 +37,7 @@ struct ResultTextTests {
     @Test("status comes on the first line — success or failure is readable without scrolling")
     func statusIsFirstLine() {
         // Given
-        let dict: [String: Any] = ["duration_ms": 5, "status": "ok", "name": "x"]
+        let dict: [String: JSONValue] = ["duration_ms": 5, "status": "ok", "name": "x"]
         let first = renderResultPlain(dict).split(separator: "\n").first.map(String.init) ?? ""
 
         // Then
@@ -46,7 +47,7 @@ struct ResultTextTests {
     @Test("a failure shows the error details alongside")
     func failedResultShowsError() {
         // Given
-        let dict: [String: Any] = [
+        let dict: [String: JSONValue] = [
             "status": "failed",
             "workflow_id": "wf-x",
             "error": ["type": "ShellError", "message": "exit 1"],
@@ -63,7 +64,7 @@ struct ResultTextTests {
     @Test("booleans and scalars are printed as-is, without quotes")
     func boolAndScalars() {
         // Given
-        let dict: [String: Any] = ["ok": true, "channel": "C09U6LM639R", "ts": "1779.79"]
+        let dict: [String: JSONValue] = ["ok": true, "channel": "C09U6LM639R", "ts": "1779.79"]
         let output = renderResultPlain(dict)
 
         // Then
@@ -75,7 +76,7 @@ struct ResultTextTests {
     @Test("multi-line values unfold as a block")
     func multilineValueRendersAsBlock() {
         // Given
-        let dict: [String: Any] = ["result": ["log": "line one\nline two"]]
+        let dict: [String: JSONValue] = ["result": ["log": "line one\nline two"]]
         let output = renderResultPlain(dict)
 
         // Then
