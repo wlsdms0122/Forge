@@ -53,7 +53,7 @@ struct FolderGuardTests {
                     offenders.append("\(Self.relative(folder, to: package.root)): Extension outside Model")
                 }
             } else {
-                allowed = hasFiles ? ["Model"] : subfolders
+                allowed = hasFiles ? ["Model"] : subfolders.subtracting(["Model"])
             }
 
             for subfolder in subfolders.subtracting(allowed).sorted() {

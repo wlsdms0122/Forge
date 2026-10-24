@@ -22,7 +22,7 @@ struct WarpImportGuardTests {
         let package = try PackageSource()
         let root = package.sources
         let files = try package.swiftFiles(in: root)
-        let importing = try NSRegularExpression(pattern: #"^\s*(?:@\w+\s+)*import\s+Warp\w*\b"#, options: .anchorsMatchLines)
+        let importing = try NSRegularExpression(pattern: #"^\s*(?:@\w+\s+)*import\s+(?:(?:struct|class|enum|protocol|typealias|func|let|var)\s+)?Warp\w*\b"#, options: .anchorsMatchLines)
         var readerFound = false
 
         // When
