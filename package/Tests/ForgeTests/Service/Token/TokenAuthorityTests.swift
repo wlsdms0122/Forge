@@ -153,7 +153,7 @@ struct TokenAuthorityTests {
         let request = RPCRequest(id: "1", method: "token.issue",
             params: ["principal": "system:runner"])
         let output = try await method.handle(request, claims: admin)
-        let issued = output.dict["token"] as? String
+        let issued = output["token"]?.stringValue
 
         // Then
         #expect(authority.verify(issued ?? "")?.principal == "system:runner")

@@ -46,9 +46,9 @@ struct TokenIssueMethod: Sendable {
         presenter == "system:admin" || presenter.hasPrefix("admin:")
     }
     
-    func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONObject {
+    func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONValue {
         guard
-            let principal = request.rawParams["principal"] as? String,
+            let principal = request.params["principal"]?.stringValue,
             !principal.isEmpty
         else {
             throw ProtocolError("token.issue: 'principal' (string) required")
@@ -77,7 +77,7 @@ struct TokenIssueMethod: Sendable {
         
         let token = authority.mint(TokenClaims(principal: principal, workflowID: nil))
         
-        return ["token": token, "principal": principal]
+        return ["token": .string(token), "principal": .string(principal)]
     }
     
     // MARK: - Private
