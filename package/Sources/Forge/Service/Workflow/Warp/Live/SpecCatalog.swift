@@ -83,6 +83,10 @@ actor SpecCatalog {
     // the library and on them.
     private var reading: YAMLFrontend?
 
+    // The files that built, each compiled once a reload, in the order they
+    // were compiled.
+    private var compiled: [(name: String, compiled: Compiled)] = []
+
     private var currentCatalog: Catalog {
         let scanFailures = scanObstructions.map { obstruction in
             LoadFailure(
@@ -118,6 +122,7 @@ actor SpecCatalog {
             scanObstructions.removeAll()
             generation = nil
             reading = nil
+            compiled.removeAll()
 
             return currentCatalog
         }
@@ -219,6 +224,29 @@ actor SpecCatalog {
         return try Loader().load(document, identity: try Identity.of(document))
     }
 
+    // The image a run of this module links: the module beside every other
+    // file that built, as each was compiled at the reload, and the
+    // vocabulary compiled once a process. A file of the catalog is linked as
+    // it was compiled; another module, an inline spec, is compiled against
+    // them, and a file declaring the name it runs by is left out, since the
+    // caller's is the one meant.
+    func image(running module: Warp.Module, entry: Name) async throws -> Image {
+        await catalog()
+
+        let standing = compiled
+        let files = cache
+
+        if let file = files[entry.spelling], file.module.identity == module.identity {
+            return try await ForgeSpec.linked(standing.map(\.compiled))
+        }
+
+        let world = standing
+            .filter { file in files[file.name]?.module.procedures[entry] == nil }
+            .map(\.compiled)
+
+        return try await ForgeSpec.linked(world + ForgeSpec.compiled([module], beside: world))
+    }
+
     func resolve(_ name: String) async -> Lookup {
         await catalog()
 
@@ -280,7 +308,8 @@ actor SpecCatalog {
         let freshCollisions = collisionFailures(kind: "workflow name", collided)
         let standing = await built(live, recording: &ledger)
 
-        cache = standing
+        cache = standing.entries
+        compiled = standing.compiled
         failureCache = ledger.fresh
         collisions = freshCollisions
         scanObstructions = scan.obstructions
@@ -377,47 +406,46 @@ actor SpecCatalog {
         return (candidates, frontend)
     }
 
-    // The entries that build: all of them where they build together, and
-    // otherwise each against the library, the natives, the standard
-    // vocabulary and the entries that built before it, until a round admits
-    // none. An entry left is recorded with its build refusal, and no run
-    // links it.
+    // The entries that build, each compiled against the vocabulary, which
+    // is compiled once a process: all of them where they build together,
+    // and otherwise each against the entries compiled before it, until a
+    // round admits none. An entry left is recorded with its build refusal,
+    // and no run links it.
     private func built(
         _ live: [String: Entry],
         recording ledger: inout LoadFailureLedger
-    ) async -> [String: Entry] {
-        var standing: [String: Entry] = [:]
+    ) async -> (entries: [String: Entry], compiled: [(name: String, compiled: Compiled)]) {
         var pending = live.values.sorted { left, right in left.name < right.name }
+
+        if
+            let together = try? await ForgeSpec.compiled(pending.map(\.module)),
+            (try? await ForgeSpec.linked(together)) != nil
+        {
+            return (live, zip(pending, together).map { entry, object in (entry.name, object) })
+        }
+
+        var standing: [String: Entry] = [:]
+        var compiled: [(name: String, compiled: Compiled)] = []
         var refusals: [String: String] = [:]
+        var admitted = true
 
-        do {
-            let linkables = try ForgeSpec.linkables()
+        while admitted, !pending.isEmpty {
+            admitted = false
 
-            if (try? await Builder().build(pending.map(\.module) + linkables)) != nil {
-                return live
-            }
-
-            var admitted = true
-
-            while admitted, !pending.isEmpty {
-                admitted = false
-
-                for entry in pending {
-                    do {
-                        _ = try await Builder().build([entry.module] + standing.values.map(\.module) + linkables)
-                        standing[entry.name] = entry
-                        admitted = true
-                    } catch {
-                        refusals[entry.name] = "\(error)"
-                    }
-                }
-
-                pending.removeAll { entry in standing[entry.name] != nil }
-            }
-        } catch {
             for entry in pending {
-                refusals[entry.name] = "\(error)"
+                do {
+                    let own = try await ForgeSpec.compiled([entry.module], beside: compiled.map(\.compiled))
+
+                    _ = try await ForgeSpec.linked(compiled.map(\.compiled) + own)
+                    standing[entry.name] = entry
+                    compiled += own.map { object in (entry.name, object) }
+                    admitted = true
+                } catch {
+                    refusals[entry.name] = "\(error)"
+                }
             }
+
+            pending.removeAll { entry in standing[entry.name] != nil }
         }
 
         for entry in pending {
@@ -430,7 +458,7 @@ actor SpecCatalog {
             )
         }
 
-        return standing
+        return (standing, compiled)
     }
 
     private func record(_ file: Observed, refusal: String, in ledger: inout LoadFailureLedger) {

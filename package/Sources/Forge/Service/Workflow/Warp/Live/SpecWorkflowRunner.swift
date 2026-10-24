@@ -221,20 +221,11 @@ actor SpecWorkflowRunner {
         do {
             // Linking is inside the do-block on purpose: a workflow naming a
             // sibling that has left the catalog is a run that failed, and it
-            // reports through the same ledger a failed step does.
-            // Every workflow the daemon can see goes into the link, and the
-            // name this run was asked for is the entry.
-            //
-            // The module being dispatched leads, and any catalog copy declaring
-            // that same name is left out: normally it *is* that copy, and when
-            // it is not (an inline spec) the caller's is the one they meant.
-            // Two copies would be a duplicate symbol, which is right in general
-            // and wrong for exactly this case.
+            // reports through the same ledger a failed step does. The catalog
+            // links the module beside every workflow that built, and the name
+            // this run was asked for is the entry.
             let entry = try Name(name)
-            let world = await catalog.modules().filter { module in
-                module.procedures[entry] == nil
-            }
-            let image = try await Builder().build([module] + world + ForgeSpec.linkables())
+            let image = try await catalog.image(running: module, entry: entry)
             let executor = Warp.Executor(
                 observer: EventBridge(
                     workflowID: runID,
