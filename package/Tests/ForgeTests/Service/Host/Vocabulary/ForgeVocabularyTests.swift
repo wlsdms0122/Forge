@@ -21,8 +21,8 @@ struct ForgeVocabularyTests {
     func whatShipsIsWhatTheRepositoryHolds() throws {
         // Given
         let file = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()   // Vocabulary
             .deletingLastPathComponent()   // Host
-            .deletingLastPathComponent()   // Workflow
             .deletingLastPathComponent()   // Service
             .deletingLastPathComponent()   // ForgeTests
             .deletingLastPathComponent()   // Tests

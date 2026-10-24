@@ -156,6 +156,9 @@ private struct SpecDocument {
     // MARK: - Initializer
     init() {
         let url = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()   // Vocabulary
+            .deletingLastPathComponent()   // Host
+            .deletingLastPathComponent()   // Service
             .deletingLastPathComponent()   // ForgeTests
             .deletingLastPathComponent()   // Tests
             .deletingLastPathComponent()   // package
