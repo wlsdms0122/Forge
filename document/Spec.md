@@ -15,10 +15,14 @@ A workflow file declares exactly one procedure, named after the file: the file
 identity in the catalog. The procedure is `access: public`, since a run starts
 from it.
 
-Every run is built from the dispatched workflow, every other workflow in the
-catalog, the library, the natives under it and the standard vocabulary. A
-workflow calls another one in the same run with `call`, by its name, and starts
-another run with `dispatch`.
+The catalog reads every file leaning on the library and on the other files,
+so a workflow names a verb, or another workflow, by its short name and hands
+its arguments by name. At each reload every file is built against the
+library, the natives under it, the standard vocabulary and the files that
+build; a file that does not load or does not build is listed with its refusal
+and left out of every run. A run is built from the dispatched workflow and
+every file that built. A workflow calls another one in the same run with
+`call`, by its name, and starts another run with `dispatch`.
 
 - **Inputs** are the procedure's parameters. A caller hands them by name. An
   input of an optional type (`String?`) may be left out, and the daemon hands

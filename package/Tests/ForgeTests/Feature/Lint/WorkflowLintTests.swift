@@ -72,6 +72,32 @@ struct WorkflowLintTests {
         #expect(report.ok, "\(report.issues)")
     }
 
+    @Test("files checked together lean on each other, so a call to another workflow by name reads with that workflow's file")
+    func filesCheckedTogetherLeanOnEachOther() throws {
+        // Given
+        let directory = try temporary.make("lint-together")
+        let caller = directory.appendingPathComponent("caller.yaml")
+        let callee = directory.appendingPathComponent("callee.yaml")
+
+        try workflowFile("""
+        returns: Int
+        result: { call: { procedure: callee, arguments: { base: 1 } } }
+        """, named: "caller").write(to: caller, atomically: true, encoding: .utf8)
+        try workflowFile("""
+        parameters: [ base: Int ]
+        returns: Int
+        result: { ref: base }
+        """, named: "callee").write(to: callee, atomically: true, encoding: .utf8)
+
+        // When
+        let together = WorkflowLint.check(paths: [caller.path, callee.path])
+        let alone = WorkflowLint.check(paths: [caller.path])
+
+        // Then
+        #expect(together.map(\.ok) == [true, true])
+        #expect(alone.first?.decodeError?.contains("'callee' is not declared by a document this text leans on") == true)
+    }
+
     // MARK: - Private
     private func check(named name: String, yaml: String) throws -> WorkflowLint.Report {
         let directory = try temporary.make("lint-\(name)")
@@ -79,6 +105,6 @@ struct WorkflowLintTests {
 
         try workflowFile(yaml, named: name).write(to: file, atomically: true, encoding: .utf8)
 
-        return WorkflowLint.check(path: file.path)
+        return try #require(WorkflowLint.check(paths: [file.path]).first)
     }
 }

@@ -129,5 +129,31 @@ enum ForgeSpec {
         YAMLFrontend(symbols: try SymbolTable(documents: [try library()]))
     }
 
+    // The front end leaning on the library and on these texts, which lean on
+    // each other. A text that does not parse leans on nothing, and its
+    // refusal, as it reads alone, is handed back under its position.
+    static func frontend(leaningOn texts: [String]) throws -> (frontend: YAMLFrontend, refusals: [Int: any Error]) {
+        let frontend = try frontend()
+        var standing = Array(texts.indices)
+        var refusals: [Int: any Error] = [:]
+
+        while true {
+            do {
+                return (try frontend.leaning(on: standing.map { index in texts[index] }), refusals)
+            } catch let refusal as AuthoringError {
+                guard let position = refusal.text else { throw refusal }
+
+                let index = standing.remove(at: position)
+
+                do {
+                    _ = try frontend.document(from: texts[index])
+                    refusals[index] = refusal
+                } catch {
+                    refusals[index] = error
+                }
+            }
+        }
+    }
+
     // MARK: - Private
 }

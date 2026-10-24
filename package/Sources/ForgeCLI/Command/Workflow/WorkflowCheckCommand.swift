@@ -15,8 +15,11 @@ struct WorkflowCheckCommand: ParsableCommand {
         commandName: "check",
         abstract: "Check workflow YAML file(s) the way the daemon reads them. Runs without a daemon.",
         discussion: """
-            Reads each file through the YAML front end and loads the document it
-            writes, as the daemon does. Designed for CI / pre-commit hooks.
+            Reads the files together through the YAML front end, each leaning on
+            Forge's library and on the others, and loads the document each one
+            writes, as the daemon reads its catalog. A file that calls another
+            workflow by name is checked with that workflow's file. Designed for
+            CI / pre-commit hooks.
 
             Catches:
               - malformed YAML, a notation the front end cannot read
@@ -48,8 +51,8 @@ struct WorkflowCheckCommand: ParsableCommand {
         
         var failed = 0
         
-        for path in paths {
-            let report = WorkflowLint.check(path: path)
+        for report in WorkflowLint.check(paths: paths) {
+            let path = report.path
             
             if let readError = report.readError {
                 print("✗ \(path): cannot read — \(readError)")

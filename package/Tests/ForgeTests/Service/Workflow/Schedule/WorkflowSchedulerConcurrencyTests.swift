@@ -29,6 +29,9 @@ struct WorkflowSchedulerConcurrencyTests {
                 "a": "id: a\nworkflow: wfa\nevery: 1s\n",
                 "b": "id: b\nworkflow: wfb\nevery: 1s\n",
         ])
+        // The catalog is read and built before the tick that is timed, so
+        // what is timed is the fire and not a reload.
+        await scheduler.workflowStore.catalog()
         await scheduler.tickOnce()
         try await Task.sleep(for: .milliseconds(1_100))
         let start = ContinuousClock.now

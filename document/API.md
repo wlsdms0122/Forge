@@ -279,10 +279,12 @@ counterpart.**
 forge workflow check <path>...
 ```
 
-For each path: reads the file through the YAML front end and loads the
-document it writes, then checks that the file declares one procedure named
-after the file and that no plain string holds `${` (a string is a literal;
-`format` interpolates). A line per file: `✓ <path>`, `✗ <path>: decode
+Reads the files together through the YAML front end, each leaning on
+Forge's library and on the others, as the daemon reads its catalog, so a file
+that calls another workflow by name is checked with that workflow's file. For
+each path: loads the document the file writes, then checks that the file
+declares one procedure named after the file and that no plain string holds
+`${` (a string is a literal; `format` interpolates). A line per file: `✓ <path>`, `✗ <path>: decode
 failed` followed by the refusal, or `✗ <path> — N issue(s)` followed by
 indented issue lines. Exit code 1 if any file fails, 0 otherwise. Shell globs
 are expanded by the shell.
@@ -290,7 +292,8 @@ are expanded by the shell.
 Catches what the front end and the load refuse: malformed YAML, a notation
 the front end cannot read, a broken document structure. The check does not
 build, so what the build judges (types, declared failures, a call to a name
-no module declares) is refused when a run builds the workflow.
+no module declares) is refused when the daemon's catalog builds the file,
+which lists it as a failure.
 
 ### `forge schedule`
 

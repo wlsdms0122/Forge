@@ -67,7 +67,7 @@ procedures:
               - set: recovered
                 value: rescued
       - let: called
-        value: { call: { procedure: child, arguments: [ from-use ] } }
+        value: { call: { procedure: child, arguments: { tag: from-use } } }
     result:
       dictionary:
         - [greeting, { ref: greet }]

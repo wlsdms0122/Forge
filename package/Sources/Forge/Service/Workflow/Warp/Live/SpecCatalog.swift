@@ -10,9 +10,12 @@ import Warp
 import WarpSyntax
 import WarpYAML
 
-// The workflow catalog — the same scan/cache/failure-ledger discipline as the
-// other stores, each file read by the YAML front end and loaded as a document.
-// Identity is the file basename, and the file declares one procedure under it.
+// The workflow catalog, with the same scan and failure-ledger discipline as
+// the other stores. At a reload every file is read by the YAML front end
+// leaning on the library and on the other files, loaded as a document and
+// built against what builds; a file that does not is a failure, and the
+// entries are the files that built. Identity is the file basename, and the
+// file declares one procedure under it.
 actor SpecCatalog {
     struct Catalog: Sendable {
         // MARK: - Property
@@ -43,14 +46,35 @@ actor SpecCatalog {
         // MARK: - Private
     }
 
+    // A file the scan saw, with when it last changed.
+    private struct Observed {
+        // MARK: - Property
+        let file: ScannedFile
+        let mtime: Date
+
+        var stamp: String { "\(file.source)\t\(mtime.timeIntervalSinceReferenceDate)" }
+
+        // MARK: - Initializer
+        // MARK: - Public
+        // MARK: - Private
+    }
+
     // MARK: - Property
     let directory: URL?
 
     private var cache: [String: Entry] = [:]
     private var failureCache: [String: LoadFailure] = [:]
+    private var legacyFailures: [String: LoadFailure] = [:]
     private var collisions: [LoadFailure] = []
     private var collidedNames: [String: [String]] = [:]
     private var scanObstructions: [StoreScan.Obstruction] = []
+
+    // The observation the entries and failures were read from: each file
+    // with its modification time, and what the scan could not see.
+    private var generation: [String]?
+
+    // The reload in progress, which a caller arriving during it waits for.
+    private var reloading: Task<Void, Never>?
 
     private var currentCatalog: Catalog {
         let scanFailures = scanObstructions.map { obstruction in
@@ -65,7 +89,7 @@ actor SpecCatalog {
             entries: cache.values
                 .map { entry in (entry.name, entry.module, entry.source) }
                 .sorted { left, right in left.name < right.name },
-            failures: (Array(failureCache.values) + collisions + scanFailures)
+            failures: (Array(failureCache.values) + Array(legacyFailures.values) + collisions + scanFailures)
                 .sorted { left, right in left.path < right.path }
         )
     }
@@ -81,9 +105,11 @@ actor SpecCatalog {
         guard let directory else {
             cache.removeAll()
             failureCache.removeAll()
+            legacyFailures.removeAll()
             collisions.removeAll()
             collidedNames.removeAll()
             scanObstructions.removeAll()
+            generation = nil
 
             return currentCatalog
         }
@@ -101,20 +127,12 @@ actor SpecCatalog {
             return currentCatalog
         }
 
-        var entriesBySource: [String: Entry] = [:]
-
-        for entry in cache.values { entriesBySource[entry.source] = entry }
-
-        var ledger = LoadFailureLedger(prior: failureCache)
-        var candidates: [(key: String, source: String, value: Entry)] = []
         var scan = scanStoreFiles(in: directory, pathExtension: specFileExtension)
-        var observedSources: Set<String> = []
+        var observed: [Observed] = []
 
         for file in scan.files {
-            let url = file.url
-
             guard
-                let attributes = try? fileManager.attributesOfItem(atPath: url.path),
+                let attributes = try? fileManager.attributesOfItem(atPath: file.url.path),
                 let mtime = attributes[.modificationDate] as? Date
             else {
                 scan.obstructions.append(
@@ -128,103 +146,39 @@ actor SpecCatalog {
                 continue
             }
 
-            observedSources.insert(file.source)
-
-            if let existing = entriesBySource[file.source], existing.mtime == mtime {
-                candidates.append((existing.name, file.source, existing))
-
-                continue
-            }
-
-            if ledger.reuse(source: file.source, mtime: mtime) { continue }
-
-            let base = url.deletingPathExtension().lastPathComponent
-
-            do {
-                let module = try load(Data(contentsOf: url))
-
-                // Forge's convention on top of the language: a workflow file
-                // declares one procedure and names it after the file. The
-                // language lets a module declare many — this is where a workflow
-                // says it is one thing you can run by the name you know it by.
-                guard module.procedures.keys.map(\.spelling) == [base] else {
-                    ledger.record(
-                        source: file.source,
-                        reason: "a workflow file declares exactly one procedure named"
-                            + " after the file — expected 'procedures: { \(base): ... }',"
-                            + " found \(module.procedures.keys.map(\.spelling).sorted().map { key in "'\(key)'" })",
-                        mtime: mtime,
-                        stderrLine: "workflow procedure/filename mismatch (\(file.source))",
-                        name: base
-                    )
-
-                    continue
-                }
-
-                candidates.append(
-                    (
-                        base,
-                        file.source,
-                        Entry(name: base, module: module, mtime: mtime, source: file.source)
-                    )
-                )
-            } catch {
-                ledger.record(
-                    source: file.source,
-                    reason: "\(error)",
-                    mtime: mtime,
-                    stderrLine: "workflow load failed (\(file.source)): \(error)",
-                    name: base
-                )
-            }
+            observed.append(Observed(file: file, mtime: mtime))
         }
 
-        func isUnobserved(_ source: String) -> Bool {
-            !observedSources.contains(source) && scan.isUnobserved(source: source)
+        var legacy = LoadFailureLedger(prior: legacyFailures)
+
+        legacy.recordLegacyJSONSpecs(in: directory, kind: "workflow")
+        legacyFailures = legacy.fresh
+
+        // The files lean on each other, so a change to one is a reload of
+        // all of them.
+        let observation = observed.map(\.stamp) + scan.obstructions.map(\.description)
+
+        guard observation != generation else { return currentCatalog }
+
+        // One reload at a time: a caller arriving while one runs waits for
+        // it and looks again.
+        if let reloading {
+            await reloading.value
+
+            return await catalog()
         }
 
-        for entry in cache.values where isUnobserved(entry.source) {
-            candidates.append((entry.name, entry.source, entry))
-        }
+        let reload = Task { await self.reload(observed, scan: scan, observation: observation) }
 
-        for (source, failure) in failureCache where isUnobserved(source) {
-            _ = ledger.reuse(source: source, mtime: failure.mtime)
-        }
-
-        var (live, collided) = partitionUniqueKeys(candidates)
-
-        for (key, sources) in collidedNames where sources.contains(where: isUnobserved) {
-            live.removeValue(forKey: key)
-
-            if !collided.contains(where: { entry in entry.key == key }) {
-                collided.append((key: key, sources: sources))
-            }
-        }
-
-        let freshCollisions = collisionFailures(kind: "workflow name", collided)
-        ledger.recordLegacyJSONSpecs(in: directory, kind: "workflow")
-
-        cache = live
-        failureCache = ledger.fresh
-        collisions = freshCollisions
-        scanObstructions = scan.obstructions
-        collidedNames = Dictionary(
-            uniqueKeysWithValues: collided.map { entry in (entry.key, entry.sources) }
-        )
+        reloading = reload
+        await reload.value
+        reloading = nil
 
         return currentCatalog
     }
 
     func all() async -> Catalog {
         await catalog()
-    }
-
-    // A workflow file as the front end writes it, loaded the way any runtime
-    // receives a document.
-    func load(_ data: Data) throws -> Warp.Module {
-        let document = try ForgeSpec.frontend().document(from: data)
-
-        return try Loader().load(document, identity: try Identity.of(document))
     }
 
     // An inline spec: one procedure written in the YAML notation, run under the
@@ -265,17 +219,192 @@ actor SpecCatalog {
     }
 
     // MARK: - Private
+    // Every observed file read, loaded and built again, and the entries and
+    // failures of this observation put in place.
+    private func reload(_ observed: [Observed], scan: StoreScan, observation: [String]) async {
+        var ledger = LoadFailureLedger(prior: failureCache)
+        var candidates = spent(observed, recording: &ledger)
+        let observedSources = Set(observed.map(\.file.source))
+
+        func isUnobserved(_ source: String) -> Bool {
+            !observedSources.contains(source) && scan.isUnobserved(source: source)
+        }
+
+        for entry in cache.values where isUnobserved(entry.source) {
+            candidates.append((entry.name, entry.source, entry))
+        }
+
+        for (source, failure) in failureCache where isUnobserved(source) {
+            _ = ledger.reuse(source: source, mtime: failure.mtime)
+        }
+
+        var (live, collided) = partitionUniqueKeys(candidates)
+
+        for (key, sources) in collidedNames where sources.contains(where: isUnobserved) {
+            live.removeValue(forKey: key)
+
+            if !collided.contains(where: { entry in entry.key == key }) {
+                collided.append((key: key, sources: sources))
+            }
+        }
+
+        let freshCollisions = collisionFailures(kind: "workflow name", collided)
+        let standing = await built(live, recording: &ledger)
+
+        cache = standing
+        failureCache = ledger.fresh
+        collisions = freshCollisions
+        scanObstructions = scan.obstructions
+        collidedNames = Dictionary(
+            uniqueKeysWithValues: collided.map { entry in (entry.key, entry.sources) }
+        )
+        generation = observation
+    }
+
+    // The observed files read leaning on each other and on the library,
+    // each loaded the way a runtime receives a document and held to Forge's
+    // convention of one procedure named after the file. What does not read,
+    // load or keep the convention is recorded.
+    private func spent(
+        _ observed: [Observed],
+        recording ledger: inout LoadFailureLedger
+    ) -> [(key: String, source: String, value: Entry)] {
+        var texts: [(observed: Observed, text: String)] = []
+
+        for file in observed {
+            do {
+                texts.append((file, try String(contentsOf: file.file.url, encoding: .utf8)))
+            } catch {
+                record(file, refusal: "\(error)", in: &ledger)
+            }
+        }
+
+        let frontend: YAMLFrontend
+
+        do {
+            let leaning = try ForgeSpec.frontend(leaningOn: texts.map(\.text))
+
+            for (index, refusal) in leaning.refusals {
+                record(texts[index].observed, refusal: "\(refusal)", in: &ledger)
+            }
+
+            texts = texts.indices.filter { index in leaning.refusals[index] == nil }.map { index in texts[index] }
+            frontend = leaning.frontend
+        } catch {
+            for (file, _) in texts {
+                record(file, refusal: "\(error)", in: &ledger)
+            }
+
+            return []
+        }
+
+        var candidates: [(key: String, source: String, value: Entry)] = []
+
+        for (file, text) in texts {
+            let base = file.file.url.deletingPathExtension().lastPathComponent
+
+            do {
+                let document = try frontend.document(from: text)
+                let module = try Loader().load(document, identity: try Identity.of(document))
+
+                // Forge's convention on top of the language: a workflow file
+                // declares one procedure and names it after the file. The
+                // language lets a module declare many — this is where a workflow
+                // says it is one thing you can run by the name you know it by.
+                guard module.procedures.keys.map(\.spelling) == [base] else {
+                    ledger.record(
+                        source: file.file.source,
+                        reason: "a workflow file declares exactly one procedure named"
+                            + " after the file — expected 'procedures: { \(base): ... }',"
+                            + " found \(module.procedures.keys.map(\.spelling).sorted().map { key in "'\(key)'" })",
+                        mtime: file.mtime,
+                        stderrLine: "workflow procedure/filename mismatch (\(file.file.source))",
+                        name: base
+                    )
+
+                    continue
+                }
+
+                candidates.append(
+                    (
+                        base,
+                        file.file.source,
+                        Entry(name: base, module: module, mtime: file.mtime, source: file.file.source)
+                    )
+                )
+            } catch {
+                record(file, refusal: "\(error)", in: &ledger)
+            }
+        }
+
+        return candidates
+    }
+
+    // The entries that build: each against the library, the natives, the
+    // standard vocabulary and the entries that built before it, until a
+    // round admits none. An entry left is recorded with its build refusal,
+    // and no run links it.
+    private func built(
+        _ live: [String: Entry],
+        recording ledger: inout LoadFailureLedger
+    ) async -> [String: Entry] {
+        var standing: [String: Entry] = [:]
+        var pending = live.values.sorted { left, right in left.name < right.name }
+        var refusals: [String: String] = [:]
+
+        do {
+            let linkables = try ForgeSpec.linkables()
+            var admitted = true
+
+            while admitted, !pending.isEmpty {
+                admitted = false
+
+                for entry in pending {
+                    do {
+                        _ = try await Builder().build([entry.module] + standing.values.map(\.module) + linkables)
+                        standing[entry.name] = entry
+                        admitted = true
+                    } catch {
+                        refusals[entry.name] = "\(error)"
+                    }
+                }
+
+                pending.removeAll { entry in standing[entry.name] != nil }
+            }
+        } catch {
+            for entry in pending {
+                refusals[entry.name] = "\(error)"
+            }
+        }
+
+        for entry in pending {
+            ledger.record(
+                source: entry.source,
+                reason: "build: \(refusals[entry.name] ?? "refused")",
+                mtime: entry.mtime,
+                stderrLine: "workflow build failed (\(entry.source)): \(refusals[entry.name] ?? "refused")",
+                name: entry.name
+            )
+        }
+
+        return standing
+    }
+
+    private func record(_ file: Observed, refusal: String, in ledger: inout LoadFailureLedger) {
+        ledger.record(
+            source: file.file.source,
+            reason: refusal,
+            mtime: file.mtime,
+            stderrLine: "workflow load failed (\(file.file.source)): \(refusal)",
+            name: file.file.url.deletingPathExtension().lastPathComponent
+        )
+    }
 }
 
-// The set a link is handed. `gcc main.cpp a.cpp b.cpp` is given its whole world
-// at once and so is this — every workflow the daemon can see goes into every
-// link, and which one runs is the entry name.
-//
-// This is the one place the "everything, every time" model costs something: the
-// corpus is parsed and validated on reload rather than on demand. It is a
-// directory of workflow files, so that is cheap; if it stops being cheap the
-// answer is caching the parse, not resolving names lazily, because lazily is
-// how a duplicate symbol goes unnoticed until someone happens to call it.
+// The set a link is handed: every workflow that built goes into every link,
+// and which one runs is the entry name. The corpus is read and built at a
+// reload rather than on demand, so a duplicate symbol is refused there and
+// not when someone happens to call it.
 extension SpecCatalog {
     func module(named name: String) async throws -> Warp.Module {
         switch await resolve(name) {
@@ -293,7 +422,7 @@ extension SpecCatalog {
         }
     }
 
-    // The workflows the daemon can see, without the vocabulary a link adds.
+    // The workflows that built, without the vocabulary a link adds.
     func modules() async -> [Warp.Module] {
         await catalog().entries.map(\.module)
     }

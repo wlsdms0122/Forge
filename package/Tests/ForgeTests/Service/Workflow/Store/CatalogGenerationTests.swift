@@ -7,6 +7,7 @@
 
 import Foundation
 import Testing
+import Warp
 @testable import Forge
 
 @Suite("CatalogGeneration Tests")
@@ -64,6 +65,63 @@ struct CatalogGenerationTests {
         #expect(catalog.failures.compactMap(\.name) == ["bad"])
     }
     
+    @Test("A workflow that loads and does not build is a failure, and the others still build and run")
+    func aWorkflowThatDoesNotBuildIsLeftOut() async throws {
+        // Given
+        let directory = try temporary.make("wf-unbuilt")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try writeWorkflow(validBody, named: "ok", in: directory)
+        try writeWorkflow("""
+        result: { call: { procedure: Nowhere.missing, arguments: [] } }
+        """, named: "unbuilt", in: directory)
+        let sut = SpecCatalog(directory: directory)
+
+        // When
+        let catalog = await sut.catalog()
+
+        // Then
+        try assertAccountedForExactlyOnce(catalog, in: directory)
+        #expect(catalog.entries.map(\.name) == ["ok"])
+        #expect(catalog.failures.compactMap(\.name) == ["unbuilt"])
+        #expect(catalog.failures.first?.reason.hasPrefix("build: ") == true)
+
+        guard case .invalid = await sut.resolve("unbuilt") else {
+            Issue.record("a workflow that does not build resolves as broken")
+            return
+        }
+
+        _ = try await Builder().build(await sut.modules() + ForgeSpec.linkables())
+    }
+
+    @Test("Workflows lean on each other: one calls another by its short name and its arguments by name")
+    func workflowsLeanOnEachOther() async throws {
+        // Given
+        let directory = try temporary.make("wf-leaning")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try writeWorkflow("""
+        returns: Int
+        result: { call: { procedure: scaled, arguments: { base: 21 } } }
+        """, named: "caller", in: directory)
+        try writeWorkflow("""
+        parameters: [ base: Int, by: { type: Int, default: 2 } ]
+        returns: Int
+        result: { of: { ref: base }, times: { ref: by } }
+        """, named: "scaled", in: directory)
+        let sut = SpecCatalog(directory: directory)
+
+        // When
+        let catalog = await sut.catalog()
+
+        // Then
+        #expect(catalog.failures.isEmpty)
+        #expect(catalog.entries.map(\.name) == ["caller", "scaled"])
+
+        let image = try await Builder().build(await sut.modules() + ForgeSpec.linkables())
+        let answer = try await Warp.Executor().run(image, entry: try Name("caller"), arguments: [:])
+
+        #expect(answer == .int(42))
+    }
+
     @Test("A scan obstruction rides in the same observation")
     func scanObstructionRidesTheSameObservation() async throws {
         // Given
