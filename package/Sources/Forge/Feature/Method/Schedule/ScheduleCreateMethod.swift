@@ -89,7 +89,7 @@ struct ScheduleCreateMethod: Sendable {
             workflowStore: workflowStore
         )
 
-        try await DispatchAuthz.requireDispatch(
+        try await DispatchAuthorization.requireDispatch(
             claims: claims,
             workflow: workflowName,
             policyStore: policyStore,

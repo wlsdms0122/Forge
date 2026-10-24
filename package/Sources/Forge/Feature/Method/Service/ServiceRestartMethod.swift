@@ -18,7 +18,7 @@ struct ServiceRestartMethod: Sendable {
             throw ProtocolError("service.restart: 'name' (string) required")
         }
 
-        try ServiceAuthz.requireActingAs(name, claims: claims, method: "service.restart")
+        try ServiceAuthorization.requireActingAs(name, claims: claims, method: "service.restart")
 
         let record = try await supervisor.restart(name)
 

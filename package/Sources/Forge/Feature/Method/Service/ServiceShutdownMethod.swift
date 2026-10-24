@@ -18,7 +18,7 @@ struct ServiceShutdownMethod: Sendable {
             throw ProtocolError("service.shutdown: 'name' (string) required")
         }
 
-        try ServiceAuthz.requireActingAs(name, claims: claims, method: "service.shutdown")
+        try ServiceAuthorization.requireActingAs(name, claims: claims, method: "service.shutdown")
 
         let record = try await supervisor.shutdown(name)
 

@@ -26,7 +26,7 @@ struct WorkflowDispatchStreamMethod: Sendable {
     ) async throws {
         let prepared = try await dispatchMethod.prepare(request, claims: claims)
 
-        try await DispatchAuthz.requireDispatch(
+        try await DispatchAuthorization.requireDispatch(
             principal: prepared.principal,
             workflow: prepared.workflow.name,
             policyStore: dispatchMethod.runner.policyStore,

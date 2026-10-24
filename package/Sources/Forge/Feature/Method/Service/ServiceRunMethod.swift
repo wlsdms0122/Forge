@@ -18,7 +18,7 @@ struct ServiceRunMethod: Sendable {
             throw ProtocolError("service.run: 'name' (string) required")
         }
 
-        try ServiceAuthz.requireActingAs(name, claims: claims, method: "service.run")
+        try ServiceAuthorization.requireActingAs(name, claims: claims, method: "service.run")
 
         let record = try await supervisor.run(name)
 

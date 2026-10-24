@@ -24,7 +24,7 @@ struct ScheduleDeleteMethod: Sendable {
             throw ProtocolError("schedule.delete: 'id' (string) required")
         }
 
-        let authorized = try await DispatchAuthz.requireScheduleControl(
+        let authorized = try await DispatchAuthorization.requireScheduleControl(
             claims: claims,
             scheduleID: id,
             store: store,

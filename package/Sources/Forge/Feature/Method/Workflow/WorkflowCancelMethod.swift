@@ -24,7 +24,7 @@ struct WorkflowCancelMethod: Sendable {
             throw ProtocolError("workflow.cancel: 'workflow_id' (string) required")
         }
 
-        try await DispatchAuthz.requireRunControl(
+        try await DispatchAuthorization.requireRunControl(
             claims: claims,
             runID: id,
             pool: pool,

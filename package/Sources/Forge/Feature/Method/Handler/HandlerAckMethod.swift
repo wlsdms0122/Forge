@@ -22,7 +22,7 @@ struct HandlerAckMethod: Sendable {
             throw ProtocolError("handler.ack: 'service' required")
         }
 
-        try ServiceAuthz.requireActingAs(
+        try ServiceAuthorization.requireActingAs(
             service,
             claims: claims,
             method: "handler.ack"

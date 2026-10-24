@@ -126,7 +126,7 @@ struct WorkflowDispatchMethod: Sendable {
         if !isAsync {
             return encodeResult(try await runDispatch(prepared, mode: .awaited))
         } else {
-            try await DispatchAuthz.requireDispatch(
+            try await DispatchAuthorization.requireDispatch(
                 principal: principal,
                 workflow: prepared.workflow.name,
                 policyStore: runner.policyStore,

@@ -1,5 +1,5 @@
 //
-//  ServiceAuthz.swift
+//  ServiceAuthorization.swift
 //  Forge
 //
 //  Created by JSilver on 8/8/26.
@@ -7,7 +7,7 @@
 
 import Foundation
 
-enum ServiceAuthz {
+enum ServiceAuthorization {
     static func requireActingAs(
         _ service: String,
         claims: TokenClaims,

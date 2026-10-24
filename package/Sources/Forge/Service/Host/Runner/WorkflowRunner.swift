@@ -13,7 +13,7 @@ import Warp
 // pool slots, run started/completed/failed events and the child-run boundary.
 // It also IS the dispatch seam: a `dispatch` step asks the daemon for an
 // isolated run, and every entrance (RPC method, scheduler, child step) walks
-// through the same `dispatch(_:...)` door — authz, pool registration,
+// through the same `dispatch(_:...)` door — authorization, pool registration,
 // log adoption — before a run begins.
 actor WorkflowRunner {
     // MARK: - Property
@@ -67,7 +67,7 @@ actor WorkflowRunner {
     ) async throws -> WorkflowRunResult {
         let name = workflow.name
 
-        try await DispatchAuthz.requireDispatch(
+        try await DispatchAuthorization.requireDispatch(
             principal: principal,
             workflow: name,
             policyStore: policyStore,

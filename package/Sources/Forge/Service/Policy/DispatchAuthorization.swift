@@ -1,5 +1,5 @@
 //
-//  DispatchAuthz.swift
+//  DispatchAuthorization.swift
 //  Forge
 //
 //  Created by JSilver on 8/8/26.
@@ -7,7 +7,7 @@
 
 import Foundation
 
-enum DispatchAuthz {
+enum DispatchAuthorization {
     static func requireDispatch(
         claims: TokenClaims,
         workflow: String,

@@ -26,7 +26,7 @@ struct HandlerRegisterMethod: Sendable {
             throw ProtocolError("handler.register: 'service' (string) required")
         }
 
-        try ServiceAuthz.requireActingAs(
+        try ServiceAuthorization.requireActingAs(
             service,
             claims: claims,
             method: "handler.register"

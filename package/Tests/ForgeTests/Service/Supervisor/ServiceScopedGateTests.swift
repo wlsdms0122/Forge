@@ -18,16 +18,16 @@ struct ServiceScopedGateTests {
     // MARK: - Property
     // MARK: - Initializer
     // MARK: - Test
-    // MARK: authz unit — policy layer (ServiceAuthz), claims already verified
+    // MARK: authorization unit — policy layer (ServiceAuthorization), claims already verified
     @Test("Acting as its own service is allowed")
     func actingAsAcceptsMatchingService() throws {
-        try ServiceAuthz.requireActingAs("slack", claims: TokenClaims(principal: "service:slack"), method: "m")
+        try ServiceAuthorization.requireActingAs("slack", claims: TokenClaims(principal: "service:slack"), method: "m")
     }
     
     @Test("Acting as another service is rejected")
     func actingAsRejectsMismatchedService() throws {
         let error = try #require(throws: (any Error).self) {
-            try ServiceAuthz.requireActingAs(
+            try ServiceAuthorization.requireActingAs(
                 "slack", claims: TokenClaims(principal: "service:jira"), method: "m")
         }
         
@@ -37,19 +37,19 @@ struct ServiceScopedGateTests {
     @Test("An operator can act as any service")
     func actingAsAllowsOperatorAnyService() throws {
         for principal in ["system:admin", "system:runner", "admin:jineun"] {
-            try ServiceAuthz.requireActingAs("slack", claims: TokenClaims(principal: principal), method: "m")
+            try ServiceAuthorization.requireActingAs("slack", claims: TokenClaims(principal: principal), method: "m")
         }
     }
     
     @Test("Global control is not possible with a service token")
     func globalRejectsServiceToken() throws {
         let error = try #require(throws: (any Error).self) {
-            try ServiceAuthz.requireGlobal(
+            try ServiceAuthorization.requireGlobal(
                 claims: TokenClaims(principal: "service:jira"), method: "service.reload")
         }
         
         #expect(String(describing: error).contains("global service control"), "\(error)")
-        try ServiceAuthz.requireGlobal(claims: TokenClaims(principal: "system:admin"), method: "service.reload")
+        try ServiceAuthorization.requireGlobal(claims: TokenClaims(principal: "system:admin"), method: "service.reload")
     }
     
     // MARK: register — cross-service hijack blocked at the method
