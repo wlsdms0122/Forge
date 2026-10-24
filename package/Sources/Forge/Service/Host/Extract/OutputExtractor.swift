@@ -56,7 +56,7 @@ enum OutputExtractor {
     // path or a regex that does not parse.
     private static func refuseDefects(in declarations: [String: OutputSpec]) throws {
         if declarations["_raw"] != nil {
-            throw WorkflowValidationError(
+            throw OutputDeclarationError(
                 "outputs key `_raw` is reserved (auto-injected with raw stdout)"
             )
         }
@@ -67,14 +67,14 @@ enum OutputExtractor {
                 do {
                     _ = try JSONPath.tokenize(expression)
                 } catch {
-                    throw WorkflowValidationError("outputs.\(key): \(error)")
+                    throw OutputDeclarationError("outputs.\(key): \(error)")
                 }
             
             case .regex(let pattern):
                 do {
                     _ = try NSRegularExpression(pattern: pattern, options: [.anchorsMatchLines])
                 } catch {
-                    throw WorkflowValidationError("outputs.\(key): invalid regex `\(pattern)`: \(error)")
+                    throw OutputDeclarationError("outputs.\(key): invalid regex `\(pattern)`: \(error)")
                 }
             
             case .line:

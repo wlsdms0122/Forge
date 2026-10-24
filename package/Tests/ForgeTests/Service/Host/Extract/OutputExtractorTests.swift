@@ -344,7 +344,7 @@ struct OutputExtractorTests {
         }
 
         // Then
-        let defect = try #require(error as? WorkflowValidationError)
+        let defect = try #require(error as? OutputDeclarationError)
 
         #expect(defect.message.contains(said), "\(defect.message)")
     }

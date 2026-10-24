@@ -42,7 +42,7 @@ struct ExtractQuery: Warp.Query {
         do {
             declarations = try ValueBridge.decode([String: OutputSpec].self, from: question[.outputs])
         } catch {
-            throw WorkflowValidationError("outputs: \(error)")
+            throw OutputDeclarationError("outputs: \(error)")
         }
 
         return try ValueBridge.value(
