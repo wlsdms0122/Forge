@@ -19,8 +19,8 @@ struct ScheduleDeleteMethod: Sendable {
     }
 
     // MARK: - Public
-    func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONObject {
-        guard let id = request.rawParams["id"] as? String, !id.isEmpty else {
+    func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONValue {
+        guard let id = request.params["id"]?.stringValue, !id.isEmpty else {
             throw ProtocolError("schedule.delete: 'id' (string) required")
         }
 
@@ -34,7 +34,7 @@ struct ScheduleDeleteMethod: Sendable {
 
         try await store.delete(id: id, authorizedWorkflow: authorized.workflow)
 
-        return ["id": id, "deleted": true]
+        return ["id": .string(id), "deleted": true]
     }
 
     // MARK: - Private

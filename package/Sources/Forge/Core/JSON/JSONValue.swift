@@ -59,6 +59,11 @@ package indirect enum JSONValue: Sendable, Codable, Equatable {
         objectValue?[key]
     }
     
+    // The value an `Encodable` encodes to.
+    package init(encoding value: some Encodable) throws {
+        self = try JSONDecoder().decode(JSONValue.self, from: JSONEncoder().encode(value))
+    }
+    
     package init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         

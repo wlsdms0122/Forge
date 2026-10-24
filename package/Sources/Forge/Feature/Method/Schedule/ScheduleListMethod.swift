@@ -19,30 +19,30 @@ struct ScheduleListMethod: Sendable {
     }
 
     // MARK: - Public
-    func handle(_ request: RPCRequest) async throws -> JSONObject {
+    func handle(_ request: RPCRequest) async throws -> JSONValue {
         let now = Date()
         let ledgerMap = await ledger.snapshot()
         let catalog = await store.catalog()
 
-        var flags: [[String: Any]] = []
+        var flags: [JSONValue] = []
 
-        let summary: [[String: Any]] = catalog.entries.map { entry in
+        let summary: [JSONValue] = try catalog.entries.map { entry in
             let schedule = entry.schedule
             let record = ledgerMap[schedule.id]
             let next = schedule.trigger.nextFire(after: record?.attemptedSlot, now: now)
-            var row: [String: Any] = [
-                "id":          schedule.id,
-                "workflow":    schedule.workflow,
-                "trigger":  triggerToAny(schedule.trigger),
-                "concurrency": schedule.concurrency.rawValue,
-                "enabled":     schedule.enabled,
-                "runtime":   entry.runtime,
-                "inputs":      jsonValueDictToAny(schedule.inputs ?? [:]),
-                "source":      entry.source,
+            var row: [String: JSONValue] = [
+                "id":          .string(schedule.id),
+                "workflow":    .string(schedule.workflow),
+                "trigger":     try JSONValue(encoding: schedule.trigger),
+                "concurrency": .string(schedule.concurrency.rawValue),
+                "enabled":     .bool(schedule.enabled),
+                "runtime":     .bool(entry.runtime),
+                "inputs":      .object(schedule.inputs ?? [:]),
+                "source":      .string(entry.source)
             ]
 
             if let record {
-                row["last_attempt_at"] = ISO8601.string(record.recordedAt)
+                row["last_attempt_at"] = .string(ISO8601.string(record.recordedAt))
 
                 switch record.state {
                 case .pending:
@@ -52,67 +52,40 @@ struct ScheduleListMethod: Sendable {
                     row["last_outcome"] = "unknown"
 
                 case .closed(let disposition):
-                    row["last_outcome"] = disposition.label
+                    row["last_outcome"] = .string(disposition.label)
 
-                    if let reason = disposition.reason { row["reason"] = reason }
-                    if let at = record.closedAt { row["outcome_at"] = ISO8601.string(at) }
+                    if let reason = disposition.reason { row["reason"] = .string(reason) }
+                    if let at = record.closedAt { row["outcome_at"] = .string(ISO8601.string(at)) }
 
                     if case .denied(let reason) = disposition {
-                        var flag: [String: Any] = [
+                        var flag: [String: JSONValue] = [
                             "kind": "schedule_denied",
-                            "schedule_id": schedule.id,
-                            "reason": reason,
+                            "schedule_id": .string(schedule.id),
+                            "reason": .string(reason)
                         ]
 
-                        if let at = record.closedAt { flag["outcome_at"] = ISO8601.string(at) }
+                        if let at = record.closedAt { flag["outcome_at"] = .string(ISO8601.string(at)) }
 
-                        flags.append(flag)
+                        flags.append(.object(flag))
                     }
                 }
             }
 
-            if let next { row["next_fire_at"] = ISO8601.string(next) }
-            if schedule.trigger.isOneShot { row["spent"] = (next == nil && record != nil) }
+            if let next { row["next_fire_at"] = .string(ISO8601.string(next)) }
+            if schedule.trigger.isOneShot { row["spent"] = .bool(next == nil && record != nil) }
 
-            return row
+            return .object(row)
         }
-        let failureSummary: [[String: Any]] = catalog.failures.map { failure in
+        let failureSummary: [JSONValue] = catalog.failures.map { failure in
             [
-                "path": failure.path,
-                "reason": failure.reason,
-                "mtime": ISO8601.string(failure.mtime),
+                "path": .string(failure.path),
+                "reason": .string(failure.reason),
+                "mtime": .string(ISO8601.string(failure.mtime))
             ]
         }
 
-        return ["schedules": summary, "failures": failureSummary, "flags": flags]
+        return ["schedules": .array(summary), "failures": .array(failureSummary), "flags": .array(flags)]
     }
 
     // MARK: - Private
-}
-
-func triggerToAny(_ trigger: Trigger) -> [String: Any] {
-    switch trigger {
-    case .every(let interval):
-        return ["every": Interval.format(interval.seconds)]
-
-    case .once(let fireAt, let timezone):
-        return [
-            "once": Trigger.formatWallClock(fireAt, timezone: timezone),
-            "timezone": timezone.identifier,
-        ]
-
-    case .at(let hour, let minute, let days, let timezone):
-        var out: [String: Any] = [
-            "at": String(format: "%02d:%02d", hour, minute),
-            "timezone": timezone.identifier,
-        ]
-
-        if !days.isEmpty {
-            out["days"] = Weekday.allCases
-                .filter { weekday in days.contains(weekday) }
-                .map(\.rawValue)
-        }
-
-        return out
-    }
 }

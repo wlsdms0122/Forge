@@ -38,7 +38,7 @@ struct CreatePolicyGateTests {
                 params: ["token": token, "spec": inlineSpec, "after": "1h"]), claims: try #require(authority.verify(token)))
 
         // Then
-        #expect(result.dict["workflow"] as? String == "<inline>")
+        #expect(result["workflow"]?.stringValue == "<inline>")
     }
     
     @Test("One-shot create is rejected when policy blocks it")
@@ -112,7 +112,7 @@ struct CreatePolicyGateTests {
                 params: ["token": token, "spec": inlineSpec, "every": "1h"]), claims: try #require(authority.verify(token)))
 
         // Then
-        #expect(result.dict["workflow"] as? String == "<inline>")
+        #expect(result["workflow"]?.stringValue == "<inline>")
     }
     
     // MARK: - Private

@@ -26,16 +26,16 @@ struct ScheduleNamespace: Sendable {
 
         self.methods = [
             RPCMethod("schedule.list", .unary(.token) { request, _ in
-                try await list.handle(request)
+                JSONObject(try await list.handle(request))
             }),
             RPCMethod("schedule.set_enabled", .unary(.token) { request, claims in
-                try await setEnabled.handle(request, claims: claims)
+                JSONObject(try await setEnabled.handle(request, claims: claims))
             }),
             RPCMethod("schedule.create", .unary(.token) { request, claims in
-                try await create.handle(request, claims: claims)
+                JSONObject(try await create.handle(request, claims: claims))
             }),
             RPCMethod("schedule.delete", .unary(.token) { request, claims in
-                try await delete.handle(request, claims: claims)
+                JSONObject(try await delete.handle(request, claims: claims))
             })
         ]
     }

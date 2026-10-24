@@ -57,7 +57,7 @@ struct ScheduleControlGateTests {
                 params: ["token": owner, "id": id]), claims: try #require(authority.verify(owner)))
 
         // Then
-        #expect(result.dict["deleted"] as? Bool == true)
+        #expect(result["deleted"]?.boolValue == true)
         let remaining = await store.catalog().entries
         #expect(remaining.isEmpty, "A permitted delete should remove the schedule")
     }

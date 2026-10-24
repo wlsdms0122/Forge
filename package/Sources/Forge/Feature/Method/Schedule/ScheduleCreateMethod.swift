@@ -27,14 +27,14 @@ struct ScheduleCreateMethod: Sendable {
     // MARK: - Public
     // The trigger the request gives, read by `Trigger`'s rules; `after` is a
     // fire time relative to now, and a `once` must lie ahead of now.
-    static func parseTrigger(_ params: [String: Any], now: Date = Date()) throws -> Trigger {
-        let fields = Trigger.CodingKeys.allCases.reduce(into: [String: Any]()) { fields, key in
-            guard let value = params[key.stringValue], (value as? String) != "" else { return }
+    static func parseTrigger(_ params: [String: JSONValue], now: Date = Date()) throws -> Trigger {
+        let fields = Trigger.CodingKeys.allCases.reduce(into: [String: JSONValue]()) { fields, key in
+            guard let value = params[key.stringValue], value.stringValue != "" else { return }
             
             fields[key.stringValue] = value
         }
         
-        if let after = (params["after"] as? String).flatMap({ value in value.isEmpty ? nil : value }) {
+        if let after = params["after"]?.stringValue.flatMap({ value in value.isEmpty ? nil : value }) {
             guard fields.isEmpty else {
                 throw ProtocolError(
                     "schedule.create: 'after' is a fire time relative to now and takes no"
@@ -62,7 +62,7 @@ struct ScheduleCreateMethod: Sendable {
         do {
             trigger = try JSONDecoder().decode(
                 Trigger.self,
-                from: try JSONSerialization.data(withJSONObject: fields)
+                from: try JSONEncoder().encode(JSONValue.object(fields))
             )
         } catch {
             throw ProtocolError("schedule.create: \(friendlyDecodingError(error, root: "trigger"))")
@@ -82,9 +82,9 @@ struct ScheduleCreateMethod: Sendable {
         return nil
     }
 
-    func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONObject {
+    func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONValue {
         let (workflowName, specJSON) = try await resolveDispatchTarget(
-            params: request.rawParams,
+            params: request.params,
             context: "schedule.create",
             workflowStore: workflowStore
         )
@@ -96,10 +96,10 @@ struct ScheduleCreateMethod: Sendable {
             context: "schedule.create"
         )
 
-        let trigger = try Self.parseTrigger(request.rawParams, now: Date())
+        let trigger = try Self.parseTrigger(request.params, now: Date())
         let concurrency: ConcurrencyPolicy
 
-        if let raw = request.rawParams["concurrency"] as? String {
+        if let raw = request.params["concurrency"]?.stringValue {
             guard let policy = ConcurrencyPolicy(rawValue: raw) else {
                 throw ProtocolError("schedule.create: concurrency must be one of queue|skip|replace — '\(raw)'")
             }
@@ -109,17 +109,11 @@ struct ScheduleCreateMethod: Sendable {
             concurrency = .queue
         }
 
-        let inputs: [String: JSONValue]?
-
-        if let object = request.rawParams["inputs"] as? [String: Any] {
-            inputs = try decodeJSONValueDict(object)
-        } else {
-            inputs = nil
-        }
+        let inputs = request.params["inputs"]?.objectValue
 
         let scheduleID: String
 
-        if let given = request.rawParams["id"] as? String, !given.isEmpty {
+        if let given = request.params["id"]?.stringValue, !given.isEmpty {
             scheduleID = given
         } else {
             scheduleID = "s-\(Int(Date().timeIntervalSince1970))-"
@@ -137,31 +131,88 @@ struct ScheduleCreateMethod: Sendable {
         )
         let created = try await store.create(requested)
 
-        var out: [String: Any] = [
-            "id":         created.id,
-            "workflow":   workflowName,
-            "trigger": triggerToAny(trigger),
-            "runtime":  true,
+        var out: [String: JSONValue] = [
+            "id":       .string(created.id),
+            "workflow": .string(workflowName),
+            "trigger":  try JSONValue(encoding: trigger),
+            "runtime":  true
         ]
 
         if let at = Self.fireAt(trigger) {
-            out["fire_at"] = ISO8601.string(at)
+            out["fire_at"] = .string(ISO8601.string(at))
         }
 
-        return JSONObject(out)
+        return .object(out)
     }
 
     // MARK: - Private
+    private static func friendlyDecodingError(_ error: Error, root: String) -> String {
+        guard let decodingError = error as? DecodingError else { return "\(error)" }
+
+        func location(_ context: DecodingError.Context) -> String {
+            var path = root
+
+            for key in context.codingPath {
+                if let index = key.intValue {
+                    path += "[\(index)]"
+                } else {
+                    path += ".\(key.stringValue)"
+                }
+            }
+
+            return path
+        }
+
+        func jsonType(_ type: Any.Type) -> String {
+            let name = String(describing: type)
+
+            if name.contains("Dictionary") || name.contains("JSONObject") { return "object" }
+            if name.contains("Array")  { return "array" }
+            if name.contains("String") { return "string" }
+            if name.contains("Bool")   { return "boolean" }
+            if name.contains("Int") || name.contains("Double") || name.contains("Float") {
+                return "number"
+            }
+
+            return name
+        }
+
+        switch decodingError {
+        case .keyNotFound(let key, let context):
+            return "\(location(context)): missing required key '\(key.stringValue)'"
+
+        case .typeMismatch(let type, let context):
+            return "\(location(context)): expected \(jsonType(type))"
+
+        case .valueNotFound(let type, let context):
+            return "\(location(context)): value missing (expected \(jsonType(type)))"
+
+        case .dataCorrupted(let context):
+            let at = context.codingPath.isEmpty ? root : location(context)
+            var message = context.debugDescription
+
+            if let underlying = context.underlyingError {
+                let detail = "\(underlying)".trimmingCharacters(in: .whitespacesAndNewlines)
+
+                if !detail.isEmpty { message += " — \(detail)" }
+            }
+
+            return "\(at): \(message)"
+
+        @unknown default:
+            return "\(error)"
+        }
+    }
 }
 
 func resolveDispatchTarget(
-    params: [String: Any],
+    params: [String: JSONValue],
     context: String,
     workflowStore: WorkflowCatalog
 ) async throws -> (name: String, spec: JSONValue?) {
-    let nameParam = (params["workflow"] as? String)
+    let nameParam = params["workflow"]?.stringValue
         .flatMap { value in value.isEmpty ? nil : value }
-    let specParam = params["spec"] as? [String: Any]
+    let specParam = params["spec"]?.objectValue
 
     switch (nameParam, specParam) {
     case let (name?, nil):
@@ -175,13 +226,9 @@ func resolveDispatchTarget(
                 "\(context): inline 'spec' must be anonymous — a 'name' key is not allowed (the name is fixed to '\(WorkflowCatalog.inlineSigil)')")
         }
 
-        let specValue: JSONValue
+        let specValue = JSONValue.object(raw)
 
-        do {
-            specValue = .object(try decodeJSONValueDict(raw))
-        } catch {
-            throw ProtocolError("\(context): failed to normalize 'spec': \(error)")
-        }
+
 
         do {
             // An inline spec is one procedure, the same shape workflow.dispatch

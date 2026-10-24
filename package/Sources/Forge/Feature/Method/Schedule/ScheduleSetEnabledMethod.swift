@@ -19,12 +19,12 @@ struct ScheduleSetEnabledMethod: Sendable {
     }
 
     // MARK: - Public
-    func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONObject {
-        guard let id = request.rawParams["id"] as? String else {
+    func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONValue {
+        guard let id = request.params["id"]?.stringValue else {
             throw ProtocolError("schedule.set_enabled: 'id' (string) required")
         }
 
-        guard let enabled = request.rawParams["enabled"] as? Bool else {
+        guard let enabled = request.params["enabled"]?.boolValue else {
             throw ProtocolError("schedule.set_enabled: 'enabled' (bool) required")
         }
 
@@ -42,7 +42,7 @@ struct ScheduleSetEnabledMethod: Sendable {
             authorizedWorkflow: authorized.workflow
         )
 
-        return ["id": id, "enabled": enabled]
+        return ["id": .string(id), "enabled": .bool(enabled)]
     }
 
     // MARK: - Private
