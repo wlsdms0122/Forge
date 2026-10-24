@@ -1,5 +1,5 @@
 //
-//  LineCodec.swift
+//  LineBuffer.swift
 //  Forge
 //
 //  Created by JSilver on 8/8/26.

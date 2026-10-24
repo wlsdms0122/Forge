@@ -1,5 +1,5 @@
 //
-//  StatusMethod.swift
+//  DaemonStatusMethod.swift
 //  Forge
 //
 //  Created by JSilver on 8/8/26.

@@ -1,5 +1,5 @@
 //
-//  LineCodecTests.swift
+//  LineBufferTests.swift
 //  ForgeTests
 //
 //  Created by JSilver on 8/8/26.
@@ -9,8 +9,8 @@ import Foundation
 import Testing
 @testable import Forge
 
-@Suite("LineCodec Tests")
-struct LineCodecTests {
+@Suite("LineBuffer Tests")
+struct LineBufferTests {
     // MARK: - Property
     // MARK: - Initializer
     // MARK: - Test

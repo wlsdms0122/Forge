@@ -1,5 +1,5 @@
 //
-//  SignalWaiter.swift
+//  AsyncSignalWaiter.swift
 //  Forge
 //
 //  Created by JSilver on 8/8/26.

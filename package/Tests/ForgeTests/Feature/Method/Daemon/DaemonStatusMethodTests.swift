@@ -1,5 +1,5 @@
 //
-//  StatusMethodTests.swift
+//  DaemonStatusMethodTests.swift
 //  ForgeTests
 //
 //  Created by JSilver on 8/8/26.
@@ -9,8 +9,8 @@ import Foundation
 import Testing
 @testable import Forge
 
-@Suite("StatusMethod Tests")
-struct StatusMethodTests {
+@Suite("DaemonStatusMethod Tests")
+struct DaemonStatusMethodTests {
     // MARK: - Property
     private let temporary = TemporaryDirectory("status")
 
