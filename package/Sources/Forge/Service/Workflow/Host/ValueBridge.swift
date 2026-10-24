@@ -8,9 +8,8 @@
 import Foundation
 import Warp
 
-// Two mirrors of JSON meet here — Warp's Value and forge's JSONValue.
-// The bridge exists only while the old engine's edges (output extraction, the
-// daemon RPC surface) still speak JSONValue; it goes with them.
+// Converts between Warp's Value and Forge's JSONValue, where a verb's
+// arguments and results meet the JSON that Forge's services and RPC speak.
 enum ValueBridge {
     // MARK: - Property
     // MARK: - Initializer
