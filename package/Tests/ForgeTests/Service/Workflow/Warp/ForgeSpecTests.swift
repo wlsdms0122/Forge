@@ -63,6 +63,22 @@ struct ForgeSpecTests {
         _ = try await Builder().build([module] + ForgeSpec.linkables())
     }
 
+    @Test("a native takes the value the library settles, so null where the library holds a default is refused by the build")
+    func aNativeTakesTheSettledDefault() async throws {
+        // Given
+        let document = try ForgeSpec.frontend().document(from: workflowFile("""
+        returns: String
+        failing: [nonzero_exit, timeout]
+        result: { call: { procedure: Forge.Native.shell, arguments: [ [ls], null, null, null, null ] } }
+        """, named: "raw"))
+        let module = try Loader().load(document, identity: try Identity.of(document))
+
+        // When / Then
+        await #expect(throws: (any Error).self) {
+            _ = try await Builder().build([module] + ForgeSpec.linkables())
+        }
+    }
+
     // MARK: - Public
     // MARK: - Private
 }

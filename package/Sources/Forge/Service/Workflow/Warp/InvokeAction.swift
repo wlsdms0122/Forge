@@ -30,10 +30,10 @@ struct InvokeAction: Warp.Effect {
                 Parameter(name: "model", type: .optional(.string))
 
             case .allowed:
-                Parameter(name: "allowed", type: .any)
+                Parameter(name: "allowed", type: .optional(.array(.any)))
 
             case .envExtra:
-                Parameter(name: "env_extra", type: .optional(.dictionary(key: .string, value: .string)))
+                Parameter(name: "env_extra", type: .dictionary(key: .string, value: .string))
 
             case .cwd:
                 Parameter(name: "cwd", type: .optional(.string))
@@ -42,7 +42,7 @@ struct InvokeAction: Warp.Effect {
                 Parameter(name: "permission_mode", type: .optional(.string))
 
             case .shareSession:
-                Parameter(name: "share_session", type: .optional(.bool))
+                Parameter(name: "share_session", type: .bool)
 
             case .timeout:
                 Parameter(name: "timeout", type: .optional(.double))
@@ -84,7 +84,7 @@ struct InvokeAction: Warp.Effect {
                 field: "permission_mode"
             ),
             envExtra: try ValueBridge.strings(invocation[.envExtra]),
-            shareSession: try Self.share(invocation[.shareSession])
+            shareSession: invocation[.shareSession] == .bool(true)
         )
 
         return try await withDeadline(seconds: ValueBridge.number(invocation[.timeout])) {
@@ -95,22 +95,6 @@ struct InvokeAction: Warp.Effect {
     }
 
     // MARK: - Private
-    private static func share(_ value: Warp.Value) throws -> Bool {
-        switch value {
-        case .null:
-            return false
-
-        case let .bool(share):
-            return share
-
-        case let other:
-            throw ExecutionError(
-                "invoke.share_session must resolve to a bool or null,"
-                    + " got \(other.nominal)"
-            )
-        }
-    }
-
     // null means "unset" and stays nil; an empty string is an author mistake, not
     // a quiet fallback into the daemon's own working directory.
     private static func optionalNonEmptyString(

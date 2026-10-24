@@ -26,7 +26,7 @@ struct ShellAction: Warp.Effect {
                 Parameter(name: "cwd", type: .optional(.string))
 
             case .env:
-                Parameter(name: "env", type: .optional(.dictionary(key: .string, value: .string)))
+                Parameter(name: "env", type: .dictionary(key: .string, value: .string))
 
             case .stdin:
                 Parameter(name: "stdin", type: .optional(.string))
