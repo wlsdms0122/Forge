@@ -67,9 +67,9 @@ struct LogContextRunTests {
             resources: LiveResources(store: ResourceStore(directory: nil))
         )
         let (_, stream) = await bus.subscribe()
-        let module = try await store.module(named: "echo")
+        let workflow = try await store.workflow(named: "echo")
         let result = try await runner.dispatch(
-            module: module, name: "echo", inputs: [:], principal: "cli:test", origin: .rpc,
+            workflow, inputs: [:], principal: "cli:test", origin: .rpc,
             mode: .awaited
         )
         var started: WorkflowEvent?

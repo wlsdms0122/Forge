@@ -6,13 +6,11 @@
 //
 
 import Foundation
-import Warp
 
 struct WorkflowDispatchMethod: Sendable {
     struct Prepared: Sendable {
         // MARK: - Property
-        let name: String
-        let module: Warp.Module
+        let workflow: Workflow
         let inputs: [String: JSONValue]
         let principal: String
         let workflowID: String
@@ -57,7 +55,7 @@ struct WorkflowDispatchMethod: Sendable {
             workflowID: claims.workflowID,
             context: "workflow.dispatch"
         )
-        let (name, module) = try await resolveProgram(request.params)
+        let workflow = try await resolveProgram(request.params)
         let inputs = try decodeJSONValueDict(
             (request.params["inputs"] as? [String: Any]) ?? [:]
         )
@@ -98,8 +96,7 @@ struct WorkflowDispatchMethod: Sendable {
         }
 
         return Prepared(
-            name: name,
-            module: module,
+            workflow: workflow,
             inputs: inputs,
             principal: principal,
             workflowID: workflowID,
@@ -117,8 +114,7 @@ struct WorkflowDispatchMethod: Sendable {
         mode: DispatchMode
     ) async throws -> WorkflowRunResult {
         try await runner.dispatch(
-            module: prepared.module,
-            name: prepared.name,
+            prepared.workflow,
             inputs: prepared.inputs,
             principal: prepared.principal,
             origin: prepared.origin,
@@ -143,12 +139,12 @@ struct WorkflowDispatchMethod: Sendable {
         } else {
             try await DispatchAuthz.requireDispatch(
                 principal: principal,
-                workflow: prepared.name,
+                workflow: prepared.workflow.name,
                 policyStore: runner.policyStore,
                 context: "dispatch"
             )
 
-            let workflowName = prepared.name
+            let workflowName = prepared.workflow.name
             let selfLocal = self
 
             Task.detached {
@@ -201,27 +197,23 @@ struct WorkflowDispatchMethod: Sendable {
     // MARK: - Private
     private func resolveProgram(
         _ params: [String: Any]
-    ) async throws -> (String, Warp.Module) {
+    ) async throws -> Workflow {
         if let specObject = params["spec"] as? [String: Any] {
             guard specObject["name"] == nil else {
                 throw ProtocolError("workflow.dispatch: inline 'spec' must be anonymous — a 'name' key is not allowed (the name is fixed to '\(WorkflowCatalog.inlineSigil)')")
             }
 
-            let module: Warp.Module
-
             do {
-                module = try await store.inline(.object(try decodeJSONValueDict(specObject)))
+                return try await store.inline(.object(try decodeJSONValueDict(specObject)))
             } catch {
                 throw ProtocolError("workflow.dispatch: malformed 'spec' — \(error)")
             }
-
-            return (WorkflowCatalog.inlineSigil, module)
         }
 
         if let name = params["name"] as? String, !name.isEmpty {
             switch await store.resolve(name) {
             case .found(let stored):
-                return (name, stored)
+                return stored
 
             case .invalid(let reason):
                 throw WorkflowValidationError("workflow.dispatch: workflow '\(name)' is broken — \(reason)")

@@ -19,7 +19,7 @@ import WarpYAML
 actor WorkflowCatalog {
     struct Catalog: Sendable {
         // MARK: - Property
-        let entries: [(name: String, module: Warp.Module, source: String, documentation: Documentation)]
+        let entries: [(workflow: Workflow, source: String)]
         let failures: [LoadFailure]
 
         // MARK: - Initializer
@@ -28,7 +28,7 @@ actor WorkflowCatalog {
     }
 
     enum Lookup {
-        case found(Warp.Module)
+        case found(Workflow)
         case invalid(reason: String)
         case unobserved(reason: String)
         case missing
@@ -36,13 +36,9 @@ actor WorkflowCatalog {
 
     private struct Entry {
         // MARK: - Property
-        let name: String
-        let module: Warp.Module
+        let workflow: Workflow
         let mtime: Date
         let source: String
-
-        // The prose the file writes beside its procedure.
-        let documentation: Documentation
 
         // MARK: - Initializer
         // MARK: - Public
@@ -102,8 +98,8 @@ actor WorkflowCatalog {
 
         return Catalog(
             entries: cache.values
-                .map { entry in (entry.name, entry.module, entry.source, entry.documentation) }
-                .sorted { left, right in left.name < right.name },
+                .map { entry in (entry.workflow, entry.source) }
+                .sorted { left, right in left.workflow.name < right.workflow.name },
             failures: (Array(failureCache.values) + collisions + scanFailures)
                 .sorted { left, right in left.path < right.path }
         )
@@ -171,7 +167,7 @@ actor WorkflowCatalog {
     // way a catalog file is, leaning on the library and on the catalog's
     // files, and declared public under the inline sigil, which a run starts
     // from.
-    func inline(_ spec: JSONValue) async throws -> Warp.Module {
+    func inline(_ spec: JSONValue) async throws -> Workflow {
         guard case var .object(procedure) = spec else {
             throw WorkflowValidationError("an inline spec is one procedure, written as an object")
         }
@@ -194,7 +190,11 @@ actor WorkflowCatalog {
             throw refusal.refusal
         }
 
-        return try Loader().load(document, identity: try Identity.of(document))
+        return try Workflow(
+            name: Self.inlineSigil,
+            module: try Loader().load(document, identity: try Identity.of(document)),
+            documentation: nil
+        )
     }
 
     // The image a run of this module runs: for a file of the catalog, the
@@ -209,12 +209,12 @@ actor WorkflowCatalog {
         let standing = compiled
         let files = cache
 
-        if let file = files[entry.spelling], file.module.identity == module.identity, let image {
+        if let file = files[entry.spelling], file.workflow.module.identity == module.identity, let image {
             return image
         }
 
         let world = standing
-            .filter { file in files[file.name]?.module.procedures[entry] == nil }
+            .filter { file in files[file.name]?.workflow.module.procedures[entry] == nil }
             .map(\.compiled)
 
         return try await ForgeVocabulary.linked(world + ForgeVocabulary.compiled([module], beside: world))
@@ -223,7 +223,7 @@ actor WorkflowCatalog {
     func resolve(_ name: String) async -> Lookup {
         await catalog()
 
-        if let entry = cache[name] { return .found(entry.module) }
+        if let entry = cache[name] { return .found(entry.workflow) }
 
         if let failure = failureCache.values.first(where: { failure in failure.name == name }) {
             return .invalid(reason: failure.reason)
@@ -314,7 +314,7 @@ actor WorkflowCatalog {
         }
 
         for entry in cache.values where isUnobserved(entry.source) {
-            candidates.append((entry.name, entry.source, entry))
+            candidates.append((entry.workflow.name, entry.source, entry))
         }
 
         for (source, failure) in failureCache where isUnobserved(source) {
@@ -423,11 +423,9 @@ actor WorkflowCatalog {
                             base,
                             file.file.source,
                             Entry(
-                                name: base,
-                                module: module,
+                                workflow: try Workflow(name: base, module: module, documentation: documentation),
                                 mtime: file.mtime,
-                                source: file.file.source,
-                                documentation: documentation
+                                source: file.file.source
                             )
                         )
                     )
@@ -492,13 +490,13 @@ actor WorkflowCatalog {
         _ live: [String: Entry],
         recording ledger: inout LoadFailureLedger
     ) async -> (entries: [String: Entry], compiled: [(name: String, compiled: Compiled)], image: Image?) {
-        var pending = live.values.sorted { left, right in left.name < right.name }
+        var pending = live.values.sorted { left, right in left.workflow.name < right.workflow.name }
 
         if
-            let together = try? await ForgeVocabulary.compiled(pending.map(\.module)),
+            let together = try? await ForgeVocabulary.compiled(pending.map(\.workflow.module)),
             let image = try? await ForgeVocabulary.linked(together)
         {
-            return (live, zip(pending, together).map { entry, object in (entry.name, object) }, image)
+            return (live, zip(pending, together).map { entry, object in (entry.workflow.name, object) }, image)
         }
 
         var standing: [String: Entry] = [:]
@@ -512,27 +510,27 @@ actor WorkflowCatalog {
 
             for entry in pending {
                 do {
-                    let own = try await ForgeVocabulary.compiled([entry.module], beside: compiled.map(\.compiled))
+                    let own = try await ForgeVocabulary.compiled([entry.workflow.module], beside: compiled.map(\.compiled))
 
                     image = try await ForgeVocabulary.linked(compiled.map(\.compiled) + own)
-                    standing[entry.name] = entry
-                    compiled += own.map { object in (entry.name, object) }
+                    standing[entry.workflow.name] = entry
+                    compiled += own.map { object in (entry.workflow.name, object) }
                     admitted = true
                 } catch {
-                    refusals[entry.name] = "\(error)"
+                    refusals[entry.workflow.name] = "\(error)"
                 }
             }
 
-            pending.removeAll { entry in standing[entry.name] != nil }
+            pending.removeAll { entry in standing[entry.workflow.name] != nil }
         }
 
         for entry in pending {
             ledger.record(
                 source: entry.source,
-                reason: "build: \(refusals[entry.name] ?? "refused")",
+                reason: "build: \(refusals[entry.workflow.name] ?? "refused")",
                 mtime: entry.mtime,
-                stderrLine: "workflow build failed (\(entry.source)): \(refusals[entry.name] ?? "refused")",
-                name: entry.name
+                stderrLine: "workflow build failed (\(entry.source)): \(refusals[entry.workflow.name] ?? "refused")",
+                name: entry.workflow.name
             )
         }
 
@@ -555,10 +553,10 @@ actor WorkflowCatalog {
 // reload rather than on demand, so a duplicate symbol is refused there and
 // not when someone happens to call it.
 extension WorkflowCatalog {
-    func module(named name: String) async throws -> Warp.Module {
+    func workflow(named name: String) async throws -> Workflow {
         switch await resolve(name) {
-        case let .found(module):
-            return module
+        case let .found(workflow):
+            return workflow
 
         case let .invalid(reason):
             throw ExecutionError("workflow '\(name)' is broken — \(reason)")
@@ -573,7 +571,7 @@ extension WorkflowCatalog {
 
     // The workflows that built, without the vocabulary a link adds.
     func modules() async -> [Warp.Module] {
-        await catalog().entries.map(\.module)
+        await catalog().entries.map(\.workflow.module)
     }
 }
 

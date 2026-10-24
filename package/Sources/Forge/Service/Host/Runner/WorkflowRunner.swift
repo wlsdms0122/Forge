@@ -13,7 +13,7 @@ import Warp
 // pool slots, run started/completed/failed events and the child-run boundary.
 // It also IS the dispatch seam: a `dispatch` step asks the daemon for an
 // isolated run, and every entrance (RPC method, scheduler, child step) walks
-// through the same `dispatch(module:...)` door — authz, pool registration,
+// through the same `dispatch(_:...)` door — authz, pool registration,
 // log adoption — before a run begins.
 actor WorkflowRunner {
     // MARK: - Property
@@ -59,8 +59,7 @@ actor WorkflowRunner {
     // The one dispatch door: policy, pool registration and log adoption happen
     // here for every caller — RPC, scheduler and child steps alike.
     func dispatch(
-        module: Warp.Module,
-        name: String,
+        _ workflow: Workflow,
         inputs: [String: JSONValue],
         principal: String,
         origin: DispatchOrigin,
@@ -72,6 +71,8 @@ actor WorkflowRunner {
         workflowID: String? = nil,
         mode: DispatchMode
     ) async throws -> WorkflowRunResult {
+        let name = workflow.name
+
         try await DispatchAuthz.requireDispatch(
             principal: principal,
             workflow: name,
@@ -98,8 +99,7 @@ actor WorkflowRunner {
             await LogContext.$asyncDispatch.withValue(mode.isUnawaited) {
                 await LogContext.$parameters.withValue(parameters) {
                     await run(
-                        module: module,
-                        name: name,
+                        workflow,
                         inputs: inputs,
                         origin: origin,
                         principal: principal,
@@ -120,8 +120,7 @@ actor WorkflowRunner {
     // Every run enters through `dispatch` — pool admission and identity live
     // there, once; this frame owns tokens, registry and event framing.
     private func run(
-        module: Warp.Module,
-        name: String,
+        _ workflow: Workflow,
         inputs: [String: JSONValue] = [:],
         origin: DispatchOrigin = .manual,
         principal: String? = nil,
@@ -129,6 +128,7 @@ actor WorkflowRunner {
         correlator: String? = nil,
         workflowID: String? = nil
     ) async -> WorkflowRunResult {
+        let name = workflow.name
         let runID = workflowID ?? Self.newRunID()
         let context = WorkflowExecutionContext(
             workflowID: runID,
@@ -156,8 +156,7 @@ actor WorkflowRunner {
                     await WorkflowExecutionState.$accessToken.withValue(token) {
                         await WorkflowExecutionState.$accessTokenID.withValue(claims.id) {
                             await runBody(
-                                module: module,
-                                name: name,
+                                workflow,
                                 inputs: inputs,
                                 origin: origin,
                                 runID: runID
@@ -186,12 +185,12 @@ actor WorkflowRunner {
     }
 
     private func runBody(
-        module: Warp.Module,
-        name: String,
+        _ workflow: Workflow,
         inputs: [String: JSONValue],
         origin: DispatchOrigin,
         runID: String
     ) async -> WorkflowRunResult {
+        let name = workflow.name
         let started = ContinuousClock.now
         let (inputPreview, inputLength) = inputs.isEmpty
             ? (nil, nil)
@@ -217,7 +216,7 @@ actor WorkflowRunner {
             // links the module beside every workflow that built, and the name
             // this run was asked for is the entry.
             let entry = try Name(name)
-            let image = try await catalog.image(running: module, entry: entry)
+            let image = try await catalog.image(running: workflow.module, entry: entry)
             let environment = ForgeEnvironment(
                 shell: shell,
                 agent: agent,
@@ -237,7 +236,7 @@ actor WorkflowRunner {
             let executor = Warp.Executor(environment: environment)
             let arguments = try Self.arguments(
                 inputs,
-                for: module.procedures[entry]?.signature
+                for: workflow.module.procedures[entry]?.signature
             )
             let outputs = try await withCancelSignal(runID: runID) {
                 try await executor.run(image, entry: entry, arguments: arguments)
@@ -396,11 +395,11 @@ actor WorkflowRunner {
 // through the same dispatch door as any RPC caller.
 extension WorkflowRunner: RunDispatching {
     func dispatch(name: String, inputs: [String: Warp.Value]) async throws -> Warp.Value {
-        let module: Warp.Module
+        let workflow: Workflow
 
         switch await catalog.resolve(name) {
         case let .found(found):
-            module = found
+            workflow = found
 
         case let .invalid(reason):
             throw WorkflowValidationError(
@@ -423,8 +422,7 @@ extension WorkflowRunner: RunDispatching {
         }
 
         let result = try await dispatch(
-            module: module,
-            name: name,
+            workflow,
             inputs: inputs.mapValues { value in ValueBridge.json(value) },
             principal: "cli:\(parentName)",
             origin: .manual,

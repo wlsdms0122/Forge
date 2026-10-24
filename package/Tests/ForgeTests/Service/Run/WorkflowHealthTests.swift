@@ -103,10 +103,10 @@ struct WorkflowHealthTests {
             resources: LiveResources(store: ResourceStore(directory: nil)))
         try await pool.register(workflowID: "occupier", workflowName: "other", rootID: "occupier",
             origin: .manual, principal: "t")
-        let module = try await store.module(named: "echo3")
+        let workflow = try await store.workflow(named: "echo3")
         do {
             _ = try await runner.dispatch(
-                module: module, name: "echo3", inputs: [:], principal: "cli:t",
+                workflow, inputs: [:], principal: "cli:t",
                 origin: .rpc, mode: .awaited)
 
         // Then

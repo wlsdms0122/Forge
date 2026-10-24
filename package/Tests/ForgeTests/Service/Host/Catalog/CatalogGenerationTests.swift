@@ -44,7 +44,7 @@ struct CatalogGenerationTests {
         try writeWorkflow(validBody, named: "mender", in: directory)
         catalog = await store.catalog()
         try assertAccountedForExactlyOnce(catalog, in: directory)
-        #expect(catalog.entries.map(\.name) == ["mender"])
+        #expect(catalog.entries.map(\.workflow.name) == ["mender"])
         #expect(catalog.failures.isEmpty)
     }
     
@@ -61,7 +61,7 @@ struct CatalogGenerationTests {
         try assertAccountedForExactlyOnce(catalog, in: directory)
 
         // Then
-        #expect(catalog.entries.map(\.name) == ["ok"])
+        #expect(catalog.entries.map(\.workflow.name) == ["ok"])
         #expect(catalog.failures.compactMap(\.name) == ["bad"])
     }
     
@@ -81,7 +81,7 @@ struct CatalogGenerationTests {
 
         // Then
         try assertAccountedForExactlyOnce(catalog, in: directory)
-        #expect(catalog.entries.map(\.name) == ["ok"])
+        #expect(catalog.entries.map(\.workflow.name) == ["ok"])
         #expect(catalog.failures.compactMap(\.name) == ["unbuilt"])
         #expect(catalog.failures.first?.reason.hasPrefix("build: ") == true)
 
@@ -114,7 +114,7 @@ struct CatalogGenerationTests {
 
         // Then
         #expect(catalog.failures.isEmpty)
-        #expect(catalog.entries.map(\.name) == ["caller", "scaled"])
+        #expect(catalog.entries.map(\.workflow.name) == ["caller", "scaled"])
 
         let image = try await Builder().build(await sut.modules() + ForgeVocabulary.linkables())
         let answer = try await Warp.Executor().run(image, entry: try Name("caller"), arguments: [:])
@@ -150,7 +150,7 @@ struct CatalogGenerationTests {
 
         // Then
         try assertAccountedForExactlyOnce(catalog, in: directory)
-        #expect(catalog.entries.map(\.name) == ["sized", "who"])
+        #expect(catalog.entries.map(\.workflow.name) == ["sized", "who"])
         #expect(catalog.failures.compactMap(\.name) == ["count", "run"])
         #expect(catalog.failures.allSatisfy { failure in failure.reason.hasPrefix("a workflow is called by its name") })
         #expect(catalog.failures.last?.reason.contains("'run' is the short name of Forge.run") == true)
@@ -176,7 +176,7 @@ struct CatalogGenerationTests {
         let catalog = await sut.catalog()
 
         // Then
-        #expect(catalog.entries.map(\.name) == ["same"])
+        #expect(catalog.entries.map(\.workflow.name) == ["same"])
         #expect(catalog.failures.compactMap(\.name) == ["is"])
 
         let image = try await Builder().build(await sut.modules() + ForgeVocabulary.linkables())
@@ -205,7 +205,7 @@ struct CatalogGenerationTests {
         let catalog = await WorkflowCatalog(directory: directory).catalog()
 
         // Then
-        #expect(catalog.entries.map(\.name) == ["visible"])
+        #expect(catalog.entries.map(\.workflow.name) == ["visible"])
         #expect(catalog.failures.contains { failure in failure.path == "<scan>" }, "the blocked enumeration never made it into the same response")
     }
     
@@ -265,7 +265,7 @@ struct CatalogGenerationTests {
         let onDisk = Set(try FileManager.default.contentsOfDirectory(atPath: directory.path)
             .filter { name in name.hasSuffix(".yaml") }
             .map { name in (name as NSString).deletingPathExtension })
-        let live = catalog.entries.map(\.name)
+        let live = catalog.entries.map(\.workflow.name)
         let broken = catalog.failures.compactMap(\.name)
         #expect(Set(live).intersection(broken) == [], "counted on both sides at once")
         #expect(Set(live).union(broken) == onDisk, "missing from the accounting — evaporated from the response")

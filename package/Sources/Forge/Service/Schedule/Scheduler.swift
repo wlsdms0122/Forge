@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import Warp
 
 actor WorkflowScheduler {
     private struct RunHandle {
@@ -210,7 +209,7 @@ actor WorkflowScheduler {
             return
         }
         
-        let target: FireTarget
+        let target: Workflow
         
         switch await resolveFireTarget(
             name: schedule.workflow,
@@ -269,7 +268,7 @@ actor WorkflowScheduler {
         let ledgerLocal = ledger
         
         Task.detached {
-            let target: FireTarget
+            let target: Workflow
             
             switch await resolveFireTarget(
                 name: schedule.workflow,
@@ -309,17 +308,15 @@ private func resolveFireTarget(
 ) async -> FireResolution {
     if let spec {
         do {
-            let module = try await store.inline(spec)
-            
-            return .resolved(FireTarget(name: name, module: module))
+            return .resolved(try await store.inline(spec))
         } catch {
             return .denied(reason: "spec_decode", detail: String(describing: error))
         }
     }
     
     switch await store.resolve(name) {
-    case .found(let module):
-        return .resolved(FireTarget(name: name, module: module))
+    case .found(let workflow):
+        return .resolved(workflow)
     
     case .invalid(let reason):
         return .denied(reason: "workflow_invalid", detail: reason)
@@ -355,7 +352,7 @@ private func denyFireSlot(
 }
 
 private func dispatchScheduled(
-    target: FireTarget,
+    target: Workflow,
     inputs: [String: JSONValue],
     id: String,
     runner: WorkflowRunner
@@ -377,8 +374,7 @@ private func dispatchScheduled(
     
     do {
         _ = try await runner.dispatch(
-            module: target.module,
-            name: target.name,
+            target,
             inputs: inputs,
             principal: principal,
             origin: .schedule(id),

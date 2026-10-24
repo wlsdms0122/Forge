@@ -8,6 +8,6 @@
 import Foundation
 
 enum FireResolution {
-    case resolved(FireTarget)
+    case resolved(Workflow)
     case denied(reason: String, detail: String)
 }

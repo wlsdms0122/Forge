@@ -6,15 +6,11 @@
 //
 
 import Foundation
-import Warp
-import WarpYAML
 
 struct WorkflowDescribeMethod: Sendable {
     // MARK: - Property
     let store: WorkflowCatalog
     let tokenAuthority: TokenAuthority
-
-    private let contract = WorkflowContract()
 
     // MARK: - Initializer
     init(store: WorkflowCatalog, tokenAuthority: TokenAuthority) {
@@ -32,33 +28,38 @@ struct WorkflowDescribeMethod: Sendable {
 
         let entries = await store.catalog().entries
 
-        guard let entry = entries.first(where: { entry in entry.name == name }) else {
+        guard let entry = entries.first(where: { entry in entry.workflow.name == name }) else {
             throw ResolutionError("workflow not found: \(name)")
         }
 
-        // A workflow file declares one procedure named after the file — that is
-        // Forge's convention, enforced at load, and what makes this lookup total.
-        let declared = try Name(entry.name)
-
-        guard let procedure = entry.module.procedures[declared] else {
-            throw ResolutionError("workflow '\(name)' declares no procedure of that name")
-        }
-
+        let contract = entry.workflow.contract
         var result: [String: Any] = [
-            "name":        entry.name,
+            "name":        entry.workflow.name,
             "source":      entry.source,
         ]
 
-        result["description"] = entry.documentation.descriptions[declared]
-        result["inputs"] = contract.inputs(
-            of: procedure.signature,
-            hints: entry.documentation.hints[declared] ?? [:],
-            defaults: entry.documentation.defaults[declared] ?? [:]
-        )
-        result["returns"] = contract.returns(of: procedure.signature)
+        result["description"] = entry.workflow.description
+        result["inputs"] = Self.inputs(of: contract)
+        result["returns"] = contract.returns
 
         return JSONObject(result)
     }
 
     // MARK: - Private
+    // Each input by name, with its type, and the default and the hint the
+    // file writes.
+    private static func inputs(of contract: WorkflowContract) -> [String: Any] {
+        Dictionary(
+            contract.inputs.map { input in
+                var described: [String: Any] = ["type": input.type]
+
+                if let written = input.defaultValue { described["default"] = jsonValueToAny(written) }
+
+                if let hint = input.hint { described["hint"] = hint }
+
+                return (input.name, described)
+            },
+            uniquingKeysWith: { first, _ in first }
+        )
+    }
 }

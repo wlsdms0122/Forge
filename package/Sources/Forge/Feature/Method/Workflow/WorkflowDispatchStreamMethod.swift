@@ -24,7 +24,7 @@ struct WorkflowDispatchStreamMethod: Sendable {
 
         try await DispatchAuthz.requireDispatch(
             principal: prepared.principal,
-            workflow: prepared.name,
+            workflow: prepared.workflow.name,
             policyStore: dispatchMethod.runner.policyStore,
             context: "dispatch"
         )
@@ -36,7 +36,7 @@ struct WorkflowDispatchStreamMethod: Sendable {
             "id": request.id,
             "result": [
                 "workflow_id": prepared.workflowID,
-                "name":        prepared.name,
+                "name":        prepared.workflow.name,
                 "status":      "streaming",
             ] as [String: Any],
         ]))
@@ -56,7 +56,7 @@ struct WorkflowDispatchStreamMethod: Sendable {
                 await Log.shared.append(
                     "dispatch.failed",
                     LogPayload([
-                        "workflow":    prepared.name,
+                        "workflow":    prepared.workflow.name,
                         "workflow_id": prepared.workflowID,
                         "principal":   prepared.principal,
                         "error":       String(describing: error),
@@ -112,7 +112,7 @@ struct WorkflowDispatchStreamMethod: Sendable {
         case .failure(let error):
             resultObject = [
                 "workflow_id": prepared.workflowID,
-                "name":        prepared.name,
+                "name":        prepared.workflow.name,
                 "status":      "failed",
                 "error":       [
                     "type": (error as? any ForgeError)?.wireType ?? "InternalError",

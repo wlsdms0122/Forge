@@ -27,12 +27,11 @@ struct WorkflowRunnerTests {
             result: { dictionary: [ [text, { format: "hi ${msg}", with: { msg: { ref: msg } } }] ] }
             """
         ])
-        let module = try await harness.store.module(named: "hello")
+        let workflow = try await harness.store.workflow(named: "hello")
 
         // When
         let result = try await harness.dispatch(
-            module: module,
-            name: "hello",
+            workflow,
             inputs: ["msg": .string("there")]
         )
 
@@ -52,12 +51,11 @@ struct WorkflowRunnerTests {
             result: { format: "hi ${msg}", with: { msg: { ref: msg } } }
             """
         ])
-        let module = try await harness.store.module(named: "plain")
+        let workflow = try await harness.store.workflow(named: "plain")
 
         // When
         let result = try await harness.dispatch(
-            module: module,
-            name: "plain",
+            workflow,
             inputs: ["msg": .string("there")]
         )
 
@@ -79,10 +77,10 @@ struct WorkflowRunnerTests {
             result: { dictionary: [ [out, { ref: say }] ] }
             """
         ])
-        let module = try await harness.store.module(named: "say")
+        let workflow = try await harness.store.workflow(named: "say")
 
         // When
-        let result = try await harness.dispatch(module: module, name: "say")
+        let result = try await harness.dispatch(workflow)
 
         // Then
         #expect(result.status == .ok)
@@ -109,10 +107,10 @@ struct WorkflowRunnerTests {
             result: { dictionary: [ [reply, { ref: session }] ] }
             """
         ])
-        let module = try await harness.store.module(named: "ask")
+        let workflow = try await harness.store.workflow(named: "ask")
 
         // When
-        let result = try await harness.dispatch(module: module, name: "ask")
+        let result = try await harness.dispatch(workflow)
 
         // Then
         #expect(result.status == .ok)
@@ -129,10 +127,10 @@ struct WorkflowRunnerTests {
               - value: { abort: "boom reason" }
             """
         ])
-        let module = try await harness.store.module(named: "boom")
+        let workflow = try await harness.store.workflow(named: "boom")
 
         // When
-        let result = try await harness.dispatch(module: module, name: "boom")
+        let result = try await harness.dispatch(workflow)
 
         // Then
         #expect(result.status == .failed)
@@ -161,10 +159,10 @@ struct WorkflowRunnerTests {
             ],
             policy: ["cli:parent": ["parent", "child"]]
         )
-        let module = try await harness.store.module(named: "parent")
+        let workflow = try await harness.store.workflow(named: "parent")
 
         // When
-        let result = try await harness.dispatch(module: module, name: "parent")
+        let result = try await harness.dispatch(workflow)
 
         // Then
         #expect(result.status == .ok)
@@ -197,10 +195,10 @@ struct WorkflowRunnerTests {
             ],
             policy: ["cli:parent": ["parent"]]
         )
-        let module = try await harness.store.module(named: "parent")
+        let workflow = try await harness.store.workflow(named: "parent")
 
         // When
-        let result = try await harness.dispatch(module: module, name: "parent")
+        let result = try await harness.dispatch(workflow)
 
         // Then
         #expect(result.status == .failed)
@@ -236,10 +234,10 @@ struct WorkflowRunnerTests {
             ],
             policy: ["cli:parent": ["parent", "boom"]]
         )
-        let module = try await harness.store.module(named: "parent")
+        let workflow = try await harness.store.workflow(named: "parent")
 
         // When
-        let result = try await harness.dispatch(module: module, name: "parent")
+        let result = try await harness.dispatch(workflow)
 
         // Then
         #expect(result.status == .ok)
@@ -264,10 +262,10 @@ struct WorkflowRunnerTests {
             policy: ["cli:parent": ["parent", "child"]]
         )
         let (_, stream) = await harness.eventBus.subscribe()
-        let module = try await harness.store.module(named: "parent")
+        let workflow = try await harness.store.workflow(named: "parent")
 
         // When
-        let result = try await harness.dispatch(module: module, name: "parent")
+        let result = try await harness.dispatch(workflow)
 
         // Then
         #expect(result.status == .ok)
@@ -304,10 +302,10 @@ struct WorkflowRunnerTests {
                                     - [t1, { closure: { returns: String, result: { agent: hello } } }]
             """
         ])
-        let module = try await harness.store.module(named: "fan")
+        let workflow = try await harness.store.workflow(named: "fan")
 
         // When
-        let result = try await harness.dispatch(module: module, name: "fan")
+        let result = try await harness.dispatch(workflow)
 
         // Then — the fan-out severed the session, so the piece's agent turn has none
         #expect(result.status == .failed)
@@ -324,13 +322,12 @@ struct WorkflowRunnerTests {
               - value: { call: { procedure: shell, arguments: { command: ["/bin/sleep", "10"] } } }
             """
         ])
-        let module = try await harness.store.module(named: "slow")
+        let workflow = try await harness.store.workflow(named: "slow")
         let started = ContinuousClock.now
         let harnessLocal = harness
         let task = Task {
             try await harnessLocal.dispatch(
-                module: module,
-                name: "slow",
+                workflow,
                 workflowID: "wf-cancelme"
             )
         }
@@ -374,10 +371,10 @@ struct WorkflowRunnerTests {
         )
 
         // When
-        let nullcwd = try await harness.store.module(named: "nullcwd")
-        let nullResult = try await harness.dispatch(module: nullcwd, name: "nullcwd")
-        let emptymode = try await harness.store.module(named: "emptymode")
-        let emptyResult = try await harness.dispatch(module: emptymode, name: "emptymode")
+        let nullcwd = try await harness.store.workflow(named: "nullcwd")
+        let nullResult = try await harness.dispatch(nullcwd)
+        let emptymode = try await harness.store.workflow(named: "emptymode")
+        let emptyResult = try await harness.dispatch(emptymode)
 
         // Then — null stays "unset" as-is, while an empty string is an explicit rejection
         #expect(nullResult.status == .ok)
@@ -405,11 +402,11 @@ struct WorkflowRunnerTests {
             ],
             pool: WorkflowPool(maximumConcurrentSteps: 1, maximumActiveRuns: Int.max)
         )
-        let module = try await harness.store.module(named: "fanshell")
+        let workflow = try await harness.store.workflow(named: "fanshell")
         let started = ContinuousClock.now
 
         // When
-        let result = try await harness.dispatch(module: module, name: "fanshell")
+        let result = try await harness.dispatch(workflow)
 
         // Then
         #expect(result.status == .ok)
@@ -430,16 +427,14 @@ struct WorkflowRunnerTests {
         // MARK: - Initializer
         // MARK: - Public
         func dispatch(
-            module: Warp.Module,
-            name: String,
+            _ workflow: Workflow,
             inputs: [String: JSONValue] = [:],
             workflowID: String? = nil
         ) async throws -> WorkflowRunResult {
             try await runner.dispatch(
-                module: module,
-                name: name,
+                workflow,
                 inputs: inputs,
-                principal: "cli:\(name)",
+                principal: "cli:\(workflow.name)",
                 origin: .manual,
                 workflowID: workflowID,
                 mode: .awaited

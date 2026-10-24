@@ -564,7 +564,7 @@ struct EffectActionTests {
         let sut = try harness.executor()
 
         // When
-        let module = try await store.inline(spec)
+        let module = try await store.inline(spec).module
         let outputs = try await sut.run(module, entry: WorkflowCatalog.inlineSigil, beside: await store.modules())
 
         // Then

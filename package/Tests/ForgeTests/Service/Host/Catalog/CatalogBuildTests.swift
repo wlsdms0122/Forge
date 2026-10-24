@@ -43,8 +43,8 @@ struct CatalogBuildTests {
         _ = try await Builder().build(await sut.modules() + ForgeVocabulary.linkables())
         print("catalog: ok, \(catalog.entries.count) of \(catalog.entries.count + catalog.failures.count)")
 
-        let descriptions = catalog.entries.map(\.documentation.descriptions.count).reduce(0, +)
-        let hints = catalog.entries.flatMap(\.documentation.hints.values).map(\.count).reduce(0, +)
+        let descriptions = catalog.entries.filter { entry in entry.workflow.description != nil }.count
+        let hints = catalog.entries.flatMap(\.workflow.contract.inputs).filter { input in input.hint != nil }.count
 
         print("prose: \(descriptions) descriptions, \(hints) hints")
 
