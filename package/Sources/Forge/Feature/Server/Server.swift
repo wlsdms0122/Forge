@@ -195,7 +195,7 @@ package actor Server {
             instanceHome: instanceHome,
             configSnapshot: configSnapshot
         )
-        let dispatch = DispatchService(
+        let router = RPCRouter(
             methods: workflow.methods
                 + schedule.methods
                 + job.methods
@@ -209,7 +209,7 @@ package actor Server {
         )
         
         self.socketServer = UnixSocketServer(path: socketPath)
-        self.acceptLoop = AcceptLoop(server: socketServer, dispatch: dispatch)
+        self.acceptLoop = AcceptLoop(server: socketServer, router: router)
     }
     
     // MARK: - Public

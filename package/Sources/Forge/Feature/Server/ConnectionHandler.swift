@@ -10,15 +10,15 @@ import Foundation
 actor ConnectionHandler {
     // MARK: - Property
     private let connection: Connection
-    private let dispatch: DispatchService
+    private let router: RPCRouter
     
     private var inFlightTasks: [Int: Task<Void, Never>] = [:]
     private var nextTaskID: Int = 0
     
     // MARK: - Initializer
-    init(connection: Connection, dispatch: DispatchService) {
+    init(connection: Connection, router: RPCRouter) {
         self.connection = connection
-        self.dispatch = dispatch
+        self.router = router
     }
     
     // MARK: - Public
@@ -29,11 +29,11 @@ actor ConnectionHandler {
             let id = nextTaskID
             nextTaskID &+= 1
             
-            let task = Task { [connection, dispatch, sink] in
+            let task = Task { [connection, router, sink] in
                 await Self.handleOne(
                     frame: frame,
                     connection: connection,
-                    dispatch: dispatch,
+                    router: router,
                     sink: sink
                 )
                 
@@ -55,7 +55,7 @@ actor ConnectionHandler {
     private static func handleOne(
         frame: Data,
         connection: Connection,
-        dispatch: DispatchService,
+        router: RPCRouter,
         sink: ConnectionSink
     ) async {
         let request: RPCRequest
@@ -76,7 +76,7 @@ actor ConnectionHandler {
             return
         }
         
-        if let streamingHandler = dispatch.streamingHandler(for: request.method) {
+        if let streamingHandler = router.streamingHandler(for: request.method) {
             do {
                 try await streamingHandler(request, sink)
             } catch is CancellationError {
@@ -92,7 +92,7 @@ actor ConnectionHandler {
         let response: RPCResponse
         
         do {
-            let result = try await dispatch.dispatch(request)
+            let result = try await router.dispatch(request)
             response = RPCResponse(id: request.id, result: result)
         } catch {
             response = RPCResponse(id: request.id, error: error)

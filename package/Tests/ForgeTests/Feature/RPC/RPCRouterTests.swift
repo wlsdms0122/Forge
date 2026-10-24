@@ -1,5 +1,5 @@
 //
-//  DispatchServiceTests.swift
+//  RPCRouterTests.swift
 //  ForgeTests
 //
 //  Created by JSilver on 10/25/26.
@@ -9,8 +9,8 @@ import Foundation
 import Testing
 @testable import Forge
 
-@Suite("DispatchService Tests")
-struct DispatchServiceTests {
+@Suite("RPCRouter Tests")
+struct RPCRouterTests {
     // MARK: - Property
     // MARK: - Initializer
     // MARK: - Test
@@ -18,7 +18,7 @@ struct DispatchServiceTests {
     func tokenRequired() async throws {
         // Given
         let authority = TokenAuthority()
-        let sut = DispatchService(methods: TokenNamespace(authority: authority).methods, authority: authority)
+        let sut = RPCRouter(methods: TokenNamespace(authority: authority).methods, authority: authority)
 
         // When
         let error = await #expect(throws: ProtocolError.self) {
@@ -33,7 +33,7 @@ struct DispatchServiceTests {
     func foreignTokenRejected() async throws {
         // Given
         let authority = TokenAuthority()
-        let sut = DispatchService(methods: TokenNamespace(authority: authority).methods, authority: authority)
+        let sut = RPCRouter(methods: TokenNamespace(authority: authority).methods, authority: authority)
         let foreign = TokenAuthority().mint(TokenClaims(principal: "system:admin"))
 
         // When / Then
@@ -48,7 +48,7 @@ struct DispatchServiceTests {
     func operatorRefusesRunToken() async throws {
         // Given
         let authority = TokenAuthority()
-        let sut = Self.handler(authority)
+        let sut = Self.router(authority)
         let run = authority.mint(TokenClaims(principal: "cli:response", workflowID: "wf-1"))
 
         // When
@@ -64,7 +64,7 @@ struct DispatchServiceTests {
     func operatorAcceptsOperatorToken() async throws {
         // Given
         let authority = TokenAuthority()
-        let sut = Self.handler(authority)
+        let sut = Self.router(authority)
 
         for principal in ["system:admin", "system:runner", "admin:jineun"] {
             let token = authority.mint(TokenClaims(principal: principal))
@@ -80,7 +80,7 @@ struct DispatchServiceTests {
     @Test("An open method answers without a token")
     func openNeedsNoToken() async throws {
         // Given
-        let sut = DispatchService(
+        let sut = RPCRouter(
             methods: [RPCMethod("daemon.ping", .open { _ in ["pong": true] })],
             authority: TokenAuthority()
         )
@@ -94,8 +94,8 @@ struct DispatchServiceTests {
 
     // MARK: - Public
     // MARK: - Private
-    private static func handler(_ authority: TokenAuthority) -> DispatchService {
-        DispatchService(
+    private static func router(_ authority: TokenAuthority) -> RPCRouter {
+        RPCRouter(
             methods: HandlerNamespace(
                 handlerBus: WorkflowHandlerBus(),
                 workRegistry: WorkRegistry()

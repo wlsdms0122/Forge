@@ -1,5 +1,5 @@
 //
-//  DispatchService.swift
+//  RPCRouter.swift
 //  Forge
 //
 //  Created by JSilver on 8/8/26.
@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct DispatchService: Sendable {
+struct RPCRouter: Sendable {
     typealias StreamingHandler = @Sendable (RPCRequest, any EventSink) async throws -> Void
     
     // MARK: - Property

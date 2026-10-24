@@ -10,23 +10,23 @@ import Foundation
 actor AcceptLoop {
     // MARK: - Property
     private let server: UnixSocketServer
-    private let dispatch: DispatchService
+    private let router: RPCRouter
     
     private var task: Task<Void, Never>?
     
     // MARK: - Initializer
-    init(server: UnixSocketServer, dispatch: DispatchService) {
+    init(server: UnixSocketServer, router: RPCRouter) {
         self.server = server
-        self.dispatch = dispatch
+        self.router = router
     }
     
     // MARK: - Public
     func start() async throws {
         let stream = try await Self.startStream(server: server)
         
-        task = Task { [dispatch] in
+        task = Task { [router] in
             for await connection in stream {
-                let handler = ConnectionHandler(connection: connection, dispatch: dispatch)
+                let handler = ConnectionHandler(connection: connection, router: router)
                 
                 Task { await handler.run() }
             }
