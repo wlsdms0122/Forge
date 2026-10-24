@@ -18,7 +18,8 @@ import Warp
 //   FORGE_CATALOG=<dir> swift test --filter CatalogBuildTests
 //
 // Each file prints one line: `<path>: ok`, or `<path>: <refusal>`, a build
-// refusal starting `build:`. The files that built are then built whole.
+// refusal starting `build:`. The files that built are then built whole, and
+// the descriptions and hints the catalog hands back beside them are counted.
 @Suite("Catalog build")
 struct CatalogBuildTests {
     // MARK: - Property
@@ -41,6 +42,11 @@ struct CatalogBuildTests {
 
         _ = try await Builder().build(await sut.modules() + ForgeSpec.linkables())
         print("catalog: ok, \(catalog.entries.count) of \(catalog.entries.count + catalog.failures.count)")
+
+        let descriptions = catalog.entries.map(\.documentation.descriptions.count).reduce(0, +)
+        let hints = catalog.entries.flatMap(\.documentation.hints.values).map(\.count).reduce(0, +)
+
+        print("prose: \(descriptions) descriptions, \(hints) hints")
 
         #expect(catalog.failures.isEmpty, "\(catalog.failures.count) refusal(s)")
     }
