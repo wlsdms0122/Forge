@@ -247,7 +247,7 @@ forge workflow describe <name> [--json]
 
 #### `forge workflow active`
 
-Show workflows the pool is currently tracking (queued / running / cancelling).
+Show runs the pool is currently tracking (queued / running / cancelling).
 RPC: `workflow.list_active`.
 
 ```
@@ -703,8 +703,8 @@ workflow → WorkflowNotFound `workflow not found: <name>`.
 **params** `{"token"}`. **result**
 
 ```json
-{"workflows":[{"run_id","workflow_name","origin","principal","state",
-               "enqueued_at","started_at","held_slots"}],
+{"runs":[{"run_id","workflow_name","origin","principal","state",
+          "enqueued_at","started_at","held_slots"}],
  "maximum_concurrent_steps":N,"free_slots":N,"queued_waiters":N}
 ```
 

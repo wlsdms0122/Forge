@@ -13,7 +13,7 @@ struct WorkflowActiveCommand: ParsableCommand {
     // MARK: - Property
     static let configuration = CommandConfiguration(
         commandName: "active",
-        abstract: "Show workflows the pool is currently tracking."
+        abstract: "Show runs the pool is currently tracking."
     )
     
     @OptionGroup var global: GlobalOptions
@@ -33,10 +33,10 @@ struct WorkflowActiveCommand: ParsableCommand {
             return
         }
         
-        let rows = result["workflows"]?.arrayValue ?? []
+        let rows = result["runs"]?.arrayValue ?? []
         
         if rows.isEmpty {
-            print("(no active workflows)")
+            print("(no active runs)")
         } else {
             for row in rows {
                 let id = row["run_id"]?.stringValue ?? "?"

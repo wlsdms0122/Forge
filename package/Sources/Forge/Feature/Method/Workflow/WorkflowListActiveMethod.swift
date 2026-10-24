@@ -24,7 +24,7 @@ struct WorkflowListActiveMethod: Sendable {
         let queued = await pool.queuedWaiters
         let rows: [JSONValue] = snapshot.map { info in
             var row: [String: JSONValue] = [
-                "run_id":   .string(info.runID),
+                "run_id":        .string(info.runID),
                 "workflow_name": .string(info.workflowName),
                 "origin":        info.origin.jsonValue,
                 "principal":     .string(info.principal),
@@ -41,7 +41,7 @@ struct WorkflowListActiveMethod: Sendable {
         }
 
         return [
-            "workflows":                .array(rows),
+            "runs":                     .array(rows),
             "maximum_concurrent_steps": .int(slots),
             "free_slots":               .int(free),
             "queued_waiters":           .int(queued)
