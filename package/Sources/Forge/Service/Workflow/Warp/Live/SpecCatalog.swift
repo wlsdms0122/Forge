@@ -140,54 +140,20 @@ actor SpecCatalog {
             return currentCatalog
         }
 
-        var scan = scanStoreFiles(in: directory, pathExtension: specFileExtension)
-        var observed: [Observed] = []
-
-        for file in scan.files {
-            guard
-                let attributes = try? fileManager.attributesOfItem(atPath: file.url.path),
-                let mtime = attributes[.modificationDate] as? Date
-            else {
-                scan.obstructions.append(
-                    .init(
-                        scope: file.source,
-                        reason: "file metadata could not be read"
-                            + " — existence observed, content unknown"
-                    )
-                )
-
-                continue
-            }
-
-            observed.append(Observed(file: file, mtime: mtime))
-        }
-
         var legacy = LoadFailureLedger(prior: legacyFailures)
 
         legacy.recordLegacyJSONSpecs(in: directory, kind: "workflow")
         legacyFailures = legacy.fresh
 
-        // The files lean on each other, so a change to one is a reload of
-        // all of them.
-        let observation = observed.map(\.stamp) + scan.obstructions.map(\.description)
+        return await observing(scanStoreFiles(in: directory, pathExtension: specFileExtension))
+    }
 
-        guard observation != generation else { return currentCatalog }
-
-        // One reload at a time: a caller arriving while one runs waits for
-        // it and looks again.
-        if let reloading {
-            await reloading.value
-
-            return await catalog()
-        }
-
-        let reload = Task { await self.reload(observed, scan: scan, observation: observation) }
-
-        reloading = reload
-        await reload.value
-        reloading = nil
-
-        return currentCatalog
+    // The files at these paths read the way a reload reads the directory's,
+    // for a gate that admits what the daemon admits.
+    func catalog(of paths: [String]) async -> Catalog {
+        await observing(
+            StoreScan(files: paths.map { path in ScannedFile(url: URL(fileURLWithPath: path), source: path) })
+        )
     }
 
     func all() async -> Catalog {
@@ -275,6 +241,55 @@ actor SpecCatalog {
     }
 
     // MARK: - Private
+    // The catalog of the files a scan saw, reloaded where any of them
+    // changed since the observation the entries were read from.
+    private func observing(_ scan: StoreScan) async -> Catalog {
+        let fileManager = FileManager.default
+        var scan = scan
+        var observed: [Observed] = []
+
+        for file in scan.files {
+            guard
+                let attributes = try? fileManager.attributesOfItem(atPath: file.url.path),
+                let mtime = attributes[.modificationDate] as? Date
+            else {
+                scan.obstructions.append(
+                    .init(
+                        scope: file.source,
+                        reason: "file metadata could not be read"
+                            + " — existence observed, content unknown"
+                    )
+                )
+
+                continue
+            }
+
+            observed.append(Observed(file: file, mtime: mtime))
+        }
+
+        // The files lean on each other, so a change to one is a reload of
+        // all of them.
+        let observation = observed.map(\.stamp) + scan.obstructions.map(\.description)
+
+        guard observation != generation else { return currentCatalog }
+
+        // One reload at a time: a caller arriving while one runs waits for
+        // it and looks again.
+        if let reloading {
+            await reloading.value
+
+            return await observing(scan)
+        }
+
+        let reload = Task { await self.reload(observed, scan: scan, observation: observation) }
+
+        reloading = reload
+        await reload.value
+        reloading = nil
+
+        return currentCatalog
+    }
+
     // Every observed file read, loaded and built again, and the entries and
     // failures of this observation put in place.
     private func reload(_ observed: [Observed], scan: StoreScan, observation: [String]) async {

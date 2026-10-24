@@ -280,21 +280,18 @@ counterpart.**
 forge workflow check <path>...
 ```
 
-Reads the files together through the YAML front end, each leaning on
-Forge's library and on the others, as the daemon reads its catalog, so a file
-that calls another workflow by name is checked with that workflow's file. For
-each path: loads the document the file writes, then checks that the file
-declares one procedure named after the file and that no plain string holds
-`${` (a string is a literal; `format` interpolates). A line per file: `✓ <path>`, `✗ <path>: decode
-failed` followed by the refusal, or `✗ <path> — N issue(s)` followed by
-indented issue lines. Exit code 1 if any file fails, 0 otherwise. Shell globs
-are expanded by the shell.
-
-Catches what the front end and the load refuse: malformed YAML, a notation
-the front end cannot read, a broken document structure. The check does not
-build, so what the build judges (types, declared failures, a call to a name
-no module declares) is refused when the daemon's catalog builds the file,
-which lists it as a failure.
+Reads the files through the daemon's own catalog, the way it reads its
+directory at a reload: together through the YAML front end, each leaning on
+Forge's library and on the others, so a file that calls another workflow by
+name is checked with that workflow's file; each loaded, held to one procedure
+named after the file by a name the library and std do not give, and built
+against the library, the natives, std and the files that build. What the
+catalog records for a file is what the check prints, so a file passes the
+check where the daemon admits it. Beside that, no plain string may hold `${`
+(a string is a literal; `format` interpolates). A line per file: `✓ <path>`,
+`✗ <path>: refused` followed by the refusal (a build refusal starts
+`build:`), or `✗ <path> — N issue(s)` followed by indented issue lines. Exit
+code 1 if any file fails, 0 otherwise. Shell globs are expanded by the shell.
 
 ### `forge schedule`
 

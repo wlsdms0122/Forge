@@ -19,7 +19,7 @@ struct WorkflowLintTests {
     @Test("lint flags old-syntax ${} strings loudly — the language may stay silent, but the authoring-file gate does not")
     func staleTemplateStringFlagged() async throws {
         // Given
-        let report = try check(named: "stale", yaml: """
+        let report = try await check(named: "stale", yaml: """
         returns: String
         body:
           - let: greet
@@ -35,7 +35,7 @@ struct WorkflowLintTests {
     @Test("${} is legitimate in a format template")
     func sanctionedSurfacesPass() async throws {
         // Given
-        let report = try check(named: "sanctioned", yaml: """
+        let report = try await check(named: "sanctioned", yaml: """
         parameters: [ who: String ]
         returns: String
         result: { format: "hi ${who}", with: { who: { ref: who } } }
@@ -48,7 +48,7 @@ struct WorkflowLintTests {
     @Test("${} under a nameless statement is flagged, since value: is a statement, not a quotation")
     func staleTemplateUnderNamelessStatementFlagged() async throws {
         // Given
-        let report = try check(named: "nameless", yaml: """
+        let report = try await check(named: "nameless", yaml: """
         failing: [aborted]
         body:
           - value: { abort: "failed for ${who}" }
@@ -61,7 +61,7 @@ struct WorkflowLintTests {
     @Test("${} in a description or a hint is prose beside the document")
     func proseKeysPass() async throws {
         // Given
-        let report = try check(named: "prose", yaml: """
+        let report = try await check(named: "prose", yaml: """
         description: "renders ${who}"
         parameters: [ who: { type: String, hint: "the ${name} to greet" } ]
         returns: String
@@ -73,7 +73,7 @@ struct WorkflowLintTests {
     }
 
     @Test("files checked together lean on each other, so a call to another workflow by name reads with that workflow's file")
-    func filesCheckedTogetherLeanOnEachOther() throws {
+    func filesCheckedTogetherLeanOnEachOther() async throws {
         // Given
         let directory = try temporary.make("lint-together")
         let caller = directory.appendingPathComponent("caller.yaml")
@@ -90,21 +90,33 @@ struct WorkflowLintTests {
         """, named: "callee").write(to: callee, atomically: true, encoding: .utf8)
 
         // When
-        let together = WorkflowLint.check(paths: [caller.path, callee.path])
-        let alone = WorkflowLint.check(paths: [caller.path])
+        let together = await WorkflowLint.check(paths: [caller.path, callee.path])
+        let alone = await WorkflowLint.check(paths: [caller.path])
 
         // Then
         #expect(together.map(\.ok) == [true, true])
-        #expect(alone.first?.decodeError?.contains("'callee' is not declared by a document this text leans on") == true)
+        #expect(alone.first?.refusal?.contains("'callee' is not declared by a document this text leans on") == true)
+    }
+
+    @Test("a file that loads and does not build fails the check, as the daemon leaves it out of its catalog")
+    func aFileTheBuildRefusesFails() async throws {
+        // Given
+        let report = try await check(named: "unbuilt", yaml: """
+        returns: Int
+        result: text
+        """)
+
+        // Then
+        #expect(report.refusal?.hasPrefix("build: ") == true, "\(String(describing: report.refusal))")
     }
 
     // MARK: - Private
-    private func check(named name: String, yaml: String) throws -> WorkflowLint.Report {
+    private func check(named name: String, yaml: String) async throws -> WorkflowLint.Report {
         let directory = try temporary.make("lint-\(name)")
         let file = directory.appendingPathComponent("\(name).yaml")
 
         try workflowFile(yaml, named: name).write(to: file, atomically: true, encoding: .utf8)
 
-        return try #require(WorkflowLint.check(paths: [file.path]).first)
+        return try #require(await WorkflowLint.check(paths: [file.path]).first)
     }
 }

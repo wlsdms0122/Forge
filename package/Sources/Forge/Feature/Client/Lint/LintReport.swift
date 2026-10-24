@@ -12,10 +12,10 @@ extension WorkflowLint {
         // MARK: - Property
         package let path: String
         package let readError: String?
-        package let decodeError: String?
+        package let refusal: String?
         package let issues: [String]
         
-        package var ok: Bool { readError == nil && decodeError == nil && issues.isEmpty }
+        package var ok: Bool { readError == nil && refusal == nil && issues.isEmpty }
         
         // MARK: - Initializer
         // MARK: - Public
