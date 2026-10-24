@@ -17,20 +17,17 @@ struct SessionListMethod: Sendable {
     }
 
     // MARK: - Public
-    func handle(_ request: RPCRequest) async throws -> JSONObject {
+    func handle(_ request: RPCRequest) async throws -> JSONValue {
         let entries = await handlerBus.listing()
-        var services: [[String: Any]] = entries.map { name, schema in
-            var row: [String: Any] = ["service": name]
+        let services: [JSONValue] = entries.map { name, schema in
+            var row: [String: JSONValue] = ["service": .string(name)]
 
-            if let schema { row["schema"] = schema.dict }
+            row["schema"] = schema
 
-            return row
-        }
-        services.sort { lhs, rhs in
-            (lhs["service"] as? String ?? "") < (rhs["service"] as? String ?? "")
+            return .object(row)
         }
 
-        return ["services": services]
+        return ["services": .array(services)]
     }
 
     // MARK: - Private

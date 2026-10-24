@@ -18,7 +18,7 @@ actor WorkflowHandlerBus {
     // MARK: - Public
     func register(
         service: String,
-        schema: JSONObject?,
+        schema: JSONValue?,
         sink: any EventSink
     ) async -> ServiceHandle {
         if let existing = handles[service] {
@@ -43,8 +43,8 @@ actor WorkflowHandlerBus {
         handles[service]
     }
     
-    func listing() -> [(String, JSONObject?)] {
-        var listing: [(String, JSONObject?)] = []
+    func listing() -> [(String, JSONValue?)] {
+        var listing: [(String, JSONValue?)] = []
         
         for (name, handle) in handles {
             listing.append((name, handle.schema))
@@ -53,7 +53,7 @@ actor WorkflowHandlerBus {
         return listing.sorted { left, right in left.0 < right.0 }
     }
     
-    func deliverResult(service: String, messageID: String, result: JSONObject) async {
+    func deliverResult(service: String, messageID: String, result: JSONValue) async {
         guard let handle = handles[service] else { return }
         
         await handle.deliverResult(messageID: messageID, result: result)

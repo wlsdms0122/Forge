@@ -6,25 +6,26 @@
 //
 
 import Foundation
+import Forge
 
-func printServicePlain(_ service: [String: Any]) {
-    let name = service["service"] as? String ?? "?"
-    let schema = service["schema"] as? [String: Any] ?? [:]
-    let description = (schema["description"] as? String) ?? ""
+func printServicePlain(_ service: JSONValue) {
+    let name = service["service"]?.stringValue ?? "?"
+    let schema = service["schema"]?.objectValue ?? [:]
+    let description = schema["description"]?.stringValue ?? ""
     
     print(name)
     
     if !description.isEmpty { print("  \(description)") }
     
-    if let actions = schema["actions"] as? [[String: Any]], !actions.isEmpty {
+    if let actions = schema["actions"]?.arrayValue, !actions.isEmpty {
         print("")
         print("  actions:")
         
         for (index, action) in actions.enumerated() {
             if index > 0 { print("") }
             
-            let kind = action["kind"] as? String ?? "?"
-            let actionDescription = action["description"] as? String ?? ""
+            let kind = action["kind"]?.stringValue ?? "?"
+            let actionDescription = action["description"]?.stringValue ?? ""
             
             if actionDescription.isEmpty {
                 print("    \(kind)")
@@ -32,27 +33,27 @@ func printServicePlain(_ service: [String: Any]) {
                 print("    \(kind) — \(actionDescription)")
             }
             
-            if let params = action["params"] as? [String: Any], !params.isEmpty {
+            if let params = action["params"]?.objectValue, !params.isEmpty {
                 print("      params:")
                 printParamRows(params, indent: "        ")
             }
             
-            if let returns = action["returns"] as? [String: Any], !returns.isEmpty {
+            if let returns = action["returns"]?.objectValue, !returns.isEmpty {
                 print("      returns:")
                 printReturnRows(returns, indent: "        ")
             }
         }
     }
     
-    if let ops = schema["ops"] as? [[String: Any]], !ops.isEmpty {
+    if let ops = schema["ops"]?.arrayValue, !ops.isEmpty {
         print("")
         print("  ops:")
         
         for (index, op) in ops.enumerated() {
             if index > 0 { print("") }
             
-            let opName = op["name"] as? String ?? "?"
-            let opDescription = op["description"] as? String ?? ""
+            let opName = op["name"]?.stringValue ?? "?"
+            let opDescription = op["description"]?.stringValue ?? ""
             
             if opDescription.isEmpty {
                 print("    \(opName)")
@@ -60,9 +61,13 @@ func printServicePlain(_ service: [String: Any]) {
                 print("    \(opName) — \(opDescription)")
             }
             
-            if let params = op["params"] as? [String] {
-                print("      params: \(params.joined(separator: ", "))")
-            } else if let params = op["params"] as? [String: Any], !params.isEmpty {
+            if let params = op["params"]?.arrayValue {
+                let names = params.compactMap(\.stringValue)
+                
+                if names.count == params.count {
+                    print("      params: \(names.joined(separator: ", "))")
+                }
+            } else if let params = op["params"]?.objectValue, !params.isEmpty {
                 print("      params:")
                 printParamRows(params, indent: "        ")
             }
@@ -70,20 +75,20 @@ func printServicePlain(_ service: [String: Any]) {
     }
 }
 
-private func printParamRows(_ params: [String: Any], indent: String) {
+private func printParamRows(_ params: [String: JSONValue], indent: String) {
     let keys = params.keys.sorted()
     var rows: [(String, String, String, String)] = []
     
     for key in keys {
-        guard let param = params[key] as? [String: Any] else {
+        guard let param = params[key]?.objectValue else {
             rows.append((key, "", "", ""))
             
             continue
         }
         
-        let type = param["type"] as? String ?? ""
-        let required = (param["required"] as? Bool) ?? false
-        let description = param["description"] as? String ?? ""
+        let type = param["type"]?.stringValue ?? ""
+        let required = param["required"]?.boolValue ?? false
+        let description = param["description"]?.stringValue ?? ""
         
         rows.append((key, type, required ? "required" : "optional", description))
     }
@@ -105,12 +110,12 @@ private func printParamRows(_ params: [String: Any], indent: String) {
     }
 }
 
-private func printReturnRows(_ returns: [String: Any], indent: String) {
+private func printReturnRows(_ returns: [String: JSONValue], indent: String) {
     let keys = returns.keys.sorted()
     let keyWidth = keys.map { key in key.count }.max() ?? 0
     
     for key in keys {
-        let type = returns[key] as? String ?? "\(returns[key] ?? "")"
+        let type = returns[key].map { value in value.stringValue ?? value.plainText } ?? ""
         
         print("\(indent)\(key.padding(toLength: keyWidth, withPad: " ", startingAt: 0))  \(type)")
     }

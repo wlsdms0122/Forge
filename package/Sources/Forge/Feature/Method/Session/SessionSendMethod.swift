@@ -22,13 +22,13 @@ struct SessionSendMethod: Sendable {
     }
 
     // MARK: - Public
-    func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONObject {
-        guard let service = request.rawParams["service"] as? String, !service.isEmpty else {
+    func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONValue {
+        guard let service = request.params["service"]?.stringValue, !service.isEmpty else {
             throw ProtocolError("session.send: 'service' (string) required")
         }
 
-        let payloadDict = (request.rawParams["payload"] as? [String: Any]) ?? [:]
-        let isAsync = (request.rawParams["async"] as? Bool) ?? false
+        let payload = request.params["payload"]?.objectValue ?? [:]
+        let isAsync = request.params["async"]?.boolValue ?? false
         let record = try await workRegistry.requireLiveRecord(
             workflowID: claims.workflowID,
             context: "session.send"
@@ -48,7 +48,7 @@ struct SessionSendMethod: Sendable {
 
         return try await handle.send(
             envelope: envelope,
-            payload: JSONObject(payloadDict),
+            payload: .object(payload),
             isAsync: isAsync
         )
     }

@@ -45,7 +45,7 @@ struct WorkflowDispatchStreamMethod: Sendable {
             ]
         ]
 
-        await sink.emit(JSONObject(acknowledgement))
+        await sink.emit(acknowledgement)
 
         let dispatchMethodLocal = dispatchMethod
         let eventBusLocal = eventBus
@@ -104,7 +104,7 @@ struct WorkflowDispatchStreamMethod: Sendable {
 
             if unawaited.contains(id) { line["unawaited"] = true }
 
-            await sink.emit(JSONObject(.object(line)))
+            await sink.emit(.object(line))
         }
 
         if Task.isCancelled { return }
@@ -126,7 +126,7 @@ struct WorkflowDispatchStreamMethod: Sendable {
 
         let resultFrame: JSONValue = ["kind": "workflow.result", "result": resultValue]
 
-        await sink.emit(JSONObject(resultFrame))
+        await sink.emit(resultFrame)
     }
 
     // MARK: - Private

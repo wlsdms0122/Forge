@@ -10,14 +10,14 @@ import Foundation
 actor ServiceHandle {
     // MARK: - Property
     let service: String
-    let schema: JSONObject?
+    let schema: JSONValue?
     
     private let sink: any EventSink
     
-    private var pending: [String: CheckedContinuation<JSONObject, any Error>] = [:]
+    private var pending: [String: CheckedContinuation<JSONValue, any Error>] = [:]
     
     // MARK: - Initializer
-    init(service: String, schema: JSONObject?, sink: any EventSink) {
+    init(service: String, schema: JSONValue?, sink: any EventSink) {
         self.service = service
         self.schema = schema
         self.sink = sink
@@ -26,41 +26,41 @@ actor ServiceHandle {
     // MARK: - Public
     func send(
         envelope: HandlerFrameEnvelope,
-        payload: JSONObject,
+        payload: JSONValue,
         isAsync: Bool = false
-    ) async throws -> JSONObject {
+    ) async throws -> JSONValue {
         let messageID = "m-\(UUID().uuidString.prefix(12))"
         
-        var envelopeDict: [String: Any] = [
-            "workflow_id": envelope.workflowID,
-            "origin": envelope.originDict
+        var envelopeObject: [String: JSONValue] = [
+            "workflow_id": .string(envelope.workflowID),
+            "origin": envelope.origin.jsonValue
         ]
         
-        if let rootID = envelope.rootID { envelopeDict["root_id"] = rootID }
-        if let nodeID = envelope.nodeID { envelopeDict["id"] = nodeID }
-        if let correlator = envelope.correlator { envelopeDict["correlator"] = correlator }
+        if let rootID = envelope.rootID { envelopeObject["root_id"] = .string(rootID) }
+        if let nodeID = envelope.nodeID { envelopeObject["id"] = .string(nodeID) }
+        if let correlator = envelope.correlator { envelopeObject["correlator"] = .string(correlator) }
         
-        let frame = JSONObject([
+        let frame: JSONValue = [
             "kind": "session.message",
-            "service": service,
-            "message_id": messageID,
-            "envelope": envelopeDict,
-            "payload": payload.dict
-        ])
+            "service": .string(service),
+            "message_id": .string(messageID),
+            "envelope": .object(envelopeObject),
+            "payload": payload
+        ]
         
         if isAsync {
             await sink.emit(frame)
             
-            return JSONObject([
-                "service": service,
-                "message_id": messageID,
+            return [
+                "service": .string(service),
+                "message_id": .string(messageID),
                 "status": "dispatched"
-            ])
+            ]
         }
         
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation {
-                (continuation: CheckedContinuation<JSONObject, any Error>) in
+                (continuation: CheckedContinuation<JSONValue, any Error>) in
                 if Task.isCancelled {
                     continuation.resume(throwing: CancellationError())
                     
@@ -76,7 +76,7 @@ actor ServiceHandle {
         }
     }
     
-    func deliverResult(messageID: String, result: JSONObject) {
+    func deliverResult(messageID: String, result: JSONValue) {
         guard let continuation = pending.removeValue(forKey: messageID) else { return }
         
         continuation.resume(returning: result)

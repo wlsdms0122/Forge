@@ -153,7 +153,7 @@ struct WorkflowDispatchCommand: ParsableCommand {
         
         guard let requestData = RPC.requestLine(
             method: "workflow.dispatch_stream",
-            params: JSONValue.object(streamParams).jsonObject as? [String: Any] ?? [:]
+            params: streamParams
         ) else {
             die("workflow dispatch: encode request failed", code: 4)
         }

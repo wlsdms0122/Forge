@@ -52,9 +52,7 @@ struct ServiceRegisterCommand: ParsableCommand {
     // MARK: - Public
     func run() throws {
         let client = Client(global, context: "service register")
-        let schemaObject = schema.map { value in
-            JSONValue(objectArgument: value, flag: "--schema").jsonObject as? [String: Any] ?? [:]
-        }
+        let schemaObject = schema.map { value in JSONValue(objectArgument: value, flag: "--schema") }
         let bridge = ServiceBridge(
             service: name,
             socketPath: client.socketPath,

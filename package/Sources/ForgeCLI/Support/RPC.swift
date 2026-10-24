@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Forge
 
 enum RPC {
     // MARK: - Property
@@ -13,17 +14,17 @@ enum RPC {
     // MARK: - Public
     static func requestLine(
         method: String,
-        params: [String: Any],
+        params: [String: JSONValue],
         idPrefix: String = "fc"
     ) -> Data? {
-        let request: [String: Any] = [
-            "id": "\(idPrefix)-\(UUID().uuidString.prefix(8))",
-            "method": method,
-            "params": params
+        let request: JSONValue = [
+            "id": .string("\(idPrefix)-\(UUID().uuidString.prefix(8))"),
+            "method": .string(method),
+            "params": .object(params)
         ]
         
         return try? JSONSerialization.data(
-            withJSONObject: request,
+            withJSONObject: request.jsonObject,
             options: [.withoutEscapingSlashes]
         )
     }
@@ -44,7 +45,12 @@ enum RPC {
     }
     
     static func call(socketPath: String, method: String, params: [String: Any]) -> RPCResult {
-        guard let requestData = requestLine(method: method, params: params) else {
+        guard
+            let requestData = requestLine(
+                method: method,
+                params: (try? JSONValue(jsonObject: params))?.objectValue ?? [:]
+            )
+        else {
             return .err(type: "ClientError", message: "encode request failed")
         }
         

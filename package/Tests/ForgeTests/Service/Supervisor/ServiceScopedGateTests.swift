@@ -12,7 +12,7 @@ import Testing
 @Suite("ServiceScopedGate Tests")
 struct ServiceScopedGateTests {
     private actor CollectingSink: EventSink {
-        func emit(_ object: JSONObject) async {}
+        func emit(_ frame: JSONValue) async {}
     }
     
     // MARK: - Property
@@ -168,7 +168,7 @@ struct ServiceScopedGateTests {
                 params: ["token": slack, "service": "slack", "message_id": "m1", "result": [String: Any]()]), claims: try #require(authority.verify(slack)))
 
         // Then
-        #expect(result.dict["ok"] as? Bool == true)
+        #expect(result["ok"]?.boolValue == true)
     }
     
     // MARK: global control — reload is *narrower* than named control (review finding: the

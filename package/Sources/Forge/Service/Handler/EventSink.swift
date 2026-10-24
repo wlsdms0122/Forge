@@ -8,5 +8,5 @@
 import Foundation
 
 protocol EventSink: Sendable {
-    func emit(_ object: JSONObject) async
+    func emit(_ frame: JSONValue) async
 }

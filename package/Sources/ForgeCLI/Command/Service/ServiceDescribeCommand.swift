@@ -7,6 +7,7 @@
 
 import ArgumentParser
 import Foundation
+import Forge
 
 struct ServiceDescribeCommand: ParsableCommand {
     // MARK: - Property
@@ -33,12 +34,12 @@ struct ServiceDescribeCommand: ParsableCommand {
     // MARK: - Public
     func run() throws {
         let client = Client(global, context: "service describe")
-        let result = client.rawCall("session.list")
+        let result = client.call("session.list")
         
-        let services = (result["services"] as? [[String: Any]]) ?? []
+        let services = result["services"]?.arrayValue ?? []
         
         guard let entry = services.first(
-            where: { service in (service["service"] as? String) == name }
+            where: { service in service["service"]?.stringValue == name }
         ) else {
             die("service describe: '\(name)' not registered", code: 5)
         }

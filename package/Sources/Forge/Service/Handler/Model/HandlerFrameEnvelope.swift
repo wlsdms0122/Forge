@@ -15,13 +15,7 @@ struct HandlerFrameEnvelope: Sendable {
     let nodeID: String?
     let correlator: String?
     
-    var originDict: [String: Any] {
-        var dictionary: [String: Any] = ["kind": origin.kind]
-        
-        if let id = origin.id { dictionary["id"] = id }
-        
-        return dictionary
-    }
+
     
     // MARK: - Initializer
     init(

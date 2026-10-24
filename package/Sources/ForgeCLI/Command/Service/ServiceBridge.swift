@@ -6,19 +6,20 @@
 //
 
 import Foundation
+import Forge
 
 final class ServiceBridge: @unchecked Sendable {
     // MARK: - Property
     private let service: String
     private let socketPath: String
-    private let schema: [String: Any]?
+    private let schema: JSONValue?
     private let token: String
     private let lock = NSLock()
     private var sock: StreamSocket?
     private var stopped = false
     
     // MARK: - Initializer
-    init(service: String, socketPath: String, schema: [String: Any]?, token: String) {
+    init(service: String, socketPath: String, schema: JSONValue?, token: String) {
         self.service = service
         self.socketPath = socketPath
         self.schema = schema
@@ -48,8 +49,8 @@ final class ServiceBridge: @unchecked Sendable {
             
             if frame.isEmpty { continue }
             
-            if let object = try? JSONSerialization.jsonObject(with: frame) as? [String: Any],
-                (object["kind"] as? String) == "session.message" {
+            if let object = try? JSONDecoder().decode(JSONValue.self, from: frame),
+                object["kind"]?.stringValue == "session.message" {
                 emitStdoutLine(String(decoding: frame, as: UTF8.self))
             }
         }
@@ -66,7 +67,7 @@ final class ServiceBridge: @unchecked Sendable {
     private func connectRegisterOnce() -> StreamSocket? {
         guard let socket = StreamSocket(path: socketPath) else { return nil }
         
-        var params: [String: Any] = ["service": service, "token": token]
+        var params: [String: JSONValue] = ["service": .string(service), "token": .string(token)]
         
         if let schema { params["schema"] = schema }
         
@@ -103,18 +104,19 @@ final class ServiceBridge: @unchecked Sendable {
             if line.isEmpty { continue }
             
             guard let data = line.data(using: .utf8),
-                let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                let messageID = object["message_id"] as? String
+                let line = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                let object = try? JSONValue(jsonObject: line),
+                let messageID = object["message_id"]?.stringValue
             else {
                 emitStderr("forge service: bad ack line dropped")
                 
                 continue
             }
             
-            var params: [String: Any] = [
-                "service": service,
-                "message_id": messageID,
-                "token": token,
+            var params: [String: JSONValue] = [
+                "service": .string(service),
+                "message_id": .string(messageID),
+                "token": .string(token)
             ]
             
             if let result = object["result"] { params["result"] = result }

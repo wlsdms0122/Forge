@@ -12,9 +12,9 @@ import Testing
 @Suite("DispatchStream Tests")
 struct DispatchStreamTests {
     private actor CollectingSink: EventSink {
-        private var collected: [JSONObject] = []
-        func emit(_ object: JSONObject) async { collected.append(object) }
-        func snapshot() -> [JSONObject] { collected }
+        private var collected: [JSONValue] = []
+        func emit(_ frame: JSONValue) async { collected.append(frame) }
+        func snapshot() -> [JSONValue] { collected }
     }
 
     // MARK: - Property
@@ -40,35 +40,35 @@ struct DispatchStreamTests {
                 method: "workflow.dispatch_stream",
                 params: ["token": token, "spec": specJSON]
             ), claims: try #require(authority.verify(token)), sink: sink)
-        let lines = (await sink.snapshot()).map { line in line.dict }
+        let lines = await sink.snapshot()
 
         // Then
         #expect(lines.count >= 3, "At least 3 lines: ack + events + terminal")
         let ack = lines[0]
-        #expect(ack["id"] as? String == "r-stream")
-        let ackResult = try #require(ack["result"] as? [String: Any])
-        #expect(ackResult["status"] as? String == "streaming")
-        let wfID = try #require(ackResult["workflow_id"] as? String)
+        #expect(ack["id"]?.stringValue == "r-stream")
+        let ackResult = try #require(ack["result"]?.objectValue)
+        #expect(ackResult["status"]?.stringValue == "streaming")
+        let wfID = try #require(ackResult["workflow_id"]?.stringValue)
         let events = lines.dropFirst().dropLast()
         for error in events {
-            #expect(error["kind"] as? String == "workflow.event")
-            #expect(error["workflow_id"] as? String == wfID)
+            #expect(error["kind"]?.stringValue == "workflow.event")
+            #expect(error["workflow_id"]?.stringValue == wfID)
         }
 
-        let eventKinds = events.compactMap { event in event["event"] as? String }
+        let eventKinds = events.compactMap { event in event["event"]?.stringValue }
         #expect(eventKinds.contains("workflow.started"))
         #expect(eventKinds.contains("step.started"))
         #expect(eventKinds.contains("step.completed"))
         #expect(eventKinds.contains("workflow.completed"))
-        let stepStarts = events.filter { event in (event["event"] as? String) == "step.started" }
-        .compactMap { line in line["step"] as? String }
+        let stepStarts = events.filter { event in (event["event"]?.stringValue) == "step.started" }
+        .compactMap { line in line["step"]?.stringValue }
         #expect(stepStarts == ["one", "two"], "\(stepStarts)")
         let terminal = try #require(lines.last)
-        #expect(terminal["kind"] as? String == "workflow.result")
-        let result = try #require(terminal["result"] as? [String: Any])
-        #expect(result["status"] as? String == "ok")
-        #expect(result["workflow_id"] as? String == wfID)
-        #expect((result["outputs"] as? [String: Any])?["v"] != nil)
+        #expect(terminal["kind"]?.stringValue == "workflow.result")
+        let result = try #require(terminal["result"]?.objectValue)
+        #expect(result["status"]?.stringValue == "ok")
+        #expect(result["workflow_id"]?.stringValue == wfID)
+        #expect((result["outputs"]?.objectValue)?["v"] != nil)
     }
 
     @Test("Policy denial throws before the ack")
@@ -94,7 +94,7 @@ struct DispatchStreamTests {
             #expect(String(describing: error).contains("not allowed"))
         }
 
-        let lines = (await sink.snapshot()).map { line in line.dict }
+        let lines = await sink.snapshot()
         #expect(lines.isEmpty, "No stream lines should be emitted on denial: \(lines)")
     }
 
@@ -118,9 +118,9 @@ struct DispatchStreamTests {
 
         var wfID: String?
         for _ in 0..<100 {
-            if let ack = (await sink.snapshot()).first?.dict,
-            let payload = ack["result"] as? [String: Any],
-            let identifier = payload["workflow_id"] as? String { wfID = identifier; break }
+            if let ack = (await sink.snapshot()).first,
+            let payload = ack["result"]?.objectValue,
+            let identifier = payload["workflow_id"]?.stringValue { wfID = identifier; break }
             try await Task.sleep(nanoseconds: 10_000_000)
         }
 
@@ -136,13 +136,13 @@ struct DispatchStreamTests {
                 kind: .stepStarted, workflowID: "grandchild-run", workflowName: "grandchild",
                 stepID: "gs", rootID: rootID, parentRunID: "child-run"))
         try await handleTask.value
-        let lines = (await sink.snapshot()).map { line in line.dict }
-        let leaked = lines.filter { line in (line["workflow_id"] as? String) == "intruder-run" }
+        let lines = await sink.snapshot()
+        let leaked = lines.filter { line in (line["workflow_id"]?.stringValue) == "intruder-run" }
         #expect(leaked.isEmpty, "Events from outside the subtree leaked despite sharing the root: \(leaked)")
-        let relayedIDs = Set(lines.compactMap { line in line["workflow_id"] as? String })
+        let relayedIDs = Set(lines.compactMap { line in line["workflow_id"]?.stringValue })
         #expect(relayedIDs.contains("child-run"), "Child run events should flow through: \(relayedIDs)")
         #expect(relayedIDs.contains("grandchild-run"), "Grandchild runs should flow through the chain too: \(relayedIDs)")
-        let ownKinds = lines.compactMap { line in line["event"] as? String }
+        let ownKinds = lines.compactMap { line in line["event"]?.stringValue }
         #expect(ownKinds.contains("workflow.completed"), "The run's own events should flow through: \(ownKinds)")
     }
 
@@ -166,9 +166,9 @@ struct DispatchStreamTests {
 
         var wfID: String?
         for _ in 0..<100 {
-            if let ack = (await sink.snapshot()).first?.dict,
-            let payload = ack["result"] as? [String: Any],
-            let identifier = payload["workflow_id"] as? String { wfID = identifier; break }
+            if let ack = (await sink.snapshot()).first,
+            let payload = ack["result"]?.objectValue,
+            let identifier = payload["workflow_id"]?.stringValue { wfID = identifier; break }
             try await Task.sleep(nanoseconds: 10_000_000)
         }
 
@@ -184,11 +184,11 @@ struct DispatchStreamTests {
                 kind: .workflowStarted, workflowID: "sync-child", workflowName: "capture",
                 rootID: rootID, parentRunID: rootID))
         try await handleTask.value
-        let lines = (await sink.snapshot()).map { line in line.dict }
+        let lines = await sink.snapshot()
         func unawaitedFlag(_ id: String) -> Bool? {
-            lines.first { line in (line["workflow_id"] as? String) == id }?["unawaited"] as? Bool
+            lines.first { line in (line["workflow_id"]?.stringValue) == id }?["unawaited"]?.boolValue
         }
-        #expect(lines.first { line in (line["workflow_id"] as? String) == "job-run" } != nil, "Unawaited children are still in the lineage subtree — the relay does not filter them")
+        #expect(lines.first { line in (line["workflow_id"]?.stringValue) == "job-run" } != nil, "Unawaited children are still in the lineage subtree — the relay does not filter them")
         #expect(unawaitedFlag("job-run") == true, "Run that crossed an async edge")
         #expect(unawaitedFlag("job-child") == true, "The root does not wait for sync grandchildren below it either")
         #expect(unawaitedFlag("sync-child") == nil, "The root waits for sync children — no flag")
@@ -252,15 +252,15 @@ struct DispatchStreamTests {
                 method: "workflow.dispatch_stream",
                 params: ["token": token, "spec": specJSON]
             ), claims: try #require(authority.verify(token)), sink: sink)
-        let lines = (await sink.snapshot()).map { line in line.dict }
+        let lines = await sink.snapshot()
 
         // Then
         let terminal = try #require(lines.last)
-        #expect(terminal["kind"] as? String == "workflow.result")
-        let result = try #require(terminal["result"] as? [String: Any])
-        #expect(result["status"] as? String == "failed")
+        #expect(terminal["kind"]?.stringValue == "workflow.result")
+        let result = try #require(terminal["result"]?.objectValue)
+        #expect(result["status"]?.stringValue == "failed")
         #expect(result["error"] != nil)
-        let eventKinds = lines.dropFirst().dropLast().compactMap { line in line["event"] as? String }
+        let eventKinds = lines.dropFirst().dropLast().compactMap { line in line["event"]?.stringValue }
         #expect(eventKinds.contains("step.failed") || eventKinds.contains("workflow.failed"), "Failure events should be carried on the stream: \(eventKinds)")
     }
 
@@ -298,15 +298,15 @@ struct DispatchStreamTests {
                     "spec": ["failing": ["nonzero_exit", "timeout"],
             "body": [["let": "x", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/echo", "hi"]]]]]]]]
             ), claims: try #require(authority.verify(token)), sink: sink)
-        let lines = (await sink.snapshot()).map { line in line.dict }
+        let lines = await sink.snapshot()
 
         // Then
         let terminal = try #require(lines.last)
-        #expect(terminal["kind"] as? String == "workflow.result")
-        let result = try #require(terminal["result"] as? [String: Any])
-        #expect(result["status"] as? String == "failed")
-        let error = try #require(result["error"] as? [String: Any])
-        #expect(error["type"] as? String == "RunCapExceeded", "The terminal carries the actual failure type: \(error)")
+        #expect(terminal["kind"]?.stringValue == "workflow.result")
+        let result = try #require(terminal["result"]?.objectValue)
+        #expect(result["status"]?.stringValue == "failed")
+        let error = try #require(result["error"]?.objectValue)
+        #expect(error["type"]?.stringValue == "RunCapExceeded", "The terminal carries the actual failure type: \(error)")
     }
 
     // MARK: - Private

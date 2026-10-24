@@ -17,8 +17,8 @@ struct SessionHandlerAckMethod: Sendable {
     }
 
     // MARK: - Public
-    func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONObject {
-        guard let service = request.rawParams["service"] as? String, !service.isEmpty else {
+    func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONValue {
+        guard let service = request.params["service"]?.stringValue, !service.isEmpty else {
             throw ProtocolError("session.handler.ack: 'service' required")
         }
 
@@ -28,23 +28,23 @@ struct SessionHandlerAckMethod: Sendable {
             method: "session.handler.ack"
         )
 
-        guard let messageID = request.rawParams["message_id"] as? String, !messageID.isEmpty else {
+        guard let messageID = request.params["message_id"]?.stringValue, !messageID.isEmpty else {
             throw ProtocolError("session.handler.ack: 'message_id' required")
         }
 
-        if let errorObject = request.rawParams["error"] as? [String: Any] {
-            let message = (errorObject["message"] as? String) ?? "handler error"
+        if let errorObject = request.params["error"]?.objectValue {
+            let message = errorObject["message"]?.stringValue ?? "handler error"
             await handlerBus.deliverError(
                 service: service,
                 messageID: messageID,
                 message: message
             )
         } else {
-            let result = (request.rawParams["result"] as? [String: Any]) ?? [:]
+            let result = request.params["result"]?.objectValue ?? [:]
             await handlerBus.deliverResult(
                 service: service,
                 messageID: messageID,
-                result: JSONObject(result)
+                result: .object(result)
             )
         }
 

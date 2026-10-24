@@ -13,14 +13,14 @@ import Testing
 struct WorkflowHandlerBusTests {
     private final class AckDuringEmitSink: EventSink, @unchecked Sendable {
         var handle: ServiceHandle?
-        func emit(_ object: JSONObject) async {
-            let messageID = (object.dict["message_id"] as? String) ?? ""
-            await handle?.deliverResult(messageID: messageID, result: JSONObject(["ok": true]))
+        func emit(_ frame: JSONValue) async {
+            let messageID = frame["message_id"]?.stringValue ?? ""
+            await handle?.deliverResult(messageID: messageID, result: ["ok": true])
         }
     }
     
     private final class NoopSink: EventSink, @unchecked Sendable {
-        func emit(_ object: JSONObject) async {}
+        func emit(_ frame: JSONValue) async {}
     }
     
     // MARK: - Property
@@ -35,8 +35,8 @@ struct WorkflowHandlerBusTests {
         sink.handle = handle
         let env = HandlerFrameEnvelope(workflowID: "w", origin: .manual,
             rootID: nil, nodeID: nil, correlator: nil)
-        let result: JSONObject? = await withTaskGroup(of: JSONObject?.self) { group in
-            group.addTask { try? await handle.send(envelope: env, payload: JSONObject([:])) }
+        let result: JSONValue? = await withTaskGroup(of: JSONValue?.self) { group in
+            group.addTask { try? await handle.send(envelope: env, payload: [:]) }
             group.addTask { try? await Task.sleep(for: .seconds(3)); return nil }
             let first = await group.next() ?? nil
             group.cancelAll()
@@ -46,7 +46,7 @@ struct WorkflowHandlerBusTests {
 
         // Then
         #expect(result != nil, "A fast ack arriving during emit was dropped, hanging send (finding A)")
-        #expect(result?.dict["ok"] as? Bool == true)
+        #expect(result?["ok"]?.boolValue == true)
     }
     
     @Test("A late unregister does not evict the new owner's handle")
