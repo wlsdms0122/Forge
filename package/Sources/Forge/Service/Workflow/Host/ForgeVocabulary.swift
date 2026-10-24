@@ -33,7 +33,7 @@ enum ForgeVocabulary {
 
     // The front end leaning on the library.
     private static let leaning = Result {
-        YAMLFrontend(symbols: try SymbolTable(documents: [try shipped.get()]))
+        try YAMLFrontend(symbols: try SymbolTable(documents: [try shipped.get()]))
     }
 
     // The library, the natives and std compiled once a process, laid down
