@@ -22,7 +22,7 @@ struct WorkflowContract {
             signature.parameters.map { parameter in
                 var described: [String: Any] = ["type": parameter.type.rendered]
 
-                if case .nullable = parameter.type { described["default"] = NSNull() }
+                if case .optional = parameter.type { described["default"] = NSNull() }
 
                 return (parameter.name.spelling, described)
             },

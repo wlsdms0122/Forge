@@ -86,6 +86,9 @@ enum ValueBridge {
                     uniquingKeysWith: { first, _ in first }
                 )
             )
+
+        case let .existential(existential):
+            return json(existential.value)
         }
     }
 
@@ -107,6 +110,9 @@ enum ValueBridge {
                 zip(instance.names, instance.values).map { name, field in (name.spelling, field) },
                 uniquingKeysWith: { first, _ in first }
             )
+
+        case let .existential(existential):
+            return try fields(existential.value)
 
         case let other:
             throw ExecutionError("a map was expected, and \(other.nominal) arrived")

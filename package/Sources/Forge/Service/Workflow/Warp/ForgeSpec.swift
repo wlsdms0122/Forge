@@ -25,7 +25,7 @@ enum ForgeSpec {
         try Module(
             types: [
                 runType: .struct(["workflow_id": .string, "root_id": .string]),
-                originType: .struct(["kind": .string, "id": .nullable(.string)])
+                originType: .struct(["kind": .string, "id": .optional(.string)])
             ],
             procedures: [
                 "Forge.shell": Procedure(
@@ -86,8 +86,8 @@ enum ForgeSpec {
     }
 
     // The one front end forge reads a workflow with.
-    static func frontend() throws -> YAMLFrontend {
-        try YAMLFrontend()
+    static func frontend() -> YAMLFrontend {
+        YAMLFrontend()
     }
 
     // MARK: - Private

@@ -30,7 +30,7 @@ extension Warp.Executor {
         }
 
         for parameter in module.procedures[name]?.signature.parameters ?? [] where arguments[parameter.name] == nil {
-            guard case .nullable = parameter.type else { continue }
+            guard case .optional = parameter.type else { continue }
 
             arguments[parameter.name] = .null
         }

@@ -234,7 +234,7 @@ struct WorkflowDispatchTests {
         defer { try? FileManager.default.removeItem(at: directory) }
         try echoWorkflowYAML(name: "echo2").write(
             to: directory.appendingPathComponent("echo2.yaml"), atomically: true, encoding: .utf8)
-        let store = SpecCatalog(directory: directory, frontend: try ForgeSpec.frontend())
+        let store = SpecCatalog(directory: directory, frontend: ForgeSpec.frontend())
         let authority = TokenAuthority()
         let registry = WorkRegistry()
         let runner = SpecWorkflowRunner(
@@ -279,7 +279,7 @@ struct WorkflowDispatchTests {
     -> (WorkflowDispatchMethod, TokenAuthority, WorkRegistry) {
         let directory = try temporary.make("wf")
         try echoWorkflowYAML(name: "echo").write(to: directory.appendingPathComponent("echo.yaml"), atomically: true, encoding: .utf8)
-        let store = SpecCatalog(directory: directory, frontend: try ForgeSpec.frontend())
+        let store = SpecCatalog(directory: directory, frontend: ForgeSpec.frontend())
         let authority = TokenAuthority()
         let registry = WorkRegistry()
         let runner = SpecWorkflowRunner(

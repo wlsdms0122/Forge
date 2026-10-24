@@ -24,19 +24,19 @@ struct ShellAction: Warp.Effect {
                 Parameter(name: "command", type: .array(.string))
 
             case .cwd:
-                Parameter(name: "cwd", type: .nullable(.string))
+                Parameter(name: "cwd", type: .optional(.string))
 
             case .env:
-                Parameter(name: "env", type: .nullable(.dictionary(key: .string, value: .string)))
+                Parameter(name: "env", type: .optional(.dictionary(key: .string, value: .string)))
 
             case .stdin:
-                Parameter(name: "stdin", type: .nullable(.string))
+                Parameter(name: "stdin", type: .optional(.string))
 
             case .outputs:
-                Parameter(name: "outputs", type: .nullable(.dictionary(key: .string, value: .any)))
+                Parameter(name: "outputs", type: .optional(.dictionary(key: .string, value: .any)))
 
             case .timeout:
-                Parameter(name: "timeout", type: .nullable(.double))
+                Parameter(name: "timeout", type: .optional(.double))
             }
         }
 

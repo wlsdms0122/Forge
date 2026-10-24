@@ -43,7 +43,7 @@ package actor Server {
         sessionHome: URL,
         session: String,
         configPath: String? = nil
-    ) throws {
+    ) {
         self.config = config
         self.configSnapshot = ConfigSnapshot(configReport)
         self.sessionHome = sessionHome
@@ -85,7 +85,7 @@ package actor Server {
         )
         let workflowStoreLocal = SpecCatalog(
             directory: config.workflowDirectory,
-            frontend: try ForgeSpec.frontend()
+            frontend: ForgeSpec.frontend()
         )
         let runtimeScheduleDirectory = config.runtimeDirectory.appendingPathComponent("schedule")
         let scheduleStore = ScheduleStore(
@@ -433,7 +433,7 @@ package actor Server {
             configPath: absoluteConfigPath,
             sessionHome: home
         )
-        let server = try Server(
+        let server = Server(
             config: configuration,
             configReport: report,
             sessionHome: home,

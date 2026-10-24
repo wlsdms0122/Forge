@@ -75,7 +75,7 @@ struct SchedulerFixture {
     }
 
     func catalog(directory: URL?) throws -> SpecCatalog {
-        SpecCatalog(directory: directory, frontend: try ForgeSpec.frontend())
+        SpecCatalog(directory: directory, frontend: ForgeSpec.frontend())
     }
 
     func runner(catalog: SpecCatalog) -> SpecWorkflowRunner {

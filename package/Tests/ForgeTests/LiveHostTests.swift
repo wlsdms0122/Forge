@@ -657,7 +657,7 @@ struct SpecWorkflowRunnerTests {
             )
         }
 
-        let store = SpecCatalog(directory: directory, frontend: try ForgeSpec.frontend())
+        let store = SpecCatalog(directory: directory, frontend: ForgeSpec.frontend())
         let eventBus = WorkflowEventBus()
         let poolLocal = pool
             ?? WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: Int.max)

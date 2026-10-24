@@ -27,25 +27,25 @@ struct InvokeAction: Warp.Effect {
         var declared: Parameter {
             switch self {
             case .model:
-                Parameter(name: "model", type: .nullable(.string))
+                Parameter(name: "model", type: .optional(.string))
 
             case .allowed:
                 Parameter(name: "allowed", type: .any)
 
             case .envExtra:
-                Parameter(name: "env_extra", type: .nullable(.dictionary(key: .string, value: .string)))
+                Parameter(name: "env_extra", type: .optional(.dictionary(key: .string, value: .string)))
 
             case .cwd:
-                Parameter(name: "cwd", type: .nullable(.string))
+                Parameter(name: "cwd", type: .optional(.string))
 
             case .permissionMode:
-                Parameter(name: "permission_mode", type: .nullable(.string))
+                Parameter(name: "permission_mode", type: .optional(.string))
 
             case .shareSession:
-                Parameter(name: "share_session", type: .nullable(.bool))
+                Parameter(name: "share_session", type: .optional(.bool))
 
             case .timeout:
-                Parameter(name: "timeout", type: .nullable(.double))
+                Parameter(name: "timeout", type: .optional(.double))
 
             case .body:
                 Parameter(

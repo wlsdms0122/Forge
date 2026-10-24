@@ -112,7 +112,7 @@ struct WorkflowDescribeTests {
     
     -> (WorkflowDescribeMethod, TokenAuthority, URL) {
         let directory = try temporary.make(test)
-        let store = SpecCatalog(directory: directory, frontend: try ForgeSpec.frontend())
+        let store = SpecCatalog(directory: directory, frontend: ForgeSpec.frontend())
         let authority = TokenAuthority()
         
         return (WorkflowDescribeMethod(store: store, tokenAuthority: authority), authority, directory)

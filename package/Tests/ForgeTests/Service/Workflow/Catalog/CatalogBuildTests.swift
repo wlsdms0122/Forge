@@ -31,7 +31,7 @@ struct CatalogBuildTests {
         guard let path = ProcessInfo.processInfo.environment["FORGE_CATALOG"] else { return }
 
         let directory = URL(fileURLWithPath: path).standardizedFileURL
-        let frontend = try ForgeSpec.frontend()
+        let frontend = ForgeSpec.frontend()
         let linkables = try ForgeSpec.linkables()
         var loaded: [(path: String, module: Warp.Module)] = []
         var refused: [String] = []

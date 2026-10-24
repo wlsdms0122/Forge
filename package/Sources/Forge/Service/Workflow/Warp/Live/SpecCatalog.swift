@@ -232,7 +232,7 @@ actor SpecCatalog {
     // An inline spec: one procedure written in the YAML notation, run under the
     // sigil the dispatch door fixes, which a run starts from.
     nonisolated func inline(_ spec: Warp.Value) throws -> Warp.Module {
-        let procedure = try Loader(registry: try .yaml()).procedure(from: spec, in: .yaml)
+        let procedure = try Loader(registry: .yaml).procedure(from: spec, in: .yaml)
 
         return try Warp.Module(
             procedures: [try Name(WorkflowDispatchMethod.inlineSigil): procedure.with(access: .public)]

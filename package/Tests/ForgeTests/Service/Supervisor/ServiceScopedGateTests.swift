@@ -197,7 +197,7 @@ struct ServiceScopedGateTests {
     @Test("Denial wording comes from a single owner across all gates — it does not vary per gate")
     func policyDenialMessageIsUniformAcrossServiceGates() async throws {
         // Given
-        let store = SpecCatalog(directory: nil, frontend: try ForgeSpec.frontend())
+        let store = SpecCatalog(directory: nil, frontend: ForgeSpec.frontend())
         let bus = WorkflowEventBus()
         let authority = TokenAuthority()
         let runner = SpecWorkflowRunner(

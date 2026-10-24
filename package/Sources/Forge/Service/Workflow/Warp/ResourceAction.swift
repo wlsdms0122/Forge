@@ -21,7 +21,7 @@ struct ResourceAction: Warp.Effect {
                 Parameter(name: "content", type: .string)
 
             case .inputs:
-                Parameter(name: "inputs", type: .nullable(.dictionary(key: .string, value: .any)))
+                Parameter(name: "inputs", type: .optional(.dictionary(key: .string, value: .any)))
             }
         }
 

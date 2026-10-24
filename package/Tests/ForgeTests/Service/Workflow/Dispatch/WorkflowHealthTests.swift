@@ -90,7 +90,7 @@ struct WorkflowHealthTests {
             to: directory.appendingPathComponent("echo3.yaml"), atomically: true, encoding: .utf8)
         let pool = WorkflowPool(maximumConcurrentSteps: 1, maximumActiveRuns: 1)
 
-        let store = SpecCatalog(directory: directory, frontend: try ForgeSpec.frontend())
+        let store = SpecCatalog(directory: directory, frontend: ForgeSpec.frontend())
         let runner = SpecWorkflowRunner(
             catalog: store,
             eventBus: WorkflowEventBus(),

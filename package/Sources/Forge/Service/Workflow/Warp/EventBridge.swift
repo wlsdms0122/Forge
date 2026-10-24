@@ -36,7 +36,7 @@ struct EventBridge: ExecutionObserver {
     }
 
     // MARK: - Lifecycle
-    func statementStarted(at trace: Trace) async {
+    func statementStarted(at trace: Trace, construct: Construct, callee: Name?) async {
         await publish(WorkflowEvent(
             kind: .stepStarted,
             workflowID: workflowID,

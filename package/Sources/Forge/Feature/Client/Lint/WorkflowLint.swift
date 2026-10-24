@@ -118,7 +118,7 @@ package enum WorkflowLint {
                 walk(element, at: "\(location).\(key)", into: &issues)
             }
 
-        case .null, .bool, .int, .double, .bytes, .struct:
+        case .null, .bool, .int, .double, .bytes, .struct, .existential:
             break
         }
     }

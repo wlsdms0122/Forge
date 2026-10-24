@@ -32,7 +32,7 @@ struct CatalogGenerationTests {
         let directory = try temporary.make("wf-repair")
         defer { try? FileManager.default.removeItem(at: directory) }
         try writeWorkflow(brokenBody, named: "mender", in: directory)
-        let store = SpecCatalog(directory: directory, frontend: try ForgeSpec.frontend())
+        let store = SpecCatalog(directory: directory, frontend: ForgeSpec.frontend())
 
         // When
         var catalog = await store.catalog()
@@ -56,7 +56,7 @@ struct CatalogGenerationTests {
         // When
         try writeWorkflow(validBody, named: "ok", in: directory)
         try writeWorkflow(brokenBody, named: "bad", in: directory)
-        let catalog = await SpecCatalog(directory: directory, frontend: try ForgeSpec.frontend()).catalog()
+        let catalog = await SpecCatalog(directory: directory, frontend: ForgeSpec.frontend()).catalog()
         try assertAccountedForExactlyOnce(catalog, in: directory)
 
         // Then
@@ -81,7 +81,7 @@ struct CatalogGenerationTests {
         }
 
         // When
-        let catalog = await SpecCatalog(directory: directory, frontend: try ForgeSpec.frontend()).catalog()
+        let catalog = await SpecCatalog(directory: directory, frontend: ForgeSpec.frontend()).catalog()
 
         // Then
         #expect(catalog.entries.map(\.name) == ["visible"])

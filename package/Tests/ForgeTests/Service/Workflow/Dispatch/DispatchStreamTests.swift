@@ -199,7 +199,7 @@ struct DispatchStreamTests {
     @Test("Async dispatch marks the run as async")
     func asyncDispatchMarksRunAsync() async throws {
         // Given
-        let store = SpecCatalog(directory: nil, frontend: try ForgeSpec.frontend())
+        let store = SpecCatalog(directory: nil, frontend: ForgeSpec.frontend())
         let bus = WorkflowEventBus()
         let authority = TokenAuthority()
         let registry = WorkRegistry()
@@ -267,7 +267,7 @@ struct DispatchStreamTests {
     @Test("The terminal event preserves the failure type instead of flattening it")
     func streamTerminalPreservesFailureType() async throws {
         // Given
-        let store = SpecCatalog(directory: nil, frontend: try ForgeSpec.frontend())
+        let store = SpecCatalog(directory: nil, frontend: ForgeSpec.frontend())
         let bus = WorkflowEventBus()
         let pool = WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: 1)
         try await pool.register(workflowID: "occupier", workflowName: "other", rootID: "occupier",
@@ -313,7 +313,7 @@ struct DispatchStreamTests {
     -> (WorkflowDispatchStreamMethod, TokenAuthority, WorkflowEventBus)
 
     {
-        let store = SpecCatalog(directory: nil, frontend: try ForgeSpec.frontend())
+        let store = SpecCatalog(directory: nil, frontend: ForgeSpec.frontend())
         let bus = WorkflowEventBus()
         let authority = TokenAuthority()
         let registry = WorkRegistry()

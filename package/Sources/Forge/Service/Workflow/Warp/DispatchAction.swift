@@ -24,10 +24,10 @@ struct DispatchAction: Warp.Effect {
                 Parameter(name: "name", type: .string)
 
             case .inputs:
-                Parameter(name: "inputs", type: .nullable(.dictionary(key: .string, value: .any)))
+                Parameter(name: "inputs", type: .optional(.dictionary(key: .string, value: .any)))
 
             case .timeout:
-                Parameter(name: "timeout", type: .nullable(.double))
+                Parameter(name: "timeout", type: .optional(.double))
             }
         }
 

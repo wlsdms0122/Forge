@@ -174,7 +174,7 @@ private struct Harness {
 
     // MARK: - Initializer
     init() throws {
-        self.frontend = try ForgeSpec.frontend()
+        self.frontend = ForgeSpec.frontend()
     }
 
     // MARK: - Public
@@ -423,7 +423,7 @@ struct EffectActionTests {
     @Test("an invalid inline spec is refused when it is read, before it runs")
     func inlineRejectsWhenSpecIsMalformed() throws {
         // Given — the inline door reads one procedure in the YAML notation
-        let store = SpecCatalog(directory: nil, frontend: try ForgeSpec.frontend())
+        let store = SpecCatalog(directory: nil, frontend: ForgeSpec.frontend())
         let spec = try YAMLParser().parse("""
         returns: String
         result: ok

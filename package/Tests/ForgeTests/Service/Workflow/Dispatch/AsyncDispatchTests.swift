@@ -100,7 +100,7 @@ struct AsyncDispatchTests {
     }
 
     private func makeMethod(policy: [String: [String]]) throws -> (WorkflowDispatchMethod, TokenAuthority) {
-        let store = SpecCatalog(directory: nil, frontend: try ForgeSpec.frontend())
+        let store = SpecCatalog(directory: nil, frontend: ForgeSpec.frontend())
         let bus = WorkflowEventBus()
         let authority = TokenAuthority()
         let runner = SpecWorkflowRunner(catalog: store,
