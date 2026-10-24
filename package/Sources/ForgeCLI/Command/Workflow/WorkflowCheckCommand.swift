@@ -26,7 +26,7 @@ struct WorkflowCheckCommand: AsyncParsableCommand {
               - malformed YAML, a notation the front end cannot read
               - a document the load refuses
               - a file that does not declare one procedure named after it,
-                or takes a name the library or std gives
+                or takes a name the library, std or the notation gives
               - a file the build refuses
               - ${ in a plain string, which ships as text
 

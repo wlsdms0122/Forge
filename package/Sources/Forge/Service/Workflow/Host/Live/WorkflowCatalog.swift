@@ -436,8 +436,9 @@ actor WorkflowCatalog {
     }
 
     // Forge's convention on top of the language: a workflow file declares one
-    // procedure, names it after the file, and takes a name the library and
-    // std do not give, since another workflow calls it by that name. The
+    // procedure, names it after the file, and takes a name the library, std
+    // and the notation do not give, since another workflow calls it by that
+    // name. The
     // language lets a module declare many; this is where a workflow says it
     // is one thing you can run by the name you know it by. The breach, where
     // the file makes one.
@@ -459,7 +460,7 @@ actor WorkflowCatalog {
 
         if let refusal = ForgeVocabulary.refusal(calling: name, declaredIn: text) {
             return (
-                "a workflow is called by its name, and another workflow writing '\(base)' is refused: \(refusal)",
+                "a workflow is called by its name, and another workflow writing '\(base)' reads it otherwise: \(refusal)",
                 "workflow named like the vocabulary"
             )
         }

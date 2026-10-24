@@ -156,6 +156,35 @@ struct CatalogGenerationTests {
         #expect(catalog.failures.last?.reason.contains("'run' is declared by Forge.run and run") == true)
     }
 
+    @Test("A workflow named by a key the notation spells is refused at its own file, and the files writing that key read it as the notation does")
+    func aWorkflowNamedLikeAnOperatorIsRefusedAlone() async throws {
+        // Given
+        let directory = try temporary.make("wf-operator")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try writeWorkflow("""
+        parameters: [ of: Int, to: Int ]
+        returns: Bool
+        result: true
+        """, named: "is", in: directory)
+        try writeWorkflow("""
+        returns: Bool
+        result: { of: 1, is: 2 }
+        """, named: "same", in: directory)
+        let sut = WorkflowCatalog(directory: directory)
+
+        // When
+        let catalog = await sut.catalog()
+
+        // Then
+        #expect(catalog.entries.map(\.name) == ["same"])
+        #expect(catalog.failures.compactMap(\.name) == ["is"])
+
+        let image = try await Builder().build(await sut.modules() + ForgeVocabulary.linkables())
+        let answer = try await Warp.Executor().run(image, entry: try Name("same"), arguments: [:])
+
+        #expect(answer == .bool(false))
+    }
+
     @Test("A scan obstruction rides in the same observation")
     func scanObstructionRidesTheSameObservation() async throws {
         // Given

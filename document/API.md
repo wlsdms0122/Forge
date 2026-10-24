@@ -285,14 +285,15 @@ Reads the files through the daemon's own catalog, the way it reads its
 directory at a reload: together through the YAML front end, each leaning on
 Forge's library and on the others, so a file that calls another workflow by
 name is checked with that workflow's file; each loaded, held to one procedure
-named after the file by a name the library and std do not give, and built
-against the library, the natives, std and the files that build. What the
-catalog records for a file is what the check prints, so a file passes the
-check where the daemon admits it. Beside that, no plain string may hold `${`
-(a string is a literal; `format` interpolates). A line per file: `✓ <path>`,
-`✗ <path>: refused` followed by the refusal (a build refusal starts
-`build:`), or `✗ <path> — N issue(s)` followed by indented issue lines. Exit
-code 1 if any file fails, 0 otherwise. Shell globs are expanded by the shell.
+named after the file by a name the library, std and the notation do not
+give, and built against the library, the natives, std and the files that
+build. What the catalog records for a file is what the check prints, so a
+file passes the check where the daemon admits it. Beside that, no plain
+string may hold `${` (a string is a literal; `format` interpolates). A line
+per file: `✓ <path>`, `✗ <path>: refused` followed by the refusal (a build
+refusal starts `build:`), or `✗ <path> — N issue(s)` followed by indented
+issue lines. Exit code 1 if any file fails, 0 otherwise. Shell globs are
+expanded by the shell.
 
 ### `forge schedule`
 

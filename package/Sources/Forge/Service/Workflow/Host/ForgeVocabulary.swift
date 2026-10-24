@@ -194,21 +194,28 @@ enum ForgeVocabulary {
         }
     }
 
-    // What another workflow reads where it writes a call of this name,
-    // leaning on the library and on this text: nothing where the name stands
-    // for the text's own procedure alone, and the front end's refusal where
-    // the library or std gives the same short name. The caller's own name
-    // ends in `-caller`, so its short name is never the one it calls.
+    // What another workflow reads where it writes this name, as a call's
+    // callee and as an operator's key, leaning on the library and on this
+    // text: nothing where it reads as it does leaning on the library alone,
+    // so the text takes a name nothing else gives, and otherwise the front
+    // end's refusal, or the reading the text takes over. The caller's own
+    // name ends in `-caller`, so its short name is never the one it writes.
     static func refusal(calling name: Name, declaredIn text: String) -> String? {
         let call = JSONValue.object(["call": .object(["procedure": .string(name.spelling), "arguments": .array([])])])
+        let operation = JSONValue.object(["of": .null, name.spelling: .null])
         let caller = JSONValue.object([
-            "procedures": .object(["\(name.spelling)-caller": .object(["body": .array([.object(["value": call])])])])
+            "procedures": .object([
+                "\(name.spelling)-caller": .object(["body": .array([.object(["value": call]), .object(["value": operation])])])
+            ])
         ])
 
         do {
-            _ = try frontend().leaning(on: [text]).document(from: try JSONEncoder().encode(caller))
+            let written = try JSONEncoder().encode(caller)
+            let leaning = try frontend().leaning(on: [text]).document(from: written)
 
-            return nil
+            guard let alone = try? frontend().document(from: written), leaning != alone else { return nil }
+
+            return "the notation spells '\(name)' as an operator, and the workflow would take it over"
         } catch let refusal as any WarpError {
             return refusal.message
         } catch {
