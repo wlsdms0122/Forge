@@ -13,6 +13,15 @@ struct LoadFailureLedger {
     
     private(set) var fresh: [String: LoadFailure] = [:]
     
+    // A line for each failure new to this observation.
+    private var announcements: [String] = []
+    
+    // What the daemon's reload writes on stderr for the failures new to this
+    // observation, a line each, and nothing where none is new.
+    var announcement: String {
+        announcements.map { line in "forge: \(line)\n" }.joined()
+    }
+    
     // MARK: - Initializer
     init(prior: [String: LoadFailure]) {
         self.prior = prior
@@ -27,9 +36,8 @@ struct LoadFailureLedger {
         return true
     }
     
-    // A failure is announced where it is new: the observation before held
-    // none for the file, or one with another reason or of another version
-    // of it.
+    // A failure is new where the observation before held none for the file,
+    // or one with another reason or of another version of it.
     mutating func record(
         source: String,
         reason: String,
@@ -41,7 +49,13 @@ struct LoadFailureLedger {
         
         if let standing = prior[source], standing.reason == reason, standing.mtime == mtime { return }
         
-        FileHandle.standardError.write(Data("forge: \(stderrLine)\n".utf8))
+        announcements.append(stderrLine)
+    }
+    
+    // A collision new to this observation. Its failures stand beside the
+    // ledger's, and the ledger holds its line.
+    mutating func record(collision reason: String) {
+        announcements.append(reason)
     }
     
     mutating func recordLegacyJSONSpecs(in directory: URL, kind: String) {

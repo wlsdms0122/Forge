@@ -77,7 +77,7 @@ actor WorkflowCatalog {
     private var generation: [String]?
 
     // The reload in progress, which a caller arriving during it waits for.
-    private var reloading: Task<Void, Never>?
+    private var reloading: Task<String, Never>?
 
     // The front end the files of this observation were read with, leaning on
     // the library and on them.
@@ -113,6 +113,8 @@ actor WorkflowCatalog {
     }
 
     // MARK: - Public
+    // The directory's catalog, the daemon's: a reload announces on stderr
+    // each failure new to it.
     @discardableResult
     func catalog() async -> Catalog {
         guard let directory else {
@@ -148,15 +150,21 @@ actor WorkflowCatalog {
         legacy.recordLegacyJSONSpecs(in: directory, kind: "workflow")
         legacyFailures = legacy.fresh
 
-        return await observing(scanStoreFiles(in: directory, pathExtension: specFileExtension))
+        let observed = await observing(scanStoreFiles(in: directory, pathExtension: specFileExtension))
+
+        FileHandle.standardError.write(Data((legacy.announcement + observed.announcement).utf8))
+
+        return observed.catalog
     }
 
     // The files at these paths read the way a reload reads the directory's,
-    // for a gate that admits what the daemon admits.
+    // for a gate that admits what the daemon admits and reports what it
+    // records.
     func catalog(of paths: [String]) async -> Catalog {
         await observing(
             StoreScan(files: paths.map { path in ScannedFile(url: URL(fileURLWithPath: path), source: path) })
         )
+        .catalog
     }
 
     func all() async -> Catalog {
@@ -245,8 +253,9 @@ actor WorkflowCatalog {
 
     // MARK: - Private
     // The catalog of the files a scan saw, reloaded where any of them
-    // changed since the observation the entries were read from.
-    private func observing(_ scan: StoreScan) async -> Catalog {
+    // changed since the observation the entries were read from, and what
+    // the reload announces, nothing where this call ran none.
+    private func observing(_ scan: StoreScan) async -> (catalog: Catalog, announcement: String) {
         let fileManager = FileManager.default
         var scan = scan
         var observed: [Observed] = []
@@ -274,12 +283,12 @@ actor WorkflowCatalog {
         // all of them.
         let observation = observed.map(\.stamp) + scan.obstructions.map(\.description)
 
-        guard observation != generation else { return currentCatalog }
+        guard observation != generation else { return (currentCatalog, "") }
 
         // One reload at a time: a caller arriving while one runs waits for
         // it and looks again.
         if let reloading {
-            await reloading.value
+            _ = await reloading.value
 
             return await observing(scan)
         }
@@ -287,15 +296,18 @@ actor WorkflowCatalog {
         let reload = Task { await self.reload(observed, scan: scan, observation: observation) }
 
         reloading = reload
-        await reload.value
+
+        let announcement = await reload.value
+
         reloading = nil
 
-        return currentCatalog
+        return (currentCatalog, announcement)
     }
 
     // Every observed file read, loaded and built again, and the entries and
-    // failures of this observation put in place.
-    private func reload(_ observed: [Observed], scan: StoreScan, observation: [String]) async {
+    // failures of this observation put in place; what is announced for the
+    // failures new to it.
+    private func reload(_ observed: [Observed], scan: StoreScan, observation: [String]) async -> String {
         var ledger = LoadFailureLedger(prior: failureCache)
         let spending = spent(observed, recording: &ledger)
         var candidates = spending.candidates
@@ -323,7 +335,12 @@ actor WorkflowCatalog {
             }
         }
 
-        let freshCollisions = collisionFailures(kind: "workflow name", collided, standing: collisions)
+        let freshCollisions = collisionFailures(
+            kind: "workflow name",
+            collided,
+            standing: collisions,
+            recording: &ledger
+        )
         let standing = await built(live, recording: &ledger)
 
         cache = standing.entries
@@ -337,6 +354,8 @@ actor WorkflowCatalog {
         )
         generation = observation
         reading = spending.frontend
+
+        return ledger.announcement
     }
 
     // The observed files read leaning on each other and on the library,

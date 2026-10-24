@@ -127,7 +127,7 @@ actor ScheduleStore {
         ) || incomplete
         
         let (live, collided) = partitionUniqueKeys(candidates)
-        collisions = collisionFailures(kind: "schedule id", collided, standing: collisions)
+        collisions = collisionFailures(kind: "schedule id", collided, standing: collisions, recording: &ledger)
         collidedIDs = Set(collided.map(\.key))
         
         for directory in [configDir, runtimeDirectory].compactMap({ directory in directory })
@@ -141,6 +141,7 @@ actor ScheduleStore {
         })
         scanIncomplete = incomplete
         cache = live
+        FileHandle.standardError.write(Data(ledger.announcement.utf8))
         
         return currentCatalog
     }
