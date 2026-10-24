@@ -251,9 +251,7 @@ actor SpecWorkflowRunner {
             let outputs = try await withCancelSignal(runID: runID) {
                 try await executor.run(image, entry: entry, arguments: arguments)
             }
-            // A run returns one value, and the fields of the struct or map a
-            // workflow returns are what it reports.
-            let jsonOutputs = try ValueBridge.fields(outputs).mapValues(ValueBridge.json)
+            let jsonOutputs = Self.outputs(of: outputs)
             let duration = (ContinuousClock.now - started).milliseconds
 
             await eventBus.publish(WorkflowEvent(
@@ -346,6 +344,22 @@ actor SpecWorkflowRunner {
         }
 
         return arguments
+    }
+
+    // What a run reports for the value it returned: the fields of a struct or
+    // the entries of a map, nothing for null, and any other value under
+    // `result`, so every workflow the build accepts reports what it returns.
+    private static func outputs(of returned: Warp.Value) -> [String: JSONValue] {
+        switch ValueBridge.json(returned) {
+        case .null:
+            return [:]
+
+        case let .object(fields):
+            return fields
+
+        case let other:
+            return ["result": other]
+        }
     }
 
     static func valuePreview(_ value: JSONValue) -> (String?, Int?) {

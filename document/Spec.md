@@ -22,8 +22,9 @@ with `Forge.dispatch`.
 - **Inputs** are the procedure's parameters. A caller hands them by name. An
   input of an optional type (`String?`) may be left out, and the daemon hands
   it null; any other input must be handed.
-- **The result** is the struct or map the procedure returns. Its fields are the
-  run's outputs.
+- **The result** is what the procedure returns. The fields of a struct or the
+  entries of a map are the run's outputs, any other value is the one output
+  `result`, and null is none.
 - **Failures** the body lets out are declared under `failing`, as the language
   asks of any procedure.
 

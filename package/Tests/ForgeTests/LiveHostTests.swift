@@ -244,6 +244,30 @@ struct SpecWorkflowRunnerTests {
         #expect(result.outputs["text"] == .string("hi there"))
     }
 
+    @Test("a run returning neither a struct nor a map reports its value under result")
+    func runReportsAPlainValueUnderResult() async throws {
+        // Given
+        let harness = try makeRunner(catalog: [
+            "plain": """
+            parameters: [ msg: String ]
+            returns: String
+            result: { format: "hi ${msg}", with: { msg: { ref: msg } } }
+            """
+        ])
+        let module = try await harness.store.module(named: "plain")
+
+        // When
+        let result = try await harness.dispatch(
+            module: module,
+            name: "plain",
+            inputs: ["msg": .string("there")]
+        )
+
+        // Then
+        #expect(result.status == .ok)
+        #expect(result.outputs == ["result": .string("hi there")])
+    }
+
     @Test("a shell step runs over the live seam")
     func shellStepRunsThroughLiveSeam() async throws {
         // Given
