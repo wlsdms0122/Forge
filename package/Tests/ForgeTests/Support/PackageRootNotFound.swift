@@ -1,5 +1,5 @@
 //
-//  PackageSourceErrors.swift
+//  PackageRootNotFound.swift
 //  ForgeTests
 //
 //  Created by JSilver on 8/8/26.
@@ -12,13 +12,5 @@ struct PackageRootNotFound: Error, CustomStringConvertible {
 
     var description: String {
         "Package.swift not found — searched upward from \(startedAt)"
-    }
-}
-
-struct DirectoryNotEnumerable: Error, CustomStringConvertible {
-    let directory: URL
-
-    var description: String {
-        "cannot enumerate directory: \(directory.path)"
     }
 }

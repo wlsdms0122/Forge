@@ -302,21 +302,6 @@ actor WorkflowScheduler {
     }
 }
 
-private struct FireTarget: Sendable {
-    // MARK: - Property
-    let name: String
-    let module: Warp.Module
-    
-    // MARK: - Initializer
-    // MARK: - Public
-    // MARK: - Private
-}
-
-private enum FireResolution {
-    case resolved(FireTarget)
-    case denied(reason: String, detail: String)
-}
-
 private func resolveFireTarget(
     name: String,
     spec: JSONValue?,

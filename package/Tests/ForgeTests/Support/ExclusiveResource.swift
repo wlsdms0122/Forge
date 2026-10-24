@@ -48,12 +48,6 @@ struct ExclusiveResource: TestTrait, SuiteTrait, TestScoping {
     }
 }
 
-extension Trait where Self == ExclusiveResource {
-    static func exclusive(_ resource: ExclusiveResource.Name) -> Self {
-        ExclusiveResource(name: resource.rawValue)
-    }
-}
-
 extension ExclusiveResource {
     /// Passing names as loose strings lets a typo silently become a 'different resource' — pin them with an enum.
     enum Name: String {

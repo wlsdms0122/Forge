@@ -152,16 +152,3 @@ final class PipeReader: @unchecked Sendable {
         source.cancel()
     }
 }
-
-enum PipeReaderError: ForgeError, CustomStringConvertible {
-    case creationFailed(errno: Int32)
-    
-    var message: String { description }
-    
-    var description: String {
-        switch self {
-        case .creationFailed(let code):
-            return "failed to create pipe (errno=\(code))"
-        }
-    }
-}
