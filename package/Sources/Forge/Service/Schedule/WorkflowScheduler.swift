@@ -211,7 +211,7 @@ actor WorkflowScheduler {
         
         let target: Workflow
         
-        switch await resolveFireTarget(
+        switch await Self.resolveFireTarget(
             name: schedule.workflow,
             spec: schedule.spec,
             catalog: catalog
@@ -220,7 +220,7 @@ actor WorkflowScheduler {
             target = resolved
         
         case .denied(let reason, let detail):
-            await denyFireSlot(
+            await Self.denyFireSlot(
                 ledger: ledger,
                 scheduleID: schedule.id,
                 workflow: schedule.workflow,
@@ -240,7 +240,7 @@ actor WorkflowScheduler {
         let task = Task { [weak self, runner] in
             if let priorTask { _ = await priorTask.value }
             
-            await dispatchScheduled(
+            await Self.dispatchScheduled(
                 target: target,
                 inputs: schedule.inputs ?? [:],
                 id: schedule.id,
@@ -270,7 +270,7 @@ actor WorkflowScheduler {
         Task.detached {
             let target: Workflow
             
-            switch await resolveFireTarget(
+            switch await Self.resolveFireTarget(
                 name: schedule.workflow,
                 spec: schedule.spec,
                 catalog: catalogLocal
@@ -279,7 +279,7 @@ actor WorkflowScheduler {
                 target = resolved
             
             case .denied(let reason, let detail):
-                await denyFireSlot(
+                await Self.denyFireSlot(
                     ledger: ledgerLocal,
                     scheduleID: schedule.id,
                     workflow: schedule.workflow,
@@ -291,7 +291,7 @@ actor WorkflowScheduler {
             }
             
             await ledgerLocal.close(id: schedule.id, .launched)
-            await dispatchScheduled(
+            await Self.dispatchScheduled(
                 target: target,
                 inputs: schedule.inputs ?? [:],
                 id: schedule.id,
@@ -299,101 +299,101 @@ actor WorkflowScheduler {
             )
         }
     }
-}
-
-private func resolveFireTarget(
-    name: String,
-    spec: JSONValue?,
-    catalog: WorkflowCatalog
-) async -> FireResolution {
-    if let spec {
-        do {
-            return .resolved(try await catalog.inline(spec))
-        } catch {
-            return .denied(reason: "spec_decode", detail: String(describing: error))
+    
+    private static func resolveFireTarget(
+        name: String,
+        spec: JSONValue?,
+        catalog: WorkflowCatalog
+    ) async -> FireResolution {
+        if let spec {
+            do {
+                return .resolved(try await catalog.inline(spec))
+            } catch {
+                return .denied(reason: "spec_decode", detail: String(describing: error))
+            }
+        }
+    
+        switch await catalog.resolve(name) {
+        case .found(let workflow):
+            return .resolved(workflow)
+    
+        case .invalid(let reason):
+            return .denied(reason: "workflow_invalid", detail: reason)
+    
+        case .unobserved(let reason):
+            return .denied(reason: "workflow_unobserved", detail: reason)
+    
+        case .missing:
+            return .denied(reason: "workflow_missing", detail: "unknown workflow '\(name)'")
         }
     }
     
-    switch await catalog.resolve(name) {
-    case .found(let workflow):
-        return .resolved(workflow)
-    
-    case .invalid(let reason):
-        return .denied(reason: "workflow_invalid", detail: reason)
-    
-    case .unobserved(let reason):
-        return .denied(reason: "workflow_unobserved", detail: reason)
-    
-    case .missing:
-        return .denied(reason: "workflow_missing", detail: "unknown workflow '\(name)'")
-    }
-}
-
-private func denyFireSlot(
-    ledger: FireLedger,
-    scheduleID: String,
-    workflow: String,
-    reason: String,
-    detail: String
-) async {
-    await Log.shared.append(
-        "schedule.denied",
-        LogPayload([
-            "schedule_id": scheduleID,
-            "workflow":   workflow,
-            "stage":      "resolve",
-            "reason":     reason,
-            "error":      detail,
-        ]),
-        level: .error,
-        category: "schedule"
-    )
-    await ledger.close(id: scheduleID, .denied(reason: reason))
-}
-
-private func dispatchScheduled(
-    target: Workflow,
-    inputs: [String: JSONValue],
-    id: String,
-    runner: WorkflowRunner
-) async {
-    let principal = "system:schedule:\(id)"
-    let runID = WorkflowRunner.newRunID()
-    
-    await Log.shared.append(
-        "schedule.fired",
-        LogPayload([
-            "schedule_id":  id,
-            "workflow":    target.name,
-            "workflow_id": runID,
-            "principal":   principal,
-        ]),
-        level: .info,
-        category: "schedule"
-    )
-    
-    do {
-        _ = try await runner.dispatch(
-            target,
-            inputs: inputs,
-            principal: principal,
-            origin: .schedule(id),
-            workflowID: runID,
-            mode: .awaited
-        )
-    } catch {
+    private static func denyFireSlot(
+        ledger: FireLedger,
+        scheduleID: String,
+        workflow: String,
+        reason: String,
+        detail: String
+    ) async {
         await Log.shared.append(
             "schedule.denied",
+            LogPayload([
+                "schedule_id": scheduleID,
+                "workflow":   workflow,
+                "stage":      "resolve",
+                "reason":     reason,
+                "error":      detail,
+            ]),
+            level: .error,
+            category: "schedule"
+        )
+        await ledger.close(id: scheduleID, .denied(reason: reason))
+    }
+    
+    private static func dispatchScheduled(
+        target: Workflow,
+        inputs: [String: JSONValue],
+        id: String,
+        runner: WorkflowRunner
+    ) async {
+        let principal = "system:schedule:\(id)"
+        let runID = WorkflowRunner.newRunID()
+    
+        await Log.shared.append(
+            "schedule.fired",
             LogPayload([
                 "schedule_id":  id,
                 "workflow":    target.name,
                 "workflow_id": runID,
                 "principal":   principal,
-                "stage":       "dispatch",
-                "error":       String(describing: error),
             ]),
-            level: .error,
+            level: .info,
             category: "schedule"
         )
+    
+        do {
+            _ = try await runner.dispatch(
+                target,
+                inputs: inputs,
+                principal: principal,
+                origin: .schedule(id),
+                workflowID: runID,
+                mode: .awaited
+            )
+        } catch {
+            await Log.shared.append(
+                "schedule.denied",
+                LogPayload([
+                    "schedule_id":  id,
+                    "workflow":    target.name,
+                    "workflow_id": runID,
+                    "principal":   principal,
+                    "stage":       "dispatch",
+                    "error":       String(describing: error),
+                ]),
+                level: .error,
+                category: "schedule"
+            )
+        }
     }
 }

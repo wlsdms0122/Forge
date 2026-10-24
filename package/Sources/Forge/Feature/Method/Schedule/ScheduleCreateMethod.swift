@@ -83,7 +83,7 @@ struct ScheduleCreateMethod: Sendable {
     }
 
     func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONValue {
-        let (workflowName, specJSON) = try await resolveDispatchTarget(
+        let (workflowName, specJSON) = try await Self.resolveDispatchTarget(
             params: request.params,
             context: "schedule.create",
             catalog: catalog
@@ -203,50 +203,48 @@ struct ScheduleCreateMethod: Sendable {
             return "\(error)"
         }
     }
-}
 
-func resolveDispatchTarget(
-    params: [String: JSONValue],
-    context: String,
-    catalog: WorkflowCatalog
-) async throws -> (name: String, spec: JSONValue?) {
-    let nameParam = params["workflow"]?.stringValue
-        .flatMap { value in value.isEmpty ? nil : value }
-    let specParam = params["spec"]?.objectValue
+    private static func resolveDispatchTarget(
+        params: [String: JSONValue],
+        context: String,
+        catalog: WorkflowCatalog
+    ) async throws -> (name: String, spec: JSONValue?) {
+        let nameParam = params["workflow"]?.stringValue
+            .flatMap { value in value.isEmpty ? nil : value }
+        let specParam = params["spec"]?.objectValue
 
-    switch (nameParam, specParam) {
-    case let (name?, nil):
-        _ = try await catalog.workflow(named: name)
+        switch (nameParam, specParam) {
+        case let (name?, nil):
+            _ = try await catalog.workflow(named: name)
 
-        return (name, nil)
+            return (name, nil)
 
-    case let (nil, raw?):
-        guard raw["name"] == nil else {
+        case let (nil, raw?):
+            guard raw["name"] == nil else {
+                throw ProtocolError(
+                    "\(context): inline 'spec' must be anonymous — a 'name' key is not allowed (the name is fixed to '\(WorkflowCatalog.inlineSigil)')")
+            }
+
+            let specValue = JSONValue.object(raw)
+
+            do {
+                // An inline spec is one procedure, the same shape workflow.dispatch
+                // admits — checked here so a schedule cannot be stored carrying
+                // something that will not load when it fires.
+                _ = try await catalog.inline(specValue)
+            } catch {
+                throw ProtocolError("\(context): malformed 'spec' — \(error)")
+            }
+
+            return (WorkflowCatalog.inlineSigil, specValue)
+
+        case (.some, .some):
             throw ProtocolError(
-                "\(context): inline 'spec' must be anonymous — a 'name' key is not allowed (the name is fixed to '\(WorkflowCatalog.inlineSigil)')")
+                "\(context): 'workflow' and 'spec' are mutually exclusive — pass only one")
+
+        case (nil, nil):
+            throw ProtocolError(
+                "\(context): one of 'workflow' (registered name) or 'spec' (inline workflow JSON) is required")
         }
-
-        let specValue = JSONValue.object(raw)
-
-
-
-        do {
-            // An inline spec is one procedure, the same shape workflow.dispatch
-            // admits — checked here so a schedule cannot be stored carrying
-            // something that will not load when it fires.
-            _ = try await catalog.inline(specValue)
-        } catch {
-            throw ProtocolError("\(context): malformed 'spec' — \(error)")
-        }
-
-        return (WorkflowCatalog.inlineSigil, specValue)
-
-    case (.some, .some):
-        throw ProtocolError(
-            "\(context): 'workflow' and 'spec' are mutually exclusive — pass only one")
-
-    case (nil, nil):
-        throw ProtocolError(
-            "\(context): one of 'workflow' (registered name) or 'spec' (inline workflow JSON) is required")
     }
 }
