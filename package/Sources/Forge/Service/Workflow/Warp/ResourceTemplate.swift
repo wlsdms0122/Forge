@@ -9,8 +9,8 @@ import Foundation
 import Warp
 
 // A resource body read as a template: `${name}` stands for the input of that
-// name, and `$${` writes `${`. A name the inputs do not hold, or hold as null,
-// is refused rather than written as nothing.
+// name in the language's spelling of it, null as `null` the way `format`
+// writes it, and `$${` writes `${`. A name the inputs do not hold is refused.
 struct ResourceTemplate {
     // MARK: - Property
     let body: String
@@ -44,10 +44,6 @@ struct ResourceTemplate {
 
             guard let value = inputs[name] else {
                 throw ExecutionError("resource template reads '\(name)', and no input of that name was handed")
-            }
-
-            guard value != .null else {
-                throw ExecutionError("resource template reads '\(name)', and it is null")
             }
 
             rendered += ValueBridge.text(value)

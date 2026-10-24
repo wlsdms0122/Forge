@@ -461,6 +461,28 @@ struct EffectActionTests {
         #expect(outputs["result"] == .string("# enrich\naxes: tech, persona"))
     }
 
+    @Test("resource writes a null input as null, as format does")
+    func resourceWritesANullInputAsNull() async throws {
+        // Given
+        let harness = Harness()
+        let spec = try harness.frontend.workflow("""
+        returns: "Dictionary<String, Any>"
+        body:
+          - let: prompt
+            value: { call: { procedure: Forge.resource, arguments: [ prompt/enrich.md, { dictionary: [ [axes, null] ] } ] } }
+        result: { dictionary: [ [result, { ref: prompt }] ] }
+        """)
+        let sut = harness.executor(files: [
+            "prompt/enrich.md": "axes: ${axes}"
+        ])
+
+        // When
+        let outputs = try await sut.run(spec)
+
+        // Then
+        #expect(outputs["result"] == .string("axes: null"))
+    }
+
     @Test("locate finds a resource file without rendering it")
     func resourcePathLocatesWithoutRendering() async throws {
         // Given — the body holds shell syntax that is not template dialect;

@@ -100,8 +100,9 @@ rescue.
 
 Reads the resource file `content`, relative to the resource directory, and
 renders it as a template over `inputs`: `${name}` stands for the input of that
-name and `$${` writes `${`. A name the inputs do not hold, or hold as null, is
-refused.
+name and `$${` writes `${`. A null input is written `null`, as the language's
+`format` writes it, and a name the inputs do not hold is refused. An input
+that must not be null is declared without `?`.
 
 ### `Forge.locate`
 
