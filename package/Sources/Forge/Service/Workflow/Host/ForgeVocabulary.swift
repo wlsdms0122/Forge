@@ -131,8 +131,7 @@ enum ForgeVocabulary {
         try shipped.get()
     }
 
-    // The verbs a workflow writes, the library's procedures. A statement that
-    // calls one is a step.
+    // The verbs a workflow writes, the library's procedures.
     static func verbs() throws -> Set<Name> {
         Set(try loaded.get().procedures.keys)
     }

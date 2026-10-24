@@ -12,7 +12,7 @@ import Warp
 // settings (model, permissions, cwd, ...) at its boundary, opens the ambient
 // session through the environment, and runs its steps inside; `agent` steps only make
 // sense in here.
-struct InvokeAction: Warp.Effect {
+struct InvokeAction: ForgeAction {
     enum Parameters: Int, ParameterSet {
         case model
         case allowed
@@ -66,9 +66,7 @@ struct InvokeAction: Warp.Effect {
 
     // MARK: - Initializer
     // MARK: - Public
-    func run(_ invocation: Warp.Invocation<Self>) async throws -> Warp.Value {
-        let environment = try ForgeEnvironment.from(invocation)
-
+    func act(_ invocation: Warp.Invocation<Self>, in environment: ForgeEnvironment) async throws -> Warp.Value {
         // The body is a closure so that nothing in it runs before the session
         // is open.
         guard case let .procedure(body) = invocation[.body] else {

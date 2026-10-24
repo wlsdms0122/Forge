@@ -194,10 +194,9 @@ private struct Harness {
         agentExit: Int32? = nil,
         dispatchResult: Warp.Value = .dictionary(Value.Dictionary(["ok": .bool(true)])),
         files: [String: String] = [:],
-        observer: (any ExecutionObserver)? = nil
-    ) -> Warp.Executor {
+        publish: @escaping @Sendable (WorkflowEvent) async -> Void = { _ in }
+    ) throws -> Warp.Executor {
         Warp.Executor(
-            observer: observer,
             environment: ForgeEnvironment(
                 shell: shell ?? MockShell(recorder: recorder),
                 agent: MockAgent(recorder: recorder, reply: agentReply, exitCode: agentExit),
@@ -206,7 +205,13 @@ private struct Harness {
                 pool: WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: Int.max),
                 runID: "wf-test",
                 rootID: "wf-root",
-                origin: .manual
+                origin: .manual,
+                bridge: EventBridge(
+                    workflowID: "wf-test",
+                    workflowName: "observed",
+                    verbs: try ForgeVocabulary.verbs(),
+                    publish: publish
+                )
             )
         )
     }
@@ -237,7 +242,7 @@ struct EffectActionTests {
                   stdin: { ref: who }
         result: { dictionary: [ [result, { ref: echo }] ] }
         """)
-        let sut = harness.executor(
+        let sut = try harness.executor(
             shell: MockShell(recorder: harness.recorder, stdout: "done\n")
         )
 
@@ -269,7 +274,7 @@ struct EffectActionTests {
                     value: recovered
         result: { dictionary: [ [result, { ref: broken }] ] }
         """)
-        let sut = harness.executor(
+        let sut = try harness.executor(
             shell: MockShell(recorder: harness.recorder, exitCode: 1)
         )
 
@@ -299,7 +304,7 @@ struct EffectActionTests {
                   outputs: { dictionary: [ [code, { dictionary: [ [regex, "code=(\\\\d+)"], [type, int] ] }] ] }
         result: { dictionary: [ [result, { ref: 'fields["code"]' }], [raw, { ref: 'fields["_raw"]' }] ] }
         """)
-        let sut = harness.executor(
+        let sut = try harness.executor(
             shell: MockShell(recorder: harness.recorder, stdout: "code=42")
         )
 
@@ -331,7 +336,7 @@ struct EffectActionTests {
                     value: { ref: reading.type }
         result: { dictionary: [ [refused, { ref: refused }] ] }
         """)
-        let sut = harness.executor()
+        let sut = try harness.executor()
 
         // When
         let outputs = try await sut.run(spec)
@@ -360,7 +365,7 @@ struct EffectActionTests {
                     value: { ref: reading.type }
         result: { dictionary: [ [refused, { ref: refused }] ] }
         """)
-        let sut = harness.executor()
+        let sut = try harness.executor()
 
         // When
         let error = await #expect(throws: (any Error).self) {
@@ -391,7 +396,7 @@ struct EffectActionTests {
                     value: recovered
         result: { dictionary: [ [result, { ref: slow }] ] }
         """)
-        let sut = harness.executor(
+        let sut = try harness.executor(
             shell: MockShell(recorder: harness.recorder, delaySeconds: 5)
         )
 
@@ -423,7 +428,7 @@ struct EffectActionTests {
                       result: { agent: { format: "tell me about ${topic}", with: { topic: { ref: topic } } } }
         result: { dictionary: [ [result, { ref: session }] ] }
         """)
-        let sut = harness.executor(agentReply: "sure!")
+        let sut = try harness.executor(agentReply: "sure!")
 
         // When
         let outputs = try await sut.run(spec, inputs: ["topic": .string("specs")])
@@ -466,7 +471,7 @@ struct EffectActionTests {
                       result: { ref: said }
         result: { dictionary: [ [said, { ref: session }] ] }
         """)
-        let sut = harness.executor(agentExit: 3)
+        let sut = try harness.executor(agentExit: 3)
 
         // When
         let outputs = try await sut.run(spec)
@@ -484,7 +489,7 @@ struct EffectActionTests {
         failing: [nonzero_exit]
         result: { agent: "hello?" }
         """)
-        let sut = harness.executor()
+        let sut = try harness.executor()
 
         // When / Then
         await #expect(throws: ExecutionError.self) {
@@ -505,7 +510,7 @@ struct EffectActionTests {
             value: { call: { procedure: dispatch, arguments: { name: worker, inputs: { dictionary: [ [job_id, { ref: job }] ] } } } }
         result: { dictionary: [ [result, { ref: 'child["ok"]' }] ] }
         """)
-        let sut = harness.executor()
+        let sut = try harness.executor()
 
         // When
         let outputs = try await sut.run(spec, inputs: ["job": .string("j-1")])
@@ -556,7 +561,7 @@ struct EffectActionTests {
             value: { call: { procedure: said, arguments: { word: hi } } }
         result: { dictionary: [ [result, { ref: spoken }] ] }
         """))
-        let sut = harness.executor()
+        let sut = try harness.executor()
 
         // When
         let module = try await store.inline(spec)
@@ -581,7 +586,7 @@ struct EffectActionTests {
             value: { call: { procedure: resource, arguments: { content: prompt/enrich.md, inputs: { dictionary: [ [axes, { ref: axes }] ] } } } }
         result: { dictionary: [ [result, { ref: prompt }] ] }
         """)
-        let sut = harness.executor(files: [
+        let sut = try harness.executor(files: [
             "prompt/enrich.md": "# enrich\naxes: ${axes}"
         ])
 
@@ -603,7 +608,7 @@ struct EffectActionTests {
             value: { call: { procedure: resource, arguments: { content: prompt/enrich.md, inputs: { dictionary: [ [axes, null] ] } } } }
         result: { dictionary: [ [result, { ref: prompt }] ] }
         """)
-        let sut = harness.executor(files: [
+        let sut = try harness.executor(files: [
             "prompt/enrich.md": "axes: ${axes}"
         ])
 
@@ -626,7 +631,7 @@ struct EffectActionTests {
             value: { locate: script/run.sh }
         result: { dictionary: [ [where, { ref: script }] ] }
         """)
-        let sut = harness.executor(files: [
+        let sut = try harness.executor(files: [
             "script/run.sh": "#!/bin/sh\necho \"$PATH\""
         ])
 
@@ -667,7 +672,7 @@ struct EffectActionTests {
                     value: { ref: 'risky.details["stderr"]' }
         result: { dictionary: [ [kind, { ref: kind }], [code, { ref: code }], [said, { ref: said }] ] }
         """)
-        let sut = harness.executor(shell: MockShell(
+        let sut = try harness.executor(shell: MockShell(
             recorder: harness.recorder,
             exitCode: 3,
             stderr: "boom"
@@ -713,7 +718,7 @@ struct EffectActionTests {
             value: { call: { procedure: callee, arguments: [ 21 ] } }
         result: { dictionary: [ [result, { ref: 'called["doubled"]' }] ] }
         """)
-        let sut = harness.executor()
+        let sut = try harness.executor()
 
         // When — the caller leads and the catalog is the rest of the world,
         // which is what the daemon hands to every link
@@ -723,7 +728,7 @@ struct EffectActionTests {
         #expect(outputs["result"] == .int(21))
     }
 
-    @Test("a statement that calls a verb, or a native directly, is a step, named by its statement and acting as its callee, and the native under a verb runs for the verb's step")
+    @Test("a call of a verb that acts, or of its native directly, is a step, named by its calling statement and acting as the verb, and the native under a verb runs for the verb's step")
     func eventsBridgeWhenStepsRun() async throws {
         // Given
         let harness = Harness()
@@ -751,18 +756,9 @@ struct EffectActionTests {
                     value: recovered
         result: { dictionary: [ [fine, { ref: fine }], [recovered, { ref: recovered }] ] }
         """)
-        let bridge = EventBridge(
-            workflowID: "wf-test",
-            workflowName: "observed",
-            verbs: try ForgeVocabulary.verbs(),
-            natives: Set(try ForgeVocabulary.natives().procedures.keys)
-        ) { event in
+        let sut = try harness.executor(shell: MockShell(recorder: harness.recorder, exitCode: 1)) { event in
             await collected.append(event)
         }
-        let sut = harness.executor(
-            shell: MockShell(recorder: harness.recorder, exitCode: 1),
-            observer: bridge
-        )
 
         // When
         _ = try await sut.run(spec)
@@ -781,6 +777,49 @@ struct EffectActionTests {
             "broken:step.failed:"
         ])
         #expect(await harness.recorder.shellSteps == ["broken"])
+    }
+
+    @Test("a verb called in another verb's arguments is const and computes, so the statement's one step is the outer call")
+    func aNestedVerbCallIsNoStep() async throws {
+        // Given. An operand is read rather than run, so only a const verb
+        // stands in another's arguments, and a const verb does not act.
+        let harness = Harness()
+        let collected = Collected()
+        let spec = try harness.frontend.workflow("""
+        returns: "Dictionary<String, Any>"
+        failing: [extract_refused]
+        body:
+          - let: said
+            value:
+              call:
+                procedure: resource
+                arguments:
+                  content: a.txt
+                  inputs:
+                    call:
+                      procedure: extract
+                      arguments:
+                        text: "name=forge"
+                        outputs: { dictionary: [ [name, { dictionary: [ [regex, "name=(\\\\w+)"] ] }] ] }
+        result: { dictionary: [ [said, { ref: said }] ] }
+        """)
+        let sut = try harness.executor(files: ["a.txt": "hello ${name}"]) { event in
+            await collected.append(event)
+        }
+
+        // When
+        let outputs = try await sut.run(spec)
+
+        // Then
+        let steps = await collected.events.map { event in
+            "\(event.stepID ?? "?"):\(event.kind.rawValue):\(event.action ?? "")"
+        }
+
+        #expect(outputs["said"] == .string("hello forge"))
+        #expect(steps == [
+            "said:step.started:Forge.resource",
+            "said:step.completed:"
+        ])
     }
 
     // MARK: - Public

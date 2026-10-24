@@ -18,29 +18,30 @@ extension Trace {
         return ""
     }
 
-    // The step a native verb runs for, read from its own trace: where the
-    // procedure that sent it is one of these verbs, the statement that sent
-    // that verb, and otherwise the innermost statement.
+    // The step a native verb runs for, read from its own trace: the name of
+    // the statement that called its verb.
     func step(sentFrom verbs: Set<Name>) -> String {
+        call(sentFrom: verbs).statement.step
+    }
+
+    // The call of one of these verbs a native runs for, read from the
+    // native's own trace: where the procedure that sent it is one of these
+    // verbs, the statement that called that verb, and the verb; otherwise
+    // the statement that called the native, and no verb.
+    func call(sentFrom verbs: Set<Name>) -> (statement: Trace, verb: Name?) {
         var hops = hops
 
         if case .procedure = hops.last { hops.removeLast() }
 
         guard
             let frame = Self.frame(in: hops, ofOneOf: verbs),
-            let statement = hops[..<frame].last,
-            case let .statement(step) = statement
+            case let .procedure(sender) = hops[frame],
+            let verb = try? Name(sender)
         else {
-            return self.step
+            return (Trace(hops: hops), nil)
         }
 
-        return step
-    }
-
-    // Whether the run is in the body of one of these procedures: the
-    // innermost body it entered is one of theirs.
-    func isInBody(ofOneOf procedures: Set<Name>) -> Bool {
-        Self.frame(in: hops, ofOneOf: procedures) != nil
+        return (Trace(hops: Array(hops[..<frame])), verb)
     }
 
     // Where the innermost body these hops entered is one of these

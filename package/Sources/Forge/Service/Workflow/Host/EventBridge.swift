@@ -8,101 +8,73 @@
 import Foundation
 import Warp
 
-// Adapts the language's execution observations to forge's event stream. A
-// step is a statement that calls one of forge's verbs, or a native verb
-// directly, outside a verb's own body, and its action is the callee's name;
-// every other statement a run performs is the workflow's own working, or the
-// verb's, and is no step. Run-level framing (started/completed/failed) stays
-// with whoever drives the executor.
-struct EventBridge: ExecutionObserver {
+// Publishes forge's steps on its event stream. A step is a call of a verb
+// that acts outside the program, from its native's start to its return or
+// throw, and each such native announces its own (`ForgeAction`). The step is
+// named by the statement that called the verb, and its action is the verb;
+// a native a workflow calls directly is its own verb. Run-level framing
+// (started/completed/failed) stays with whoever drives the executor.
+struct EventBridge: Sendable {
     // MARK: - Property
     let workflowID: String
     let workflowName: String
     let verbs: Set<Name>
-    let natives: Set<Name>
     let publish: @Sendable (WorkflowEvent) async -> Void
-
-    private let steps = StartedSteps()
 
     // MARK: - Initializer
     init(
         workflowID: String,
         workflowName: String,
         verbs: Set<Name>,
-        natives: Set<Name>,
         publish: @escaping @Sendable (WorkflowEvent) async -> Void
     ) {
         self.workflowID = workflowID
         self.workflowName = workflowName
         self.verbs = verbs
-        self.natives = natives
         self.publish = publish
     }
 
-    // MARK: - Lifecycle
-    func statementStarted(at trace: Trace, construct: Construct, callee: Name?) async {
-        guard
-            let callee,
-            verbs.contains(callee) || natives.contains(callee),
-            !trace.isInBody(ofOneOf: verbs)
-        else {
-            return
-        }
+    // MARK: - Public
+    // The step of the verb this native runs for, around what `body` does.
+    func step<P: NativeProcedure>(
+        of invocation: Warp.Invocation<P>,
+        _ body: () async throws -> Warp.Value
+    ) async throws -> Warp.Value {
+        let call = invocation.trace.call(sentFrom: verbs)
+        let step = call.statement.step
 
-        await steps.start(trace)
         await publish(WorkflowEvent(
             kind: .stepStarted,
             workflowID: workflowID,
             workflowName: workflowName,
-            stepID: trace.step,
-            action: callee.spelling
+            stepID: step,
+            action: (call.verb ?? invocation.selector).spelling
         ))
-    }
 
-    func statementCompleted(at trace: Trace, result: Warp.Value) async {
-        guard await steps.end(trace) else { return }
+        do {
+            let result = try await body()
 
-        await publish(WorkflowEvent(
-            kind: .stepCompleted,
-            workflowID: workflowID,
-            workflowName: workflowName,
-            stepID: trace.step,
-            output: ValueBridge.json(result)
-        ))
-    }
+            await publish(WorkflowEvent(
+                kind: .stepCompleted,
+                workflowID: workflowID,
+                workflowName: workflowName,
+                stepID: step,
+                output: ValueBridge.json(result)
+            ))
 
-    func statementFailed(at trace: Trace, error: any Error) async {
-        guard await steps.end(trace) else { return }
+            return result
+        } catch {
+            await publish(WorkflowEvent(
+                kind: .stepFailed,
+                workflowID: workflowID,
+                workflowName: workflowName,
+                stepID: step,
+                errorType: String(describing: type(of: error)),
+                errorMessage: "\(error)"
+            ))
 
-        await publish(WorkflowEvent(
-            kind: .stepFailed,
-            workflowID: workflowID,
-            workflowName: workflowName,
-            stepID: trace.step,
-            errorType: String(describing: type(of: error)),
-            errorMessage: "\(error)"
-        ))
-    }
-
-    // MARK: - Public
-    // MARK: - Private
-}
-
-// The steps that started and have not ended, each by the occurrence its trace
-// names, since pieces of a fan-out and rounds of a loop run one statement many
-// times.
-private actor StartedSteps {
-    // MARK: - Property
-    private var occurrences: Set<String> = []
-
-    // MARK: - Initializer
-    // MARK: - Public
-    func start(_ trace: Trace) {
-        occurrences.insert(trace.rendered)
-    }
-
-    func end(_ trace: Trace) -> Bool {
-        occurrences.remove(trace.rendered) != nil
+            throw error
+        }
     }
 
     // MARK: - Private

@@ -8,7 +8,7 @@
 import Foundation
 import Warp
 
-struct ShellAction: Warp.Effect {
+struct ShellAction: ForgeAction {
     enum Parameters: Int, ParameterSet {
         case command
         case cwd
@@ -44,9 +44,7 @@ struct ShellAction: Warp.Effect {
     // MARK: - Property
     // MARK: - Initializer
     // MARK: - Public
-    func run(_ invocation: Warp.Invocation<Self>) async throws -> Warp.Value {
-        let environment = try ForgeEnvironment.from(invocation)
-
+    func act(_ invocation: Warp.Invocation<Self>, in environment: ForgeEnvironment) async throws -> Warp.Value {
         guard case let .array(command) = invocation[.command], !command.isEmpty else {
             throw ExecutionError("shell.command is empty")
         }

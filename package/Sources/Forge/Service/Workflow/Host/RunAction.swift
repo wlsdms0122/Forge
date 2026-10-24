@@ -9,15 +9,13 @@ import Foundation
 import Warp
 
 // Which run this is: its own id and the id of the run that started the chain.
-struct RunAction: Warp.Effect {
+struct RunAction: ForgeAction {
     typealias Parameters = NoParameters
 
     // MARK: - Property
     // MARK: - Initializer
     // MARK: - Public
-    func run(_ invocation: Warp.Invocation<Self>) async throws -> Warp.Value {
-        let environment = try ForgeEnvironment.from(invocation)
-
+    func act(_ invocation: Warp.Invocation<Self>, in environment: ForgeEnvironment) async throws -> Warp.Value {
         return try Value.holding(
             [
                 (name: "workflow_id", value: .string(environment.runID)),

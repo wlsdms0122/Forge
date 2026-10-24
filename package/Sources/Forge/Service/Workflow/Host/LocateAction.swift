@@ -9,7 +9,7 @@ import Foundation
 import Warp
 
 // Where a resource file is, as an absolute path.
-struct LocateAction: Warp.Effect {
+struct LocateAction: ForgeAction {
     enum Parameters: Int, ParameterSet {
         case path
 
@@ -24,9 +24,7 @@ struct LocateAction: Warp.Effect {
     // MARK: - Property
     // MARK: - Initializer
     // MARK: - Public
-    func run(_ invocation: Warp.Invocation<Self>) async throws -> Warp.Value {
-        let environment = try ForgeEnvironment.from(invocation)
-
+    func act(_ invocation: Warp.Invocation<Self>, in environment: ForgeEnvironment) async throws -> Warp.Value {
         return .string(try await environment.resources.locate(ValueBridge.text(invocation[.path])))
     }
 

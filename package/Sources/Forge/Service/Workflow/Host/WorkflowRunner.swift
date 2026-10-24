@@ -207,16 +207,6 @@ actor WorkflowRunner {
         ))
 
         let eventBus = self.eventBus
-        let environment = ForgeEnvironment(
-            shell: shell,
-            agent: agent,
-            dispatcher: self,
-            resources: resources,
-            pool: pool,
-            runID: runID,
-            rootID: LogContext.rootID ?? runID,
-            origin: origin
-        )
 
         do {
             // Linking is inside the do-block on purpose: a workflow naming a
@@ -226,16 +216,23 @@ actor WorkflowRunner {
             // this run was asked for is the entry.
             let entry = try Name(name)
             let image = try await catalog.image(running: module, entry: entry)
-            let executor = Warp.Executor(
-                observer: EventBridge(
+            let environment = ForgeEnvironment(
+                shell: shell,
+                agent: agent,
+                dispatcher: self,
+                resources: resources,
+                pool: pool,
+                runID: runID,
+                rootID: LogContext.rootID ?? runID,
+                origin: origin,
+                bridge: EventBridge(
                     workflowID: runID,
                     workflowName: name,
                     verbs: try ForgeVocabulary.verbs(),
-                    natives: Set(try ForgeVocabulary.natives().procedures.keys),
                     publish: { event in await eventBus.publish(event) }
-                ),
-                environment: environment
+                )
             )
+            let executor = Warp.Executor(environment: environment)
             let arguments = try Self.arguments(
                 inputs,
                 for: module.procedures[entry]?.signature

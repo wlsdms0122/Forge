@@ -11,7 +11,7 @@ import Warp
 // Asks the daemon for an isolated run of a catalog workflow: its own lifetime,
 // policy check and slot, where a `call` stays inside this run. The daemon
 // settles the inputs against the target's signature.
-struct DispatchAction: Warp.Effect {
+struct DispatchAction: ForgeAction {
     enum Parameters: Int, ParameterSet {
         case name
         case inputs
@@ -39,8 +39,7 @@ struct DispatchAction: Warp.Effect {
     // MARK: - Property
     // MARK: - Initializer
     // MARK: - Public
-    func run(_ invocation: Warp.Invocation<Self>) async throws -> Warp.Value {
-        let environment = try ForgeEnvironment.from(invocation)
+    func act(_ invocation: Warp.Invocation<Self>, in environment: ForgeEnvironment) async throws -> Warp.Value {
         let name = ValueBridge.text(invocation[.name])
         let inputs = try ValueBridge.fields(invocation[.inputs])
 
