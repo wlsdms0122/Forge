@@ -1146,6 +1146,7 @@ The error envelope is `{"type": "<ErrorType>", "message": "<text>"}` and the fie
 | `PolicyDenied` | the principal may not dispatch/control that workflow (policy/*.yaml) — retry is pointless |
 | `WorkflowValidationError` | the workflow definition failed validation (inline spec or broken catalog file) — fix the spec |
 | `OutputDeclarationError` | an `extract` step's `outputs` is no extractor declaration (a map that is no extractor, the key `_raw`, a path or a regex that does not parse) — fix the spec |
+| `DaemonShuttingDown` | the daemon is draining for shutdown: it starts no new run (`workflow.dispatch`, a schedule's fire) and no service (`service.run`, `service.restart`) |
 | `RunCapExceeded` | run cap saturation (backpressure) — retry later is meaningful |
 | `RunCancelled` | the run was cancelled (`workflow.cancel`, or the daemon shutting down) |
 | `InternalError` | a failure neither Forge nor the language names (an error of the system); the message is its text |

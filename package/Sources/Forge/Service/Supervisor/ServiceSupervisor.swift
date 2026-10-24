@@ -93,7 +93,7 @@ actor ServiceSupervisor {
         }
         
         guard !shuttingDown else {
-            throw ProtocolError("service.run: daemon is shutting down")
+            throw DaemonShuttingDown("service.run: daemon is shutting down")
         }
         
         await start(name)
@@ -118,7 +118,7 @@ actor ServiceSupervisor {
         }
         
         guard !shuttingDown else {
-            throw ProtocolError("service.restart: daemon is shutting down")
+            throw DaemonShuttingDown("service.restart: daemon is shutting down")
         }
         
         await stop(name)

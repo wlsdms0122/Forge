@@ -7,6 +7,7 @@
 
 import Foundation
 
+// The daemon is draining for shutdown and starts no new run or service.
 struct DaemonShuttingDown: ForgeError {
     // MARK: - Property
     let message: String
