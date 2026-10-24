@@ -27,10 +27,7 @@ extension Trace {
         if case .procedure = hops.last { hops.removeLast() }
 
         guard
-            let frame = hops.lastIndex(where: { hop in Self.isFrame(hop) }),
-            case let .procedure(sender) = hops[frame],
-            let name = try? Name(sender),
-            verbs.contains(name),
+            let frame = Self.frame(in: hops, ofOneOf: verbs),
             let statement = hops[..<frame].last,
             case let .statement(step) = statement
         else {
@@ -38,6 +35,27 @@ extension Trace {
         }
 
         return step
+    }
+
+    // Whether the run is in the body of one of these procedures: the
+    // innermost body it entered is one of theirs.
+    func isInBody(ofOneOf procedures: Set<Name>) -> Bool {
+        Self.frame(in: hops, ofOneOf: procedures) != nil
+    }
+
+    // Where the innermost body these hops entered is one of these
+    // procedures', the hop that entered it.
+    private static func frame(in hops: [Hop], ofOneOf procedures: Set<Name>) -> Int? {
+        guard
+            let frame = hops.lastIndex(where: { hop in isFrame(hop) }),
+            case let .procedure(sender) = hops[frame],
+            let name = try? Name(sender),
+            procedures.contains(name)
+        else {
+            return nil
+        }
+
+        return frame
     }
 
     // A hop that enters a body: a procedure's or a closure's.

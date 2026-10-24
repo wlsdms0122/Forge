@@ -231,6 +231,7 @@ actor SpecWorkflowRunner {
                     workflowID: runID,
                     workflowName: name,
                     verbs: try ForgeSpec.verbs(),
+                    natives: Set(try ForgeSpec.natives().procedures.keys),
                     publish: { event in await eventBus.publish(event) }
                 ),
                 environment: environment

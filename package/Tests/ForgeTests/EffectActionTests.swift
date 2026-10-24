@@ -723,7 +723,7 @@ struct EffectActionTests {
         #expect(outputs["result"] == .int(21))
     }
 
-    @Test("a statement that calls a verb is a step, named by its statement and acting as the verb, and the native under it runs for that step")
+    @Test("a statement that calls a verb, or a native directly, is a step, named by its statement and acting as its callee, and the native under a verb runs for the verb's step")
     func eventsBridgeWhenStepsRun() async throws {
         // Given
         let harness = Harness()
@@ -735,6 +735,8 @@ struct EffectActionTests {
             value: ok
           - let: run
             value: { call: { procedure: run, arguments: {} } }
+          - let: origin
+            value: { call: { procedure: Forge.Native.origin, arguments: [] } }
           - var: recovered
             type: String
             value: ""
@@ -752,7 +754,8 @@ struct EffectActionTests {
         let bridge = EventBridge(
             workflowID: "wf-test",
             workflowName: "observed",
-            verbs: try ForgeSpec.verbs()
+            verbs: try ForgeSpec.verbs(),
+            natives: Set(try ForgeSpec.natives().procedures.keys)
         ) { event in
             await collected.append(event)
         }
@@ -772,6 +775,8 @@ struct EffectActionTests {
         #expect(steps == [
             "run:step.started:Forge.run",
             "run:step.completed:",
+            "origin:step.started:Forge.Native.origin",
+            "origin:step.completed:",
             "broken:step.started:Forge.shell",
             "broken:step.failed:"
         ])

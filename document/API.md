@@ -643,8 +643,9 @@ lifetime and relays its progress:
 
 Event lines are `WorkflowEvent` objects (`workflow.started/completed/failed`,
 `step.started/completed/failed/skipped`) filtered to this run's **root**. A
-step is a statement that calls one of the `Forge` module's verbs, named by its
-statement, and its `action` is the verb's full name. Child workflows
+step is a statement that calls one of the `Forge` module's verbs, or a native
+verb (`Forge.Native.<verb>`) directly, outside a verb's own body, named by its
+statement, and its `action` is the callee's full name. Child workflows
 dispatched by the run (a `dispatch` step) inherit the root and stream
 too; `root_id`/`node_id`/`parent_node_id` let the consumer rebuild the
 tree. A policy denial is returned as a plain RPC error line (no stream). If

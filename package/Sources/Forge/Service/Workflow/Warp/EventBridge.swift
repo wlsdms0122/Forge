@@ -9,15 +9,17 @@ import Foundation
 import Warp
 
 // Adapts the language's execution observations to forge's event stream. A
-// step is a statement that calls one of forge's verbs, and its action is the
-// verb's name; every other statement a run performs is the workflow's own
-// working and is no step. Run-level framing (started/completed/failed) stays
+// step is a statement that calls one of forge's verbs, or a native verb
+// directly, outside a verb's own body, and its action is the callee's name;
+// every other statement a run performs is the workflow's own working, or the
+// verb's, and is no step. Run-level framing (started/completed/failed) stays
 // with whoever drives the executor.
 struct EventBridge: ExecutionObserver {
     // MARK: - Property
     let workflowID: String
     let workflowName: String
     let verbs: Set<Name>
+    let natives: Set<Name>
     let publish: @Sendable (WorkflowEvent) async -> Void
 
     private let steps = StartedSteps()
@@ -27,17 +29,25 @@ struct EventBridge: ExecutionObserver {
         workflowID: String,
         workflowName: String,
         verbs: Set<Name>,
+        natives: Set<Name>,
         publish: @escaping @Sendable (WorkflowEvent) async -> Void
     ) {
         self.workflowID = workflowID
         self.workflowName = workflowName
         self.verbs = verbs
+        self.natives = natives
         self.publish = publish
     }
 
     // MARK: - Lifecycle
     func statementStarted(at trace: Trace, construct: Construct, callee: Name?) async {
-        guard let callee, verbs.contains(callee) else { return }
+        guard
+            let callee,
+            verbs.contains(callee) || natives.contains(callee),
+            !trace.isInBody(ofOneOf: verbs)
+        else {
+            return
+        }
 
         await steps.start(trace)
         await publish(WorkflowEvent(
