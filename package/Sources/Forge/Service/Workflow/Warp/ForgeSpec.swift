@@ -65,6 +65,7 @@ enum ForgeSpec {
                     signature: Signature(
                         of: ExtractQuery.self,
                         returns: .dictionary(key: .string, value: .any),
+                        failing: .these([OutputResolutionError.type]),
                         constness: .const,
                         isolation: .isolated
                     ),

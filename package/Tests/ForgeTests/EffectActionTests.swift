@@ -277,7 +277,7 @@ struct EffectActionTests {
         let harness = Harness()
         let spec = try harness.frontend.workflow("""
         returns: "Dictionary<String, Any>"
-        failing: [nonzero_exit, timeout]
+        failing: [nonzero_exit, timeout, extract_refused]
         body:
           - let: probe
             value: { call: { procedure: shell, arguments: { command: [ probe ] } } }
@@ -300,6 +300,35 @@ struct EffectActionTests {
         // Then
         #expect(outputs["result"] == .int(42))
         #expect(outputs["raw"] == .string("code=42"))
+    }
+
+    @Test("a text that does not hold what an extraction asks fails with extract_refused, which a rescue takes")
+    func extractRefusalIsRescued() async throws {
+        // Given
+        let harness = Harness()
+        let spec = try harness.frontend.workflow("""
+        returns: "Dictionary<String, Any>"
+        body:
+          - var: refused
+            type: String
+            value: ""
+          - let: reading
+            value:
+              attempt:
+                body:
+                  - value: { call: { procedure: extract, arguments: { text: "no code here", outputs: { dictionary: [ [code, { dictionary: [ [regex, "code=(\\\\d+)"] ] }] ] } } } }
+                rescue:
+                  - set: refused
+                    value: { ref: reading.type }
+        result: { dictionary: [ [refused, { ref: refused }] ] }
+        """)
+        let sut = harness.executor()
+
+        // When
+        let outputs = try await sut.run(spec)
+
+        // Then
+        #expect(outputs["refused"] == .string("extract_refused"))
     }
 
     @Test("when shell exceeds its timeout, rescue recovers it")

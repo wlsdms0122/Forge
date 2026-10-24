@@ -30,6 +30,7 @@ procedures:
       - text: String
       - outputs: { type: "Dictionary<String, Any>", hint: "a name and its extractor each: a JSONPath, or a mapping of path, regex or line with type and default" }
     returns: "Dictionary<String, Any>"
+    failing: [extract_refused]
     result:
       call:
         procedure: Forge.Native.extract

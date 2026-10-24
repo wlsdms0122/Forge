@@ -98,11 +98,15 @@ exit fails with `nonzero_exit`, whose details are `exit_code`, `stderr` and
 
 ### `Forge.extract`
 
-`extract(text: String, outputs: Dictionary<String, Any>) -> Dictionary<String, Any>`, const.
+`extract(text: String, outputs: Dictionary<String, Any>) -> Dictionary<String, Any>`, const,
+failing `extract_refused`.
 
 Reads the values `outputs` names out of `text` (see *Output extractors*) and
 returns them by name, with the whole text under `_raw`. It reaches nothing
-outside the run.
+outside the run. A text that does not hold what `outputs` asks (a path that
+is not there and has no `default`, a regex that does not match, a value that
+does not coerce to its type) fails with `extract_refused`, which a rescue may
+take.
 
 ### `Forge.invoke`
 
@@ -227,7 +231,7 @@ Modifiers:
 | Field | Notes |
 |-------|-------|
 | `type` | `string` (default) / `int` / `float` / `bool` / `json`, coerced to it |
-| `default` | fallback value when missing. A declared `default` (even `null`) means a missing path does not fail the call; leaving `default` out makes the path mandatory, and a missing one fails the call |
+| `default` | fallback value when missing. A declared `default` (even `null`) means a missing path does not fail the call; leaving `default` out makes the path mandatory, and a missing one fails the call with `extract_refused` |
 | `hint` | human description |
 
 ## A complete workflow
