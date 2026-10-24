@@ -36,16 +36,16 @@ struct CatalogGenerationTests {
         let store = try WorkflowCatalog(directory: directory)
 
         // When
-        var catalog = await store.catalog()
+        var snapshot = await store.catalog()
 
         // Then
-        #expect(catalog.entries.isEmpty)
-        #expect(catalog.failures.map(\.name) == ["mender"])
+        #expect(snapshot.entries.isEmpty)
+        #expect(snapshot.failures.map(\.name) == ["mender"])
         try writeWorkflow(validBody, named: "mender", in: directory)
-        catalog = await store.catalog()
-        try assertAccountedForExactlyOnce(catalog, in: directory)
-        #expect(catalog.entries.map(\.workflow.name) == ["mender"])
-        #expect(catalog.failures.isEmpty)
+        snapshot = await store.catalog()
+        try assertAccountedForExactlyOnce(snapshot, in: directory)
+        #expect(snapshot.entries.map(\.workflow.name) == ["mender"])
+        #expect(snapshot.failures.isEmpty)
     }
     
     @Test("Live entries and failures do not overlap")
@@ -57,12 +57,12 @@ struct CatalogGenerationTests {
         // When
         try writeWorkflow(validBody, named: "ok", in: directory)
         try writeWorkflow(brokenBody, named: "bad", in: directory)
-        let catalog = try await WorkflowCatalog(directory: directory).catalog()
-        try assertAccountedForExactlyOnce(catalog, in: directory)
+        let snapshot = try await WorkflowCatalog(directory: directory).catalog()
+        try assertAccountedForExactlyOnce(snapshot, in: directory)
 
         // Then
-        #expect(catalog.entries.map(\.workflow.name) == ["ok"])
-        #expect(catalog.failures.compactMap(\.name) == ["bad"])
+        #expect(snapshot.entries.map(\.workflow.name) == ["ok"])
+        #expect(snapshot.failures.compactMap(\.name) == ["bad"])
     }
     
     @Test("A workflow that loads and does not build is a failure, and the others still build and run")
@@ -77,13 +77,13 @@ struct CatalogGenerationTests {
         let sut = try WorkflowCatalog(directory: directory)
 
         // When
-        let catalog = await sut.catalog()
+        let snapshot = await sut.catalog()
 
         // Then
-        try assertAccountedForExactlyOnce(catalog, in: directory)
-        #expect(catalog.entries.map(\.workflow.name) == ["ok"])
-        #expect(catalog.failures.compactMap(\.name) == ["unbuilt"])
-        #expect(catalog.failures.first?.reason.hasPrefix("build: ") == true)
+        try assertAccountedForExactlyOnce(snapshot, in: directory)
+        #expect(snapshot.entries.map(\.workflow.name) == ["ok"])
+        #expect(snapshot.failures.compactMap(\.name) == ["unbuilt"])
+        #expect(snapshot.failures.first?.reason.hasPrefix("build: ") == true)
 
         guard case .invalid = await sut.resolve("unbuilt") else {
             Issue.record("a workflow that does not build resolves as broken")
@@ -110,11 +110,11 @@ struct CatalogGenerationTests {
         let sut = try WorkflowCatalog(directory: directory)
 
         // When
-        let catalog = await sut.catalog()
+        let snapshot = await sut.catalog()
 
         // Then
-        #expect(catalog.failures.isEmpty)
-        #expect(catalog.entries.map(\.workflow.name) == ["caller", "scaled"])
+        #expect(snapshot.failures.isEmpty)
+        #expect(snapshot.entries.map(\.workflow.name) == ["caller", "scaled"])
 
         let image = try await Builder().build(await sut.modules() + ForgeVocabulary.shipped.get().linkables)
         let answer = try await Executor().run(image, entry: try Name("caller"), arguments: [:])
@@ -146,14 +146,14 @@ struct CatalogGenerationTests {
         let sut = try WorkflowCatalog(directory: directory)
 
         // When
-        let catalog = await sut.catalog()
+        let snapshot = await sut.catalog()
 
         // Then
-        try assertAccountedForExactlyOnce(catalog, in: directory)
-        #expect(catalog.entries.map(\.workflow.name) == ["sized", "who"])
-        #expect(catalog.failures.compactMap(\.name) == ["count", "run"])
-        #expect(catalog.failures.allSatisfy { failure in failure.reason.hasPrefix("a workflow is called by its name") })
-        #expect(catalog.failures.last?.reason.contains("'run' is the short name of Forge.run") == true)
+        try assertAccountedForExactlyOnce(snapshot, in: directory)
+        #expect(snapshot.entries.map(\.workflow.name) == ["sized", "who"])
+        #expect(snapshot.failures.compactMap(\.name) == ["count", "run"])
+        #expect(snapshot.failures.allSatisfy { failure in failure.reason.hasPrefix("a workflow is called by its name") })
+        #expect(snapshot.failures.last?.reason.contains("'run' is the short name of Forge.run") == true)
     }
 
     @Test("A workflow named by a key the notation spells is refused at its own file, and the files writing that key read it as the notation does")
@@ -173,11 +173,11 @@ struct CatalogGenerationTests {
         let sut = try WorkflowCatalog(directory: directory)
 
         // When
-        let catalog = await sut.catalog()
+        let snapshot = await sut.catalog()
 
         // Then
-        #expect(catalog.entries.map(\.workflow.name) == ["same"])
-        #expect(catalog.failures.compactMap(\.name) == ["is"])
+        #expect(snapshot.entries.map(\.workflow.name) == ["same"])
+        #expect(snapshot.failures.compactMap(\.name) == ["is"])
 
         let image = try await Builder().build(await sut.modules() + ForgeVocabulary.shipped.get().linkables)
         let answer = try await Executor().run(image, entry: try Name("same"), arguments: [:])
@@ -202,15 +202,15 @@ struct CatalogGenerationTests {
         }
 
         // When
-        let catalog = try await WorkflowCatalog(directory: directory).catalog()
+        let snapshot = try await WorkflowCatalog(directory: directory).catalog()
 
         // Then
-        #expect(catalog.entries.map(\.workflow.name) == ["visible"])
-        #expect(catalog.failures.contains { failure in failure.path == "<scan>" }, "the blocked enumeration never made it into the same response")
+        #expect(snapshot.entries.map(\.workflow.name) == ["visible"])
+        #expect(snapshot.failures.contains { failure in failure.path == "<scan>" }, "the blocked enumeration never made it into the same response")
     }
     
     // MARK: - ScheduleStore
-    @Test("The schedule catalog is one observation — no mix of fragmented moments")
+    @Test("The schedule snapshot is one observation — no mix of fragmented moments")
     func scheduleCatalogIsOneObservation() async throws {
         // Given
         let config = try temporary.make("sched-config")
@@ -221,11 +221,11 @@ struct CatalogGenerationTests {
             stateFile: config.appendingPathComponent("state.json"))
 
         // When
-        let catalog = await store.catalog()
+        let snapshot = await store.catalog()
 
         // Then
-        #expect(catalog.entries.map(\.schedule.id) == ["good"])
-        #expect(catalog.failures.map(\.path) == ["bad.yaml"])
+        #expect(snapshot.entries.map(\.schedule.id) == ["good"])
+        #expect(snapshot.failures.map(\.path) == ["bad.yaml"])
     }
     
     @Test("A schedule directory the scan could not enter is a failure at <scan>")
@@ -247,16 +247,16 @@ struct CatalogGenerationTests {
             stateFile: config.appendingPathComponent("state.json"))
 
         // When
-        let catalog = await store.catalog()
+        let snapshot = await store.catalog()
 
         // Then
-        #expect(catalog.entries.map(\.schedule.id) == ["visible"])
-        #expect(catalog.failures.map(\.path) == ["<scan>"])
-        #expect(catalog.failures.first?.reason.hasPrefix("schedule directory scan incomplete — closed") == true)
+        #expect(snapshot.entries.map(\.schedule.id) == ["visible"])
+        #expect(snapshot.failures.map(\.path) == ["<scan>"])
+        #expect(snapshot.failures.first?.reason.hasPrefix("schedule directory scan incomplete — closed") == true)
     }
     
     // MARK: - PolicyStore
-    @Test("The policy catalog is also one observation")
+    @Test("The policy snapshot is also one observation")
     func policyCatalogIsOneObservation() async throws {
         // Given
         let directory = try temporary.make("policy")
@@ -265,11 +265,11 @@ struct CatalogGenerationTests {
             atomically: true, encoding: .utf8)
 
         // When
-        let catalog = await PolicyStore(directory: directory).catalog()
+        let snapshot = await PolicyStore(directory: directory).catalog()
 
         // Then
-        #expect(catalog.policy["admin:alice"] == ["*"])
-        #expect(catalog.failures.isEmpty)
+        #expect(snapshot.policy["admin:alice"] == ["*"])
+        #expect(snapshot.failures.isEmpty)
     }
     
     // MARK: - Private
@@ -286,14 +286,14 @@ struct CatalogGenerationTests {
     }
     
     private func assertAccountedForExactlyOnce(
-        _ catalog: WorkflowCatalog.Catalog, in directory: URL,
+        _ snapshot: WorkflowCatalog.Snapshot, in directory: URL,
         file: StaticString = #filePath, line: UInt = #line
     ) throws {
         let onDisk = Set(try FileManager.default.contentsOfDirectory(atPath: directory.path)
             .filter { name in name.hasSuffix(".yaml") }
             .map { name in (name as NSString).deletingPathExtension })
-        let live = catalog.entries.map(\.workflow.name)
-        let broken = catalog.failures.compactMap(\.name)
+        let live = snapshot.entries.map(\.workflow.name)
+        let broken = snapshot.failures.compactMap(\.name)
         #expect(Set(live).intersection(broken) == [], "counted on both sides at once")
         #expect(Set(live).union(broken) == onDisk, "missing from the accounting — evaporated from the response")
     }

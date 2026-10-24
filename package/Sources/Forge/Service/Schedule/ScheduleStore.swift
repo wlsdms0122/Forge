@@ -22,7 +22,7 @@ actor ScheduleStore {
         // MARK: - Private
     }
     
-    struct Catalog: Sendable {
+    struct Snapshot: Sendable {
         // MARK: - Property
         let entries: [Entry]
         let failures: [LoadFailure]
@@ -67,8 +67,8 @@ actor ScheduleStore {
     private var failedIDs: Set<String> = []
     private var scanIncomplete = false
     
-    private var currentCatalog: Catalog {
-        Catalog(
+    private var currentSnapshot: Snapshot {
+        Snapshot(
             entries: cache.values.map { entry in effective(entry) },
             failures: (
                 Array(failureCache.values)
@@ -106,7 +106,7 @@ actor ScheduleStore {
     }
     
     @discardableResult
-    func catalog() async -> Catalog {
+    func catalog() async -> Snapshot {
         var ledger = LoadFailureLedger(prior: failureCache)
         var candidates: [(key: String, source: String, value: Entry)] = []
         var obstructed: [LoadFailure] = []
@@ -140,7 +140,7 @@ actor ScheduleStore {
         cache = live
         FileHandle.standardError.write(Data(ledger.announcement.utf8))
         
-        return currentCatalog
+        return currentSnapshot
     }
     
     func all() async -> [Schedule] {

@@ -17,7 +17,7 @@ import WarpYAML
 // entries are the files that built. Identity is the file basename, and the
 // file declares one procedure under it.
 actor WorkflowCatalog {
-    struct Catalog: Sendable {
+    struct Snapshot: Sendable {
         // MARK: - Property
         let entries: [(workflow: Workflow, source: String)]
         let failures: [LoadFailure]
@@ -78,10 +78,10 @@ actor WorkflowCatalog {
     private var compiled: [(name: String, compiled: Compiled)] = []
     private var image: Image?
 
-    private var currentCatalog: Catalog {
+    private var currentSnapshot: Snapshot {
         let scanFailures = scanObstructions.map { obstruction in obstruction.failure(kind: "workflow") }
 
-        return Catalog(
+        return Snapshot(
             entries: cache.values
                 .map { entry in (entry.workflow, entry.source) }
                 .sorted { left, right in left.workflow.name < right.workflow.name },
@@ -101,7 +101,7 @@ actor WorkflowCatalog {
     // The directory's catalog, the daemon's: a reload announces on stderr
     // each failure new to it.
     @discardableResult
-    func catalog() async -> Catalog {
+    func catalog() async -> Snapshot {
         guard let directory else {
             cache.removeAll()
             failureCache.removeAll()
@@ -113,7 +113,7 @@ actor WorkflowCatalog {
             compiled.removeAll()
             image = nil
 
-            return currentCatalog
+            return currentSnapshot
         }
 
         let fileManager = FileManager.default
@@ -126,27 +126,27 @@ actor WorkflowCatalog {
                 )
             ]
 
-            return currentCatalog
+            return currentSnapshot
         }
 
         let observed = await observing(StoreScan(directory: directory, pathExtension: specFileExtension))
 
         FileHandle.standardError.write(Data(observed.announcement.utf8))
 
-        return observed.catalog
+        return observed.snapshot
     }
 
     // The files at these paths read the way a reload reads the directory's,
     // for a gate that admits what the daemon admits and reports what it
     // records.
-    func catalog(of paths: [String]) async -> Catalog {
+    func catalog(of paths: [String]) async -> Snapshot {
         await observing(
             StoreScan(files: paths.map { path in ScannedFile(url: URL(fileURLWithPath: path), source: path) })
         )
-        .catalog
+        .snapshot
     }
 
-    func all() async -> Catalog {
+    func all() async -> Snapshot {
         await catalog()
     }
 
@@ -235,10 +235,10 @@ actor WorkflowCatalog {
     }
 
     // MARK: - Private
-    // The catalog of the files a scan saw, reloaded where any of them
+    // The snapshot of the files a scan saw, reloaded where any of them
     // changed since the observation the entries were read from, and what
     // the reload announces, nothing where this call ran none.
-    private func observing(_ scan: StoreScan) async -> (catalog: Catalog, announcement: String) {
+    private func observing(_ scan: StoreScan) async -> (snapshot: Snapshot, announcement: String) {
         var scan = scan
         let observed = scan.observe()
 
@@ -248,7 +248,7 @@ actor WorkflowCatalog {
         let generation = observed.map { file in "\(file.file.source)\t\(file.mtime.timeIntervalSinceReferenceDate)" }
             + scan.obstructions.map(\.description)
 
-        guard generation != self.generation else { return (currentCatalog, "") }
+        guard generation != self.generation else { return (currentSnapshot, "") }
 
         // One reload at a time: a caller arriving while one runs waits for
         // it and looks again.
@@ -266,7 +266,7 @@ actor WorkflowCatalog {
 
         reloading = nil
 
-        return (currentCatalog, announcement)
+        return (currentSnapshot, announcement)
     }
 
     // Every observed file read, loaded and built again, and the entries and

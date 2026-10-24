@@ -22,11 +22,11 @@ struct ScheduleListMethod: Sendable {
     func handle(_ request: RPCRequest) async throws -> JSONValue {
         let now = Date()
         let ledgerMap = await ledger.snapshot()
-        let catalog = await store.catalog()
+        let snapshot = await store.catalog()
 
         var flags: [JSONValue] = []
 
-        let summary: [JSONValue] = try catalog.entries.map { entry in
+        let summary: [JSONValue] = try snapshot.entries.map { entry in
             let schedule = entry.schedule
             let record = ledgerMap[schedule.id]
             let next = schedule.trigger.nextFire(after: record?.attemptedSlot, now: now)
@@ -76,7 +76,7 @@ struct ScheduleListMethod: Sendable {
 
             return .object(row)
         }
-        let failureSummary: [JSONValue] = catalog.failures.map { failure in
+        let failureSummary: [JSONValue] = snapshot.failures.map { failure in
             [
                 "path": .string(failure.path),
                 "reason": .string(failure.reason),

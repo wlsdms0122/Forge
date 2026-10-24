@@ -9,7 +9,7 @@ import Foundation
 import Yams
 
 actor PolicyStore {
-    struct Catalog: Sendable {
+    struct Snapshot: Sendable {
         // MARK: - Property
         let policy: [String: [String]]
         let failures: [LoadFailure]
@@ -28,8 +28,8 @@ actor PolicyStore {
     private var patternFailures: [LoadFailure] = []
     private var scanFailures: [LoadFailure] = []
     
-    private var currentCatalog: Catalog {
-        Catalog(
+    private var currentSnapshot: Snapshot {
+        Snapshot(
             policy: merged,
             failures: (Array(failureCache.values) + patternFailures + scanFailures)
                 .sorted { left, right in left.path < right.path }
@@ -49,8 +49,8 @@ actor PolicyStore {
     
     // MARK: - Public
     @discardableResult
-    func catalog() async -> Catalog {
-        guard var files else { return currentCatalog }
+    func catalog() async -> Snapshot {
+        guard var files else { return currentSnapshot }
         
         var ledger = LoadFailureLedger(prior: failureCache)
         let reading = files.read(recording: &ledger) { _, data in
@@ -110,7 +110,7 @@ actor PolicyStore {
         patternFailures = invalid.sorted { left, right in left.reason < right.reason }
         merged = accumulated.mapValues { patterns in Array(patterns).sorted() }
         
-        return currentCatalog
+        return currentSnapshot
     }
     
     func allows(principal: String, workflow: String) async -> Bool {

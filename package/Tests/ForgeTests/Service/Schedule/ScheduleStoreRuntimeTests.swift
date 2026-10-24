@@ -400,14 +400,14 @@ struct ScheduleStoreRuntimeTests {
             stateFile: try temporary.file("enabled-\(UUID().uuidString.prefix(6)).json"))
 
         // When
-        let catalog = await store.catalog()
+        let snapshot = await store.catalog()
 
         // Then
-        #expect(catalog.failures.contains { failure in failure.path == "broken.yaml" }, "decode failure must surface")
+        #expect(snapshot.failures.contains { failure in failure.path == "broken.yaml" }, "decode failure must surface")
         #expect(
-            catalog.failures.filter { failure in failure.reason.contains("collides") }.count == 2,
+            snapshot.failures.filter { failure in failure.reason.contains("collides") }.count == 2,
             "both sides of the collision surface as failures")
-        #expect(catalog.entries.isEmpty, "collided id is excluded from live on both sides")
+        #expect(snapshot.entries.isEmpty, "collided id is excluded from live on both sides")
     }
     // MARK: - Private
 }

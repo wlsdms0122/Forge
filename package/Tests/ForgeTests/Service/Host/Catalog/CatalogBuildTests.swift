@@ -30,25 +30,25 @@ struct CatalogBuildTests {
         guard let path = ProcessInfo.processInfo.environment["FORGE_CATALOG"] else { return }
 
         let sut = try WorkflowCatalog(directory: URL(fileURLWithPath: path).standardizedFileURL)
-        let catalog = await sut.catalog()
+        let snapshot = await sut.catalog()
 
-        for entry in catalog.entries {
+        for entry in snapshot.entries {
             print("\(entry.source): ok")
         }
 
-        for failure in catalog.failures {
+        for failure in snapshot.failures {
             print("\(failure.path): \(failure.reason)")
         }
 
         _ = try await Builder().build(await sut.modules() + ForgeVocabulary.shipped.get().linkables)
-        print("catalog: ok, \(catalog.entries.count) of \(catalog.entries.count + catalog.failures.count)")
+        print("catalog: ok, \(snapshot.entries.count) of \(snapshot.entries.count + snapshot.failures.count)")
 
-        let descriptions = catalog.entries.filter { entry in entry.workflow.description != nil }.count
-        let hints = catalog.entries.flatMap(\.workflow.contract.inputs).filter { input in input.hint != nil }.count
+        let descriptions = snapshot.entries.filter { entry in entry.workflow.description != nil }.count
+        let hints = snapshot.entries.flatMap(\.workflow.contract.inputs).filter { input in input.hint != nil }.count
 
         print("prose: \(descriptions) descriptions, \(hints) hints")
 
-        #expect(catalog.failures.isEmpty, "\(catalog.failures.count) refusal(s)")
+        #expect(snapshot.failures.isEmpty, "\(snapshot.failures.count) refusal(s)")
     }
 
     // MARK: - Public

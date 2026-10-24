@@ -18,8 +18,8 @@ struct WorkflowListMethod: Sendable {
 
     // MARK: - Public
     func handle(_ request: RPCRequest) async throws -> JSONValue {
-        let catalog = await store.catalog()
-        let summary: [JSONValue] = catalog.entries.map { entry in
+        let snapshot = await store.catalog()
+        let summary: [JSONValue] = snapshot.entries.map { entry in
             var listed: [String: JSONValue] = [
                 "name":   .string(entry.workflow.name),
                 "source": .string(entry.source)
@@ -29,7 +29,7 @@ struct WorkflowListMethod: Sendable {
 
             return .object(listed)
         }
-        let failureSummary: [JSONValue] = catalog.failures.map { failure in
+        let failureSummary: [JSONValue] = snapshot.failures.map { failure in
             [
                 "path":   .string(failure.path),
                 "reason": .string(failure.reason),

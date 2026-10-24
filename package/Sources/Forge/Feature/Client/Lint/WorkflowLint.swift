@@ -41,9 +41,9 @@ package struct WorkflowLint: Sendable {
             }
         }
 
-        let catalog = await WorkflowCatalog(directory: nil, builder: builder).catalog(of: read.map(\.path))
+        let snapshot = await WorkflowCatalog(directory: nil, builder: builder).catalog(of: read.map(\.path))
         let refusals = Dictionary(
-            catalog.failures.map { failure in (failure.path, failure.reason) },
+            snapshot.failures.map { failure in (failure.path, failure.reason) },
             uniquingKeysWith: { first, _ in first }
         )
         let issues = Dictionary(
