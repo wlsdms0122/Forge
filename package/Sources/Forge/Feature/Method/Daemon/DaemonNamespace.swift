@@ -16,7 +16,7 @@ struct DaemonNamespace: Sendable {
     init(status: DaemonStatusMethod) {
         self.methods = [
             RPCMethod("daemon.status", .open { request in
-                JSONObject(try await status.handle(request))
+                try await status.handle(request)
 
             })
         ]

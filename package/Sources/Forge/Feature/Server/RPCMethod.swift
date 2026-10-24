@@ -19,8 +19,8 @@ struct RPCMethod: Sendable {
     }
 
     enum Handler: Sendable {
-        case open(@Sendable (RPCRequest) async throws -> JSONObject)
-        case unary(Access, @Sendable (RPCRequest, TokenClaims) async throws -> JSONObject)
+        case open(@Sendable (RPCRequest) async throws -> JSONValue)
+        case unary(Access, @Sendable (RPCRequest, TokenClaims) async throws -> JSONValue)
         case streaming(
             Access,
             @Sendable (RPCRequest, TokenClaims, any EventSink) async throws -> Void

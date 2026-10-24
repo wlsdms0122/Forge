@@ -26,7 +26,7 @@ struct DispatchStreamTests {
         let (method, authority, _) = try makeMethod()
         let token = authority.mint(TokenClaims(principal: "system:rpc"))
         let sink = CollectingSink()
-        let specJSON: [String: Any] = [
+        let specJSON: [String: JSONValue] = [
             "failing": ["nonzero_exit", "timeout"],
             "body": [
                 ["let": "one", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/echo", "a"]]]]],
@@ -38,7 +38,7 @@ struct DispatchStreamTests {
         try await method.handle(RPCRequest(
                 id: "r-stream",
                 method: "workflow.dispatch_stream",
-                params: ["token": token, "spec": specJSON]
+                params: ["token": .string(token), "spec": .object(specJSON)]
             ), claims: try #require(authority.verify(token)), sink: sink)
         let lines = await sink.snapshot()
 
@@ -77,7 +77,7 @@ struct DispatchStreamTests {
         let (method, authority, _) = try makeMethod(policySeed: ["system:other": ["*"]])
         let token = authority.mint(TokenClaims(principal: "system:rpc"))
         let sink = CollectingSink()
-        let specJSON: [String: Any] = [
+        let specJSON: [String: JSONValue] = [
             "failing": ["nonzero_exit", "timeout"],
             "body": [["let": "x", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/echo", "nope"]]]]]],
         ]
@@ -85,7 +85,7 @@ struct DispatchStreamTests {
             try await method.handle(RPCRequest(
                     id: "r-denied",
                     method: "workflow.dispatch_stream",
-                    params: ["token": token, "spec": specJSON]
+                    params: ["token": .string(token), "spec": .object(specJSON)]
                 ), claims: try #require(authority.verify(token)), sink: sink)
 
         // Then
@@ -104,7 +104,7 @@ struct DispatchStreamTests {
         let (method, authority, bus) = try makeMethod()
         let token = authority.mint(TokenClaims(principal: "system:rpc"))
         let sink = CollectingSink()
-        let specJSON: [String: Any] = [
+        let specJSON: [String: JSONValue] = [
             "failing": ["nonzero_exit", "timeout"],
             "body": [["let": "slow", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/sleep", "0.3"]]]]]],
         ]
@@ -112,7 +112,7 @@ struct DispatchStreamTests {
             try await method.handle(RPCRequest(
                     id: "r-subtree",
                     method: "workflow.dispatch_stream",
-                    params: ["token": token, "spec": specJSON]
+                    params: ["token": .string(token), "spec": .object(specJSON)]
                 ), claims: try #require(authority.verify(token)), sink: sink)
         }
 
@@ -152,7 +152,7 @@ struct DispatchStreamTests {
         let (method, authority, bus) = try makeMethod()
         let token = authority.mint(TokenClaims(principal: "system:rpc"))
         let sink = CollectingSink()
-        let specJSON: [String: Any] = [
+        let specJSON: [String: JSONValue] = [
             "failing": ["nonzero_exit", "timeout"],
             "body": [["let": "slow", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/sleep", "0.3"]]]]]],
         ]
@@ -160,7 +160,7 @@ struct DispatchStreamTests {
             try await method.handle(RPCRequest(
                     id: "r-detached",
                     method: "workflow.dispatch_stream",
-                    params: ["token": token, "spec": specJSON]
+                    params: ["token": .string(token), "spec": .object(specJSON)]
                 ), claims: try #require(authority.verify(token)), sink: sink)
         }
 
@@ -218,13 +218,13 @@ struct DispatchStreamTests {
             workRegistry: registry)
         let (_, stream) = await bus.subscribe()
         let token = authority.mint(TokenClaims(principal: "system:rpc"))
-        let specJSON: [String: Any] = [
+        let specJSON: [String: JSONValue] = [
             "failing": ["nonzero_exit", "timeout"],
             "body": [["let": "one", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/echo", "a"]]]]]],
         ]
         let ack = try await dispatchMethod.handle(RPCRequest(
                 id: "r-async", method: "workflow.dispatch",
-                params: ["token": token, "spec": specJSON, "async": true]
+                params: ["token": .string(token), "spec": .object(specJSON), "async": true]
         ), claims: try #require(authority.verify(token)))
 
         // Then
@@ -243,14 +243,14 @@ struct DispatchStreamTests {
         let (method, authority, _) = try makeMethod()
         let token = authority.mint(TokenClaims(principal: "system:rpc"))
         let sink = CollectingSink()
-        let specJSON: [String: Any] = [
+        let specJSON: [String: JSONValue] = [
             "failing": ["nonzero_exit", "timeout"],
             "body": [["let": "boom", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/usr/bin/false"]]]]]],
         ]
         try await method.handle(RPCRequest(
                 id: "r-fail",
                 method: "workflow.dispatch_stream",
-                params: ["token": token, "spec": specJSON]
+                params: ["token": .string(token), "spec": .object(specJSON)]
             ), claims: try #require(authority.verify(token)), sink: sink)
         let lines = await sink.snapshot()
 
@@ -294,7 +294,7 @@ struct DispatchStreamTests {
         try await method.handle(RPCRequest(
                 id: "r-cap",
                 method: "workflow.dispatch_stream",
-                params: ["token": token,
+                params: ["token": .string(token),
                     "spec": ["failing": ["nonzero_exit", "timeout"],
             "body": [["let": "x", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/echo", "hi"]]]]]]]]
             ), claims: try #require(authority.verify(token)), sink: sink)

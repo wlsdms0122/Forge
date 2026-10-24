@@ -166,7 +166,7 @@ struct ScheduleCreateMethod: Sendable {
         func jsonType(_ type: Any.Type) -> String {
             let name = String(describing: type)
 
-            if name.contains("Dictionary") || name.contains("JSONObject") { return "object" }
+            if name.contains("Dictionary") { return "object" }
             if name.contains("Array")  { return "array" }
             if name.contains("String") { return "string" }
             if name.contains("Bool")   { return "boolean" }

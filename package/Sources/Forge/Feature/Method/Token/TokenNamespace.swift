@@ -20,7 +20,7 @@ struct TokenNamespace: Sendable {
 
         self.methods = [
             RPCMethod("token.issue", .unary(.token) { request, claims in
-                JSONObject(try await issue.handle(request, claims: claims))
+                try await issue.handle(request, claims: claims)
             })
         ]
     }

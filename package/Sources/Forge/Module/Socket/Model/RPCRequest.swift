@@ -7,22 +7,17 @@
 
 import Foundation
 
-struct RPCRequest: @unchecked Sendable {
+struct RPCRequest: Sendable {
     // MARK: - Property
     let id: String
     let method: String
     let params: [String: JSONValue]
 
-    // The params as Foundation's JSON objects, for the methods that read
-    // them so.
-    let rawParams: [String: Any]
-
     // MARK: - Initializer
-    init(id: String, method: String, params: [String: Any]) {
+    init(id: String, method: String, params: [String: JSONValue]) {
         self.id = id
         self.method = method
-        self.params = (try? JSONValue(jsonObject: params))?.objectValue ?? [:]
-        self.rawParams = params
+        self.params = params
     }
 
     // MARK: - Public
@@ -31,15 +26,17 @@ struct RPCRequest: @unchecked Sendable {
             throw ProtocolError("malformed JSON line")
         }
 
-        guard let id = object["id"] as? String, !id.isEmpty else {
+        let request = try JSONValue(jsonObject: object)
+
+        guard let id = request["id"]?.stringValue, !id.isEmpty else {
             throw ProtocolError("missing or empty 'id'")
         }
 
-        guard let method = object["method"] as? String, !method.isEmpty else {
+        guard let method = request["method"]?.stringValue, !method.isEmpty else {
             throw ProtocolError("missing or empty 'method'")
         }
 
-        let params = object["params"] as? [String: Any] ?? [:]
+        let params = request["params"]?.objectValue ?? [:]
 
         return RPCRequest(id: id, method: method, params: params)
     }

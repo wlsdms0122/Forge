@@ -14,7 +14,7 @@ struct ScheduleControlGateTests {
     // MARK: - Property
     private let temporary = TemporaryDirectory("ctlgate")
 
-    private let inlineSpec: [String: Any] = [
+    private let inlineSpec: [String: JSONValue] = [
         "failing": ["nonzero_exit", "timeout"],
             "body": [["let": "x", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/echo", "ok"]]]]]],
     ]
@@ -32,7 +32,7 @@ struct ScheduleControlGateTests {
         let attacker = authority.mint(TokenClaims(principal: "cli:attacker"))
         do {
             _ = try await del.handle(RPCRequest(id: "d", method: "schedule.delete",
-                    params: ["token": attacker, "id": id]), claims: try #require(authority.verify(attacker)))
+                    params: ["token": .string(attacker), "id": .string(id)]), claims: try #require(authority.verify(attacker)))
 
         // Then
             Issue.record("Delete by an out-of-scope principal should be rejected")
@@ -54,7 +54,7 @@ struct ScheduleControlGateTests {
             store: store, policyStore: PolicyStore(seed: ["cli:owner": ["<inline>"]]))
         let owner = authority.mint(TokenClaims(principal: "cli:owner"))
         let result = try await del.handle(RPCRequest(id: "d", method: "schedule.delete",
-                params: ["token": owner, "id": id]), claims: try #require(authority.verify(owner)))
+                params: ["token": .string(owner), "id": .string(id)]), claims: try #require(authority.verify(owner)))
 
         // Then
         #expect(result["deleted"]?.boolValue == true)
@@ -73,7 +73,7 @@ struct ScheduleControlGateTests {
         let attacker = authority.mint(TokenClaims(principal: "cli:attacker"))
         do {
             _ = try await toggle.handle(RPCRequest(id: "t", method: "schedule.set_enabled",
-                    params: ["token": attacker, "id": id, "enabled": false]), claims: try #require(authority.verify(attacker)))
+                    params: ["token": .string(attacker), "id": .string(id), "enabled": false]), claims: try #require(authority.verify(attacker)))
 
         // Then
             Issue.record("Toggle by an out-of-scope principal should be rejected")
@@ -95,7 +95,7 @@ struct ScheduleControlGateTests {
         let ownerToken = authority.mint(TokenClaims(principal: "cli:owner"))
         _ = try await create.handle(RPCRequest(
                 id: "c", method: "schedule.create",
-                params: ["token": ownerToken, "spec": inlineSpec, "after": "1h"]), claims: try #require(authority.verify(ownerToken)))
+                params: ["token": .string(ownerToken), "spec": .object(inlineSpec), "after": "1h"]), claims: try #require(authority.verify(ownerToken)))
         let entries = await store.catalog().entries
         let scheduleID = try #require(entries.first?.schedule.id)
         

@@ -34,7 +34,7 @@ struct WorkflowDescribeTests {
         let token = authority.mint(TokenClaims(principal: "system:admin"))
 
         // When
-        let result = try await method.handle(request(["token": token, "name": "echo"]))
+        let result = try await method.handle(request(["token": .string(token), "name": "echo"]))
 
         // Then
         #expect(result["name"]?.stringValue == "echo")
@@ -65,8 +65,8 @@ struct WorkflowDescribeTests {
         let list = WorkflowListMethod(store: method.store)
 
         // When
-        let described = try await method.handle(request(["token": token, "name": "greet"]))
-        let listed = try await list.handle(RPCRequest(id: "r-list", method: "workflow.list", params: ["token": token]))
+        let described = try await method.handle(request(["token": .string(token), "name": "greet"]))
+        let listed = try await list.handle(RPCRequest(id: "r-list", method: "workflow.list", params: ["token": .string(token)]))
 
         // Then
         #expect(described["description"]?.stringValue == "Says hello.")
@@ -93,7 +93,7 @@ struct WorkflowDescribeTests {
         let token = authority.mint(TokenClaims(principal: "system:admin"))
 
         // When
-        let result = try await method.handle(request(["token": token, "name": "noop"]))
+        let result = try await method.handle(request(["token": .string(token), "name": "noop"]))
 
         // Then
         #expect((result["inputs"]?.objectValue)?.isEmpty == true)
@@ -109,7 +109,7 @@ struct WorkflowDescribeTests {
         do {
 
         // When
-            _ = try await method.handle(request(["token": token]))
+            _ = try await method.handle(request(["token": .string(token)]))
 
         // Then
             Issue.record("expected ProtocolError")
@@ -127,7 +127,7 @@ struct WorkflowDescribeTests {
         do {
 
         // When
-            _ = try await method.handle(request(["token": token, "name": "nope"]))
+            _ = try await method.handle(request(["token": .string(token), "name": "nope"]))
 
         // Then
             Issue.record("expected WorkflowNotFound")
@@ -148,7 +148,7 @@ struct WorkflowDescribeTests {
         return (WorkflowDescribeMethod(store: store), authority, directory)
     }
     
-    private func request(_ params: [String: Any]) -> RPCRequest {
+    private func request(_ params: [String: JSONValue]) -> RPCRequest {
         RPCRequest(id: "r-\(UUID().uuidString.prefix(6))",
             method: "workflow.describe", params: params)
     }

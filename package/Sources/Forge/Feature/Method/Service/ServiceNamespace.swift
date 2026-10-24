@@ -33,19 +33,19 @@ struct ServiceNamespace: Sendable {
 
         self.methods = [
             RPCMethod("service.run", .unary(.operator) { request, claims in
-                JSONObject(try await run.handle(request, claims: claims))
+                try await run.handle(request, claims: claims)
             }),
             RPCMethod("service.shutdown", .unary(.operator) { request, claims in
-                JSONObject(try await shutdown.handle(request, claims: claims))
+                try await shutdown.handle(request, claims: claims)
             }),
             RPCMethod("service.restart", .unary(.operator) { request, claims in
-                JSONObject(try await restart.handle(request, claims: claims))
+                try await restart.handle(request, claims: claims)
             }),
             RPCMethod("service.status", .unary(.token) { request, _ in
-                JSONObject(try await status.handle(request))
+                try await status.handle(request)
             }),
             RPCMethod("service.reload", .unary(.operator) { request, claims in
-                JSONObject(try await reload.handle(request, claims: claims))
+                try await reload.handle(request, claims: claims)
             })
         ]
     }

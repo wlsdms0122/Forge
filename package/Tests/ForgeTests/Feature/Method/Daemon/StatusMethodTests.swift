@@ -25,7 +25,7 @@ struct StatusMethodTests {
         let token = authority.mint(TokenClaims(principal: "system:admin"))
 
         // When
-        let result = try await method.handle(request(["token": token]))
+        let result = try await method.handle(request(["token": .string(token)]))
 
         // Then
         let daemon = try #require(result["daemon"]?.objectValue)
@@ -111,7 +111,7 @@ struct StatusMethodTests {
         return (method, authority)
     }
     
-    private func request(_ params: [String: Any]) -> RPCRequest {
+    private func request(_ params: [String: JSONValue]) -> RPCRequest {
         RPCRequest(id: "r-\(UUID().uuidString.prefix(6))", method: "daemon.status", params: params)
     }
 }

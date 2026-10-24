@@ -25,19 +25,19 @@ struct JobNamespace: Sendable {
 
         self.methods = [
             RPCMethod("job.create", .unary(.token) { request, claims in
-                JSONObject(try await create.handle(request, claims: claims))
+                try await create.handle(request, claims: claims)
             }),
             RPCMethod("job.show", .unary(.token) { request, claims in
-                JSONObject(try await show.handle(request, claims: claims))
+                try await show.handle(request, claims: claims)
             }),
             RPCMethod("job.list", .unary(.token) { request, claims in
-                JSONObject(try await list.handle(request, claims: claims))
+                try await list.handle(request, claims: claims)
             }),
             RPCMethod("job.update", .unary(.token) { request, claims in
-                JSONObject(try await update.handle(request, claims: claims))
+                try await update.handle(request, claims: claims)
             }),
             RPCMethod("job.delete", .unary(.token) { request, _ in
-                JSONObject(try await delete.handle(request))
+                try await delete.handle(request)
             })
         ]
     }

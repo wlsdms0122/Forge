@@ -24,13 +24,13 @@ struct SessionNamespace: Sendable {
 
         self.methods = [
             RPCMethod("session.send", .unary(.token) { request, claims in
-                JSONObject(try await send.handle(request, claims: claims))
+                try await send.handle(request, claims: claims)
             }),
             RPCMethod("session.handler.ack", .unary(.operator) { request, claims in
-                JSONObject(try await ack.handle(request, claims: claims))
+                try await ack.handle(request, claims: claims)
             }),
             RPCMethod("session.list", .unary(.token) { request, _ in
-                JSONObject(try await list.handle(request))
+                try await list.handle(request)
             }),
             RPCMethod("session.handler.register", .streaming(.operator) { request, claims, sink in
                 try await register.handle(request, claims: claims, sink: sink)

@@ -7,9 +7,9 @@
 
 import Foundation
 
-struct RPCResponse: @unchecked Sendable {
-    enum Payload: @unchecked Sendable {
-        case result([String: Any])
+struct RPCResponse: Sendable {
+    enum Payload: Sendable {
+        case result(JSONValue)
         case error(ErrorObject)
     }
 
@@ -18,14 +18,9 @@ struct RPCResponse: @unchecked Sendable {
     let payload: Payload
 
     // MARK: - Initializer
-    init(id: String, result: [String: Any]) {
+    init(id: String, result: JSONValue) {
         self.id = id
         self.payload = .result(result)
-    }
-
-    init(id: String, result: JSONObject) {
-        self.id = id
-        self.payload = .result(result.dict)
     }
 
     init(id: String, error: any Error) {
@@ -38,8 +33,8 @@ struct RPCResponse: @unchecked Sendable {
         var object: [String: Any] = ["id": id]
 
         switch payload {
-        case .result(let result):
-            object["result"] = result
+        case let .result(result):
+            object["result"] = result.jsonObject
 
         case let .error(error):
             object["error"] = error.jsonValue.jsonObject

@@ -202,38 +202,3 @@ struct WorkflowDispatchMethod: Sendable {
         throw ProtocolError("workflow.dispatch: one of 'spec' or 'name' is required")
     }
 }
-
-func decodeJSONValueDict(_ object: [String: Any]) throws -> [String: JSONValue] {
-    let data = try JSONSerialization.data(withJSONObject: object)
-
-    return try JSONDecoder().decode([String: JSONValue].self, from: data)
-}
-
-func jsonValueToAny(_ value: JSONValue) -> Any {
-    switch value {
-    case .null:
-        return NSNull()
-
-    case .bool(let bool):
-        return bool
-
-    case .int(let integer):
-        return integer
-
-    case .double(let double):
-        return double
-
-    case .string(let string):
-        return string
-
-    case .array(let array):
-        return array.map(jsonValueToAny)
-
-    case .object(let object):
-        return object.mapValues(jsonValueToAny)
-    }
-}
-
-func jsonValueDictToAny(_ dictionary: [String: JSONValue]) -> [String: Any] {
-    dictionary.mapValues(jsonValueToAny)
-}

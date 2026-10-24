@@ -19,7 +19,7 @@ struct AsyncDispatchTests {
         // Given
         let (method, authority) = try makeDeniedMethod()
         let token = authority.mint(TokenClaims(principal: "system:rpc"))
-        let specJSON: [String: Any] = [
+        let specJSON: [String: JSONValue] = [
             "failing": ["nonzero_exit", "timeout"],
             "body": [["let": "x", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/echo", "nope"]]]]]],
         ]
@@ -27,7 +27,7 @@ struct AsyncDispatchTests {
             _ = try await method.handle(RPCRequest(
                     id: "r-async-denied",
                     method: "workflow.dispatch",
-                    params: ["token": token, "spec": specJSON, "async": true]
+                    params: ["token": .string(token), "spec": .object(specJSON), "async": true]
             ), claims: try #require(authority.verify(token)))
 
         // Then
@@ -42,7 +42,7 @@ struct AsyncDispatchTests {
         // Given
         let (method, authority) = try makeMethod()
         let token = authority.mint(TokenClaims(principal: "system:rpc"))
-        let specJSON: [String: Any] = [
+        let specJSON: [String: JSONValue] = [
             "failing": ["nonzero_exit", "timeout"],
             "body": [
                 ["let": "x", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/echo", "done"]]]]],
@@ -53,7 +53,7 @@ struct AsyncDispatchTests {
         let result = try await method.handle(RPCRequest(
                 id: "r-sync",
                 method: "workflow.dispatch",
-                params: ["token": token, "spec": specJSON, "async": false]
+                params: ["token": .string(token), "spec": .object(specJSON), "async": false]
         ), claims: try #require(authority.verify(token)))
 
         // Then
@@ -67,7 +67,7 @@ struct AsyncDispatchTests {
         // Given
         let (method, authority) = try makeMethod()
         let token = authority.mint(TokenClaims(principal: "system:rpc"))
-        let specJSON: [String: Any] = [
+        let specJSON: [String: JSONValue] = [
             "failing": ["nonzero_exit", "timeout"],
             "body": [
                 ["let": "slow", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/sleep", "0.3"]]]]],
@@ -79,7 +79,7 @@ struct AsyncDispatchTests {
         let result = try await method.handle(RPCRequest(
                 id: "r-async",
                 method: "workflow.dispatch",
-                params: ["token": token, "spec": specJSON, "async": true]
+                params: ["token": .string(token), "spec": .object(specJSON), "async": true]
         ), claims: try #require(authority.verify(token)))
         let elapsedMs = (ContinuousClock.now - startedAt).milliseconds
 

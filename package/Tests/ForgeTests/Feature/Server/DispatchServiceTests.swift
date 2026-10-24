@@ -39,7 +39,7 @@ struct DispatchServiceTests {
         // When / Then
         await #expect(throws: TokenRejected.self) {
             _ = try await sut.dispatch(
-                Self.request("token.issue", ["token": foreign, "principal": "system:runner"])
+                Self.request("token.issue", ["token": .string(foreign), "principal": "system:runner"])
             )
         }
     }
@@ -73,7 +73,7 @@ struct DispatchServiceTests {
             let result = try await sut.dispatch(Self.ack(token: token))
 
             // Then
-            #expect(result.dict["ok"] as? Bool == true, "\(principal) should pass the gate")
+            #expect(result["ok"]?.boolValue == true, "\(principal) should pass the gate")
         }
     }
 
@@ -89,7 +89,7 @@ struct DispatchServiceTests {
         let result = try await sut.dispatch(Self.request("daemon.ping", [:]))
 
         // Then
-        #expect(result.dict["pong"] as? Bool == true)
+        #expect(result["pong"]?.boolValue == true)
     }
 
     // MARK: - Public
@@ -106,14 +106,14 @@ struct DispatchServiceTests {
 
     private static func ack(token: String) -> RPCRequest {
         request("session.handler.ack", [
-            "token": token,
+            "token": .string(token),
             "service": "slack",
             "message_id": "m1",
-            "result": [String: Any]()
+            "result": [:]
         ])
     }
 
-    private static func request(_ method: String, _ params: [String: Any]) -> RPCRequest {
+    private static func request(_ method: String, _ params: [String: JSONValue]) -> RPCRequest {
         RPCRequest(id: "1", method: method, params: params)
     }
 }

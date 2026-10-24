@@ -14,7 +14,7 @@ struct CreatePolicyGateTests {
     // MARK: - Property
     private let temporary = TemporaryDirectory("creategate")
 
-    private let inlineSpec: [String: Any] = [
+    private let inlineSpec: [String: JSONValue] = [
         "failing": ["nonzero_exit", "timeout"],
             "body": [["let": "x", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/echo", "ok"]]]]]],
     ]
@@ -35,7 +35,7 @@ struct CreatePolicyGateTests {
         let token = authority.mint(TokenClaims(principal: "cli:response"))
         let result = try await method.handle(RPCRequest(
                 id: "q1", method: "schedule.create",
-                params: ["token": token, "spec": inlineSpec, "after": "1h"]), claims: try #require(authority.verify(token)))
+                params: ["token": .string(token), "spec": .object(inlineSpec), "after": "1h"]), claims: try #require(authority.verify(token)))
 
         // Then
         #expect(result["workflow"]?.stringValue == "<inline>")
@@ -56,7 +56,7 @@ struct CreatePolicyGateTests {
         do {
             _ = try await method.handle(RPCRequest(
                     id: "q2", method: "schedule.create",
-                    params: ["token": token, "spec": inlineSpec, "after": "1h"]), claims: try #require(authority.verify(token)))
+                    params: ["token": .string(token), "spec": .object(inlineSpec), "after": "1h"]), claims: try #require(authority.verify(token)))
 
         // Then
             Issue.record("Registration by a principal absent from the policy should be rejected")
@@ -84,7 +84,7 @@ struct CreatePolicyGateTests {
         do {
             _ = try await method.handle(RPCRequest(
                     id: "q3", method: "schedule.create",
-                    params: ["token": token, "spec": inlineSpec, "every": "1h"]), claims: try #require(authority.verify(token)))
+                    params: ["token": .string(token), "spec": .object(inlineSpec), "every": "1h"]), claims: try #require(authority.verify(token)))
 
         // Then
             Issue.record("Registration by a principal absent from the policy should be rejected")
@@ -109,7 +109,7 @@ struct CreatePolicyGateTests {
         let token = authority.mint(TokenClaims(principal: "cli:response"))
         let result = try await method.handle(RPCRequest(
                 id: "q4", method: "schedule.create",
-                params: ["token": token, "spec": inlineSpec, "every": "1h"]), claims: try #require(authority.verify(token)))
+                params: ["token": .string(token), "spec": .object(inlineSpec), "every": "1h"]), claims: try #require(authority.verify(token)))
 
         // Then
         #expect(result["workflow"]?.stringValue == "<inline>")

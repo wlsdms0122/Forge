@@ -14,7 +14,7 @@ struct WorkflowDispatchTests {
     // MARK: - Property
     private let temporary = TemporaryDirectory("dispatch")
 
-    private var anonSpec: [String: Any] {
+    private var anonSpec: [String: JSONValue] {
         [
             "failing": ["nonzero_exit", "timeout"],
             "body": [
@@ -35,7 +35,7 @@ struct WorkflowDispatchTests {
         let token = authority.mint(TokenClaims(principal: "cli:test"))
 
         // When
-        let result = try await method.handle(request(["token": token, "spec": anonSpec]), claims: try #require(authority.verify(token)))
+        let result = try await method.handle(request(["token": .string(token), "spec": .object(anonSpec)]), claims: try #require(authority.verify(token)))
 
         // Then
         #expect(result["status"]?.stringValue == "ok")
@@ -49,14 +49,14 @@ struct WorkflowDispatchTests {
         let token = authority.mint(TokenClaims(principal: "cli:test"))
         let wireID = "fc-client-collide"
         let first = try await method.handle(RPCRequest(id: wireID, method: "workflow.dispatch",
-                params: ["token": token, "spec": anonSpec]), claims: try #require(authority.verify(token)))
+                params: ["token": .string(token), "spec": .object(anonSpec)]), claims: try #require(authority.verify(token)))
 
         // Then
         let firstID = try #require(first["workflow_id"]?.stringValue)
         #expect(firstID.hasPrefix("wf-"), "runID should be forge-minted (wf-*) — borrowing the wire id is forbidden (finding J): \(firstID)")
         #expect(firstID != wireID, "runID must not equal the client wire id")
         let second = try await method.handle(RPCRequest(id: wireID, method: "workflow.dispatch",
-                params: ["token": token, "spec": anonSpec]), claims: try #require(authority.verify(token)))
+                params: ["token": .string(token), "spec": .object(anonSpec)]), claims: try #require(authority.verify(token)))
         let secondID = try #require(second["workflow_id"]?.stringValue)
         #expect(firstID != secondID, "Two dispatches with the same wire id sharing a runID means cross-run contamination (finding J)")
     }
@@ -71,7 +71,7 @@ struct WorkflowDispatchTests {
         do {
 
         // When
-            _ = try await method.handle(request(["token": token, "spec": named]), claims: try #require(authority.verify(token)))
+            _ = try await method.handle(request(["token": .string(token), "spec": .object(named)]), claims: try #require(authority.verify(token)))
 
         // Then
             Issue.record("An inline spec with a name key should be rejected")
@@ -88,7 +88,7 @@ struct WorkflowDispatchTests {
         do {
 
         // When
-            _ = try await method.handle(request(["token": token, "spec": anonSpec]), claims: try #require(authority.verify(token)))
+            _ = try await method.handle(request(["token": .string(token), "spec": .object(anonSpec)]), claims: try #require(authority.verify(token)))
 
         // Then
             Issue.record("Should be rejected without an <inline> policy")
@@ -104,7 +104,7 @@ struct WorkflowDispatchTests {
         let token = authority.mint(TokenClaims(principal: "cli:anything"))
 
         // When
-        let result = try await method.handle(request(["token": token, "spec": anonSpec]), claims: try #require(authority.verify(token)))
+        let result = try await method.handle(request(["token": .string(token), "spec": .object(anonSpec)]), claims: try #require(authority.verify(token)))
 
         // Then
         #expect(result["status"]?.stringValue == "ok")
@@ -115,13 +115,13 @@ struct WorkflowDispatchTests {
         // Given
         let (method, authority, _) = try await makeMethod(policy: ["*": ["*"]])
         let token = authority.mint(TokenClaims(principal: "cli:test"))
-        let badSpec: [String: Any] = [
+        let badSpec: [String: JSONValue] = [
             "body": [["shell": ["command": ["echo", "hi"]]]],
         ]
         do {
 
         // When
-            _ = try await method.handle(request(["token": token, "spec": badSpec]), claims: try #require(authority.verify(token)))
+            _ = try await method.handle(request(["token": .string(token), "spec": .object(badSpec)]), claims: try #require(authority.verify(token)))
 
         // Then
             Issue.record("A malformed spec should be rejected")
@@ -137,7 +137,7 @@ struct WorkflowDispatchTests {
         // Given
         let (method, authority, _) = try await makeMethod(policy: ["*": ["*"]])
         let token = authority.mint(TokenClaims(principal: "cli:test"))
-        let badSpec: [String: Any] = [
+        let badSpec: [String: JSONValue] = [
             "failing": ["nonzero_exit", "timeout"],
             "body": [
                 ["let": "a", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/echo", ["ref": "nonexistent"]]]]]],
@@ -146,7 +146,7 @@ struct WorkflowDispatchTests {
         do {
 
         // When
-            _ = try await method.handle(request(["token": token, "spec": badSpec]), claims: try #require(authority.verify(token)))
+            _ = try await method.handle(request(["token": .string(token), "spec": .object(badSpec)]), claims: try #require(authority.verify(token)))
 
         // Then
             Issue.record("A spec containing an undeclared ref should be rejected at dispatch")
@@ -164,7 +164,7 @@ struct WorkflowDispatchTests {
         let token = authority.mint(TokenClaims(principal: "cli:test"))
 
         // When
-        let result = try await method.handle(request(["token": token, "name": "echo"]), claims: try #require(authority.verify(token)))
+        let result = try await method.handle(request(["token": .string(token), "name": "echo"]), claims: try #require(authority.verify(token)))
 
         // Then
         #expect(result["status"]?.stringValue == "ok")
@@ -179,7 +179,7 @@ struct WorkflowDispatchTests {
         do {
 
         // When
-            _ = try await method.handle(request(["token": token]), claims: try #require(authority.verify(token)))
+            _ = try await method.handle(request(["token": .string(token)]), claims: try #require(authority.verify(token)))
 
         // Then
             Issue.record("Should be rejected when neither name nor spec is present")
@@ -205,7 +205,7 @@ struct WorkflowDispatchTests {
         let token = authority.mint(TokenClaims(principal: "cli:parent", workflowID: "wf-parent"))
 
         // When
-        let result = try await method.handle(request(["token": token, "name": "echo"]), claims: try #require(authority.verify(token)))
+        let result = try await method.handle(request(["token": .string(token), "name": "echo"]), claims: try #require(authority.verify(token)))
 
         // Then
         #expect(result["status"]?.stringValue == "ok")
@@ -239,7 +239,7 @@ struct WorkflowDispatchTests {
         let stale = authority.mint(TokenClaims(principal: "cli:gone", workflowID: "wf-gone"))
         do {
             _ = try await method.handle(RPCRequest(id: "r1", method: "workflow.dispatch",
-                    params: ["token": stale, "name": "echo2"]), claims: try #require(authority.verify(stale)))
+                    params: ["token": .string(stale), "name": "echo2"]), claims: try #require(authority.verify(stale)))
 
         // Then
             Issue.record("A stale run token should be rejected")
@@ -287,7 +287,7 @@ struct WorkflowDispatchTests {
         return (method, authority, registry)
     }
 
-    private func request(_ params: [String: Any]) -> RPCRequest {
+    private func request(_ params: [String: JSONValue]) -> RPCRequest {
         RPCRequest(id: "r-\(UUID().uuidString.prefix(6))", method: "workflow.dispatch", params: params)
     }
 }

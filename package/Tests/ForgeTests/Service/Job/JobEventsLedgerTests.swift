@@ -242,7 +242,7 @@ struct JobEventsLedgerTests {
         await registry.register(liveRecord("wf-2"))
         let opToken = authority.mint(TokenClaims(principal: "system:admin"))
         _ = try await show.handle(RPCRequest(id: "r1", method: "job.show",
-                params: ["token": opToken, "id": "jr"]), claims: try #require(authority.verify(opToken)))
+                params: ["token": .string(opToken), "id": "jr"]), claims: try #require(authority.verify(opToken)))
 
         // When
         var job = await store.lookup("jr")
@@ -251,7 +251,7 @@ struct JobEventsLedgerTests {
         #expect(job?.events.count == 0, "an operator's read is not an observation target")
         let runToken = authority.mint(TokenClaims(principal: "cli:worker", workflowID: "wf-1", id: "tok-r"))
         let shown = try await show.handle(RPCRequest(id: "r2", method: "job.show",
-                params: ["token": runToken, "id": "jr"]), claims: try #require(authority.verify(runToken)))
+                params: ["token": .string(runToken), "id": "jr"]), claims: try #require(authority.verify(runToken)))
         job = await store.lookup("jr")
         #expect(job?.events.map(\.kind) == [.runAttached])
         #expect(job?.events.first?.run == "tok-r", "attachment key = accessor id (same as comment.by)")
@@ -260,7 +260,7 @@ struct JobEventsLedgerTests {
         #expect((dict?["events"]?.arrayValue)?.count ?? 0 == 0)
         #expect(dict?["open"]?.boolValue == false, "show's open is false for a ticket with only one's own attachment")
         _ = try await update.handle(RPCRequest(id: "r3", method: "job.update",
-                params: ["token": runToken, "id": "jr",
+                params: ["token": .string(runToken), "id": "jr",
                     "note": "working"]), claims: try #require(authority.verify(runToken)))
         job = await store.lookup("jr")
         #expect(job?.events.map(\.kind) == [.runAttached], "re-touch over an open attachment is a no-op")
@@ -268,14 +268,14 @@ struct JobEventsLedgerTests {
         #expect(job?.comments.first?.by == "tok-r")
         let otherToken = authority.mint(TokenClaims(principal: "cli:worker", workflowID: "wf-2", id: "tok-o"))
         _ = try await update.handle(RPCRequest(id: "r4", method: "job.update",
-                params: ["token": otherToken, "id": "jr",
+                params: ["token": .string(otherToken), "id": "jr",
                     "note": "also here"]), claims: try #require(authority.verify(otherToken)))
         let shown2 = try await show.handle(RPCRequest(id: "r5", method: "job.show",
-                params: ["token": runToken, "id": "jr"]), claims: try #require(authority.verify(runToken)))
+                params: ["token": .string(runToken), "id": "jr"]), claims: try #require(authority.verify(runToken)))
         #expect((shown2["job"]?.objectValue)?["open"]?.boolValue == true, "someone else's open attachment shows as open")
         let deadToken = authority.mint(TokenClaims(principal: "cli:worker", workflowID: "wf-dead", id: "tok-d"))
         _ = try await update.handle(RPCRequest(id: "r6", method: "job.update",
-                params: ["token": deadToken, "id": "jr",
+                params: ["token": .string(deadToken), "id": "jr",
                     "note": "late from orphan"]), claims: try #require(authority.verify(deadToken)))
         job = await store.lookup("jr")
         #expect(!(job?.events.contains { event in event.run == "tok-d" } ?? true), "a dead run token's touch does not open an attachment")
