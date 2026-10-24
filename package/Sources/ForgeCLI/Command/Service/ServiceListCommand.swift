@@ -7,6 +7,7 @@
 
 import ArgumentParser
 import Foundation
+import Forge
 
 struct ServiceListCommand: ParsableCommand {
     // MARK: - Property
@@ -24,12 +25,12 @@ struct ServiceListCommand: ParsableCommand {
     // MARK: - Public
     func run() throws {
         let client = Client(global, context: "service list")
-        let result = client.call("session.list")
+        let result = client.call("handler.list")
         
-        let services = (result["services"] as? [[String: Any]]) ?? []
+        let services = result["services"]?.arrayValue ?? []
         
         if json {
-            printJSON(["services": services])
+            JSONValue.object(["services": .array(services)]).printJSON()
             
             return
         }
@@ -41,9 +42,8 @@ struct ServiceListCommand: ParsableCommand {
         }
         
         for service in services {
-            let name = service["service"] as? String ?? "?"
-            let schema = service["schema"] as? [String: Any]
-            let description = (schema?["description"] as? String) ?? ""
+            let name = service["service"]?.stringValue ?? "?"
+            let description = service["schema"]?["description"]?.stringValue ?? ""
             
             print(description.isEmpty ? name : "\(name)\t\(description)")
         }

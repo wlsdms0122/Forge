@@ -7,6 +7,7 @@
 
 import ArgumentParser
 import Foundation
+import Forge
 
 struct ServiceSendCommand: ParsableCommand {
     // MARK: - Property
@@ -20,7 +21,7 @@ struct ServiceSendCommand: ParsableCommand {
 
             IDENTITY
                 The bearer token (FORGE_ACCESS_TOKEN or --token) carries the
-                caller's identity. principal / workflow_id / origin /
+                caller's identity. principal / run_id / origin /
                 correlator are derived server-side from the token — not
                 spoofable.
 
@@ -60,8 +61,8 @@ struct ServiceSendCommand: ParsableCommand {
         let client = Client(global, context: "service send")
         
         guard let payloadData = payload.data(using: .utf8),
-            let payloadAny = try? JSONSerialization.jsonObject(with: payloadData),
-            let payloadObject = payloadAny as? [String: Any]
+            let payloadAny = try? JSONSerialization.jsonObject(with: payloadData) as? [String: Any],
+            let payloadObject = try? JSONValue(jsonObject: payloadAny)
         else {
             die("service send: --payload must be a JSON object", code: 4)
         }
@@ -70,15 +71,15 @@ struct ServiceSendCommand: ParsableCommand {
             die("service send: control whether to wait with the --async flag, not a payload field (omit --async to block until completion)", code: 4)
         }
         
-        let params: [String: Any] = [
-            "service": name,
+        let params: [String: JSONValue] = [
+            "service": .string(name),
             "payload": payloadObject,
-            "async": isAsync
+            "async": .bool(isAsync)
         ]
         
-        printResult(client.call("session.send", params), json: json)
+        client.call("handler.send", params).printResult(json: json)
         
-        ForgeCommand.exit()
+        Self.exit()
     }
     
     // MARK: - Private

@@ -45,33 +45,5 @@ struct TokenAuthority: Sendable {
         return try? JSONDecoder().decode(TokenClaims.self, from: payload)
     }
     
-    func requireClaims(_ params: [String: Any]) throws -> TokenClaims {
-        guard let token = params["token"] as? String, !token.isEmpty else {
-            throw ProtocolError("'token' (string) required — issue one with `forge token issue`")
-        }
-        
-        guard let claims = verify(token) else {
-            throw TokenRejected(
-                "token verification failed — signature does not match this daemon's seed"
-                    + " (reissue required)"
-            )
-        }
-        
-        return claims
-    }
-    
-    func requireOperatorClaims(_ params: [String: Any], method: String) throws -> TokenClaims {
-        let claims = try requireClaims(params)
-        
-        guard !claims.principal.hasPrefix("cli:") else {
-            throw ProtocolError(
-                "\(method): a workflow subprocess token cannot perform this operator action"
-                    + " — use an operator/service token"
-            )
-        }
-        
-        return claims
-    }
-    
     // MARK: - Private
 }

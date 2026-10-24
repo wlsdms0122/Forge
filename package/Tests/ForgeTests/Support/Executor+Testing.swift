@@ -11,7 +11,7 @@ import Warp
 
 let entryName = "entry"
 
-extension Warp.Executor {
+extension Executor {
     // Builds the module beside the others, the Forge module and the standard
     // vocabulary, runs the entry, and returns the fields of the struct or map
     // it returns. An optional parameter the inputs leave out is handed null.
@@ -22,7 +22,7 @@ extension Warp.Executor {
         inputs: [String: Warp.Value] = [:]
     ) async throws -> [String: Warp.Value] {
         let name = try Name(entry)
-        let image = try await Builder().build([module] + others + ForgeVocabulary.linkables())
+        let image = try await Builder().build([module] + others + ForgeVocabulary.shipped.get().linkables)
         var arguments: [Name: Warp.Value] = [:]
 
         for (key, value) in inputs {

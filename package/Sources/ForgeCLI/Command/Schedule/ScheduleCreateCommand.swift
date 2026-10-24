@@ -7,6 +7,7 @@
 
 import ArgumentParser
 import Foundation
+import Forge
 
 struct ScheduleCreateCommand: ParsableCommand {
     // MARK: - Property
@@ -95,28 +96,31 @@ struct ScheduleCreateCommand: ParsableCommand {
     func run() throws {
         let client = Client(global, context: "schedule create")
         
-        var params: [String: Any] = [:]
+        var params: [String: JSONValue] = [:]
         
-        if let every { params["every"] = every }
-        if let at { params["at"] = at }
-        if let once { params["once"] = once }
-        if let after { params["after"] = after }
-        if let timezone { params["timezone"] = timezone }
+        if let every { params["every"] = .string(every) }
+        if let at { params["at"] = .string(at) }
+        if let once { params["once"] = .string(once) }
+        if let after { params["after"] = .string(after) }
+        if let timezone { params["timezone"] = .string(timezone) }
         
         if let days {
-            params["days"] = days
-                .split(separator: ",")
-                .map { day in day.trimmingCharacters(in: .whitespaces) }
-                .filter { day in !day.isEmpty }
+            params["days"] = .array(
+                days
+                    .split(separator: ",")
+                    .map { day in day.trimmingCharacters(in: .whitespaces) }
+                    .filter { day in !day.isEmpty }
+                    .map(JSONValue.string)
+            )
         }
         
-        if let workflow { params["workflow"] = workflow }
-        if let spec { params["spec"] = parseJSONObjectArg(spec, flag: "--spec") }
-        if let id { params["id"] = id }
-        if let inputs { params["inputs"] = parseJSONObjectArg(inputs, flag: "--inputs") }
-        if let concurrency { params["concurrency"] = concurrency }
+        if let workflow { params["workflow"] = .string(workflow) }
+        if let spec { params["spec"] = JSONValue(objectArgument: spec, flag: "--spec") }
+        if let id { params["id"] = .string(id) }
+        if let inputs { params["inputs"] = JSONValue(objectArgument: inputs, flag: "--inputs") }
+        if let concurrency { params["concurrency"] = .string(concurrency) }
         
-        printResult(client.call("schedule.create", params), json: json)
+        client.call("schedule.create", params).printResult(json: json)
     }
     
     // MARK: - Private

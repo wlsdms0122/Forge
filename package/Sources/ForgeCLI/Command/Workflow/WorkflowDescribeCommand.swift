@@ -7,6 +7,7 @@
 
 import ArgumentParser
 import Foundation
+import Forge
 
 struct WorkflowDescribeCommand: ParsableCommand {
     // MARK: - Property
@@ -34,24 +35,24 @@ struct WorkflowDescribeCommand: ParsableCommand {
     // MARK: - Public
     func run() throws {
         let client = Client(global, context: "workflow describe")
-        let result = client.call("workflow.describe", ["name": name])
+        let result = client.call("workflow.describe", ["name": .string(name)])
         
         if json {
-            printJSON(result)
+            result.printJSON()
             
             return
         }
         
-        let resolvedName = result["name"] as? String ?? name
-        let description = result["description"] as? String ?? ""
-        let source = result["source"] as? String ?? ""
+        let resolvedName = result["name"]?.stringValue ?? name
+        let description = result["description"]?.stringValue ?? ""
+        let source = result["source"]?.stringValue ?? ""
         
         print(resolvedName)
         
         if !description.isEmpty { print("  \(description)") }
         if !source.isEmpty { print("  source: \(source)") }
         
-        let inputs = (result["inputs"] as? [String: Any]) ?? [:]
+        let inputs = result["inputs"]?.objectValue ?? [:]
         
         if inputs.isEmpty {
             print("  inputs: (none)")
@@ -59,18 +60,18 @@ struct WorkflowDescribeCommand: ParsableCommand {
             print("  inputs:")
             
             for key in inputs.keys.sorted() {
-                let spec = inputs[key] as? [String: Any] ?? [:]
+                let spec = inputs[key]
                 var bits: [String] = []
                 
-                if let type = spec["type"] as? String { bits.append(type) }
+                if let type = spec?["type"]?.stringValue { bits.append(type) }
                 
-                if let value = spec["default"] { bits.append("default=\(renderPlainValue(value))") }
+                if let value = spec?["default"] { bits.append("default=\(value.stringValue ?? value.plainText)") }
                 
                 let header = bits.isEmpty
                     ? key
                     : "\(key) (\(bits.joined(separator: ", ")))"
                 
-                if let hint = spec["hint"] as? String, !hint.isEmpty {
+                if let hint = spec?["hint"]?.stringValue, !hint.isEmpty {
                     print("    \(header) — \(hint)")
                 } else {
                     print("    \(header)")
@@ -78,30 +79,10 @@ struct WorkflowDescribeCommand: ParsableCommand {
             }
         }
         
-        if let returns = result["returns"] as? String {
+        if let returns = result["returns"]?.stringValue {
             print("  returns: \(returns)")
         }
     }
     
     // MARK: - Private
-}
-
-private func renderPlainValue(_ value: Any) -> String {
-    if let number = value as? NSNumber, CFGetTypeID(number) == CFBooleanGetTypeID() {
-        return number.boolValue ? "true" : "false"
-    }
-    
-    if value is NSNull { return "null" }
-    if let string = value as? String { return string }
-    
-    if JSONSerialization.isValidJSONObject(value),
-        let data = try? JSONSerialization.data(
-            withJSONObject: value,
-            options: [.sortedKeys, .withoutEscapingSlashes]
-        ),
-        let string = String(data: data, encoding: .utf8) {
-        return string
-    }
-    
-    return "\(value)"
 }

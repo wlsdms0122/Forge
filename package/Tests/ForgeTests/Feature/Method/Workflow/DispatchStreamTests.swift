@@ -1,0 +1,339 @@
+//
+//  DispatchStreamTests.swift
+//  ForgeTests
+//
+//  Created by JSilver on 8/8/26.
+//
+
+import Foundation
+import Testing
+@testable import Forge
+
+@Suite("DispatchStream Tests")
+struct DispatchStreamTests {
+    private actor CollectingSink: EventSink {
+        private var collected: [JSONValue] = []
+        func emit(_ frame: JSONValue) async { collected.append(frame) }
+        func snapshot() -> [JSONValue] { collected }
+    }
+
+    // MARK: - Property
+    // MARK: - Initializer
+    // MARK: - Test
+    @Test("Streams events then emits a terminal result at the end")
+    func streamsEventsThenTerminalResult() async throws {
+        // Given
+        let (method, authority, _) = try makeMethod()
+        let token = authority.mint(TokenClaims(principal: "system:rpc"))
+        let sink = CollectingSink()
+        let specJSON: [String: JSONValue] = [
+            "failing": ["nonzero_exit", "timeout"],
+            "body": [
+                ["let": "one", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/echo", "a"]]]]],
+                ["let": "two", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/echo", "b"]]]]],
+            ],
+            "returns": "Dictionary<String, Any>",
+            "result": ["dictionary": [["v", ["ref": "two"]]]],
+        ]
+        try await method.handle(RPCRequest(
+                id: "r-stream",
+                method: "workflow.dispatch_stream",
+                params: ["token": .string(token), "spec": .object(specJSON)]
+            ), claims: try #require(authority.verify(token)), sink: sink)
+        let lines = await sink.snapshot()
+
+        // Then
+        #expect(lines.count >= 3, "At least 3 lines: ack + events + terminal")
+        let ack = lines[0]
+        #expect(ack["id"]?.stringValue == "r-stream")
+        let ackResult = try #require(ack["result"]?.objectValue)
+        #expect(ackResult["status"]?.stringValue == "streaming")
+        let runID = try #require(ackResult["run_id"]?.stringValue)
+        let events = lines.dropFirst().dropLast()
+        for error in events {
+            #expect(error["kind"]?.stringValue == "workflow.event")
+            #expect(error["run_id"]?.stringValue == runID)
+        }
+
+        let eventKinds = events.compactMap { event in event["event"]?.stringValue }
+        #expect(eventKinds.contains("workflow.started"))
+        #expect(eventKinds.contains("step.started"))
+        #expect(eventKinds.contains("step.completed"))
+        #expect(eventKinds.contains("workflow.completed"))
+        let stepStarts = events.filter { event in (event["event"]?.stringValue) == "step.started" }
+        .compactMap { line in line["step"]?.stringValue }
+        #expect(stepStarts == ["one", "two"], "\(stepStarts)")
+        let terminal = try #require(lines.last)
+        #expect(terminal["kind"]?.stringValue == "workflow.result")
+        let result = try #require(terminal["result"]?.objectValue)
+        #expect(result["status"]?.stringValue == "ok")
+        #expect(result["run_id"]?.stringValue == runID)
+        #expect((result["outputs"]?.objectValue)?["v"] != nil)
+    }
+
+    @Test("Policy denial throws before the ack")
+    func policyDenialThrowsBeforeAck() async throws {
+        // Given
+        let (method, authority, _) = try makeMethod(policySeed: ["system:other": ["*"]])
+        let token = authority.mint(TokenClaims(principal: "system:rpc"))
+        let sink = CollectingSink()
+        let specJSON: [String: JSONValue] = [
+            "failing": ["nonzero_exit", "timeout"],
+            "body": [["let": "x", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/echo", "nope"]]]]]],
+        ]
+        do {
+            try await method.handle(RPCRequest(
+                    id: "r-denied",
+                    method: "workflow.dispatch_stream",
+                    params: ["token": .string(token), "spec": .object(specJSON)]
+                ), claims: try #require(authority.verify(token)), sink: sink)
+
+        // Then
+            Issue.record("Policy denial should throw")
+        } catch {
+            #expect(String(describing: error).contains("not allowed"))
+        }
+
+        let lines = await sink.snapshot()
+        #expect(lines.isEmpty, "No stream lines should be emitted on denial: \(lines)")
+    }
+
+    @Test("Filters out foreign-node events even under the same root")
+    func sameRootForeignNodeEventsFiltered() async throws {
+        // Given
+        let (method, authority, bus) = try makeMethod()
+        let token = authority.mint(TokenClaims(principal: "system:rpc"))
+        let sink = CollectingSink()
+        let specJSON: [String: JSONValue] = [
+            "failing": ["nonzero_exit", "timeout"],
+            "body": [["let": "slow", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/sleep", "0.3"]]]]]],
+        ]
+        let handleTask = Task {
+            try await method.handle(RPCRequest(
+                    id: "r-subtree",
+                    method: "workflow.dispatch_stream",
+                    params: ["token": .string(token), "spec": .object(specJSON)]
+                ), claims: try #require(authority.verify(token)), sink: sink)
+        }
+
+        var runID: String?
+        for _ in 0..<100 {
+            if let ack = (await sink.snapshot()).first,
+            let payload = ack["result"]?.objectValue,
+            let identifier = payload["run_id"]?.stringValue { runID = identifier; break }
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+
+        // Then
+        let rootID = try #require(runID)
+        await bus.publish(WorkflowEvent(
+                kind: .stepStarted, runID: "intruder-run", workflowName: "intruder",
+                stepID: "evil", rootID: rootID, parentRunID: "someone-elses-run"))
+        await bus.publish(WorkflowEvent(
+                kind: .workflowStarted, runID: "child-run", workflowName: "child",
+                rootID: rootID, parentRunID: rootID))
+        await bus.publish(WorkflowEvent(
+                kind: .stepStarted, runID: "grandchild-run", workflowName: "grandchild",
+                stepID: "gs", rootID: rootID, parentRunID: "child-run"))
+        try await handleTask.value
+        let lines = await sink.snapshot()
+        let leaked = lines.filter { line in (line["run_id"]?.stringValue) == "intruder-run" }
+        #expect(leaked.isEmpty, "Events from outside the subtree leaked despite sharing the root: \(leaked)")
+        let relayedIDs = Set(lines.compactMap { line in line["run_id"]?.stringValue })
+        #expect(relayedIDs.contains("child-run"), "Child run events should flow through: \(relayedIDs)")
+        #expect(relayedIDs.contains("grandchild-run"), "Grandchild runs should flow through the chain too: \(relayedIDs)")
+        let ownKinds = lines.compactMap { line in line["event"]?.stringValue }
+        #expect(ownKinds.contains("workflow.completed"), "The run's own events should flow through: \(ownKinds)")
+    }
+
+    @Test("Unawaited runs are computed from the async edge")
+    func unawaitedComputedFromAsyncEdge() async throws {
+        // Given
+        let (method, authority, bus) = try makeMethod()
+        let token = authority.mint(TokenClaims(principal: "system:rpc"))
+        let sink = CollectingSink()
+        let specJSON: [String: JSONValue] = [
+            "failing": ["nonzero_exit", "timeout"],
+            "body": [["let": "slow", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/sleep", "0.3"]]]]]],
+        ]
+        let handleTask = Task {
+            try await method.handle(RPCRequest(
+                    id: "r-detached",
+                    method: "workflow.dispatch_stream",
+                    params: ["token": .string(token), "spec": .object(specJSON)]
+                ), claims: try #require(authority.verify(token)), sink: sink)
+        }
+
+        var runID: String?
+        for _ in 0..<100 {
+            if let ack = (await sink.snapshot()).first,
+            let payload = ack["result"]?.objectValue,
+            let identifier = payload["run_id"]?.stringValue { runID = identifier; break }
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+
+        // Then
+        let rootID = try #require(runID)
+        await bus.publish(WorkflowEvent(
+                kind: .workflowStarted, runID: "job-run", workflowName: "worker",
+                rootID: rootID, parentRunID: rootID, asyncDispatch: true))
+        await bus.publish(WorkflowEvent(
+                kind: .stepStarted, runID: "job-child", workflowName: "bot-invoke",
+                stepID: "boot", rootID: rootID, parentRunID: "job-run"))
+        await bus.publish(WorkflowEvent(
+                kind: .workflowStarted, runID: "sync-child", workflowName: "capture",
+                rootID: rootID, parentRunID: rootID))
+        try await handleTask.value
+        let lines = await sink.snapshot()
+        func unawaitedFlag(_ id: String) -> Bool? {
+            lines.first { line in (line["run_id"]?.stringValue) == id }?["unawaited"]?.boolValue
+        }
+        #expect(lines.first { line in (line["run_id"]?.stringValue) == "job-run" } != nil, "Unawaited children are still in the lineage subtree — the relay does not filter them")
+        #expect(unawaitedFlag("job-run") == true, "Run that crossed an async edge")
+        #expect(unawaitedFlag("job-child") == true, "The root does not wait for sync grandchildren below it either")
+        #expect(unawaitedFlag("sync-child") == nil, "The root waits for sync children — no flag")
+        #expect(unawaitedFlag(rootID) == nil, "The root itself is not unawaited")
+    }
+
+    @Test("Async dispatch marks the run as async")
+    func asyncDispatchMarksRunAsync() async throws {
+        // Given
+        let catalog = try WorkflowCatalog(directory: nil)
+        let bus = WorkflowEventBus()
+        let authority = TokenAuthority()
+        let registry = WorkRegistry()
+        let runner = WorkflowRunner(
+            catalog: catalog,
+            eventBus: bus,
+            policyStore: PolicyStore(seed: ["*": ["*"]]),
+            pool: WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: Int.max),
+            workRegistry: registry,
+            tokenAuthority: authority,
+            capabilities: CapabilitySet(
+                shell: LiveShell(),
+                agent: LiveAgent(executor: AgentExecutor(backend: StubBackend("noop"))),
+                resources: LiveResources(store: ResourceStore(directory: nil))
+            ))
+        let dispatchMethod = WorkflowDispatchMethod(runner: runner, catalog: catalog,
+            workRegistry: registry)
+        let (_, stream) = await bus.subscribe()
+        let token = authority.mint(TokenClaims(principal: "system:rpc"))
+        let specJSON: [String: JSONValue] = [
+            "failing": ["nonzero_exit", "timeout"],
+            "body": [["let": "one", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/echo", "a"]]]]]],
+        ]
+        let ack = try await dispatchMethod.handle(RPCRequest(
+                id: "r-async", method: "workflow.dispatch",
+                params: ["token": .string(token), "spec": .object(specJSON), "async": true]
+        ), claims: try #require(authority.verify(token)))
+
+        // Then
+        #expect(ack["status"]?.stringValue == "running")
+        var sawCompleted = false
+        for await event in stream {
+            #expect(event.asyncDispatch, "Events from an async run should carry that fact: \(event.kind)")
+            if event.kind == .workflowCompleted { sawCompleted = true; break }
+        }
+        #expect(sawCompleted)
+    }
+
+    @Test("A failed run emits a failed terminal event")
+    func failedRunEmitsFailedTerminal() async throws {
+        // Given
+        let (method, authority, _) = try makeMethod()
+        let token = authority.mint(TokenClaims(principal: "system:rpc"))
+        let sink = CollectingSink()
+        let specJSON: [String: JSONValue] = [
+            "failing": ["nonzero_exit", "timeout"],
+            "body": [["let": "boom", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/usr/bin/false"]]]]]],
+        ]
+        try await method.handle(RPCRequest(
+                id: "r-fail",
+                method: "workflow.dispatch_stream",
+                params: ["token": .string(token), "spec": .object(specJSON)]
+            ), claims: try #require(authority.verify(token)), sink: sink)
+        let lines = await sink.snapshot()
+
+        // Then
+        let terminal = try #require(lines.last)
+        #expect(terminal["kind"]?.stringValue == "workflow.result")
+        let result = try #require(terminal["result"]?.objectValue)
+        #expect(result["status"]?.stringValue == "failed")
+        #expect(result["error"] != nil)
+        let eventKinds = lines.dropFirst().dropLast().compactMap { line in line["event"]?.stringValue }
+        #expect(eventKinds.contains("step.failed") || eventKinds.contains("workflow.failed"), "Failure events should be carried on the stream: \(eventKinds)")
+    }
+
+    @Test("The terminal event preserves the failure type instead of flattening it")
+    func streamTerminalPreservesFailureType() async throws {
+        // Given
+        let catalog = try WorkflowCatalog(directory: nil)
+        let bus = WorkflowEventBus()
+        let pool = WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: 1)
+        try await pool.register(runID: "occupier", workflowName: "other", rootID: "occupier",
+            origin: .manual, principal: "t")
+        let authority = TokenAuthority()
+        let registry = WorkRegistry()
+        let runner = WorkflowRunner(
+            catalog: catalog,
+            eventBus: bus,
+            policyStore: PolicyStore(seed: ["*": ["*"]]),
+            pool: pool,
+            workRegistry: registry,
+            tokenAuthority: authority,
+            capabilities: CapabilitySet(
+                shell: LiveShell(),
+                agent: LiveAgent(executor: AgentExecutor(backend: StubBackend("stub"))),
+                resources: LiveResources(store: ResourceStore(directory: nil))
+            ))
+        let dispatchMethod = WorkflowDispatchMethod(runner: runner, catalog: catalog,
+            workRegistry: registry)
+        let method = WorkflowDispatchStreamMethod(dispatchMethod: dispatchMethod, eventBus: bus)
+        let token = authority.mint(TokenClaims(principal: "system:rpc"))
+        let sink = CollectingSink()
+        try await method.handle(RPCRequest(
+                id: "r-cap",
+                method: "workflow.dispatch_stream",
+                params: ["token": .string(token),
+                    "spec": ["failing": ["nonzero_exit", "timeout"],
+            "body": [["let": "x", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/echo", "hi"]]]]]]]]
+            ), claims: try #require(authority.verify(token)), sink: sink)
+        let lines = await sink.snapshot()
+
+        // Then
+        let terminal = try #require(lines.last)
+        #expect(terminal["kind"]?.stringValue == "workflow.result")
+        let result = try #require(terminal["result"]?.objectValue)
+        #expect(result["status"]?.stringValue == "failed")
+        let error = try #require(result["error"]?.objectValue)
+        #expect(error["type"]?.stringValue == "RunCapExceeded", "The terminal carries the actual failure type: \(error)")
+    }
+
+    // MARK: - Private
+    private func makeMethod(policySeed: [String: [String]] = ["*": ["*"]]) throws
+    -> (WorkflowDispatchStreamMethod, TokenAuthority, WorkflowEventBus)
+
+    {
+        let catalog = try WorkflowCatalog(directory: nil)
+        let bus = WorkflowEventBus()
+        let authority = TokenAuthority()
+        let registry = WorkRegistry()
+        let runner = WorkflowRunner(
+            catalog: catalog,
+            eventBus: bus,
+            policyStore: PolicyStore(seed: policySeed),
+            pool: WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: Int.max),
+            workRegistry: registry,
+            tokenAuthority: authority,
+            capabilities: CapabilitySet(
+                shell: LiveShell(),
+                agent: LiveAgent(executor: AgentExecutor(backend: StubBackend("noop"))),
+                resources: LiveResources(store: ResourceStore(directory: nil))
+            ))
+        let dispatchMethod = WorkflowDispatchMethod(runner: runner, catalog: catalog,
+            workRegistry: registry)
+        let method = WorkflowDispatchStreamMethod(dispatchMethod: dispatchMethod, eventBus: bus)
+
+        return (method, authority, bus)
+    }
+}

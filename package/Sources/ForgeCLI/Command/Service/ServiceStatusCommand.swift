@@ -7,6 +7,7 @@
 
 import ArgumentParser
 import Foundation
+import Forge
 
 struct ServiceStatusCommand: ParsableCommand {
     // MARK: - Property
@@ -33,12 +34,12 @@ struct ServiceStatusCommand: ParsableCommand {
         let result = client.call("service.status")
         
         if json {
-            printJSON(result)
+            result.printJSON()
             
             return
         }
         
-        let services = (result["services"] as? [[String: Any]]) ?? []
+        let services = result["services"]?.arrayValue ?? []
         
         if services.isEmpty {
             print("(no services configured)")
@@ -47,11 +48,11 @@ struct ServiceStatusCommand: ParsableCommand {
         }
         
         for service in services {
-            let name = service["name"] as? String ?? "?"
-            let state = service["state"] as? String ?? "?"
-            let registered = (service["registered"] as? Bool ?? false) ? "registered" : "-"
-            let pid = (service["pid"] as? Int).map { pid in "pid=\(pid)" } ?? ""
-            let crashes = (service["crashes"] as? Int)
+            let name = service["name"]?.stringValue ?? "?"
+            let state = service["state"]?.stringValue ?? "?"
+            let registered = (service["registered"]?.boolValue ?? false) ? "registered" : "-"
+            let pid = service["pid"]?.intValue.map { pid in "pid=\(pid)" } ?? ""
+            let crashes = service["crashes"]?.intValue
                 .flatMap { count in count > 0 ? "crashes=\(count)" : nil } ?? ""
             let parts = [name, state, registered, pid, crashes]
                 .filter { part in !part.isEmpty }

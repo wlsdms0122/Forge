@@ -27,7 +27,7 @@ For what a workflow file holds and the verbs Forge lends a run, see
 
 `forge --version` prints the product version (e.g. `0.1.0`) and exits. The same
 version appears in `forge status` under the daemon's identity and in the
-session's `runtime.json`, so a client can tell which build a running daemon is.
+instance's `runtime.json`, so a client can tell which build a running daemon is.
 
 ### Binary discovery
 
@@ -38,27 +38,27 @@ session's `runtime.json`, so a client can tell which build a running daemon is.
 
 ### Socket discovery
 
-The socket is a pure function of the session — config has no say:
+The socket is a pure function of the instance — config has no say:
 
 ```
-socket      = <sessionHome>/forged.sock
-sessionHome = <XDG_CONFIG_HOME | ~/.config>/forge/<session>
-session     = --session  >  FORGE_SESSION  >  "default"
+socket       = <instanceHome>/forged.sock
+instanceHome = <XDG_CONFIG_HOME | ~/.config>/forge/<instance>
+instance     = --instance  >  FORGE_INSTANCE  >  "default"
 ```
 
 `serve` binds that canonical socket. A client falls back to it but honors
 `FORGE_SOCKET` first, so a spawned child reaches the exact daemon that spawned it
-without re-deriving the session. A client never reads config.
+without re-deriving the instance. A client never reads config.
 
-A *session* names a daemon instance (its public address). Multiple daemons =
-distinct sessions; the bundled bot runs the `default` session.
+An *instance* is one named daemon (its public address). Multiple daemons =
+distinct instances; the bundled bot runs the `default` instance.
 
 ### Config resolution (`serve` only)
 
 The daemon resolves `config.toml` with this precedence — clients are never involved:
 
 ```
---config flag  >  <sessionHome>/config.toml  >  FORGE_* env vars  >  built-in defaults
+--config flag  >  <instanceHome>/config.toml  >  FORGE_* env vars  >  built-in defaults
 ```
 
 env only fills keys that the toml leaves silent (emergency override).
@@ -68,20 +68,20 @@ env only fills keys that the toml leaves silent (emergency override).
 Everything is optional — each key has a built-in default, so a minimal toml only
 declares deviations, managed services, and secrets-by-env. **Path anchoring:**
 a relative path written in the toml resolves against the toml's directory;
-unspecified catalogs/logs default under `sessionHome`. The runtime dir is
-session-owned (`<sessionHome>/runtime`) and not configurable — like the socket.
+unspecified catalogs/logs default under `instanceHome`. The runtime dir is
+instance-owned (`<instanceHome>/runtime`) and not configurable — like the socket.
 
 | Table / key | Default | Meaning |
 |---|---|---|
-| `[dir]` `workflow`/`schedule`/`resource`/`policy` | `<sessionHome>/<key>` | source catalog roots; a relative value resolves against the toml's directory. |
-| `[log]` `jsonl` / `error` | `<sessionHome>/log/forge.log.jsonl` · `…/error.log` | structured + stderr logs |
+| `[dir]` `workflow`/`schedule`/`resource`/`policy` | `<instanceHome>/<key>` | source catalog roots; a relative value resolves against the toml's directory. |
+| `[log]` `jsonl` / `error` | `<instanceHome>/log/forge.log.jsonl` · `…/error.log` | structured + stderr logs |
 | `[log]` `maximum_bytes` | `52428800` (50 MiB) | single-file rotation threshold; ≤0 disables rotation |
 | `[pool]` `maximum_concurrent_steps` | `4` | concurrent leaf-step (invoke/shell) cap; excess queues FIFO |
 | `[providers.<name>]` `kind` (+ settings) | one `claude` (claude-cli) | backend instances. `kind` = `claude-cli` \| `codex-cli` \| `openai-compat`. CLI kinds accept `bin`; OpenAI-compatible accepts `endpoint` and requires an explicit model in each Agent reference. Declaring any drops the built-in claude default — list it explicitly alongside others. API keys via `FORGE_PROVIDER_<NAME>_API_KEY` env only. |
 | `[service.<name>]` `command` (+ `cwd`/`env`/`auto_spawn`/`log_file`/`restart_*`) | — (must declare) | managed child processes forge spawns/supervises (§3 of `forge serve -h`) |
 | `[hooks]` `logging` | `true` | structured event logging |
 
-The socket is **not** a config key — it lives at `<sessionHome>/forged.sock`
+The socket is **not** a config key — it lives at `<instanceHome>/forged.sock`
 (see *Socket discovery*). Run `forge status` (or `--json`) to print the daemon's
 effective config + every key's source (`toml`/`env`/`default`).
 
@@ -90,19 +90,19 @@ effective config + every key's source (`toml`/`env`/`default`).
 | Var | Meaning |
 |-----|---------|
 | `FORGE_BIN` | path to the `forge` binary (consumer-side discovery) |
-| `FORGE_SESSION` | session name when `--session` omitted — selects which daemon socket |
-| `FORGE_SOCKET` | exact socket path; overrides session. Injected into spawned subprocesses |
+| `FORGE_INSTANCE` | instance name when `--instance` omitted — selects which daemon socket |
+| `FORGE_SOCKET` | exact socket path; overrides instance. Injected into spawned subprocesses |
 | `FORGE_RUNTIME` | daemon runtime dir injected into subprocesses for `$FORGE_RUNTIME/scratch/…` artifacts (not socket discovery) |
 | `FORGE_ACCESS_TOKEN` | daemon-signed bearer token carried on every RPC — injected into workflow subprocesses at spawn, set by operators for direct use |
 
 ### Global options
 
 Every client subcommand accepts these, placed **after** the leaf subcommand
-(`forge workflow list --session prod`):
+(`forge workflow list --instance prod`):
 
 | Option | Meaning |
 |--------|---------|
-| `--session <name>` | session selecting the daemon socket (default `default`) |
+| `--instance <name>` | instance selecting the daemon socket (default `default`) |
 | `--token <token>` | bearer token for the call; overrides `FORGE_ACCESS_TOKEN` |
 
 (To reach a daemon at a non-default socket, set `FORGE_SOCKET` — children inherit it.)
@@ -138,12 +138,12 @@ Run the LLM-invocation daemon over a Unix socket. Long-running; owns LLM
 backends, workflow execution, schedules, and the ACL gate.
 
 ```
-forge serve [--session <name>] [--config <config>]
+forge serve [--instance <name>] [--config <config>]
 ```
 
-`--session` picks where to bind (`<sessionHome>/forged.sock`); `--config` only
-locates the daemon's settings/data. Under `<sessionHome>`: `forged.sock` (RPC socket) and
-`runtime.json` (self-record: pid, session, socket, resolved paths — written on
+`--instance` picks where to bind (`<instanceHome>/forged.sock`); `--config` only
+locates the daemon's settings/data. Under `<instanceHome>`: `forged.sock` (RPC socket) and
+`runtime.json` (self-record: pid, instance, socket, resolved paths — written on
 boot, deleted on clean shutdown). Refuses to start if a live daemon already holds
 the socket. Signals `SIGINT`/`SIGTERM` → graceful shutdown.
 
@@ -177,18 +177,18 @@ forge workflow dispatch [<name>] [--spec <spec>] [--inputs <json>]
 | `--parameters` | caller passthrough, JSON object — rides the log envelope only |
 | `--correlator` | opaque string — ridden through to handler frames |
 | `--origin` | `{"kind":"...","id":"..."}` — what dispatched the run |
-| `--root-id` / `--parent-id` | parent node-tree context to inherit (tree root id + parent node) — normally omitted; each run self-roots at its own workflow_id |
+| `--root-id` / `--parent-id` | parent node-tree context to inherit (tree root id + parent node) — normally omitted; each run self-roots at its own run_id |
 | `--async` | return as soon as dispatched (fire-and-forget) |
 | `--stream` | stream the run's progress as JSONL (mutually exclusive with `--async`) |
 
 **Blocking vs `--async`** — without `--async`, blocks until the workflow
 completes and returns the full result. With `--async`, returns immediately:
-`{workflow_id, name, status:"running"}`; the run continues in the background
+`{run_id, name, status:"running"}`; the run continues in the background
 and is observable in the forge log.
 
 **`--stream`** — keeps the connection open and prints the run's progress as
 JSONL, one object per line (RPC: `workflow.dispatch_stream`): first the ack
-(`{id, result:{workflow_id, name, status:"streaming"}}`), then
+(`{id, result:{run_id, name, status:"streaming"}}`), then
 `{"kind":"workflow.event", ...}` lines, then a terminal
 `{"kind":"workflow.result","result":{...}}` — same result shape as blocking
 dispatch. Child workflows dispatched by the run share its root and stream
@@ -227,8 +227,8 @@ those flags apply.
 
 List registered workflows. Plain output shows one workflow per line; a
 trailing `FAILED (N):` block lists the files the catalog left out, each with
-its refusal: one that could not be read or is a legacy JSON spec, one the
-front end, the load or the file convention refused, and one the build refused
+its refusal: one that could not be read, one the front end, the load or the
+file convention refused, and one the build refused
 (`build: …`). RPC: `workflow.list`.
 
 ```
@@ -247,7 +247,7 @@ forge workflow describe <name> [--json]
 
 #### `forge workflow active`
 
-Show workflows the pool is currently tracking (queued / running / cancelling).
+Show runs the pool is currently tracking (queued / running / cancelling).
 RPC: `workflow.list_active`.
 
 ```
@@ -268,7 +268,7 @@ forge workflow health [--json]
 Cancel a queued or running workflow. RPC: `workflow.cancel`.
 
 ```
-forge workflow cancel <workflow-id> [--json]
+forge workflow cancel <run-id> [--json]
 ```
 
 #### `forge workflow check`
@@ -404,7 +404,7 @@ capability forge itself does not.
 
 #### `forge service list`
 
-List registered service handlers. RPC: `session.list`.
+List registered service handlers. RPC: `handler.list`.
 
 ```
 forge service list [--json]
@@ -414,7 +414,7 @@ forge service list [--json]
 
 Show one handler's call schema — its description and the actions/ops it
 accepts, with params and returns. The contract to consult before `forge
-service send`. RPC: `session.list` (filtered to one).
+service send`. RPC: `handler.list` (filtered to one).
 
 ```
 forge service describe <name> [--json]
@@ -423,9 +423,9 @@ forge service describe <name> [--json]
 #### `forge service register`
 
 Run the current process as a service handler — a long-lived **co-process**.
-forge owns the socket, the `session.handler.register` handshake, and
+forge owns the socket, the `handler.register` handshake, and
 reconnect/backoff; the parent process speaks JSON over stdio and never touches
-the socket. RPC: `session.handler.register` + `session.handler.ack`.
+the socket. RPC: `handler.register` + `handler.ack`.
 
 ```
 forge service register <name> [--schema <json>]
@@ -444,7 +444,7 @@ principals (`system:*`, `admin:*`) may register any name.
 
 | Stream | Content |
 |--------|---------|
-| stdout | one JSON line per incoming `session.message` frame |
+| stdout | one JSON line per incoming `handler.message` frame |
 | stdin | one JSON line per ack: `{"message_id":"...","result":{...}}` or `{"message_id":"...","error":{...}}` |
 
 The daemon dropping the connection is invisible to the parent — forge
@@ -454,7 +454,7 @@ exits **6** so the parent can respawn it with a freshly issued token.
 
 #### `forge service send`
 
-Hand a JSON payload to a registered handler. RPC: `session.send`. To run a
+Hand a JSON payload to a registered handler. RPC: `handler.send`. To run a
 workflow use `forge workflow dispatch` — `send` is for external handlers only.
 
 ```
@@ -482,7 +482,7 @@ may not use `reload` (global control).
 
 ### `forge status`
 
-Print the daemon's identity (session, version, socket, pid, uptime), its effective
+Print the daemon's identity (instance, version, socket, pid, uptime), its effective
 `ForgeConfig` with each value's source (toml / env / default), and runtime counts
 (workflows, schedules, jobs, services). RPC: `daemon.status` (token-free). If the
 socket is dead, falls back to reading `runtime.json` for a "not running / crashed"
@@ -522,7 +522,7 @@ issue gate. The very first token comes from the daemon's boot fd, not this call.
 ## 3. RPC transport
 
 Clients speak **line-delimited JSON-RPC over a Unix domain socket**
-(`<sessionHome>/forged.sock`). One JSON object per line, `\n`-terminated.
+(`<instanceHome>/forged.sock`). One JSON object per line, `\n`-terminated.
 
 **Request**
 
@@ -542,7 +542,7 @@ Clients speak **line-delimited JSON-RPC over a Unix domain socket**
 {"id": "<client-id>", "error": {"type": "<ErrorType>", "message": "<text>"}}
 ```
 
-**Streaming methods** (`session.handler.register`, `workflow.dispatch_stream`)
+**Streaming methods** (`handler.register`, `workflow.dispatch_stream`)
 keep the connection open and emit multiple lines: first an ack envelope, then a
 stream of frames.
 
@@ -583,10 +583,10 @@ attenuation from the presenter's principal — §5.
 | `policy.check` | token | no | `policy check` |
 | `token.issue` | token | no | `token issue` |
 | `daemon.status` | none | no | `status` |
-| `session.send` | token | no | `service send` |
-| `session.list` | token | no | `service list` / `service describe` |
-| `session.handler.register` | token | **yes** | `service register` |
-| `session.handler.ack` | token | no | (internal to `service register`) |
+| `handler.send` | token | no | `service send` |
+| `handler.list` | token | no | `service list` / `service describe` |
+| `handler.register` | token | **yes** | `service register` |
+| `handler.ack` | token | no | (internal to `service register`) |
 | `service.run` | token | no | `service run` |
 | `service.shutdown` | token | no | `service shutdown` |
 | `service.restart` | token | no | `service restart` |
@@ -609,20 +609,20 @@ calls and nested calls from inside a workflow are distinguished by the **token**
 | `async` | — | bool, default `false` |
 | `parameters` / `correlator` / `origin` / `root` | — | honored only for fresh-root tokens; for a workflow-subprocess token they are inherited from the parent `WorkRecord` and caller values are ignored |
 
-`root`: `{"root_id": "...", "parent_id": "..."}` — parent node-tree to attach under. Omit to self-root (the run's node tree roots at its own workflow_id, so `root_id == workflow_id`).
+`root`: `{"root_id": "...", "parent_id": "..."}` — parent node-tree to attach under. Omit to self-root (the run's node tree roots at its own run_id, so `root_id == run_id`).
 `origin`: `{"kind": "...", "id": "..."}` — what dispatched this run (`manual`/`rpc`/`schedule`/`workflow`). Exposed inside the workflow as `{ ref: origin.kind }` / `{ ref: origin.id }`.
 
 **result** — `async=false`:
 
 ```json
-{"workflow_id":"...","name":"...","status":"ok"|"failed",
+{"run_id":"...","name":"...","status":"ok"|"failed",
  "duration_ms":1234,"outputs":{...},"error":{"type":"...","message":"..."}}
 ```
 
 `error` is present only when `status` is `failed`. **result** — `async=true`:
 
 ```json
-{"workflow_id":"...","name":"...","status":"running"}
+{"run_id":"...","name":"...","status":"running"}
 ```
 
 `running` acknowledges acceptance, not completion. The policy gate is
@@ -637,8 +637,8 @@ identity/envelope/policy rules. The connection stays open for the run's
 lifetime and relays its progress:
 
 ```json
-{"id":"<client-id>","result":{"workflow_id":"...","name":"...","status":"streaming"}}
-{"kind":"workflow.event","event":"workflow.started","workflow_id":"...","workflow_name":"...","root_id":"...","ts":...}
+{"id":"<client-id>","result":{"run_id":"...","name":"...","status":"streaming"}}
+{"kind":"workflow.event","event":"workflow.started","run_id":"...","workflow_name":"...","root_id":"...","ts":...}
 {"kind":"workflow.event","event":"step.started","step":"...","action":"Forge.shell|Forge.agent|...","node_id":"...","parent_node_id":"...", ...}
 {"kind":"workflow.event","event":"step.completed","step":"...","duration_ms":..., "output_preview":"...","output_len":..., ...}
 {"kind":"workflow.result","result":{...same shape as blocking dispatch result...}}
@@ -673,8 +673,10 @@ what the file writes under `description:`, where it writes one. `failures`
 lists the `*.yaml` files the catalog left out, each with its refusal: a file
 the front end or the load refuses, one that does not declare one procedure
 named after it, and one that does not build against the library and the
-files that build (its reason starts `build:`). Always present (may be
-empty); admin surfaces broken workflows without grep'ing stderr.
+files that build (its reason starts `build:`). A part of the directory the
+scan could not see, a directory it could not enter or a file whose metadata
+it could not read, is an entry at path `<scan>` naming it. Always present
+(may be empty); admin surfaces broken workflows without grep'ing stderr.
 
 ### `workflow.describe`
 
@@ -694,15 +696,15 @@ as the file writes it in the notation, which is what the workflow settles an
 omitted or null argument to; an input whose file writes none has no
 `default`. `hint` is what the file writes under the input's `hint:`. `returns` is the declared return type. Empty `inputs` is returned as
 `{}` (not omitted) so the caller can iterate without null-checks. Unknown
-workflow → ResolutionError `workflow not found: <name>`.
+workflow → WorkflowNotFound `workflow not found: <name>`.
 
 ### `workflow.list_active`
 
 **params** `{"token"}`. **result**
 
 ```json
-{"workflows":[{"workflow_id","workflow_name","origin","principal","state",
-               "enqueued_at","started_at","held_slots"}],
+{"runs":[{"run_id","workflow_name","origin","principal","state",
+          "enqueued_at","started_at","held_slots"}],
  "maximum_concurrent_steps":N,"free_slots":N,"queued_waiters":N}
 ```
 
@@ -716,9 +718,9 @@ One-shot pool health snapshot with advisory flags.
 **params** `{"token"}`. **result**
 
 ```json
-{"slots":{"max":N,"free":N,"waiters":[{"workflow_id","waited_ms"}]},
+{"slots":{"max":N,"free":N,"waiters":[{"run_id","waited_ms"}]},
  "runs":{"active":N,"cap":N,"refused_total":N,
-         "oldest":[{"workflow_id","workflow_name","state","age_ms"}],
+         "oldest":[{"run_id","workflow_name","state","age_ms"}],
          "trees":[{"root_id","runs":N,"names":[...]}]},
  "dispatch":{"last_60s":N},
  "flags":[{"kind":"...","class":"saturation|anomaly", ...}]}
@@ -731,7 +733,7 @@ Each flag carries the fields of the row that tripped it.
 
 ### `workflow.cancel`
 
-**params** `{"token","workflow_id"}`. **result** `{"cancelled":bool,"workflow_id"}`.
+**params** `{"token","run_id"}`. **result** `{"cancelled":bool,"run_id"}`.
 `cancelled=false` means the id was already unregistered (finished/failed).
 Cancelling a live run is gated by policy on that run's workflow name — the
 same dispatch ACL, so a principal that may not dispatch a workflow may not
@@ -774,7 +776,9 @@ until a human removes it). `flags` mirrors `workflow.health` advisory
 conventions: `schedule_denied` marks schedules whose latest slot could not
 launch, so a permanently-broken schedule is visible at a glance; it clears on
 the next successful fire. `runtime` flags origin (true = created via
-`schedule.create`).
+`schedule.create`). `failures` lists the schedule files left out, as
+`workflow.list` does, a part of a directory the scan could not see among
+them at path `<scan>`.
 
 ### `schedule.set_enabled`
 
@@ -792,7 +796,7 @@ target workflow (`policy/*.yaml`, checked against the resolved name —
 
 Fire target via `workflow` (registered name) or `spec` (anonymous inline) —
 same rules as `workflow.dispatch`: mutually exclusive, `spec` rejects a
-`name` key and runs under the `<inline>` sigil. At create time the spec is
+`name` key and runs under the `<inline>` sigil. A schedule file that gives a `spec` writes `workflow: "<inline>"`; any other name is a load failure. At create time the spec is
 read the way a catalog file is, through the YAML front end leaning on
 Forge's library and on the catalog's files, and loaded, so what the front
 end or the load refuses surfaces at create time. It is not built there: a
@@ -810,13 +814,13 @@ the schedule record as written and read again on every fire.
 | `at` | △ | wall-clock `"HH:mm"` (24h) — repeating; requires `timezone` |
 | `once` | △ | wall-clock `"yyyy-MM-dd HH:mm:ss"` — one-shot; requires `timezone` |
 | `after` | △ | relative duration — one-shot; resolved at creation, stored as absolute |
-| `timezone` | △ | IANA id (`"Asia/Seoul"`) — required with `at`/`once`; not used by `every`/`after` (`after` displays in UTC) |
-| `days` | — | weekday filter for `at` (`["mon",…]`); omit for every day |
+| `timezone` | △ | IANA id (`"Asia/Seoul"`) — required with `at`/`once`; refused with `every`/`after` (`after` displays in UTC) |
+| `days` | — | weekday filter for `at` (`["mon",…]`, any case); omit for every day; refused with `every`/`once`/`after` |
 | `id` | — | string; auto-generated (`s-<ts>-<rand>`) if omitted |
 | `concurrency` | — | `queue` \| `skip` \| `replace`, default `queue` |
 | `inputs` | — | object passed to the workflow on fire |
 
-Exactly one of `every` / `at` / `once` / `after`. **result**
+Exactly one of `every` / `at` / `once` / `after`. A schedule file is read by the same trigger rules, without `after` and without the future check. **result**
 `{"id","workflow","trigger","runtime":true,"fire_at"?}` (`fire_at` present for
 one-shot; `workflow` is the sigil `<inline>` when created with `spec`).
 
@@ -871,6 +875,9 @@ origin-map entry. **result**
 ```
 
 Sorted by `updated_at`, newest first.
+
+A job file that does not load is left out of the list and named once on the
+daemon's stderr, at the reload that first meets it.
 
 ### `job.update`
 
@@ -933,7 +940,7 @@ Requires a presented token and mints under attenuation — only `system:admin` /
 `admin:*` presenters may delegate (§5). Issuable principals: `system:runner`,
 `system:admin`, `admin:*`.
 
-### `session.send`
+### `handler.send`
 
 Send a payload to a registered external handler.
 
@@ -942,13 +949,13 @@ Send a payload to a registered external handler.
 **result** — `async=false`: the handler's ack result (handler-defined).
 `async=true`: `{"service","message_id","status":"dispatched"}`.
 
-### `session.list`
+### `handler.list`
 
 **params** `{"token"}`. **result** `{"services":[{"service","schema"?}]}` —
 registered external handlers only, sorted by name; `schema` is present only
 when the handler advertised one.
 
-### `session.handler.register` (streaming)
+### `handler.register` (streaming)
 
 Register an external service handler on a long-lived connection.
 
@@ -960,20 +967,20 @@ cannot register a handler), operator principals may register any name.
 **flow**
 
 ```
-client → daemon : {"method":"session.handler.register","params":{...}}
+client → daemon : {"method":"handler.register","params":{...}}
 daemon → client : {"id":<req.id>,"result":{"registered":true,"service":"..."}}   ← ack
-daemon → client : {"kind":"session.message","service","message_id",
+daemon → client : {"kind":"handler.message","service","message_id",
                    "envelope":{...},"payload":{...}}                            ← repeats
-client → daemon : {"method":"session.handler.ack","params":{...}}               ← same connection
+client → daemon : {"method":"handler.ack","params":{...}}                       ← same connection
 ```
 
 The `envelope` carries forge's server-side coordinates:
-`{workflow_id, origin, root_id?, id?, correlator?}`. The `payload` is
+`{run_id, origin, root_id?, id?, correlator?}`. The `payload` is
 caller-sent and opaque to forge. Closing the connection unregisters the service.
 
-### `session.handler.ack`
+### `handler.ack`
 
-Acknowledge a processed `session.message`.
+Acknowledge a processed `handler.message`.
 
 **params** `{"token","service","message_id","result":object?}` — or `"error"`
 instead of `"result"`. **result** `{"ok":true}`. Same principal↔service
@@ -994,7 +1001,7 @@ Start / stop / restart a managed service (a `[service.<name>]` entry in
 **params** `{"token"}` (any authenticated token). **result**
 `{"services":[{...status record...,"registered":bool}]}` — one row per
 managed service; `registered` is whether a live handler of that name is
-currently registered on the session bus.
+currently registered on the handler bus.
 
 ### `service.reload`
 
@@ -1022,7 +1029,7 @@ first token, from the daemon's boot fd handed to its launcher.
 
 The daemon signs tokens with a random seed minted at boot and held only in
 memory: `base64(claims).base64(HMAC-SHA256(claims, seed))`. Claims carry the
-`principal` and, for workflow-subprocess tokens, a `workflow_id`.
+`principal` and, for workflow-subprocess tokens, a `run_id`.
 
 - **Unforgeable** — only forge knows the seed.
 - **Revocation by restart** — a daemon restart rotates the seed, invalidating
@@ -1085,7 +1092,7 @@ Every `workflow.dispatch` — operator, runner, admin, or a nested call from
 inside a workflow — is gated by the policy store.
 
 - YAML files (`*.yaml`) under the policy dir (`[dir] policy`, default
-  `<sessionHome>/policy`). Each file is a flat mapping of **principal
+  `<instanceHome>/policy`). Each file is a flat mapping of **principal
   patterns** to lists of **workflow-name patterns**.
 - Multiple files are union-merged by principal key. Changes hot-reload on the
   next dispatch — no daemon restart.
@@ -1116,7 +1123,7 @@ Inspect with `forge policy list` / `forge policy check`.
 
 ## 7. Error types
 
-The error envelope is `{"type": "<ErrorType>", "message": "<text>"}`.
+The error envelope is `{"type": "<ErrorType>", "message": "<text>"}` and the fields a type carries beside them. A failed run's `error`, in a `workflow.dispatch` result and in a stream's `workflow.result`, is the same object, and a `workflow.event` names a failure by the same type. A run or a step that fails with a failure of the language (such as `aborted`, `cast_refused`, `concurrent_failed`, `timeout`) is typed by the name the language gives it, the name a workflow's `catch` reads. Any other failure that is none of the types below is `InternalError` with its text. A failure that a run can meet as well keeps its type when a request meets it: `resource.read` answers `ResourceError` as a `resource` step does, and `workflow.dispatch` answers `WorkflowNotFound` as a `dispatch` step does. A request whose payload is malformed, or whose id is invalid, taken or missing in a store only requests reach, is refused with `ProtocolError`.
 
 | Type | Meaning |
 |------|---------|
@@ -1124,12 +1131,23 @@ The error envelope is `{"type": "<ErrorType>", "message": "<text>"}`.
 | `BackendNonzeroExit` | a backend exited non-zero (also carries `exit_code`, `stderr`, `stdout`) |
 | `BackendUnavailable` | a backend could not be reached (e.g. an OpenAI-compatible endpoint refused or errored) |
 | `MalformedOutput` | a backend response was not the promised shape |
-| `ResolutionError` | provider/workflow spec invalid, or workflow not found |
-| `ProtocolError` | request envelope / payload malformed |
+| `BackendNotRegistered` | an `invoke` names a provider no backend is registered for, or names none while there is not exactly one backend |
+| `CatalogIncomplete` | the catalog directory was not fully read, so the catalog cannot answer for a workflow name — retry after resolving |
+| `WorkflowNotFound` | no workflow of that name in the catalog (`workflow.dispatch`, `workflow.describe`, `schedule.create`, a `dispatch` step) |
+| `ProtocolError` | the request's envelope or payload is malformed, or an id it names is invalid, taken or missing |
+| `ScheduleDirectoryNotConfigured` | the daemon has no runtime schedule directory, so `schedule.create` is disabled |
+| `JobStoreError` | the job directory is not configured (`job.create` and job updates are disabled), or a job file is missing or unreadable |
+| `AgentValidationError` | an `invoke`'s agent cannot be built: its model, tools or `permission_mode`, or a combination its provider cannot run — fix the workflow |
+| `AgentSessionMissing` | an `agent` step ran outside an `invoke`, where no agent session is open — fix the workflow |
+| `ResourceError` | a resource cannot be given: no `resource_directory`, a path outside it or hidden, a missing or unreadable file |
+| `HandlerFailed` | the service handling a `handler.send` answered with an error; the message is the handler's |
 | `TokenRejected` | token failed verification — re-issue and retry once |
 | `UnknownMethod` | the daemon does not know the method name |
 | `PolicyDenied` | the principal may not dispatch/control that workflow (policy/*.yaml) — retry is pointless |
 | `WorkflowValidationError` | the workflow definition failed validation (inline spec or broken catalog file) — fix the spec |
-| `InputValidationError` | a dispatch input violated the workflow's declared parameter |
+| `OutputDeclarationError` | an `extract` step's `outputs` is no extractor declaration (a map that is no extractor, the key `_raw`, a path or a regex that does not parse) — fix the spec |
+| `DaemonShuttingDown` | the daemon is draining for shutdown: it starts no new run (`workflow.dispatch`, a schedule's fire) and no service (`service.run`, `service.restart`) |
 | `RunCapExceeded` | run cap saturation (backpressure) — retry later is meaningful |
+| `RunCancelled` | the run was cancelled (`workflow.cancel`, or the daemon shutting down) |
+| `InternalError` | a failure neither Forge nor the language names (an error of the system); the message is its text |
 | `ChildRunFailed` | a `dispatch` step's child run completed as failed — message carries the child's error type |

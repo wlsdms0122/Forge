@@ -50,7 +50,7 @@ struct WorkflowCheckCommand: AsyncParsableCommand {
         
         var failed = 0
         
-        for report in await WorkflowLint.check(paths: paths) {
+        for report in try await WorkflowLint().check(paths: paths) {
             let path = report.path
             
             if let readError = report.readError {

@@ -18,16 +18,16 @@ struct TokenAuthorityTests {
     func mintVerifyRoundTrip() {
         // Given
         let authority = TokenAuthority()
-        let token = authority.mint(TokenClaims(principal: "cli:response", workflowID: "wf-1"))
+        let token = authority.mint(TokenClaims(principal: "cli:response", runID: "wf-1"))
         let claims = authority.verify(token)
 
         // Then
         #expect(claims?.principal == "cli:response")
-        #expect(claims?.workflowID == "wf-1")
+        #expect(claims?.runID == "wf-1")
     }
     
     @Test("An operator token has no workflow binding")
-    func operatorTokenHasNoWorkflowID() {
+    func operatorTokenHasNoRunID() {
         // Given
         let authority = TokenAuthority()
         let token = authority.mint(TokenClaims(principal: "system:admin"))
@@ -35,7 +35,7 @@ struct TokenAuthorityTests {
 
         // Then
         #expect(claims?.principal == "system:admin")
-        #expect(claims?.workflowID == nil)
+        #expect(claims?.runID == nil)
     }
     
     @Test("A token signed with a different seed is rejected")
@@ -53,7 +53,7 @@ struct TokenAuthorityTests {
     func tamperedPayloadRejected() {
         // Given
         let authority = TokenAuthority()
-        let token = authority.mint(TokenClaims(principal: "cli:response", workflowID: "wf-1"))
+        let token = authority.mint(TokenClaims(principal: "cli:response", runID: "wf-1"))
         let forged = (try? JSONEncoder().encode(TokenClaims(principal: "system:admin")))?
         .base64EncodedString() ?? ""
         let sig = token.split(separator: ".").last.map(String.init) ?? ""
@@ -112,32 +112,17 @@ struct TokenAuthorityTests {
     func issueRejectsMalformedAdmin() async {
         // Given
         let authority = TokenAuthority()
-        let adminToken = authority.mint(TokenClaims(principal: "system:admin"))
+        let admin = TokenClaims(principal: "system:admin")
         let method = TokenIssueMethod(authority: authority)
         let request = RPCRequest(id: "1", method: "token.issue",
-            params: ["token": adminToken, "principal": "admin:*"])
+            params: ["principal": "admin:*"])
         do {
 
         // When
-            _ = try await method.handle(request)
+            _ = try await method.handle(request, claims: admin)
 
         // Then
             Issue.record("issuing admin:* must be rejected at the format gate")
-        } catch {}
-    }
-    
-    @Test("An issue request without a token is rejected")
-    func issueRejectsMissingToken() async {
-        // Given
-        let method = TokenIssueMethod(authority: TokenAuthority())
-        let request = RPCRequest(id: "1", method: "token.issue", params: ["principal": "system:admin"])
-        do {
-
-        // When
-            _ = try await method.handle(request)
-
-        // Then
-            Issue.record("token.issue without a token must be rejected")
         } catch {}
     }
     
@@ -145,14 +130,14 @@ struct TokenAuthorityTests {
     func issueRejectsCliPresenterEscalation() async {
         // Given
         let authority = TokenAuthority()
-        let cliToken = authority.mint(TokenClaims(principal: "cli:response", workflowID: "wf-1"))
+        let cli = TokenClaims(principal: "cli:response", runID: "wf-1")
         let method = TokenIssueMethod(authority: authority)
         let request = RPCRequest(id: "1", method: "token.issue",
-            params: ["token": cliToken, "principal": "system:admin"])
+            params: ["principal": "system:admin"])
         do {
 
         // When
-            _ = try await method.handle(request)
+            _ = try await method.handle(request, claims: cli)
 
         // Then
             Issue.record("admin issuance by a cli:* presenter must be rejected")
@@ -163,12 +148,12 @@ struct TokenAuthorityTests {
     func issueAdminDelegatesRunner() async throws {
         // Given
         let authority = TokenAuthority()
-        let adminToken = authority.mint(TokenClaims(principal: "system:admin"))
+        let admin = TokenClaims(principal: "system:admin")
         let method = TokenIssueMethod(authority: authority)
         let request = RPCRequest(id: "1", method: "token.issue",
-            params: ["token": adminToken, "principal": "system:runner"])
-        let output = try await method.handle(request)
-        let issued = output.dict["token"] as? String
+            params: ["principal": "system:runner"])
+        let output = try await method.handle(request, claims: admin)
+        let issued = output["token"]?.stringValue
 
         // Then
         #expect(authority.verify(issued ?? "")?.principal == "system:runner")

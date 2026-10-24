@@ -7,6 +7,7 @@
 
 import ArgumentParser
 import Foundation
+import Forge
 
 struct ServiceRegisterCommand: ParsableCommand {
     // MARK: - Property
@@ -24,14 +25,14 @@ struct ServiceRegisterCommand: ParsableCommand {
             The bearer token comes from FORGE_ACCESS_TOKEN / --token (a
             supervisor-minted, spawn-scoped token).
 
-            STDOUT  one JSON line per incoming `session.message` frame
+            STDOUT  one JSON line per incoming `handler.message` frame
                     (kind / message_id / payload / envelope). Other RPC
                     envelopes (register ack, ack responses) are not emitted.
 
             STDIN   one JSON line per ack:
                         { "message_id": "...", "result": { ... } }
                         { "message_id": "...", "error": { ... } }
-                    forge wraps it into a `session.handler.ack` RPC on the
+                    forge wraps it into a `handler.ack` RPC on the
                     same connection.
 
             Exits 0 on stdin EOF (parent-initiated shutdown), 1 on any
@@ -51,7 +52,7 @@ struct ServiceRegisterCommand: ParsableCommand {
     // MARK: - Public
     func run() throws {
         let client = Client(global, context: "service register")
-        let schemaObject = schema.map { value in parseJSONObjectArg(value, flag: "--schema") }
+        let schemaObject = schema.map { value in JSONValue(objectArgument: value, flag: "--schema") }
         let bridge = ServiceBridge(
             service: name,
             socketPath: client.socketPath,

@@ -1,0 +1,293 @@
+//
+//  WorkflowDispatchTests.swift
+//  ForgeTests
+//
+//  Created by JSilver on 8/8/26.
+//
+
+import Foundation
+import Testing
+@testable import Forge
+
+@Suite("WorkflowDispatch Tests")
+struct WorkflowDispatchTests {
+    // MARK: - Property
+    private let temporary = TemporaryDirectory("dispatch")
+
+    private var anonSpec: [String: JSONValue] {
+        [
+            "failing": ["nonzero_exit", "timeout"],
+            "body": [
+                ["let": "x", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/echo", "ok"]]]]],
+            ],
+            "returns": "Dictionary<String, Any>",
+            "result": ["dictionary": [["v", ["ref": "x"]]]],
+        ]
+    }
+
+    // MARK: - Initializer
+    // MARK: - Test
+    // MARK: - inline spec
+    @Test("An inline spec runs anonymously without a name")
+    func inlineSpecRunsAnonymously() async throws {
+        // Given
+        let (method, authority, _) = try await makeMethod(policy: ["cli:test": ["<inline>"]])
+        let token = authority.mint(TokenClaims(principal: "cli:test"))
+
+        // When
+        let result = try await method.handle(request(["token": .string(token), "spec": .object(anonSpec)]), claims: try #require(authority.verify(token)))
+
+        // Then
+        #expect(result["status"]?.stringValue == "ok")
+        #expect(result["name"]?.stringValue == WorkflowCatalog.inlineSigil, "The result name of an inline run is fixed to the sigil")
+    }
+
+    @Test("Run id is freshly minted — the wire id is not borrowed")
+    func runIDMintedNotBorrowedFromWireID() async throws {
+        // Given
+        let (method, authority, _) = try await makeMethod(policy: ["*": ["*"]])
+        let token = authority.mint(TokenClaims(principal: "cli:test"))
+        let wireID = "fc-client-collide"
+        let first = try await method.handle(RPCRequest(id: wireID, method: "workflow.dispatch",
+                params: ["token": .string(token), "spec": .object(anonSpec)]), claims: try #require(authority.verify(token)))
+
+        // Then
+        let firstID = try #require(first["run_id"]?.stringValue)
+        #expect(firstID.hasPrefix("wf-"), "runID should be forge-minted (wf-*) — borrowing the wire id is forbidden (finding J): \(firstID)")
+        #expect(firstID != wireID, "runID must not equal the client wire id")
+        let second = try await method.handle(RPCRequest(id: wireID, method: "workflow.dispatch",
+                params: ["token": .string(token), "spec": .object(anonSpec)]), claims: try #require(authority.verify(token)))
+        let secondID = try #require(second["run_id"]?.stringValue)
+        #expect(firstID != secondID, "Two dispatches with the same wire id sharing a runID means cross-run contamination (finding J)")
+    }
+
+    @Test("An inline spec with a name attached is rejected")
+    func inlineSpecWithNameRejected() async throws {
+        // Given
+        let (method, authority, _) = try await makeMethod(policy: ["cli:test": ["<inline>"]])
+        let token = authority.mint(TokenClaims(principal: "cli:test"))
+        var named = anonSpec
+        named["name"] = "echo"
+        do {
+
+        // When
+            _ = try await method.handle(request(["token": .string(token), "spec": .object(named)]), claims: try #require(authority.verify(token)))
+
+        // Then
+            Issue.record("An inline spec with a name key should be rejected")
+        } catch let error as ProtocolError {
+            #expect(error.message.contains("name"), "The error should explain the name prohibition: \(error.message)")
+        }
+    }
+
+    @Test("An inline spec is rejected without the sigil policy")
+    func inlineSpecDeniedWithoutSigilPolicy() async throws {
+        // Given
+        let (method, authority, _) = try await makeMethod(policy: ["cli:test": ["echo"]])
+        let token = authority.mint(TokenClaims(principal: "cli:test"))
+        do {
+
+        // When
+            _ = try await method.handle(request(["token": .string(token), "spec": .object(anonSpec)]), claims: try #require(authority.verify(token)))
+
+        // Then
+            Issue.record("Should be rejected without an <inline> policy")
+        } catch let error as PolicyDenied {
+            #expect(error.message.contains(WorkflowCatalog.inlineSigil), "The denial reason should include the sigil: \(error.message)")
+        }
+    }
+
+    @Test("A wildcard policy also allows inline")
+    func wildcardPolicyAllowsInline() async throws {
+        // Given
+        let (method, authority, _) = try await makeMethod(policy: ["*": ["*"]])
+        let token = authority.mint(TokenClaims(principal: "cli:anything"))
+
+        // When
+        let result = try await method.handle(request(["token": .string(token), "spec": .object(anonSpec)]), claims: try #require(authority.verify(token)))
+
+        // Then
+        #expect(result["status"]?.stringValue == "ok")
+    }
+
+    @Test("A malformed spec answers with a readable error")
+    func malformedSpecGivesFriendlyError() async throws {
+        // Given
+        let (method, authority, _) = try await makeMethod(policy: ["*": ["*"]])
+        let token = authority.mint(TokenClaims(principal: "cli:test"))
+        let badSpec: [String: JSONValue] = [
+            "body": [["shell": ["command": ["echo", "hi"]]]],
+        ]
+        do {
+
+        // When
+            _ = try await method.handle(request(["token": .string(token), "spec": .object(badSpec)]), claims: try #require(authority.verify(token)))
+
+        // Then
+            Issue.record("A malformed spec should be rejected")
+        } catch let error as ProtocolError {
+            #expect(error.message.contains("body[0]"), "JSON path notation: \(error.message)")
+            #expect(error.message.contains("shell"), "Unknown key named explicitly: \(error.message)")
+            #expect(!error.message.contains("CodingKeys"), "Raw Swift errors must not leak: \(error.message)")
+        }
+    }
+
+    @Test("An inline spec containing an invalid reference is rejected")
+    func inlineSpecWithInvalidRefRejected() async throws {
+        // Given
+        let (method, authority, _) = try await makeMethod(policy: ["*": ["*"]])
+        let token = authority.mint(TokenClaims(principal: "cli:test"))
+        let badSpec: [String: JSONValue] = [
+            "failing": ["nonzero_exit", "timeout"],
+            "body": [
+                ["let": "a", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/echo", ["ref": "nonexistent"]]]]]],
+            ],
+        ]
+        do {
+
+        // When
+            _ = try await method.handle(request(["token": .string(token), "spec": .object(badSpec)]), claims: try #require(authority.verify(token)))
+
+        // Then
+            Issue.record("A spec containing an undeclared ref should be rejected at dispatch")
+        } catch let error as ProtocolError {
+            #expect(error.message.contains("malformed 'spec'"), "Validation failure message: \(error.message)")
+            #expect(error.message.contains("nonexistent"), "Undeclared ref named explicitly: \(error.message)")
+        }
+    }
+
+    // MARK: - registered name
+    @Test("A registered name dispatches as-is")
+    func registeredNameDispatches() async throws {
+        // Given
+        let (method, authority, _) = try await makeMethod(policy: ["cli:test": ["echo"]])
+        let token = authority.mint(TokenClaims(principal: "cli:test"))
+
+        // When
+        let result = try await method.handle(request(["token": .string(token), "name": "echo"]), claims: try #require(authority.verify(token)))
+
+        // Then
+        #expect(result["status"]?.stringValue == "ok")
+        #expect(result["name"]?.stringValue == "echo")
+    }
+
+    @Test("Rejected when neither name nor spec is given")
+    func missingNameAndSpecRejected() async throws {
+        // Given
+        let (method, authority, _) = try await makeMethod(policy: ["*": ["*"]])
+        let token = authority.mint(TokenClaims(principal: "cli:test"))
+        do {
+
+        // When
+            _ = try await method.handle(request(["token": .string(token)]), claims: try #require(authority.verify(token)))
+
+        // Then
+            Issue.record("Should be rejected when neither name nor spec is present")
+        } catch is ProtocolError {
+        }
+    }
+
+    // MARK: - token
+    @Test("Calling with a workflow token attaches as a nested run")
+    func workflowTokenDispatchesAsNested() async throws {
+        // Given
+        let (method, authority, registry) = try await makeMethod(policy: ["cli:parent": ["echo"]])
+        await registry.register(WorkRecord(
+                runID: "wf-parent",
+                workflowName: "parent",
+                principal: "cli:parent",
+                origin: .rpc,
+                rootID: "trace-xyz",
+                nodeID: "span-1",
+                correlator: "corr-1",
+                parameters: nil
+        ))
+        let token = authority.mint(TokenClaims(principal: "cli:parent", runID: "wf-parent"))
+
+        // When
+        let result = try await method.handle(request(["token": .string(token), "name": "echo"]), claims: try #require(authority.verify(token)))
+
+        // Then
+        #expect(result["status"]?.stringValue == "ok")
+        #expect(result["name"]?.stringValue == "echo")
+    }
+
+    @Test("A token of a finished run is rejected")
+    func dispatchRejectsStaleRunToken() async throws {
+        // Given
+        let directory = try temporary.make("stale")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try echoWorkflowYAML(name: "echo2").write(
+            to: directory.appendingPathComponent("echo2.yaml"), atomically: true, encoding: .utf8)
+        let catalog = try WorkflowCatalog(directory: directory)
+        let authority = TokenAuthority()
+        let registry = WorkRegistry()
+        let runner = WorkflowRunner(
+            catalog: catalog,
+            eventBus: WorkflowEventBus(),
+            policyStore: PolicyStore(seed: ["*": ["*"]]),
+            pool: WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: Int.max),
+            workRegistry: registry,
+            tokenAuthority: authority,
+            capabilities: CapabilitySet(
+                shell: LiveShell(),
+                agent: LiveAgent(executor: AgentExecutor(backend: StubBackend())),
+                resources: LiveResources(store: ResourceStore(directory: nil))
+            ))
+        let method = WorkflowDispatchMethod(runner: runner, catalog: catalog,
+            workRegistry: registry)
+        let stale = authority.mint(TokenClaims(principal: "cli:gone", runID: "wf-gone"))
+        do {
+            _ = try await method.handle(RPCRequest(id: "r1", method: "workflow.dispatch",
+                    params: ["token": .string(stale), "name": "echo2"]), claims: try #require(authority.verify(stale)))
+
+        // Then
+            Issue.record("A stale run token should be rejected")
+        } catch {
+            #expect("\(error)".contains("finished run"), "\(error)")
+        }
+    }
+
+    // MARK: - Private
+
+    private func echoWorkflowYAML(name: String) -> String {
+        workflowFile("""
+        failing: [nonzero_exit, timeout]
+        body:
+          - let: x
+            value: { call: { procedure: shell, arguments: { command: ["/bin/echo", "ok"] } } }
+        returns: "Dictionary<String, Any>"
+        result: { dictionary: [ [v, { ref: x }] ] }
+        """, named: name)
+    }
+
+    private func makeMethod(policy: [String: [String]]) async throws
+
+    -> (WorkflowDispatchMethod, TokenAuthority, WorkRegistry) {
+        let directory = try temporary.make("wf")
+        try echoWorkflowYAML(name: "echo").write(to: directory.appendingPathComponent("echo.yaml"), atomically: true, encoding: .utf8)
+        let catalog = try WorkflowCatalog(directory: directory)
+        let authority = TokenAuthority()
+        let registry = WorkRegistry()
+        let runner = WorkflowRunner(
+            catalog: catalog,
+            eventBus: WorkflowEventBus(),
+            policyStore: PolicyStore(seed: policy),
+            pool: WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: Int.max),
+            workRegistry: registry,
+            tokenAuthority: authority,
+            capabilities: CapabilitySet(
+                shell: LiveShell(),
+                agent: LiveAgent(executor: AgentExecutor(backend: StubBackend("noop"))),
+                resources: LiveResources(store: ResourceStore(directory: nil))
+            ))
+        let method = WorkflowDispatchMethod(runner: runner, catalog: catalog,
+            workRegistry: registry)
+
+        return (method, authority, registry)
+    }
+
+    private func request(_ params: [String: JSONValue]) -> RPCRequest {
+        RPCRequest(id: "r-\(UUID().uuidString.prefix(6))", method: "workflow.dispatch", params: params)
+    }
+}

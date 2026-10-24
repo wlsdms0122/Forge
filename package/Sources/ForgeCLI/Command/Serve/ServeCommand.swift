@@ -22,31 +22,31 @@ struct ServeCommand: AsyncParsableCommand {
             Unix socket.
 
             SOCKET DISCOVERY (clients compute the same path — config-free)
-                serve binds <sessionHome>/forged.sock, where sessionHome =
-                <XDG_CONFIG_HOME|~/.config>/forge/<session> and session =
-                --session > FORGE_SESSION > "default". The socket is determined
-                purely by the session — NOT a config key, not overridable; config
+                serve binds <instanceHome>/forged.sock, where instanceHome =
+                <XDG_CONFIG_HOME|~/.config>/forge/<instance> and instance =
+                --instance > FORGE_INSTANCE > "default". The socket is determined
+                purely by the instance — NOT a config key, not overridable; config
                 (`--config`) only locates the daemon's settings/data. Refuses to
                 start if a live daemon already holds the socket.
 
             CONFIG PRECEDENCE (serve only — clients never read config)
-                --config flag > <sessionHome>/config.toml > FORGE_* env > defaults.
+                --config flag > <instanceHome>/config.toml > FORGE_* env > defaults.
                 env only fills keys left silent by toml (emergency override).
                 PATH ANCHORING: a relative path written in the toml resolves
                 against the toml's directory; unspecified catalogs/logs default
-                under sessionHome. runtime·socket are session-owned.
+                under instanceHome. runtime·socket are instance-owned.
 
             CONFIG SCHEMA (everything optional — convention defaults shown)
-                [dir]   catalog roots default to `<sessionHome>/<key>`
+                [dir]   catalog roots default to `<instanceHome>/<key>`
                         (workflow · schedule · resource · policy); a
                         relative value resolves against the toml's directory.
-                        (runtime is session-owned at `<sessionHome>/runtime` —
+                        (runtime is instance-owned at `<instanceHome>/runtime` —
                         not configurable.)
                 [log]   jsonl · error · maximum_bytes (default 50 MiB). Default under
-                        `<sessionHome>/log`; this project points them at the shared log/ tree.
+                        `<instanceHome>/log`; this project points them at the shared log/ tree.
                 [pool]  maximum_concurrent_steps (default 4) — leaf-step concurrency cap.
                         maximum_active_runs (default 256) — concurrent registered-run cap.
-                [providers.<name>]  backend instances; `kind` = claude-cli|codex-cli|openai-compat.
+                [providers.<name>]  configured backends; `kind` = \(BackendKind.allCases.map(\.rawValue).joined(separator: "|")).
                         Silent → a single `claude` (claude-cli) default. Declaring any
                         drops that default, so list `claude` explicitly alongside others.
                         Secrets via env FORGE_PROVIDER_<NAME>_API_KEY only.
@@ -57,12 +57,12 @@ struct ServeCommand: AsyncParsableCommand {
                 Inspect the resolved values + their source with `forge status`.
 
             STATE FILES
-                <sessionHome>/forged.sock      Unix socket (RPC entry).
-                <sessionHome>/runtime.json     self-record (pid, session, socket,
+                <instanceHome>/forged.sock      Unix socket (RPC entry).
+                <instanceHome>/runtime.json     self-record (pid, instance, socket,
                                                resolved paths). Written on boot,
                                                deleted on clean shutdown — a
                                                down/crashed-daemon diagnostic
-                                               (clients discover via session, not this).
+                                               (clients discover via instance, not this).
                 <runtime_directory>/                 jobs · scratch · service/schedule state.
                 <log_jsonl>                    structured JSONL event log.
                 <error_log>                    stderr / traceback log.
@@ -86,20 +86,20 @@ struct ServeCommand: AsyncParsableCommand {
     
     @Option(
         name: [.short, .long],
-        help: "Path to config.toml (default: <sessionHome>/config.toml)."
+        help: "Path to config.toml (default: <instanceHome>/config.toml)."
     )
     var config: String?
     
     @Option(
-        help: "Session name — binds the socket at <XDG_CONFIG_HOME|~/.config>/forge/<name>/ (default: default)."
+        help: "Instance name — binds the socket at <XDG_CONFIG_HOME|~/.config>/forge/<name>/ (default: default)."
     )
-    var session: String?
+    var instance: String?
     
     // MARK: - Initializer
     // MARK: - Public
     func run() async throws {
         do {
-            try await Server.run(configPath: config, session: session)
+            try await Server.run(configPath: config, instance: instance)
         } catch {
             FileHandle.standardError.write(Data("forge serve: \(error)\n".utf8))
             

@@ -10,7 +10,7 @@ set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 library="$root/lib/Forge.yaml"
-written="$root/package/Sources/Forge/Service/Workflow/Host/Library.swift"
+written="$root/package/Sources/Forge/Service/Host/Vocabulary/Library.swift"
 
 {
     echo "//"

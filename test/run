@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # The release e2e gate. Boots a real daemon from the binary under test against
-# the in-repo session home (stub agent, stub service, tiny catalog), then walks
+# the in-repo instance home (stub agent, stub service, tiny catalog), then walks
 # every user-facing feature shallowly — does it answer, not does it think.
 #
 # Usage, from the repository root:
@@ -48,7 +48,7 @@ class Harness:
     def environment(self, token=None):
         environment = dict(os.environ)
         environment["XDG_CONFIG_HOME"] = self.root
-        environment["FORGE_SESSION"] = "e2e"
+        environment["FORGE_INSTANCE"] = "e2e"
         environment.pop("FORGE_SOCKET", None)
         environment["FORGE_ACCESS_TOKEN"] = token if token is not None else self.token
         return environment
@@ -57,7 +57,7 @@ class Harness:
         token_path = os.path.join(self.home, "admin.token")
         self.daemon_log = open(os.path.join(self.home, "log", "daemon.log"), "w")
         self.daemon = subprocess.Popen(
-            ["/bin/sh", "-c", 'FORGE_BOOTSTRAP_FD=3 exec "$1" serve --session e2e 3> "$2"',
+            ["/bin/sh", "-c", 'FORGE_BOOTSTRAP_FD=3 exec "$1" serve --instance e2e 3> "$2"',
              "_", self.executable, token_path],
             env=self.environment(token=""),
             stdout=self.daemon_log,
@@ -113,7 +113,7 @@ def main():
     harness = Harness(executable)
     try:
         harness.boot()
-        print(f"e2e session up at {harness.home}")
+        print(f"e2e instance up at {harness.home}")
 
         # The binary knows its own version, and the daemon reports the same one.
         version = harness.forge("--version").strip()
