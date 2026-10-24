@@ -7,31 +7,6 @@
 
 import Foundation
 
-func requireID(_ params: [String: JSONValue], _ context: String) throws -> String {
-    guard let id = params["id"]?.stringValue, !id.isEmpty else {
-        throw ProtocolError("\(context): 'id' (string) required")
-    }
-
-    return id
-}
-
-func recordTouchIfLiveRun(
-    _ claims: TokenClaims,
-    store: JobStore,
-    workRegistry: WorkRegistry,
-    id: String,
-    via: String
-) async {
-    guard let workflowID = claims.workflowID,
-        await workRegistry.beginTouch(workflowID: workflowID)
-    else {
-        return
-    }
-
-    await store.recordTouch(id: id, run: claims.id, via: via)
-    await workRegistry.endTouch(workflowID: workflowID)
-}
-
 struct JobShowMethod: Sendable {
     // MARK: - Property
     let store: JobStore
@@ -45,17 +20,19 @@ struct JobShowMethod: Sendable {
 
     // MARK: - Public
     func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONValue {
-        let id = try requireID(request.params, "job.show")
+        guard let id = request.params["id"]?.stringValue, !id.isEmpty else {
+            throw ProtocolError("job.show: 'id' (string) required")
+        }
+
 
         guard let job = await store.lookup(id) else {
             throw ProtocolError("job not found: \(id)")
         }
 
-        await recordTouchIfLiveRun(
-            claims,
-            store: store,
-            workRegistry: workRegistry,
+        await store.recordTouch(
             id: id,
+            claims: claims,
+            workRegistry: workRegistry,
             via: "job.show"
         )
 

@@ -18,7 +18,10 @@ struct JobDeleteMethod: Sendable {
 
     // MARK: - Public
     func handle(_ request: RPCRequest) async throws -> JSONValue {
-        let id = try requireID(request.params, "job.delete")
+        guard let id = request.params["id"]?.stringValue, !id.isEmpty else {
+            throw ProtocolError("job.delete: 'id' (string) required")
+        }
+
         try await store.delete(id: id)
 
         return ["id": .string(id), "deleted": true]

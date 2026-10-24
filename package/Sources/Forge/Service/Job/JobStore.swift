@@ -264,6 +264,24 @@ actor JobStore {
         }
     }
     
+    // A touch made with a live run's token records the run on the job; a
+    // touch by anyone else records nothing.
+    func recordTouch(
+        id: String,
+        claims: TokenClaims,
+        workRegistry: WorkRegistry,
+        via: String
+    ) async {
+        guard let workflowID = claims.workflowID,
+            await workRegistry.beginTouch(workflowID: workflowID)
+        else {
+            return
+        }
+        
+        await recordTouch(id: id, run: claims.id, via: via)
+        await workRegistry.endTouch(workflowID: workflowID)
+    }
+    
     func recordTouch(id: String, run: String, via: String) async {
         let timestamp = nowISO()
         

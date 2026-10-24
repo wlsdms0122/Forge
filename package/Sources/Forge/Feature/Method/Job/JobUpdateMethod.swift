@@ -20,14 +20,16 @@ struct JobUpdateMethod: Sendable {
 
     // MARK: - Public
     func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONValue {
-        let id = try requireID(request.params, "job.update")
+        guard let id = request.params["id"]?.stringValue, !id.isEmpty else {
+            throw ProtocolError("job.update: 'id' (string) required")
+        }
+
         let by = claims.id
 
-        await recordTouchIfLiveRun(
-            claims,
-            store: store,
-            workRegistry: workRegistry,
+        await store.recordTouch(
             id: id,
+            claims: claims,
+            workRegistry: workRegistry,
             via: "job.update"
         )
 
