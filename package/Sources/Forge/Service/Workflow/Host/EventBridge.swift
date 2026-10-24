@@ -70,7 +70,7 @@ struct EventBridge: Sendable {
                 workflowName: workflowName,
                 stepID: step,
                 errorType: String(describing: type(of: error)),
-                errorMessage: "\(error)"
+                errorMessage: "\(Self.traced(error, at: invocation.trace))"
             ))
 
             throw error
@@ -78,4 +78,12 @@ struct EventBridge: Sendable {
     }
 
     // MARK: - Private
+    // The failure with the trace of the statement that called the native,
+    // where it is a refusal that carries no trace of its own: the rounds of
+    // a loop and the pieces of a fan-out share one step and differ there.
+    private static func traced(_ error: any Error, at trace: Trace) -> any Error {
+        guard let refused = error as? any WarpError, refused.trace == nil else { return error }
+
+        return refused.tracing(trace)
+    }
 }

@@ -754,6 +754,8 @@ struct EffectActionTests {
                 catch:
                   - set: recovered
                     value: recovered
+          - let: missing
+            value: { call: { procedure: resource, arguments: { content: none.txt, inputs: { dictionary: [] } } } }
         result: { dictionary: [ [fine, { ref: fine }], [recovered, { ref: recovered }] ] }
         """)
         let sut = try harness.executor(shell: MockShell(recorder: harness.recorder, exitCode: 1)) { event in
@@ -761,10 +763,13 @@ struct EffectActionTests {
         }
 
         // When
-        _ = try await sut.run(spec)
+        await #expect(throws: ExecutionError.self) {
+            try await sut.run(spec)
+        }
 
         // Then
-        let steps = await collected.events.map { event in
+        let events = await collected.events
+        let steps = events.map { event in
             "\(event.stepID ?? "?"):\(event.kind.rawValue):\(event.action ?? "")"
         }
 
@@ -774,8 +779,11 @@ struct EffectActionTests {
             "origin:step.started:Forge.Native.origin",
             "origin:step.completed:",
             "broken:step.started:Forge.shell",
-            "broken:step.failed:"
+            "broken:step.failed:",
+            "missing:step.started:Forge.resource",
+            "missing:step.failed:"
         ])
+        #expect(events.last?.errorMessage == "missing.Forge.resource.[1]: no resource 'none.txt'")
         #expect(await harness.recorder.shellSteps == ["broken"])
     }
 
