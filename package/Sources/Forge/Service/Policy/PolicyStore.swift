@@ -19,21 +19,10 @@ actor PolicyStore {
         // MARK: - Private
     }
     
-    private struct Entry {
-        // MARK: - Property
-        let mappings: [String: [String]]
-        let mtime: Date
-        let path: URL
-        
-        // MARK: - Initializer
-        // MARK: - Public
-        // MARK: - Private
-    }
-    
     // MARK: - Property
     let directory: URL?
     
-    private var cache: [URL: Entry] = [:]
+    private var files: SpecDirectory<[String: [String]]>?
     private var merged: [String: [String]] = [:]
     private var failureCache: [String: LoadFailure] = [:]
     private var patternFailures: [LoadFailure] = []
@@ -50,6 +39,7 @@ actor PolicyStore {
     // MARK: - Initializer
     init(directory: URL?) {
         self.directory = directory
+        self.files = directory.map { directory in SpecDirectory(directory: directory, kind: "policy") }
     }
     
     init(seed: [String: [String]]) {
@@ -60,83 +50,39 @@ actor PolicyStore {
     // MARK: - Public
     @discardableResult
     func catalog() async -> Catalog {
-        guard let directory else { return currentCatalog }
+        guard var files else { return currentCatalog }
         
-        guard FileManager.default.fileExists(atPath: directory.path) else {
-            cache.removeAll()
-            merged.removeAll()
-            failureCache.removeAll()
-            patternFailures.removeAll()
-            scanFailures.removeAll()
-            
-            return currentCatalog
+        var ledger = LoadFailureLedger(prior: failureCache)
+        let reading = files.read(recording: &ledger) { _, data in
+            try YAMLSpec.decode([String: [String]].self, from: data)
         }
         
-        let fileManager = FileManager.default
-        var ledger = LoadFailureLedger(prior: failureCache)
-        var fresh: [URL: Entry] = [:]
-        
-        let scan = scanStoreFiles(in: directory, pathExtension: specFileExtension)
-        scanFailures = scan.obstructions.map { obstruction in
+        self.files = files
+        scanFailures = reading.obstructions.map { obstruction in
             LoadFailure(
                 path: "<scan>",
                 reason: "policy directory scan incomplete — \(obstruction.description)",
                 mtime: .distantPast
             )
         }
-        
-        for file in scan.files {
-            let url = file.url
-            
-            guard
-                let attributes = try? fileManager.attributesOfItem(atPath: url.path),
-                let mtime = attributes[.modificationDate] as? Date
-            else {
-                scanFailures.append(
-                    LoadFailure(
-                        path: file.source,
-                        reason: "policy file metadata could not be read — grants from this file"
-                            + " are not merged this reload",
-                        mtime: .distantPast
-                    )
-                )
-                
-                continue
-            }
-            
-            if let existing = cache[url], existing.mtime == mtime {
-                fresh[url] = existing
-                
-                continue
-            }
-            
-            if ledger.reuse(source: file.source, mtime: mtime) { continue }
-            
-            do {
-                let data = try Data(contentsOf: url)
-                let mappings = try YAMLSpec.decode([String: [String]].self, from: data)
-                fresh[url] = Entry(mappings: mappings, mtime: mtime, path: url)
-            } catch {
-                ledger.record(
-                    source: file.source,
-                    reason: "\(error)",
-                    mtime: mtime,
-                    stderrLine: "policy load failed (\(file.source)): \(error)"
-                )
-            }
+        scanFailures += reading.unreadable.map { file in
+            LoadFailure(
+                path: file.source,
+                reason: "policy file metadata could not be read — grants from this file"
+                    + " are not merged this reload",
+                mtime: .distantPast
+            )
         }
-        
-        cache = fresh
         failureCache = ledger.fresh
         FileHandle.standardError.write(Data(ledger.announcement.utf8))
         
         var invalid: [LoadFailure] = []
         var accumulated: [String: Set<String>] = [:]
         
-        for entry in fresh.values {
-            let source = entry.path.lastPathComponent
+        for loaded in reading.loaded {
+            let source = loaded.file.file.url.lastPathComponent
             
-            for (principal, workflows) in entry.mappings {
+            for (principal, workflows) in loaded.value {
                 guard Principal.isValidPattern(principal) else {
                     invalid.append(
                         LoadFailure(
@@ -144,7 +90,7 @@ actor PolicyStore {
                             reason: "principal pattern '\(principal)' is outside the match"
                                 + " grammar (`*`, exact, `<class>:*`) — this grant can never"
                                 + " match and was excluded",
-                            mtime: entry.mtime
+                            mtime: loaded.file.mtime
                         )
                     )
                     
@@ -164,7 +110,7 @@ actor PolicyStore {
                                     + " '\(principal)') is outside the match grammar (`*`,"
                                     + " exact, trailing `*`) — this grant can never match and"
                                     + " was excluded",
-                                mtime: entry.mtime
+                                mtime: loaded.file.mtime
                             )
                         )
                     }

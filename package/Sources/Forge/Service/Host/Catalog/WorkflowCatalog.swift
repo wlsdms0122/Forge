@@ -45,19 +45,6 @@ actor WorkflowCatalog {
         // MARK: - Private
     }
 
-    // A file the scan saw, with when it last changed.
-    private struct Observed {
-        // MARK: - Property
-        let file: ScannedFile
-        let mtime: Date
-
-        var stamp: String { "\(file.source)\t\(mtime.timeIntervalSinceReferenceDate)" }
-
-        // MARK: - Initializer
-        // MARK: - Public
-        // MARK: - Private
-    }
-
     // MARK: - Property
     // The name an inline spec's one procedure is declared under.
     static let inlineSigil = "<inline>"
@@ -148,7 +135,7 @@ actor WorkflowCatalog {
             return currentCatalog
         }
 
-        let observed = await observing(scanStoreFiles(in: directory, pathExtension: specFileExtension))
+        let observed = await observing(StoreScan(directory: directory, pathExtension: specFileExtension))
 
         FileHandle.standardError.write(Data(observed.announcement.utf8))
 
@@ -258,34 +245,24 @@ actor WorkflowCatalog {
     // changed since the observation the entries were read from, and what
     // the reload announces, nothing where this call ran none.
     private func observing(_ scan: StoreScan) async -> (catalog: Catalog, announcement: String) {
-        let fileManager = FileManager.default
         var scan = scan
-        var observed: [Observed] = []
+        let observation = scan.observed()
+        let observed = observation.files
 
-        for file in scan.files {
-            guard
-                let attributes = try? fileManager.attributesOfItem(atPath: file.url.path),
-                let mtime = attributes[.modificationDate] as? Date
-            else {
-                scan.obstructions.append(
-                    .init(
-                        scope: file.source,
-                        reason: "file metadata could not be read"
-                            + " — existence observed, content unknown"
-                    )
-                )
-
-                continue
-            }
-
-            observed.append(Observed(file: file, mtime: mtime))
+        scan.obstructions += observation.unreadable.map { file in
+            .init(
+                scope: file.source,
+                reason: "file metadata could not be read"
+                    + " — existence observed, content unknown"
+            )
         }
 
         // The files lean on each other, so a change to one is a reload of
         // all of them.
-        let observation = observed.map(\.stamp) + scan.obstructions.map(\.description)
+        let generation = observed.map { file in "\(file.file.source)\t\(file.mtime.timeIntervalSinceReferenceDate)" }
+            + scan.obstructions.map(\.description)
 
-        guard observation != generation else { return (currentCatalog, "") }
+        guard generation != self.generation else { return (currentCatalog, "") }
 
         // One reload at a time: a caller arriving while one runs waits for
         // it and looks again.
@@ -295,7 +272,7 @@ actor WorkflowCatalog {
             return await observing(scan)
         }
 
-        let reload = Task { await self.reload(observed, scan: scan, observation: observation) }
+        let reload = Task { await self.reload(observed, scan: scan, observation: generation) }
 
         reloading = reload
 
@@ -309,7 +286,7 @@ actor WorkflowCatalog {
     // Every observed file read, loaded and built again, and the entries and
     // failures of this observation put in place; what is announced for the
     // failures new to it.
-    private func reload(_ observed: [Observed], scan: StoreScan, observation: [String]) async -> String {
+    private func reload(_ observed: [ObservedFile], scan: StoreScan, observation: [String]) async -> String {
         var ledger = LoadFailureLedger(prior: failureCache)
         let spending = spent(observed, recording: &ledger)
         var candidates = spending.candidates
@@ -367,10 +344,10 @@ actor WorkflowCatalog {
     // are read again without it, so no other file is refused for what it
     // declares.
     private func spent(
-        _ observed: [Observed],
+        _ observed: [ObservedFile],
         recording ledger: inout LoadFailureLedger
     ) -> (candidates: [(key: String, source: String, value: Entry)], frontend: YAMLFrontend?) {
-        var texts: [(observed: Observed, text: String)] = []
+        var texts: [(observed: ObservedFile, text: String)] = []
 
         for file in observed {
             do {
@@ -394,7 +371,7 @@ actor WorkflowCatalog {
             }
 
             var candidates: [(key: String, source: String, value: Entry)] = []
-            var refusals: [(file: Observed, refusal: String)] = []
+            var refusals: [(file: ObservedFile, refusal: String)] = []
             var unconventional: Set<Int> = []
 
             for (index, (file, text)) in texts.enumerated() {
@@ -543,7 +520,7 @@ actor WorkflowCatalog {
         return (standing, compiled, image)
     }
 
-    private func record(_ file: Observed, refusal: String, in ledger: inout LoadFailureLedger) {
+    private func record(_ file: ObservedFile, refusal: String, in ledger: inout LoadFailureLedger) {
         ledger.record(
             source: file.file.source,
             reason: refusal,

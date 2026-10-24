@@ -23,6 +23,7 @@ actor JobStore {
     // MARK: - Property
     let directory: URL?
     
+    private var files: SpecDirectory<Job>?
     private var cache: [String: Entry] = [:]
     private var failedIDs: Set<String> = []
     private var scanIncomplete = false
@@ -30,92 +31,61 @@ actor JobStore {
     // MARK: - Initializer
     init(directory: URL?) {
         self.directory = directory
+        self.files = directory.map { directory in
+            SpecDirectory(directory: directory, pathExtension: "json", kind: "job")
+        }
     }
     
     // MARK: - Public
+    // A job file that fails to load is announced at every reload.
     func reload() async {
-        let fileManager = FileManager.default
-        var byPath: [URL: Entry] = [:]
+        guard var files else {
+            cache = [:]
+            failedIDs = []
+            scanIncomplete = false
+            
+            return
+        }
         
-        for entry in cache.values { byPath[entry.path] = entry }
-        
-        var fresh: [String: Entry] = [:]
         let decoder = JSONDecoder()
+        var ledger = LoadFailureLedger(prior: [:])
+        let reading = files.read(recording: &ledger) { _, data in try decoder.decode(Job.self, from: data) }
+        let isComplete = reading.obstructions.isEmpty && reading.unreadable.isEmpty
+        let observedPaths = Set(reading.observed.map(\.file.url))
+        var fresh: [String: Entry] = [:]
         
-        guard let directory else {
-            cache = [:]
-            failedIDs = []
-            scanIncomplete = false
-            
-            return
+        self.files = files
+        
+        for file in reading.unreadable {
+            FileHandle.standardError.write(
+                Data(
+                    ("forge: job metadata unreadable (\(file.source))"
+                        + " — treating as unobserved\n").utf8
+                )
+            )
         }
         
-        // A directory that does not exist yet is a definitively empty store —
-        // there is nothing unobserved in it. Only an existing directory that
-        // cannot be fully enumerated makes the scan incomplete.
-        guard fileManager.fileExists(atPath: directory.path) else {
-            cache = [:]
-            failedIDs = []
-            scanIncomplete = false
-
-            return
+        for loaded in reading.loaded {
+            fresh[loaded.value.id] = Entry(
+                job: loaded.value,
+                mtime: loaded.file.mtime,
+                path: loaded.file.file.url,
+                source: loaded.file.file.source
+            )
         }
         
-        var failed: Set<String> = []
-        var scan = scanStoreFiles(in: directory, pathExtension: "json")
-        var observedPaths: Set<URL> = []
-        
-        for file in scan.files {
-            let url = file.url
-            
-            guard
-                let attributes = try? fileManager.attributesOfItem(atPath: url.path),
-                let mtime = attributes[.modificationDate] as? Date
-            else {
-                scan.obstructions.append(
-                    .init(scope: file.source, reason: "job file metadata could not be read")
-                )
-                
-                FileHandle.standardError.write(
-                    Data(
-                        ("forge: job metadata unreadable (\(file.source))"
-                            + " — treating as unobserved\n").utf8
-                    )
-                )
-                
-                continue
-            }
-            
-            observedPaths.insert(url)
-            
-            if let existing = byPath[url], existing.mtime == mtime {
-                fresh[existing.job.id] = existing
-                
-                continue
-            }
-            
-            do {
-                let data = try Data(contentsOf: url)
-                let job = try decoder.decode(Job.self, from: data)
-                fresh[job.id] = Entry(job: job, mtime: mtime, path: url, source: file.source)
-            } catch {
-                failed.insert(url.deletingPathExtension().lastPathComponent)
-                
-                FileHandle.standardError.write(
-                    Data("forge: job load failed (\(file.source)): \(error)\n".utf8)
-                )
-            }
-        }
-        
-        if !scan.isComplete {
+        if !isComplete {
             for (id, entry) in cache where fresh[id] == nil && !observedPaths.contains(entry.path) {
                 fresh[id] = entry
             }
         }
         
+        FileHandle.standardError.write(Data(ledger.announcement.utf8))
         cache = fresh
-        failedIDs = failed
-        scanIncomplete = !scan.isComplete
+        failedIDs = Set(ledger.fresh.keys.map { source in
+            URL(fileURLWithPath: source).deletingPathExtension().lastPathComponent
+        })
+        scanIncomplete = !isComplete
     }
     
     func all() async -> [Job] {

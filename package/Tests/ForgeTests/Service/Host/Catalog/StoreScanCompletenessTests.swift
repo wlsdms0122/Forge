@@ -16,7 +16,7 @@ struct StoreScanCompletenessTests {
 
     // MARK: - Initializer
     // MARK: - Test
-    // MARK: - scanStoreFiles
+    // MARK: - StoreScan
     @Test("An unreadable subdirectory is reported, not silently skipped")
     func unreadableSubdirectoryIsReportedNotSilentlySkipped() throws {
         // Given
@@ -34,7 +34,7 @@ struct StoreScanCompletenessTests {
             try? FileManager.default.removeItem(at: directory)
         }
         
-        let scan = scanStoreFiles(in: directory, pathExtension: specFileExtension)
+        let scan = StoreScan(directory: directory, pathExtension: specFileExtension)
 
         // Then
         #expect(scan.files.map(\.source) == ["open/visible.yaml"])
@@ -50,7 +50,7 @@ struct StoreScanCompletenessTests {
         // Given
         let directory = try temporary.make("gone-scope")
         try FileManager.default.removeItem(at: directory)
-        let scan = scanStoreFiles(in: directory, pathExtension: specFileExtension)
+        let scan = StoreScan(directory: directory, pathExtension: specFileExtension)
 
         // Then
         #expect(scan.obstructions.map(\.scope) == [""])
@@ -63,7 +63,7 @@ struct StoreScanCompletenessTests {
         let directory = try temporary.make("complete")
         defer { try? FileManager.default.removeItem(at: directory) }
         try writeWorkflow(named: "a", in: directory)
-        let scan = scanStoreFiles(in: directory, pathExtension: specFileExtension)
+        let scan = StoreScan(directory: directory, pathExtension: specFileExtension)
 
         // Then
         #expect(scan.isComplete)
@@ -75,7 +75,7 @@ struct StoreScanCompletenessTests {
         // Given
         let directory = try temporary.make("gone")
         try FileManager.default.removeItem(at: directory)
-        let scan = scanStoreFiles(in: directory, pathExtension: specFileExtension)
+        let scan = StoreScan(directory: directory, pathExtension: specFileExtension)
 
         // Then
         #expect(scan.files.isEmpty)

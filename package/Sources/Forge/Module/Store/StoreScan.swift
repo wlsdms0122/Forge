@@ -39,58 +39,83 @@ struct StoreScan {
         self.obstructions = obstructions
     }
     
+    // The files under a directory with this extension, and what the
+    // enumeration could not see.
+    init(directory: URL, pathExtension: String) {
+        let base = directory.standardizedFileURL.path
+        
+        func relative(_ url: URL) -> String? {
+            let full = url.standardizedFileURL.path
+            
+            guard full.hasPrefix(base + "/") else { return nil }
+            
+            return String(full.dropFirst(base.count + 1))
+        }
+        
+        var obstructions: [Obstruction] = []
+        
+        guard
+            let enumerator = FileManager.default.enumerator(
+                at: directory,
+                includingPropertiesForKeys: [.isRegularFileKey],
+                options: [.skipsHiddenFiles, .skipsPackageDescendants],
+                errorHandler: { url, error in
+                    obstructions.append(.init(scope: relative(url) ?? "", reason: "\(error)"))
+                    
+                    return true
+                }
+            )
+        else {
+            self.init(
+                files: [],
+                obstructions: [
+                    .init(
+                        scope: "",
+                        reason: "directory could not be enumerated (\(directory.path))"
+                    )
+                ]
+            )
+            
+            return
+        }
+        
+        var files: [ScannedFile] = []
+        
+        for case let url as URL in enumerator where url.pathExtension == pathExtension {
+            files.append(ScannedFile(url: url, source: relative(url) ?? url.lastPathComponent))
+        }
+        
+        self.init(files: files, obstructions: obstructions)
+    }
+    
     // MARK: - Public
     func isUnobserved(source: String) -> Bool {
         obstructions.contains { obstruction in obstruction.covers(source: source) }
     }
     
-    // MARK: - Private
-}
-
-func scanStoreFiles(in directory: URL, pathExtension: String) -> StoreScan {
-    let fileManager = FileManager.default
-    let base = directory.standardizedFileURL.path
-    
-    func relative(_ url: URL) -> String? {
-        let full = url.standardizedFileURL.path
+    // Each file with when it last changed, and the files whose metadata
+    // could not be read.
+    func observed() -> (files: [ObservedFile], unreadable: [ScannedFile]) {
+        var observed: [ObservedFile] = []
+        var unreadable: [ScannedFile] = []
         
-        guard full.hasPrefix(base + "/") else { return nil }
-        
-        return String(full.dropFirst(base.count + 1))
-    }
-    
-    var obstructions: [StoreScan.Obstruction] = []
-    
-    guard
-        let enumerator = fileManager.enumerator(
-            at: directory,
-            includingPropertiesForKeys: [.isRegularFileKey],
-            options: [.skipsHiddenFiles, .skipsPackageDescendants],
-            errorHandler: { url, error in
-                obstructions.append(.init(scope: relative(url) ?? "", reason: "\(error)"))
+        for file in files {
+            guard
+                let attributes = try? FileManager.default.attributesOfItem(atPath: file.url.path),
+                let mtime = attributes[.modificationDate] as? Date
+            else {
+                unreadable.append(file)
                 
-                return true
+                continue
             }
-        )
-    else {
-        return StoreScan(
-            files: [],
-            obstructions: [
-                .init(
-                    scope: "",
-                    reason: "directory could not be enumerated (\(directory.path))"
-                )
-            ]
-        )
+            
+            observed.append(ObservedFile(file: file, mtime: mtime))
+        }
+        
+        return (observed, unreadable)
     }
     
-    var files: [ScannedFile] = []
-    
-    for case let url as URL in enumerator where url.pathExtension == pathExtension {
-        files.append(ScannedFile(url: url, source: relative(url) ?? url.lastPathComponent))
-    }
-    
-    return StoreScan(files: files, obstructions: obstructions)
+    // MARK: - Private
 }
 
 func isStoreSafeID(_ id: String) -> Bool {

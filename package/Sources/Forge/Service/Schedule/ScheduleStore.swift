@@ -55,6 +55,8 @@ actor ScheduleStore {
     let runtimeDirectory: URL?
     let stateFile: URL
     
+    private var configFiles: SpecDirectory<Entry>?
+    private var runtimeFiles: SpecDirectory<Entry>?
     private var cache: [String: Entry] = [:]
     private var enabledIDs: [String: String]
     private var stateFailure: LoadFailure?
@@ -81,6 +83,8 @@ actor ScheduleStore {
         self.configDir = configDir
         self.runtimeDirectory = runtimeDirectory
         self.stateFile = stateFile
+        self.configFiles = configDir.map { directory in SpecDirectory(directory: directory, kind: "schedule") }
+        self.runtimeFiles = runtimeDirectory.map { directory in SpecDirectory(directory: directory, kind: "schedule") }
         (self.enabledIDs, self.stateFailure) = Self.loadEnabled(stateFile)
     }
     
@@ -101,28 +105,31 @@ actor ScheduleStore {
     
     @discardableResult
     func catalog() async -> Catalog {
-        var byPath: [URL: Entry] = [:]
-        
-        for entry in cache.values { byPath[entry.path] = entry }
-        
         var ledger = LoadFailureLedger(prior: failureCache)
         var candidates: [(key: String, source: String, value: Entry)] = []
-        var incomplete = read(
-            configDir,
-            runtime: false,
-            skipping: runtimeDirectory,
-            byPath: byPath,
-            into: &candidates,
-            ledger: &ledger
-        )
-        incomplete = read(
-            runtimeDirectory,
-            runtime: true,
-            skipping: nil,
-            byPath: byPath,
-            into: &candidates,
-            ledger: &ledger
-        ) || incomplete
+        var incomplete = false
+        
+        for runtime in [false, true] {
+            guard var files = runtime ? runtimeFiles : configFiles else { continue }
+            
+            let reading = files.read(skipping: runtime ? nil : runtimeDirectory, recording: &ledger) { file, data in
+                try Self.entry(decoding: data, of: file, runtime: runtime)
+            }
+            
+            if runtime { runtimeFiles = files } else { configFiles = files }
+            
+            for file in reading.unreadable {
+                ledger.record(
+                    source: file.source,
+                    reason: "file attributes unavailable — declaration unreadable this reload",
+                    mtime: .distantPast,
+                    stderrLine: "schedule file attributes unavailable (\(file.source))"
+                )
+            }
+            
+            candidates += reading.loaded.map { loaded in (loaded.value.schedule.id, loaded.file.file.source, loaded.value) }
+            incomplete = incomplete || !reading.obstructions.isEmpty
+        }
         
         let (live, collided) = partitionUniqueKeys(candidates)
         collisions = collisionFailures(kind: "schedule id", collided, standing: collisions, recording: &ledger)
@@ -245,124 +252,36 @@ actor ScheduleStore {
     }
     
     // MARK: - Private
-    private func read(
-        _ directory: URL?,
-        runtime: Bool,
-        skipping nested: URL?,
-        byPath: [URL: Entry],
-        into candidates: inout [(key: String, source: String, value: Entry)],
-        ledger: inout LoadFailureLedger
-    ) -> Bool {
-        guard let directory else { return false }
-        // A directory that does not exist yet is a definitively empty
-        // declaration set — nothing in it can be unobserved. Only an existing
-        // directory that fails enumeration makes the scan incomplete.
-        guard FileManager.default.fileExists(atPath: directory.path) else { return false }
+    // A schedule file's entry: its id is the file's basename, and the id
+    // keeps the namespace of its directory.
+    private static func entry(decoding data: Data, of file: ObservedFile, runtime: Bool) throws -> Entry {
+        var schedule = try YAMLSpec.decode(Schedule.self, from: data)
+        let source = file.file.source
+        let base = file.file.url.deletingPathExtension().lastPathComponent
         
-        let nestedPath = nested?.standardizedFileURL.path
-        let scan = scanStoreFiles(in: directory, pathExtension: specFileExtension)
-        var incomplete = !scan.isComplete
+        if schedule.id.isEmpty { schedule = schedule.withID(base) }
         
-        for file in scan.files {
-            if let nestedPath,
-                file.url.standardizedFileURL.path.hasPrefix(nestedPath + "/") {
-                continue
-            }
-            
-            incomplete = loadFile(
-                file,
-                runtime: runtime,
-                byPath: byPath,
-                into: &candidates,
-                ledger: &ledger
-            ) || incomplete
-        }
-        
-        return incomplete
-    }
-    
-    @discardableResult
-    private func loadFile(
-        _ file: ScannedFile,
-        runtime: Bool,
-        byPath: [URL: Entry],
-        into candidates: inout [(key: String, source: String, value: Entry)],
-        ledger: inout LoadFailureLedger
-    ) -> Bool {
-        let fileManager = FileManager.default
-        let url = file.url
-        
-        guard let attributes = try? fileManager.attributesOfItem(atPath: url.path),
-            let mtime = attributes[.modificationDate] as? Date
-        else {
-            ledger.record(
-                source: file.source,
-                reason: "file attributes unavailable — declaration unreadable this reload",
-                mtime: .distantPast,
-                stderrLine: "schedule file attributes unavailable (\(file.source))"
-            )
-            
-            return false
-        }
-        
-        if let existing = byPath[url], existing.mtime == mtime {
-            candidates.append((existing.schedule.id, file.source, existing))
-            
-            return false
-        }
-        
-        if ledger.reuse(source: file.source, mtime: mtime) { return false }
-        
-        do {
-            let data = try Data(contentsOf: url)
-            var schedule = try YAMLSpec.decode(Schedule.self, from: data)
-            let base = url.deletingPathExtension().lastPathComponent
-            
-            if schedule.id.isEmpty { schedule = schedule.withID(base) }
-            
-            guard schedule.id == base else {
-                ledger.record(
-                    source: file.source,
-                    reason: "schedule id '\(schedule.id)' must equal the file basename '\(base)' — identity is the filename (rename the file or drop the id from the body)",
-                    mtime: mtime,
-                    stderrLine: "schedule id/filename mismatch (\(file.source)): id '\(schedule.id)' vs basename '\(base)'"
-                )
-                
-                return false
-            }
-            
-            if let violation = ScheduleIDSpace.violation(id: schedule.id, runtime: runtime) {
-                ledger.record(
-                    source: file.source,
-                    reason: violation,
-                    mtime: mtime,
-                    stderrLine: "schedule id namespace violation (\(file.source)): \(violation)"
-                )
-                
-                return false
-            }
-            
-            candidates.append((
-                schedule.id,
-                file.source,
-                Entry(
-                    schedule: schedule,
-                    mtime: mtime,
-                    path: url,
-                    source: file.source,
-                    runtime: runtime
-                )
-            ))
-        } catch {
-            ledger.record(
-                source: file.source,
-                reason: "\(error)",
-                mtime: mtime,
-                stderrLine: "schedule load failed (\(file.source)): \(error)"
+        guard schedule.id == base else {
+            throw LoadRefusal(
+                message: "schedule id '\(schedule.id)' must equal the file basename '\(base)' — identity is the filename (rename the file or drop the id from the body)",
+                line: "schedule id/filename mismatch (\(source)): id '\(schedule.id)' vs basename '\(base)'"
             )
         }
         
-        return false
+        if let violation = ScheduleIDSpace.violation(id: schedule.id, runtime: runtime) {
+            throw LoadRefusal(
+                message: violation,
+                line: "schedule id namespace violation (\(source)): \(violation)"
+            )
+        }
+        
+        return Entry(
+            schedule: schedule,
+            mtime: file.mtime,
+            path: file.file.url,
+            source: source,
+            runtime: runtime
+        )
     }
     
     private func observedIDState(_ id: String) async -> IDState {
