@@ -27,7 +27,7 @@ struct WorkflowRunnerTests {
             result: { dictionary: [ [text, { format: "hi ${msg}", with: { msg: { ref: msg } } }] ] }
             """
         ])
-        let workflow = try await harness.store.workflow(named: "hello")
+        let workflow = try await harness.catalog.workflow(named: "hello")
 
         // When
         let result = try await harness.dispatch(
@@ -51,7 +51,7 @@ struct WorkflowRunnerTests {
             result: { format: "hi ${msg}", with: { msg: { ref: msg } } }
             """
         ])
-        let workflow = try await harness.store.workflow(named: "plain")
+        let workflow = try await harness.catalog.workflow(named: "plain")
 
         // When
         let result = try await harness.dispatch(
@@ -77,7 +77,7 @@ struct WorkflowRunnerTests {
             result: { dictionary: [ [out, { ref: say }] ] }
             """
         ])
-        let workflow = try await harness.store.workflow(named: "say")
+        let workflow = try await harness.catalog.workflow(named: "say")
 
         // When
         let result = try await harness.dispatch(workflow)
@@ -107,7 +107,7 @@ struct WorkflowRunnerTests {
             result: { dictionary: [ [reply, { ref: session }] ] }
             """
         ])
-        let workflow = try await harness.store.workflow(named: "ask")
+        let workflow = try await harness.catalog.workflow(named: "ask")
 
         // When
         let result = try await harness.dispatch(workflow)
@@ -127,7 +127,7 @@ struct WorkflowRunnerTests {
               - value: { abort: "boom reason" }
             """
         ])
-        let workflow = try await harness.store.workflow(named: "boom")
+        let workflow = try await harness.catalog.workflow(named: "boom")
 
         // When
         let result = try await harness.dispatch(workflow)
@@ -148,7 +148,7 @@ struct WorkflowRunnerTests {
               - value: { abort: "boom reason" }
             """
         ])
-        let workflow = try await harness.store.workflow(named: "boom")
+        let workflow = try await harness.catalog.workflow(named: "boom")
 
         // When
         let sut = try await harness.dispatch(workflow)
@@ -178,7 +178,7 @@ struct WorkflowRunnerTests {
             ],
             policy: ["cli:parent": ["parent", "child"]]
         )
-        let workflow = try await harness.store.workflow(named: "parent")
+        let workflow = try await harness.catalog.workflow(named: "parent")
 
         // When
         let result = try await harness.dispatch(workflow)
@@ -214,7 +214,7 @@ struct WorkflowRunnerTests {
             ],
             policy: ["cli:parent": ["parent"]]
         )
-        let workflow = try await harness.store.workflow(named: "parent")
+        let workflow = try await harness.catalog.workflow(named: "parent")
 
         // When
         let result = try await harness.dispatch(workflow)
@@ -253,7 +253,7 @@ struct WorkflowRunnerTests {
             ],
             policy: ["cli:parent": ["parent", "boom"]]
         )
-        let workflow = try await harness.store.workflow(named: "parent")
+        let workflow = try await harness.catalog.workflow(named: "parent")
 
         // When
         let result = try await harness.dispatch(workflow)
@@ -281,7 +281,7 @@ struct WorkflowRunnerTests {
             policy: ["cli:parent": ["parent", "child"]]
         )
         let (_, stream) = await harness.eventBus.subscribe()
-        let workflow = try await harness.store.workflow(named: "parent")
+        let workflow = try await harness.catalog.workflow(named: "parent")
 
         // When
         let result = try await harness.dispatch(workflow)
@@ -321,7 +321,7 @@ struct WorkflowRunnerTests {
                                     - [t1, { closure: { returns: String, result: { agent: hello } } }]
             """
         ])
-        let workflow = try await harness.store.workflow(named: "fan")
+        let workflow = try await harness.catalog.workflow(named: "fan")
 
         // When
         let result = try await harness.dispatch(workflow)
@@ -341,7 +341,7 @@ struct WorkflowRunnerTests {
               - value: { call: { procedure: shell, arguments: { command: ["/bin/sleep", "10"] } } }
             """
         ])
-        let workflow = try await harness.store.workflow(named: "slow")
+        let workflow = try await harness.catalog.workflow(named: "slow")
         let started = ContinuousClock.now
         let harnessLocal = harness
         let task = Task {
@@ -382,7 +382,7 @@ struct WorkflowRunnerTests {
             ],
             backend: SleepingBackend()
         )
-        let workflow = try await harness.store.workflow(named: "ask")
+        let workflow = try await harness.catalog.workflow(named: "ask")
         let started = ContinuousClock.now
         let harnessLocal = harness
         let task = Task {
@@ -423,7 +423,7 @@ struct WorkflowRunnerTests {
             ],
             backend: CancelledBackend()
         )
-        let workflow = try await harness.store.workflow(named: "ask")
+        let workflow = try await harness.catalog.workflow(named: "ask")
 
         // When
         let result = try await harness.dispatch(workflow)
@@ -462,9 +462,9 @@ struct WorkflowRunnerTests {
         )
 
         // When
-        let nullcwd = try await harness.store.workflow(named: "nullcwd")
+        let nullcwd = try await harness.catalog.workflow(named: "nullcwd")
         let nullResult = try await harness.dispatch(nullcwd)
-        let emptymode = try await harness.store.workflow(named: "emptymode")
+        let emptymode = try await harness.catalog.workflow(named: "emptymode")
         let emptyResult = try await harness.dispatch(emptymode)
 
         // Then — null stays "unset" as-is, while an empty string is an explicit rejection
@@ -493,7 +493,7 @@ struct WorkflowRunnerTests {
             ],
             pool: WorkflowPool(maximumConcurrentSteps: 1, maximumActiveRuns: Int.max)
         )
-        let workflow = try await harness.store.workflow(named: "fanshell")
+        let workflow = try await harness.catalog.workflow(named: "fanshell")
         let started = ContinuousClock.now
 
         // When
@@ -539,7 +539,7 @@ struct WorkflowRunnerTests {
     private struct Harness {
         // MARK: - Property
         let runner: WorkflowRunner
-        let store: WorkflowCatalog
+        let catalog: WorkflowCatalog
         let eventBus: WorkflowEventBus
         let pool: WorkflowPool
 
@@ -564,14 +564,14 @@ struct WorkflowRunnerTests {
     }
 
     private func makeRunner(
-        catalog: [String: String],
+        catalog sources: [String: String],
         policy: [String: [String]] = ["*": ["*"]],
         backend: (any Backend)? = nil,
         pool: WorkflowPool? = nil
     ) throws -> Harness {
         let directory = try temporary.make("catalog")
 
-        for (name, yaml) in catalog {
+        for (name, yaml) in sources {
             try workflowFile(yaml, named: name).write(
                 to: directory.appendingPathComponent("\(name).yaml"),
                 atomically: true,
@@ -579,12 +579,12 @@ struct WorkflowRunnerTests {
             )
         }
 
-        let store = try WorkflowCatalog(directory: directory)
+        let catalog = try WorkflowCatalog(directory: directory)
         let eventBus = WorkflowEventBus()
         let poolLocal = pool
             ?? WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: Int.max)
         let runner = WorkflowRunner(
-            catalog: store,
+            catalog: catalog,
             eventBus: eventBus,
             policyStore: PolicyStore(seed: policy),
             pool: poolLocal,
@@ -597,6 +597,6 @@ struct WorkflowRunnerTests {
             )
         )
 
-        return Harness(runner: runner, store: store, eventBus: eventBus, pool: poolLocal)
+        return Harness(runner: runner, catalog: catalog, eventBus: eventBus, pool: poolLocal)
     }
 }

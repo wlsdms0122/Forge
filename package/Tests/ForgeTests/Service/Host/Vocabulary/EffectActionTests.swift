@@ -541,12 +541,12 @@ struct EffectActionTests {
     @Test("an invalid inline spec is refused when it is read, before it runs")
     func inlineRejectsWhenSpecIsMalformed() async throws {
         // Given — the inline door reads one procedure in the YAML notation
-        let store = try WorkflowCatalog(directory: nil)
+        let catalog = try WorkflowCatalog(directory: nil)
         let spec = JSONValue.object(["returns": .string("String"), "result": .string("ok"), "fallbck": .string("typo")])
 
         // When / Then
         await #expect(throws: (any Error).self) {
-            try await store.inline(spec)
+            try await catalog.inline(spec)
         }
     }
 
@@ -565,7 +565,7 @@ struct EffectActionTests {
         returns: String
         result: { format: "said ${word}", with: { word: { ref: word } } }
         """, named: "said").write(to: directory.appendingPathComponent("said.yaml"), atomically: true, encoding: .utf8)
-        let store = try WorkflowCatalog(directory: directory)
+        let catalog = try WorkflowCatalog(directory: directory)
         let spec = ValueBridge.json(try YAMLParser().parse("""
         returns: "Dictionary<String, Any>"
         failing: [nonzero_exit, timeout]
@@ -579,8 +579,8 @@ struct EffectActionTests {
         let sut = try harness.executor()
 
         // When
-        let module = try await store.inline(spec).module
-        let outputs = try await sut.run(module, entry: WorkflowCatalog.inlineSigil, beside: await store.modules())
+        let module = try await catalog.inline(spec).module
+        let outputs = try await sut.run(module, entry: WorkflowCatalog.inlineSigil, beside: await catalog.modules())
 
         // Then
         #expect(outputs["result"] == .string("said hi"))
@@ -725,7 +725,7 @@ struct EffectActionTests {
             encoding: .utf8
         )
 
-        let store = try WorkflowCatalog(directory: directory)
+        let catalog = try WorkflowCatalog(directory: directory)
         let caller = try harness.frontend.workflow("""
         returns: "Dictionary<String, Any>"
         body:
@@ -737,7 +737,7 @@ struct EffectActionTests {
 
         // When — the caller leads and the catalog is the rest of the world,
         // which is what the daemon hands to every link
-        let outputs = try await sut.run(caller, beside: await store.modules())
+        let outputs = try await sut.run(caller, beside: await catalog.modules())
 
         // Then
         #expect(outputs["result"] == .int(21))

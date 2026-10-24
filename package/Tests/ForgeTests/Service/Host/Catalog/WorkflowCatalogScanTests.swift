@@ -32,8 +32,8 @@ struct WorkflowCatalogScanTests {
             try? FileManager.default.removeItem(at: directory)
         }
         
-        let store = try WorkflowCatalog(directory: directory)
-        guard case .found = await store.resolve("shadowed") else {
+        let catalog = try WorkflowCatalog(directory: directory)
+        guard case .found = await catalog.resolve("shadowed") else {
 
         // Then
             Issue.record("precondition — before obstructing, both must be visible")
@@ -42,19 +42,19 @@ struct WorkflowCatalogScanTests {
         }
         
         try chmod(closed, 0o000)
-        guard case .found = await store.resolve("shadowed") else {
+        guard case .found = await catalog.resolve("shadowed") else {
             Issue.record("a single enumeration failure erased a deployed definition from the catalog")
             
             return
         }
         
-        guard case .found = await store.resolve("visible") else {
+        guard case .found = await catalog.resolve("visible") else {
             Issue.record("an observed definition must be unaffected")
             
             return
         }
         
-        switch await store.resolve("never-existed") {
+        switch await catalog.resolve("never-existed") {
         case .missing:
             Issue.record("absence was claimed despite an incomplete enumeration — dispatch would absorb a deployment defect")
         case .invalid:
@@ -65,7 +65,7 @@ struct WorkflowCatalogScanTests {
             Issue.record("a nonexistent name resolved as found")
         }
         
-        let failures = await store.reload().failures
+        let failures = await catalog.reload().failures
         #expect(failures.contains { failure in failure.reason.contains("scan incomplete") }, "\(failures.map(\.reason))")
     }
     
@@ -85,8 +85,8 @@ struct WorkflowCatalogScanTests {
             try? FileManager.default.removeItem(at: directory)
         }
         
-        let store = try WorkflowCatalog(directory: directory)
-        guard case .found = await store.resolve("deleted-later") else {
+        let catalog = try WorkflowCatalog(directory: directory)
+        guard case .found = await catalog.resolve("deleted-later") else {
 
         // Then
             Issue.record("precondition")
@@ -96,13 +96,13 @@ struct WorkflowCatalogScanTests {
 
         try FileManager.default.removeItem(at: open.appendingPathComponent("deleted-later.yaml"))
         try chmod(closed, 0o000)
-        switch await store.resolve("deleted-later") {
+        switch await catalog.resolve("deleted-later") {
         case .found:
             Issue.record("a properly observed deletion was resurrected by an unrelated obstruction")
         case .unobserved, .missing, .invalid:
             break
         }
-        guard case .found = await store.resolve("shadowed") else {
+        guard case .found = await catalog.resolve("shadowed") else {
             Issue.record("a definition inside the observation-failure scope must be carried forward")
             
             return
@@ -125,8 +125,8 @@ struct WorkflowCatalogScanTests {
             try? FileManager.default.removeItem(at: directory)
         }
         
-        let store = try WorkflowCatalog(directory: directory)
-        guard case .invalid = await store.resolve("dup") else {
+        let catalog = try WorkflowCatalog(directory: directory)
+        guard case .invalid = await catalog.resolve("dup") else {
 
         // Then
             Issue.record("precondition — a collision must exclude both sides from live")
@@ -135,7 +135,7 @@ struct WorkflowCatalogScanTests {
         }
         
         try chmod(secondDirectory, 0o000)
-        switch await store.resolve("dup") {
+        switch await catalog.resolve("dup") {
         case .found:
             Issue.record("while the shadowed collision partner was invisible, the remaining side became runnable")
         case .invalid, .unobserved, .missing:
@@ -153,8 +153,8 @@ struct WorkflowCatalogScanTests {
             try? FileManager.default.removeItem(at: directory)
         }
         
-        let store = try WorkflowCatalog(directory: directory)
-        guard case .found = await store.resolve("ghost") else {
+        let catalog = try WorkflowCatalog(directory: directory)
+        guard case .found = await catalog.resolve("ghost") else {
 
         // Then
             Issue.record("precondition")
@@ -163,14 +163,14 @@ struct WorkflowCatalogScanTests {
         }
         
         try chmod(directory, 0o444)
-        switch await store.resolve("ghost") {
+        switch await catalog.resolve("ghost") {
         case .found, .unobserved, .invalid:
             break
         case .missing:
             Issue.record("a definition that became unreadable was folded into absence")
         }
         
-        let failures = await store.reload().failures
+        let failures = await catalog.reload().failures
         #expect(!failures.isEmpty, "the observation failure never reached any surface")
     }
     
@@ -180,8 +180,8 @@ struct WorkflowCatalogScanTests {
         let directory = try temporary.make("store-complete")
         defer { try? FileManager.default.removeItem(at: directory) }
         try writeWorkflow(named: "a", in: directory)
-        let store = try WorkflowCatalog(directory: directory)
-        guard case .missing = await store.resolve("nope") else {
+        let catalog = try WorkflowCatalog(directory: directory)
+        guard case .missing = await catalog.resolve("nope") else {
 
         // Then
             Issue.record("under a complete scan, absence must be .missing")
@@ -189,7 +189,7 @@ struct WorkflowCatalogScanTests {
             return
         }
         
-        let failures = await store.reload().failures
+        let failures = await catalog.reload().failures
         #expect(failures.isEmpty)
     }
     

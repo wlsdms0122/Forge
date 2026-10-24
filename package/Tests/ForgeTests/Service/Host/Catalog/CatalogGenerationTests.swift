@@ -33,16 +33,16 @@ struct CatalogGenerationTests {
         let directory = try temporary.make("wf-repair")
         defer { try? FileManager.default.removeItem(at: directory) }
         try writeWorkflow(brokenBody, named: "mender", in: directory)
-        let store = try WorkflowCatalog(directory: directory)
+        let catalog = try WorkflowCatalog(directory: directory)
 
         // When
-        var snapshot = await store.reload()
+        var snapshot = await catalog.reload()
 
         // Then
         #expect(snapshot.entries.isEmpty)
         #expect(snapshot.failures.map(\.name) == ["mender"])
         try writeWorkflow(validBody, named: "mender", in: directory)
-        snapshot = await store.reload()
+        snapshot = await catalog.reload()
         try assertAccountedForExactlyOnce(snapshot, in: directory)
         #expect(snapshot.entries.map(\.workflow.name) == ["mender"])
         #expect(snapshot.failures.isEmpty)
