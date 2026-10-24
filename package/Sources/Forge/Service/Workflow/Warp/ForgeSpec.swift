@@ -36,14 +36,16 @@ enum ForgeSpec {
         YAMLFrontend(symbols: try SymbolTable(documents: [try shipped.get()]))
     }
 
-    // The library, the natives and std compiled once a process, and the
-    // native code they bring: they are fixed for its life, so a build of
-    // workflows compiles the workflows and links them beside these.
+    // The library, the natives and std compiled once a process, laid down
+    // as a compile against them reads them, and the native code they bring:
+    // they are fixed for its life, so a build of workflows compiles the
+    // workflows and links them beside these.
     private static let vocabulary = Task {
         let modules = try linkables()
         let supplying = try Supplying(modules)
+        let compiled = try await Builder().compile(modules, against: [], supplying: supplying)
 
-        return (compiled: try await Builder().compile(modules, against: [], supplying: supplying), supplying: supplying)
+        return (compiled: compiled, laid: try Builder().lay(compiled, supplying: supplying), supplying: supplying)
     }
 
     // MARK: - Initializer
@@ -137,9 +139,14 @@ enum ForgeSpec {
     }
 
     // Workflows compiled against the vocabulary and the workflows already
-    // compiled beside it, in the order they are handed.
+    // compiled beside it, in the order they are handed: against the
+    // vocabulary as it was laid down once, where nothing stands beside it.
     static func compiled(_ modules: [Module], beside standing: [Compiled] = []) async throws -> [Compiled] {
         let vocabulary = try await vocabulary.value
+
+        guard !standing.isEmpty else {
+            return try await Builder().compile(modules, against: vocabulary.laid)
+        }
 
         return try await Builder().compile(modules, against: vocabulary.compiled + standing, supplying: vocabulary.supplying)
     }
