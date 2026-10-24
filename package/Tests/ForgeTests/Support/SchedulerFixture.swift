@@ -96,7 +96,7 @@ struct SchedulerFixture {
         workflows: [WorkflowFixture],
         scheduleYAML: [String: String],
         ledgerPath: URL? = nil
-    ) throws -> WorkflowScheduler {
+    ) async throws -> WorkflowScheduler {
         let workflowDirectoryectory = try temporary.make("wf")
 
         for workflow in workflows {
@@ -119,6 +119,10 @@ struct SchedulerFixture {
         let path = try ledgerPath ?? temporary.file("fire-ledger.json")
         let workflowStore = catalog(directory: workflowDirectoryectory)
 
+        // Read before the first tick, as the daemon reads its catalog before
+        // its scheduler starts.
+        await workflowStore.catalog()
+
         return WorkflowScheduler(
             workflowStore: workflowStore,
             store: store,
@@ -135,7 +139,7 @@ struct SchedulerFixture {
         runtimeDirectory: URL,
         marker: URL,
         runtimeOwned: Bool = false
-    ) throws -> (scheduler: WorkflowScheduler, ledger: FireLedger, onceFile: URL) {
+    ) async throws -> (scheduler: WorkflowScheduler, ledger: FireLedger, onceFile: URL) {
         let workflow = markerWorkflow(name: "wfonce", marker: marker, tag: "1", sleep: 0.1)
         let workflowDirectoryectory = try temporary.make("once-wf")
         try write(workflow, to: workflowDirectoryectory)
@@ -148,6 +152,8 @@ struct SchedulerFixture {
             ids: [(onceFileName as NSString).deletingPathExtension: Self.declaredWorkflow(onceYAML)])
         let ledger = FireLedger(path: try temporary.make("once-led").appendingPathComponent("l.json"))
         let workflowStore = catalog(directory: workflowDirectoryectory)
+
+        await workflowStore.catalog()
         let scheduler = WorkflowScheduler(
             workflowStore: workflowStore,
             store: store,
