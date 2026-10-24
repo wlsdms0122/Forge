@@ -22,7 +22,7 @@ struct LiveShell: ShellExecuting {
         stepID: String?
     ) async throws -> ShellRunOutput {
         let envExtra = SubprocessEnv.merge(
-            baseline: SubprocessEnv.baseline(),
+            baseline: SubprocessEnv.baseline(accessToken: WorkflowExecutionState.accessToken),
             specOverride: env
         )
         let invocationID = UUID().uuidString

@@ -60,7 +60,7 @@ struct AgentLoopBackend: Backend {
         case .allowed(let argv):
             do {
                 let toolEnvironment = SubprocessEnv.merge(
-                    baseline: SubprocessEnv.baseline(),
+                    baseline: SubprocessEnv.forgeBinEnv(),
                     specOverride: environment
                 )
                 let result = try await Subprocess.run(

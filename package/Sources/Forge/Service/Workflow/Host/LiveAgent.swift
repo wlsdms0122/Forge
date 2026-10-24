@@ -80,7 +80,7 @@ struct LiveAgent: AgentServing {
         }
 
         let environment = SubprocessEnv.merge(
-            baseline: SubprocessEnv.baseline(),
+            baseline: SubprocessEnv.baseline(accessToken: WorkflowExecutionState.accessToken),
             specOverride: settings.envExtra
         ) ?? [:]
 
