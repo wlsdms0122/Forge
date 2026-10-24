@@ -13,7 +13,9 @@ native procedures the daemon lends a run.
 A workflow file declares exactly one procedure, named after the file: the file
 `echo.yaml` declares `procedures: { echo: … }`, and that name is the workflow's
 identity in the catalog. The procedure is `access: public`, since a run starts
-from it.
+from it. Another workflow calls it by that name, so the name is not a short
+name the library or std gives (`run`, `count`): a file taking one is refused
+at its own file, and the other files are read without it.
 
 The catalog reads every file leaning on the library and on the other files,
 so a workflow names a verb, or another workflow, by its short name and hands

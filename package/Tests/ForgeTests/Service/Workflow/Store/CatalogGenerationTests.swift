@@ -122,6 +122,40 @@ struct CatalogGenerationTests {
         #expect(answer == .int(42))
     }
 
+    @Test("A workflow named by a short name the library or std gives is refused at its own file, and the files writing that name build")
+    func aWorkflowNamedLikeTheVocabularyIsRefusedAlone() async throws {
+        // Given
+        let directory = try temporary.make("wf-named")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try writeWorkflow("""
+        returns: String
+        result: hello
+        """, named: "run", in: directory)
+        try writeWorkflow("""
+        returns: Int
+        result: 0
+        """, named: "count", in: directory)
+        try writeWorkflow("""
+        returns: Forge.Run
+        result: { call: { procedure: run } }
+        """, named: "who", in: directory)
+        try writeWorkflow("""
+        returns: Int
+        result: { call: { procedure: count, arguments: [ [1, 2, 3] ] } }
+        """, named: "sized", in: directory)
+        let sut = SpecCatalog(directory: directory)
+
+        // When
+        let catalog = await sut.catalog()
+
+        // Then
+        try assertAccountedForExactlyOnce(catalog, in: directory)
+        #expect(catalog.entries.map(\.name) == ["sized", "who"])
+        #expect(catalog.failures.compactMap(\.name) == ["count", "run"])
+        #expect(catalog.failures.allSatisfy { failure in failure.reason.hasPrefix("a workflow is called by its name") })
+        #expect(catalog.failures.last?.reason.contains("'run' is declared by Forge.run and run") == true)
+    }
+
     @Test("A scan obstruction rides in the same observation")
     func scanObstructionRidesTheSameObservation() async throws {
         // Given

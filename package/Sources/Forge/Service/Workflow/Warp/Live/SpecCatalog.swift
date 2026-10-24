@@ -322,8 +322,10 @@ actor SpecCatalog {
 
     // The observed files read leaning on each other and on the library,
     // each loaded the way a runtime receives a document and held to Forge's
-    // convention of one procedure named after the file. What does not read,
-    // load or keep the convention is recorded.
+    // convention. What does not read, load or keep the convention is
+    // recorded, and a file the convention refuses leans no other: the files
+    // are read again without it, so no other file is refused for what it
+    // declares.
     private func spent(
         _ observed: [Observed],
         recording ledger: inout LoadFailureLedger
@@ -338,72 +340,112 @@ actor SpecCatalog {
             }
         }
 
-        let frontend: YAMLFrontend
-
-        do {
-            let leaning = try ForgeSpec.frontend(leaningOn: texts.map(\.text))
-
-            for (index, refusal) in leaning.refusals {
-                record(texts[index].observed, refusal: "\(refusal)", in: &ledger)
-            }
-
-            texts = texts.indices.filter { index in leaning.refusals[index] == nil }.map { index in texts[index] }
-            frontend = leaning.frontend
-        } catch {
-            for (file, _) in texts {
-                record(file, refusal: "\(error)", in: &ledger)
-            }
-
-            return ([], nil)
-        }
-
-        var candidates: [(key: String, source: String, value: Entry)] = []
-
-        for (file, text) in texts {
-            let base = file.file.url.deletingPathExtension().lastPathComponent
+        while true {
+            let leaning: (frontend: YAMLFrontend, refusals: [Int: any Error])
 
             do {
-                let document = try frontend.document(from: text)
-                let module = try Loader().load(document, identity: try Identity.of(document))
-                let documentation = try frontend.documentation(from: text)
+                leaning = try ForgeSpec.frontend(leaningOn: texts.map(\.text))
+            } catch {
+                for (file, _) in texts {
+                    record(file, refusal: "\(error)", in: &ledger)
+                }
 
-                // Forge's convention on top of the language: a workflow file
-                // declares one procedure and names it after the file. The
-                // language lets a module declare many — this is where a workflow
-                // says it is one thing you can run by the name you know it by.
-                guard module.procedures.keys.map(\.spelling) == [base] else {
-                    ledger.record(
-                        source: file.file.source,
-                        reason: "a workflow file declares exactly one procedure named"
-                            + " after the file — expected 'procedures: { \(base): ... }',"
-                            + " found \(module.procedures.keys.map(\.spelling).sorted().map { key in "'\(key)'" })",
-                        mtime: file.mtime,
-                        stderrLine: "workflow procedure/filename mismatch (\(file.file.source))",
-                        name: base
-                    )
+                return ([], nil)
+            }
+
+            var candidates: [(key: String, source: String, value: Entry)] = []
+            var refusals: [(file: Observed, refusal: String)] = []
+            var unconventional: Set<Int> = []
+
+            for (index, (file, text)) in texts.enumerated() {
+                if let refusal = leaning.refusals[index] {
+                    refusals.append((file, "\(refusal)"))
 
                     continue
                 }
 
-                candidates.append(
-                    (
-                        base,
-                        file.file.source,
-                        Entry(
-                            name: base,
-                            module: module,
-                            mtime: file.mtime,
+                let base = file.file.url.deletingPathExtension().lastPathComponent
+
+                do {
+                    let document = try leaning.frontend.document(from: text)
+                    let module = try Loader().load(document, identity: try Identity.of(document))
+                    let documentation = try leaning.frontend.documentation(from: text)
+
+                    if let breach = convention(module, named: base, text: text) {
+                        ledger.record(
                             source: file.file.source,
-                            documentation: documentation
+                            reason: breach.reason,
+                            mtime: file.mtime,
+                            stderrLine: "\(breach.line) (\(file.file.source))",
+                            name: base
+                        )
+                        unconventional.insert(index)
+
+                        continue
+                    }
+
+                    candidates.append(
+                        (
+                            base,
+                            file.file.source,
+                            Entry(
+                                name: base,
+                                module: module,
+                                mtime: file.mtime,
+                                source: file.file.source,
+                                documentation: documentation
+                            )
                         )
                     )
-                )
-            } catch {
-                record(file, refusal: "\(error)", in: &ledger)
+                } catch {
+                    refusals.append((file, "\(error)"))
+                }
             }
+
+            guard unconventional.isEmpty else {
+                texts = texts.indices.filter { index in !unconventional.contains(index) }.map { index in texts[index] }
+
+                continue
+            }
+
+            for (file, refusal) in refusals {
+                record(file, refusal: refusal, in: &ledger)
+            }
+
+            return (candidates, leaning.frontend)
+        }
+    }
+
+    // Forge's convention on top of the language: a workflow file declares one
+    // procedure, names it after the file, and takes a name the library and
+    // std do not give, since another workflow calls it by that name. The
+    // language lets a module declare many; this is where a workflow says it
+    // is one thing you can run by the name you know it by. The breach, where
+    // the file makes one.
+    private func convention(
+        _ module: Warp.Module,
+        named base: String,
+        text: String
+    ) -> (reason: String, line: String)? {
+        let declared = module.procedures.keys.map(\.spelling).sorted()
+
+        guard declared == [base], let name = module.procedures.keys.first else {
+            return (
+                "a workflow file declares exactly one procedure named"
+                    + " after the file — expected 'procedures: { \(base): ... }',"
+                    + " found \(declared.map { key in "'\(key)'" })",
+                "workflow procedure/filename mismatch"
+            )
         }
 
-        return (candidates, frontend)
+        if let refusal = ForgeSpec.refusal(calling: name, declaredIn: text) {
+            return (
+                "a workflow is called by its name, and another workflow writing '\(base)' is refused: \(refusal)",
+                "workflow named like the vocabulary"
+            )
+        }
+
+        return nil
     }
 
     // The entries that build, each compiled against the vocabulary, which

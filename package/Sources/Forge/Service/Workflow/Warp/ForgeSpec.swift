@@ -182,5 +182,27 @@ enum ForgeSpec {
         }
     }
 
+    // What another workflow reads where it writes a call of this name,
+    // leaning on the library and on this text: nothing where the name stands
+    // for the text's own procedure alone, and the front end's refusal where
+    // the library or std gives the same short name. The caller's own name
+    // ends in `-caller`, so its short name is never the one it calls.
+    static func refusal(calling name: Name, declaredIn text: String) -> String? {
+        let call = JSONValue.object(["call": .object(["procedure": .string(name.spelling), "arguments": .array([])])])
+        let caller = JSONValue.object([
+            "procedures": .object(["\(name.spelling)-caller": .object(["body": .array([.object(["value": call])])])])
+        ])
+
+        do {
+            _ = try frontend().leaning(on: [text]).document(from: try JSONEncoder().encode(caller))
+
+            return nil
+        } catch let refusal as any WarpError {
+            return refusal.message
+        } catch {
+            return "\(error)"
+        }
+    }
+
     // MARK: - Private
 }
