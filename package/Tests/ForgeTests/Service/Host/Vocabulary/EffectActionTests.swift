@@ -198,10 +198,12 @@ private struct Harness {
     ) throws -> Warp.Executor {
         Warp.Executor(
             environment: ForgeEnvironment(
-                shell: shell ?? MockShell(recorder: recorder),
-                agent: MockAgent(recorder: recorder, reply: agentReply, exitCode: agentExit),
+                capabilities: CapabilitySet(
+                    shell: shell ?? MockShell(recorder: recorder),
+                    agent: MockAgent(recorder: recorder, reply: agentReply, exitCode: agentExit),
+                    resources: MockResources(files: files)
+                ),
                 dispatcher: MockDispatcher(recorder: recorder, result: dispatchResult),
-                resources: MockResources(files: files),
                 pool: WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: Int.max),
                 runID: "wf-test",
                 rootID: "wf-root",

@@ -85,7 +85,7 @@ struct InvokeAction: ForgeAction {
         )
 
         return try await withDeadline(seconds: ValueBridge.number(invocation[.timeout])) {
-            try await environment.agent.withSession(settings) {
+            try await environment.capabilities.agent.withSession(settings) {
                 try await invocation.call(body)
             }
         }

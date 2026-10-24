@@ -471,9 +471,11 @@ struct WorkflowRunnerTests {
             pool: poolLocal,
             workRegistry: WorkRegistry(),
             tokenAuthority: TokenAuthority(),
-            shell: LiveShell(),
-            agent: LiveAgent(executor: Executor(backend: backend ?? EchoBackend())),
-            resources: LiveResources(store: ResourceStore(directory: nil))
+            capabilities: CapabilitySet(
+                shell: LiveShell(),
+                agent: LiveAgent(executor: Executor(backend: backend ?? EchoBackend())),
+                resources: LiveResources(store: ResourceStore(directory: nil))
+            )
         )
 
         return Harness(runner: runner, store: store, eventBus: eventBus, pool: poolLocal)

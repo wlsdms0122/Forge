@@ -24,9 +24,7 @@ actor WorkflowRunner {
     let workRegistry: WorkRegistry
     let tokenAuthority: TokenAuthority
     let jobStore: JobStore?
-    let shell: any ShellExecuting
-    let agent: any AgentServing
-    let resources: any ResourceReading
+    let capabilities: CapabilitySet
 
     // MARK: - Initializer
     init(
@@ -37,9 +35,7 @@ actor WorkflowRunner {
         workRegistry: WorkRegistry,
         tokenAuthority: TokenAuthority,
         jobStore: JobStore? = nil,
-        shell: any ShellExecuting,
-        agent: any AgentServing,
-        resources: any ResourceReading
+        capabilities: CapabilitySet
     ) {
         self.catalog = catalog
         self.eventBus = eventBus
@@ -48,9 +44,7 @@ actor WorkflowRunner {
         self.workRegistry = workRegistry
         self.tokenAuthority = tokenAuthority
         self.jobStore = jobStore
-        self.shell = shell
-        self.agent = agent
-        self.resources = resources
+        self.capabilities = capabilities
     }
 
     // MARK: - Public
@@ -218,10 +212,8 @@ actor WorkflowRunner {
             let entry = try Name(name)
             let image = try await catalog.image(running: workflow.module, entry: entry)
             let environment = ForgeEnvironment(
-                shell: shell,
-                agent: agent,
+                capabilities: capabilities,
                 dispatcher: self,
-                resources: resources,
                 pool: pool,
                 runID: runID,
                 rootID: LogContext.rootID ?? runID,

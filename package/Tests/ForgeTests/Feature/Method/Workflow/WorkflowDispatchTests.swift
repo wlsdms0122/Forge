@@ -244,9 +244,11 @@ struct WorkflowDispatchTests {
             pool: WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: Int.max),
             workRegistry: registry,
             tokenAuthority: authority,
-            shell: LiveShell(),
-            agent: LiveAgent(executor: Executor(backend: StubBackend())),
-            resources: LiveResources(store: ResourceStore(directory: nil)))
+            capabilities: CapabilitySet(
+                shell: LiveShell(),
+                agent: LiveAgent(executor: Executor(backend: StubBackend())),
+                resources: LiveResources(store: ResourceStore(directory: nil))
+            ))
         let method = WorkflowDispatchMethod(runner: runner, store: store,
             workRegistry: registry, tokenAuthority: authority)
         let stale = authority.mint(TokenClaims(principal: "cli:gone", workflowID: "wf-gone"))
@@ -289,9 +291,11 @@ struct WorkflowDispatchTests {
             pool: WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: Int.max),
             workRegistry: registry,
             tokenAuthority: authority,
-            shell: LiveShell(),
-            agent: LiveAgent(executor: Executor(backend: StubBackend("noop"))),
-            resources: LiveResources(store: ResourceStore(directory: nil)))
+            capabilities: CapabilitySet(
+                shell: LiveShell(),
+                agent: LiveAgent(executor: Executor(backend: StubBackend("noop"))),
+                resources: LiveResources(store: ResourceStore(directory: nil))
+            ))
         let method = WorkflowDispatchMethod(runner: runner, store: store,
             workRegistry: registry, tokenAuthority: authority)
 

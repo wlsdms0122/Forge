@@ -61,7 +61,7 @@ struct ShellAction: ForgeAction {
         let step = invocation.trace.step(sentFrom: environment.bridge.verbs)
         let result = try await environment.withStepSlot {
             try await withDeadline(seconds: ValueBridge.number(invocation[.timeout])) {
-                try await environment.shell.run(
+                try await environment.capabilities.shell.run(
                     executable: arguments[0],
                     args: Array(arguments.dropFirst()),
                     cwd: invocation.string(.cwd),

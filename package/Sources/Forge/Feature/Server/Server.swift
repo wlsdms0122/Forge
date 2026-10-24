@@ -118,9 +118,11 @@ package actor Server {
             workRegistry: workRegistryLocal,
             tokenAuthority: tokenAuthorityLocal,
             jobStore: jobStoreLocal,
-            shell: LiveShell(),
-            agent: LiveAgent(executor: executor),
-            resources: LiveResources(store: resourceStore)
+            capabilities: CapabilitySet(
+                shell: LiveShell(),
+                agent: LiveAgent(executor: executor),
+                resources: LiveResources(store: resourceStore)
+            )
         )
         let scheduler = WorkflowScheduler(
             workflowStore: workflowStoreLocal,

@@ -62,9 +62,11 @@ struct LogContextRunTests {
             pool: WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: Int.max),
             workRegistry: WorkRegistry(),
             tokenAuthority: TokenAuthority(),
-            shell: LiveShell(),
-            agent: LiveAgent(executor: Executor(backend: StubBackend("noop"))),
-            resources: LiveResources(store: ResourceStore(directory: nil))
+            capabilities: CapabilitySet(
+                shell: LiveShell(),
+                agent: LiveAgent(executor: Executor(backend: StubBackend("noop"))),
+                resources: LiveResources(store: ResourceStore(directory: nil))
+            )
         )
         let (_, stream) = await bus.subscribe()
         let workflow = try await store.workflow(named: "echo")

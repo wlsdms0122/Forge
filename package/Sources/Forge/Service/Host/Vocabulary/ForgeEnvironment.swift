@@ -11,10 +11,8 @@ import WarpStandard
 
 struct ForgeEnvironment: ConcurrentEnvironment {
     // MARK: - Property
-    let shell: any ShellExecuting
-    let agent: any AgentServing
+    let capabilities: CapabilitySet
     let dispatcher: any RunDispatching
-    let resources: any ResourceReading
     let pool: WorkflowPool
     let runID: String
     let rootID: String
@@ -25,20 +23,16 @@ struct ForgeEnvironment: ConcurrentEnvironment {
 
     // MARK: - Initializer
     init(
-        shell: any ShellExecuting,
-        agent: any AgentServing,
+        capabilities: CapabilitySet,
         dispatcher: any RunDispatching,
-        resources: any ResourceReading,
         pool: WorkflowPool,
         runID: String,
         rootID: String,
         origin: DispatchOrigin,
         bridge: EventBridge
     ) {
-        self.shell = shell
-        self.agent = agent
+        self.capabilities = capabilities
         self.dispatcher = dispatcher
-        self.resources = resources
         self.pool = pool
         self.runID = runID
         self.rootID = rootID

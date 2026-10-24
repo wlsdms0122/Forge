@@ -209,9 +209,11 @@ struct DispatchStreamTests {
             pool: WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: Int.max),
             workRegistry: registry,
             tokenAuthority: authority,
-            shell: LiveShell(),
-            agent: LiveAgent(executor: Executor(backend: StubBackend("noop"))),
-            resources: LiveResources(store: ResourceStore(directory: nil)))
+            capabilities: CapabilitySet(
+                shell: LiveShell(),
+                agent: LiveAgent(executor: Executor(backend: StubBackend("noop"))),
+                resources: LiveResources(store: ResourceStore(directory: nil))
+            ))
         let dispatchMethod = WorkflowDispatchMethod(runner: runner, store: store,
             workRegistry: registry,
             tokenAuthority: authority)
@@ -280,9 +282,11 @@ struct DispatchStreamTests {
             pool: pool,
             workRegistry: registry,
             tokenAuthority: authority,
-            shell: LiveShell(),
-            agent: LiveAgent(executor: Executor(backend: StubBackend("stub"))),
-            resources: LiveResources(store: ResourceStore(directory: nil)))
+            capabilities: CapabilitySet(
+                shell: LiveShell(),
+                agent: LiveAgent(executor: Executor(backend: StubBackend("stub"))),
+                resources: LiveResources(store: ResourceStore(directory: nil))
+            ))
         let dispatchMethod = WorkflowDispatchMethod(runner: runner, store: store,
             workRegistry: registry,
             tokenAuthority: authority)
@@ -323,9 +327,11 @@ struct DispatchStreamTests {
             pool: WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: Int.max),
             workRegistry: registry,
             tokenAuthority: authority,
-            shell: LiveShell(),
-            agent: LiveAgent(executor: Executor(backend: StubBackend("noop"))),
-            resources: LiveResources(store: ResourceStore(directory: nil)))
+            capabilities: CapabilitySet(
+                shell: LiveShell(),
+                agent: LiveAgent(executor: Executor(backend: StubBackend("noop"))),
+                resources: LiveResources(store: ResourceStore(directory: nil))
+            ))
         let dispatchMethod = WorkflowDispatchMethod(runner: runner, store: store,
             workRegistry: registry,
             tokenAuthority: authority)

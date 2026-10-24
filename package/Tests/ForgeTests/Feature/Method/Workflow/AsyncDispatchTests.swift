@@ -111,9 +111,11 @@ struct AsyncDispatchTests {
             pool: WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: Int.max),
             workRegistry: WorkRegistry(),
             tokenAuthority: authority,
-            shell: LiveShell(),
-            agent: LiveAgent(executor: Executor(backend: StubBackend("noop"))),
-            resources: LiveResources(store: ResourceStore(directory: nil)))
+            capabilities: CapabilitySet(
+                shell: LiveShell(),
+                agent: LiveAgent(executor: Executor(backend: StubBackend("noop"))),
+                resources: LiveResources(store: ResourceStore(directory: nil))
+            ))
         let method = WorkflowDispatchMethod(runner: runner, store: store,
             workRegistry: WorkRegistry(), tokenAuthority: authority)
 

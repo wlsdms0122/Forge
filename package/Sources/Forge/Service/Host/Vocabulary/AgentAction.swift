@@ -35,7 +35,7 @@ struct AgentAction: ForgeAction {
         let prompt = ValueBridge.text(invocation[.prompt])
 
         return try await environment.withStepSlot {
-            .string(try await environment.agent.send(prompt: prompt))
+            .string(try await environment.capabilities.agent.send(prompt: prompt))
         }
     }
 
