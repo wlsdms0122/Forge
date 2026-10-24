@@ -1,5 +1,5 @@
 //
-//  StoreScanCompletenessTests.swift
+//  WorkflowCatalogScanTests.swift
 //  ForgeTests
 //
 //  Created by JSilver on 8/8/26.
@@ -9,8 +9,8 @@ import Foundation
 import Testing
 @testable import Forge
 
-@Suite("StoreScanCompleteness Tests")
-struct StoreScanCompletenessTests {
+@Suite("WorkflowCatalogScan Tests")
+struct WorkflowCatalogScanTests {
     // MARK: - Property
     private let temporary = TemporaryDirectory("scan")
 
