@@ -16,9 +16,8 @@ import Foundation
 /// Two traps:
 /// - **Waiting for EOF hangs.** `readDataToEndOfFile()` only returns once every write end is
 ///   closed, but `STDERR_FILENO` is global, so if another test running in parallel (especially
-///   a child process that inherited fd 2) is holding it, EOF never comes. Observed in
-///   practice as the runner freezing entirely (`--filter JobStoreTests` waited forever;
-///   serial execution took 0.06s). So read non-blocking and treat `EAGAIN` as the end
+///   a child process that inherited fd 2) is holding it, EOF never comes and the
+///   runner freezes. So read non-blocking and treat `EAGAIN` as the end
 ///   signal — there is no write end to wait for.
 /// - **While the window is open, other tests' stderr flows in here too.** There is no way to
 ///   isolate it, so callers declare `.exclusive(.standardError)` to keep captures from

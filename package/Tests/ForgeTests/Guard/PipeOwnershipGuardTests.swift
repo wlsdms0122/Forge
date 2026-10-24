@@ -46,7 +46,7 @@ struct PipeOwnershipGuardTests {
         // Given
         let source = try Self.subprocessSource()
 
-        // The tools from the era when two owners touched the read fd: readabilityHandler
+        // The tools by which a second owner would touch the read fd: readabilityHandler
         // runs on its own queue, and F_SETFL swaps that fd's flags — the moment they
         // overlap, availableData throws EAGAIN as an ObjC exception and the process aborts.
         let forbidden = [
