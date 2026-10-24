@@ -13,8 +13,8 @@ struct ServiceRunMethod: Sendable {
 
     // MARK: - Initializer
     // MARK: - Public
-    func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONObject {
-        guard let name = request.rawParams["name"] as? String, !name.isEmpty else {
+    func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONValue {
+        guard let name = request.params["name"]?.stringValue, !name.isEmpty else {
             throw ProtocolError("service.run: 'name' (string) required")
         }
 
@@ -22,7 +22,7 @@ struct ServiceRunMethod: Sendable {
 
         let record = try await supervisor.run(name)
 
-        return JSONObject(record.dict)
+        return .object(record.fields)
     }
 
     // MARK: - Private

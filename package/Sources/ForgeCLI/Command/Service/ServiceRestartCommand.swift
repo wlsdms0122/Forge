@@ -7,6 +7,7 @@
 
 import ArgumentParser
 import Foundation
+import Forge
 
 struct ServiceRestartCommand: ParsableCommand {
     // MARK: - Property
@@ -32,7 +33,7 @@ struct ServiceRestartCommand: ParsableCommand {
     func run() throws {
         let client = Client(global, context: "service restart")
         
-        printResult(client.rawCall("service.restart", ["name": name]), json: json)
+        printResult(client.call("service.restart", ["name": .string(name)]), json: json)
     }
     
     // MARK: - Private

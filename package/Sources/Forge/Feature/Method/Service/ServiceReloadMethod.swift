@@ -16,7 +16,7 @@ struct ServiceReloadMethod: Sendable {
 
     // MARK: - Initializer
     // MARK: - Public
-    func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONObject {
+    func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONValue {
         try ServiceAuthz.requireGlobal(claims: claims, method: "service.reload")
 
         let (config, report) = try ConfigLoader.loadResolved(
@@ -27,11 +27,11 @@ struct ServiceReloadMethod: Sendable {
 
         await configSnapshot.updateServices(from: report)
 
-        var result: [String: Any] = ["reloaded": true]
+        var result: [String: JSONValue] = ["reloaded": true]
 
-        for (key, value) in diff { result[key] = value }
+        for (key, names) in diff { result[key] = .array(names.map(JSONValue.string)) }
 
-        return JSONObject(result)
+        return .object(result)
     }
 
     // MARK: - Private

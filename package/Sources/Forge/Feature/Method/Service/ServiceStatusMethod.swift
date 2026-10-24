@@ -14,17 +14,17 @@ struct ServiceStatusMethod: Sendable {
 
     // MARK: - Initializer
     // MARK: - Public
-    func handle(_ request: RPCRequest) async throws -> JSONObject {
+    func handle(_ request: RPCRequest) async throws -> JSONValue {
         let records = await supervisor.statuses()
         let registered = Set(await handlerBus.listing().map(\.0))
-        let services: [[String: Any]] = records.map { record in
-            var dictionary = record.dict
-            dictionary["registered"] = registered.contains(record.name)
+        let services: [JSONValue] = records.map { record in
+            var object = record.fields
+            object["registered"] = .bool(registered.contains(record.name))
 
-            return dictionary
+            return .object(object)
         }
 
-        return JSONObject(["services": services])
+        return ["services": .array(services)]
     }
 
     // MARK: - Private

@@ -13,8 +13,8 @@ struct ServiceShutdownMethod: Sendable {
 
     // MARK: - Initializer
     // MARK: - Public
-    func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONObject {
-        guard let name = request.rawParams["name"] as? String, !name.isEmpty else {
+    func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONValue {
+        guard let name = request.params["name"]?.stringValue, !name.isEmpty else {
             throw ProtocolError("service.shutdown: 'name' (string) required")
         }
 
@@ -22,7 +22,7 @@ struct ServiceShutdownMethod: Sendable {
 
         let record = try await supervisor.shutdown(name)
 
-        return JSONObject(record.dict)
+        return .object(record.fields)
     }
 
     // MARK: - Private

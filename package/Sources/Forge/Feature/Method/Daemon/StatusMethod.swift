@@ -54,7 +54,7 @@ struct DaemonStatusMethod: Sendable {
             ],
             "jobs": jobCount,
             "services": services.map { record -> [String: Any] in
-                var dictionary = record.dict
+                var dictionary = record.fields.mapValues(\.jsonObject)
                 dictionary["registered"] = registered.contains(record.name)
                 
                 return dictionary
