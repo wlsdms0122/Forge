@@ -7,9 +7,12 @@
 
 import Foundation
 
+// The failures a key held by several sources makes, one per source; a
+// collision is announced where the failures standing before did not hold it.
 func collisionFailures(
     kind: String,
-    _ collided: [(key: String, sources: [String])]
+    _ collided: [(key: String, sources: [String])],
+    standing: [LoadFailure]
 ) -> [LoadFailure] {
     var failures: [LoadFailure] = []
     
@@ -18,6 +21,8 @@ func collisionFailures(
         failures += collision.sources.map { source in
             LoadFailure(path: source, reason: reason, mtime: .distantPast)
         }
+        
+        if standing.contains(where: { failure in failure.reason == reason }) { continue }
         
         FileHandle.standardError.write(Data("forge: \(reason)\n".utf8))
     }

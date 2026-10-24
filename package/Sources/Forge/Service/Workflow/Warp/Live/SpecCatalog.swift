@@ -323,7 +323,7 @@ actor SpecCatalog {
             }
         }
 
-        let freshCollisions = collisionFailures(kind: "workflow name", collided)
+        let freshCollisions = collisionFailures(kind: "workflow name", collided, standing: collisions)
         let standing = await built(live, recording: &ledger)
 
         cache = standing.entries

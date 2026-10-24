@@ -127,7 +127,7 @@ actor ScheduleStore {
         ) || incomplete
         
         let (live, collided) = partitionUniqueKeys(candidates)
-        collisions = collisionFailures(kind: "schedule id", collided)
+        collisions = collisionFailures(kind: "schedule id", collided, standing: collisions)
         collidedIDs = Set(collided.map(\.key))
         
         for directory in [configDir, runtimeDirectory].compactMap({ directory in directory })

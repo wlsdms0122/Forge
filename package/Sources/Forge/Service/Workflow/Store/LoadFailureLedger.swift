@@ -27,6 +27,9 @@ struct LoadFailureLedger {
         return true
     }
     
+    // A failure is announced where it is new: the observation before held
+    // none for the file, or one with another reason or of another version
+    // of it.
     mutating func record(
         source: String,
         reason: String,
@@ -35,6 +38,8 @@ struct LoadFailureLedger {
         name: String? = nil
     ) {
         fresh[source] = LoadFailure(path: source, reason: reason, mtime: mtime, name: name)
+        
+        if let standing = prior[source], standing.reason == reason, standing.mtime == mtime { return }
         
         FileHandle.standardError.write(Data("forge: \(stderrLine)\n".utf8))
     }
