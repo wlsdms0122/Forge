@@ -73,6 +73,8 @@ struct AsyncDispatchTests {
                 ["let": "slow", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/sleep", "0.3"]]]]],
             ],
         ]
+        // The library is read once a process; what is timed is the dispatch.
+        _ = try ForgeSpec.frontend()
         let startedAt = ContinuousClock.now
         let result = try await method.handle(RPCRequest(
                 id: "r-async",
