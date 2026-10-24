@@ -25,6 +25,7 @@ actor JobStore {
     
     private var files: SpecDirectory<Job>?
     private var cache: [String: Entry] = [:]
+    private var failureCache: [String: LoadFailure] = [:]
     private var failedIDs: Set<String> = []
     private var scanIncomplete = false
     
@@ -37,10 +38,10 @@ actor JobStore {
     }
     
     // MARK: - Public
-    // A job file that fails to load is announced at every reload.
     func reload() async {
         guard var files else {
             cache = [:]
+            failureCache = [:]
             failedIDs = []
             scanIncomplete = false
             
@@ -48,7 +49,7 @@ actor JobStore {
         }
         
         let decoder = JSONDecoder()
-        var ledger = LoadFailureLedger(prior: [:])
+        var ledger = LoadFailureLedger(prior: failureCache)
         let reading = files.read(recording: &ledger) { _, data in try decoder.decode(Job.self, from: data) }
         let isComplete = reading.obstructions.isEmpty
         let observedPaths = Set(reading.observed.map(\.file.url))
@@ -75,6 +76,7 @@ actor JobStore {
         
         FileHandle.standardError.write(Data(ledger.announcement.utf8))
         cache = fresh
+        failureCache = ledger.fresh
         failedIDs = Set(ledger.fresh.keys.map { source in
             URL(fileURLWithPath: source).deletingPathExtension().lastPathComponent
         })

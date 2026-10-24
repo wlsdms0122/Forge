@@ -351,6 +351,23 @@ struct JobStoreTests {
         #expect(error.contains("persist failed") && error.contains("back-link"), "addChild persist IO failure must surface too")
     }
     
+    @Test("A job file that fails to load is announced once")
+    func failedFileIsAnnouncedOnce() async throws {
+        // Given
+        let directory = try temporary.make("announce")
+        try "}{ not json".write(to: directory.appendingPathComponent("jb.json"),
+            atomically: true, encoding: .utf8)
+        let sut = JobStore(directory: directory)
+
+        // When
+        let first = try await StandardErrorCapture.capture { await sut.reload() }
+        let second = try await StandardErrorCapture.capture { await sut.reload() }
+
+        // Then
+        #expect(first.contains("job load failed (jb.json)"), Comment(rawValue: first))
+        #expect(!second.contains("jb.json"), Comment(rawValue: second))
+    }
+    
     @Test("Updating an unreadable file throws unreadable, not notFound")
     func updateOnUnreadableFileThrowsUnreadable() async throws {
         let directory = try temporary.make("unread")

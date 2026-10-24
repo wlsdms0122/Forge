@@ -876,6 +876,9 @@ origin-map entry. **result**
 
 Sorted by `updated_at`, newest first.
 
+A job file that does not load is left out of the list and named once on the
+daemon's stderr, at the reload that first meets it.
+
 ### `job.update`
 
 Field-level edits — each present param applies independently (append-safe;
