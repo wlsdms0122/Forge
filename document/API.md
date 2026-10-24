@@ -236,8 +236,7 @@ forge workflow list [--json]
 #### `forge workflow describe`
 
 Show one workflow's calling contract: description, source path, inputs
-(type, default and hint; an optional input is marked with a null default)
-and the return type. Counterpart to `service describe`. RPC:
+(type, the default the file writes and hint) and the return type. Counterpart to `service describe`. RPC:
 `workflow.describe`.
 
 ```
@@ -684,10 +683,11 @@ empty); admin surfaces broken workflows without grep'ing stderr.
 
 `inputs` is the workflow procedure's parameters. `type` is the declared type
 as the language spells it (`String`, `Array<String>`, `String?`, …); an input
-of an Optional type is one a caller may leave out, and `default: null` marks
-it, a `default:` the file writes included (the daemon hands null and the
-workflow settles it). `hint` is what the file writes under the input's
-`hint:`. `returns` is the declared return type. Empty `inputs` is returned as
+of an Optional type is one a caller may leave out, and the daemon hands it
+null. `default` is the value the file writes under the input's `default:`,
+as the file writes it in the notation, which is what the workflow settles an
+omitted or null argument to; an input whose file writes none has no
+`default`. `hint` is what the file writes under the input's `hint:`. `returns` is the declared return type. Empty `inputs` is returned as
 `{}` (not omitted) so the caller can iterate without null-checks. Unknown
 workflow → ResolutionError `workflow not found: <name>`.
 

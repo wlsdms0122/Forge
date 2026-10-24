@@ -50,7 +50,11 @@ struct WorkflowDescribeMethod: Sendable {
         ]
 
         result["description"] = entry.documentation.descriptions[declared]
-        result["inputs"] = contract.inputs(of: procedure.signature, hints: entry.documentation.hints[declared] ?? [:])
+        result["inputs"] = contract.inputs(
+            of: procedure.signature,
+            hints: entry.documentation.hints[declared] ?? [:],
+            defaults: entry.documentation.defaults[declared] ?? [:]
+        )
         result["returns"] = contract.returns(of: procedure.signature)
 
         return JSONObject(result)

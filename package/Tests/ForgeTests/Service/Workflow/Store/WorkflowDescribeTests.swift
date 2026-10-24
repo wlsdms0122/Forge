@@ -44,7 +44,8 @@ struct WorkflowDescribeTests {
         #expect(message["type"] as? String == "String")
         #expect(!message.keys.contains("default"))
         let tag = inputs["tag"] as? [String: Any] ?? [:]
-        #expect(tag.keys.contains("default"), "an optional parameter is one a caller may leave out")
+        #expect(tag["type"] as? String == "String?")
+        #expect(!tag.keys.contains("default"), "an input whose file writes no default reports none")
         #expect(result.dict["returns"] as? String == "Dictionary<String, Any>")
     }
     
@@ -72,6 +73,7 @@ struct WorkflowDescribeTests {
         let inputs = described.dict["inputs"] as? [String: Any] ?? [:]
         #expect((inputs["who"] as? [String: Any])?["hint"] as? String == "whom to greet")
         #expect((inputs["loud"] as? [String: Any])?["hint"] == nil)
+        #expect((inputs["loud"] as? [String: Any])?["default"] as? Bool == false, "the default the file writes")
         let workflows = listed.dict["workflows"] as? [[String: Any]] ?? []
         #expect(workflows.first?["description"] as? String == "Says hello.")
     }
