@@ -132,7 +132,7 @@ actor WorkflowPool {
     private var recentDispatches: [ContinuousClock.Instant] = []
     private var waiters: [Waiter] = []
     private var stepWaiterSeq: UInt64 = 0
-    private var workflows: [String: RunInfo] = [:]
+    private var runs: [String: RunInfo] = [:]
     private var cancelled: Set<String> = []
     private var cancelWaiters: [String: [CancelWaiter]] = [:]
     private var cancelWaiterSeq: UInt64 = 0
@@ -171,7 +171,7 @@ actor WorkflowPool {
         let deadline = ContinuousClock.now + .seconds(graceSeconds)
         
         while ContinuousClock.now < deadline {
-            if workflows.isEmpty { return [] }
+            if runs.isEmpty { return [] }
             
             try? await Task.sleep(for: .milliseconds(100))
         }
@@ -180,7 +180,7 @@ actor WorkflowPool {
     }
     
     func workflowName(of runID: String) -> String? {
-        workflows[runID]?.workflowName
+        runs[runID]?.workflowName
     }
     
     func register(
@@ -194,9 +194,9 @@ actor WorkflowPool {
             throw DaemonShuttingDown("register: daemon is draining for shutdown — no new runs")
         }
         
-        if workflows[runID] != nil { return }
+        if runs[runID] != nil { return }
         
-        guard workflows.count < maximumActiveRuns else {
+        guard runs.count < maximumActiveRuns else {
             refusedRuns += 1
             recentRefusals.append(ContinuousClock.now)
             
@@ -214,7 +214,7 @@ actor WorkflowPool {
             )
         }
         
-        workflows[runID] = RunInfo(
+        runs[runID] = RunInfo(
             runID: runID,
             workflowName: workflowName,
             rootID: rootID,
@@ -235,7 +235,7 @@ actor WorkflowPool {
     }
     
     func unregister(runID: String) {
-        workflows.removeValue(forKey: runID)
+        runs.removeValue(forKey: runID)
         cancelled.remove(runID)
         
         var remaining: [Waiter] = []
@@ -298,10 +298,10 @@ actor WorkflowPool {
     }
     
     func releaseStepSlot(runID: String) {
-        if var info = workflows[runID] {
+        if var info = runs[runID] {
             if info.heldSlots > 0 { info.heldSlots -= 1 }
             
-            workflows[runID] = info
+            runs[runID] = info
         }
         
         while let next = waiters.first {
@@ -327,11 +327,11 @@ actor WorkflowPool {
     
     @discardableResult
     func cancel(runID: String) -> Bool {
-        guard var info = workflows[runID] else { return false }
+        guard var info = runs[runID] else { return false }
         
         cancelled.insert(runID)
         info.state = .cancelling
-        workflows[runID] = info
+        runs[runID] = info
         
         var remaining: [Waiter] = []
         
@@ -374,14 +374,14 @@ actor WorkflowPool {
     }
     
     func awaitRunning(runID: String) async {
-        if workflows[runID]?.state == .running { return }
+        if runs[runID]?.state == .running { return }
         
         let id = runningWaiterSeq
         runningWaiterSeq &+= 1
         
         await withTaskCancellationHandler {
             await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-                if workflows[runID]?.state == .running {
+                if runs[runID]?.state == .running {
                     continuation.resume()
                 } else {
                     runningWaiters[runID, default: []].append(
@@ -409,7 +409,7 @@ actor WorkflowPool {
                 waitedMs: elapsedMs(waiter.enqueuedInstant)
             )
         }
-        let ages = workflows.values
+        let ages = runs.values
             .sorted { left, right in left.enqueuedInstant < right.enqueuedInstant }
             .prefix(5)
             .map { info in
@@ -423,7 +423,7 @@ actor WorkflowPool {
         
         var nameCounts: [String: [String: Int]] = [:]
         
-        for info in workflows.values {
+        for info in runs.values {
             nameCounts[info.rootID, default: [:]][info.workflowName, default: 0] += 1
         }
         
@@ -448,7 +448,7 @@ actor WorkflowPool {
             slotsMax: maximumConcurrentSteps,
             slotsFree: availableSlots,
             waiters: waiterWaits,
-            activeRuns: workflows.count,
+            activeRuns: runs.count,
             runCap: maximumActiveRuns,
             refusedRuns: refusedRuns,
             oldestRuns: Array(ages),
@@ -459,14 +459,14 @@ actor WorkflowPool {
     }
     
     func snapshot() -> [RunInfo] {
-        workflows.values.sorted { left, right in left.enqueuedAt < right.enqueuedAt }
+        runs.values.sorted { left, right in left.enqueuedAt < right.enqueuedAt }
     }
     
     // MARK: - Private
     private func topTrees(limit: Int) -> [(rootID: String, count: Int)] {
         var counts: [String: Int] = [:]
         
-        for info in workflows.values { counts[info.rootID, default: 0] += 1 }
+        for info in runs.values { counts[info.rootID, default: 0] += 1 }
         
         return counts
             .sorted { left, right in left.value > right.value }
@@ -475,20 +475,20 @@ actor WorkflowPool {
     }
     
     private func markRunning(_ runID: String) {
-        guard var info = workflows[runID] else { return }
+        guard var info = runs[runID] else { return }
         
         info.heldSlots += 1
-        workflows[runID] = info
+        runs[runID] = info
         
         transitionToRunning(runID)
     }
     
     private func transitionToRunning(_ runID: String) {
-        guard var info = workflows[runID], info.state == .queued else { return }
+        guard var info = runs[runID], info.state == .queued else { return }
         
         info.state = .running
         info.startedAt = Date()
-        workflows[runID] = info
+        runs[runID] = info
         
         for waiter in runningWaiters.removeValue(forKey: runID) ?? [] {
             waiter.continuation.resume()
