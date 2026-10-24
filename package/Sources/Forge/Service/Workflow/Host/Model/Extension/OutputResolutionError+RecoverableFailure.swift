@@ -9,7 +9,7 @@ import Foundation
 import Warp
 
 // A text that does not hold what an extraction asks of it is a failure a
-// workflow's rescue may take.
+// workflow's catch may take.
 extension OutputResolutionError: Warp.RecoverableFailure {
     static let type = "extract_refused"
 

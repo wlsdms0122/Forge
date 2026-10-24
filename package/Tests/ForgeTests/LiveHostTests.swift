@@ -373,8 +373,8 @@ struct WorkflowRunnerTests {
         #expect(result.outputs["got"] == .string("child got hello"))
     }
 
-    @Test("when policy blocks it, dispatch fails and is not swallowed even by rescue")
-    func policyDenialPunchesThroughRescue() async throws {
+    @Test("when policy blocks it, dispatch fails and is not swallowed even by catch")
+    func policyDenialPunchesThroughCatch() async throws {
         // Given
         let harness = try makeRunner(
             catalog: [
@@ -385,10 +385,10 @@ struct WorkflowRunnerTests {
                     value: ""
                   - let: call
                     value:
-                      attempt:
+                      try:
                         body:
                           - value: { call: { procedure: dispatch, arguments: { name: child } } }
-                        rescue:
+                        catch:
                           - set: absorbed
                             value: swallowed
                 """,
@@ -409,8 +409,8 @@ struct WorkflowRunnerTests {
         #expect(result.error?.kind == .fault)
     }
 
-    @Test("a child's work failure can be swallowed by the parent's rescue")
-    func childWorkFailureAbsorbedByParentRescue() async throws {
+    @Test("a child's work failure can be swallowed by the parent's catch")
+    func childWorkFailureAbsorbedByParentCatch() async throws {
         // Given
         let harness = try makeRunner(
             catalog: [
@@ -422,10 +422,10 @@ struct WorkflowRunnerTests {
                     value: ""
                   - let: call
                     value:
-                      attempt:
+                      try:
                         body:
                           - value: { call: { procedure: dispatch, arguments: { name: boom } } }
-                        rescue:
+                        catch:
                           - set: got
                             value: rescued
                 result: { dictionary: [ [got, { ref: got }] ] }

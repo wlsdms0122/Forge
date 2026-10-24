@@ -8,7 +8,7 @@
 import Foundation
 import Warp
 
-// A dispatched run that failed at its work is a failure the parent's rescue
+// A dispatched run that failed at its work is a failure the parent's catch
 // may take.
 extension ChildRunFailed: Warp.RecoverableFailure {
     static let type = "child_run_failed"

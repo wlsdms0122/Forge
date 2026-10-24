@@ -254,9 +254,9 @@ struct EffectActionTests {
         #expect(await harness.recorder.shellRuns == [["echo", "hi spec", "<spec"]])
     }
 
-    @Test("a nonzero exit code is absorbed by an attempt's rescue")
-    func nonzeroExitRescuesWhenStepDeclaresCatch() async throws {
-        // Given — a nonzero exit is the world's failure, so rescue absorbs it
+    @Test("a nonzero exit code is absorbed by a try's catch")
+    func nonzeroExitCatchesWhenStepDeclaresCatch() async throws {
+        // Given — a nonzero exit is the world's failure, so catch absorbs it
         let harness = Harness()
         let spec = try harness.frontend.workflow("""
         returns: "Dictionary<String, Any>"
@@ -266,10 +266,10 @@ struct EffectActionTests {
             value: ""
           - let: attempted
             value:
-              attempt:
+              try:
                 body:
                   - value: { call: { procedure: shell, arguments: { command: [ "false" ] } } }
-                rescue:
+                catch:
                   - set: broken
                     value: recovered
         result: { dictionary: [ [result, { ref: broken }] ] }
@@ -316,8 +316,8 @@ struct EffectActionTests {
         #expect(outputs["raw"] == .string("code=42"))
     }
 
-    @Test("a text that does not hold what an extraction asks fails with extract_refused, which a rescue takes")
-    func extractRefusalIsRescued() async throws {
+    @Test("a text that does not hold what an extraction asks fails with extract_refused, which a catch takes")
+    func extractRefusalIsCaught() async throws {
         // Given
         let harness = Harness()
         let spec = try harness.frontend.workflow("""
@@ -328,10 +328,10 @@ struct EffectActionTests {
             value: ""
           - let: reading
             value:
-              attempt:
+              try:
                 body:
                   - value: { call: { procedure: extract, arguments: { text: "no code here", outputs: { dictionary: [ [code, { dictionary: [ [regex, "code=(\\\\d+)"] ] }] ] } } } }
-                rescue:
+                catch:
                   - set: refused
                     value: { ref: reading.type }
         result: { dictionary: [ [refused, { ref: refused }] ] }
@@ -345,8 +345,8 @@ struct EffectActionTests {
         #expect(outputs["refused"] == .string("extract_refused"))
     }
 
-    @Test("an outputs map that does not parse is the workflow's defect, which no rescue takes")
-    func extractDefectIsNotRescued() async throws {
+    @Test("an outputs map that does not parse is the workflow's defect, which no catch takes")
+    func extractDefectIsNotCaught() async throws {
         // Given
         let harness = Harness()
         let spec = try harness.frontend.workflow("""
@@ -357,10 +357,10 @@ struct EffectActionTests {
             value: ""
           - let: reading
             value:
-              attempt:
+              try:
                 body:
                   - value: { call: { procedure: extract, arguments: { text: "code=7", outputs: { dictionary: [ [code, { dictionary: [ [regex, "code=("] ] }] ] } } } }
-                rescue:
+                catch:
                   - set: refused
                     value: { ref: reading.type }
         result: { dictionary: [ [refused, { ref: refused }] ] }
@@ -376,8 +376,8 @@ struct EffectActionTests {
         #expect("\(String(describing: error))".contains("invalid regex"))
     }
 
-    @Test("when shell exceeds its timeout, rescue recovers it")
-    func timeoutRescuesWhenShellRunsLate() async throws {
+    @Test("when shell exceeds its timeout, catch recovers it")
+    func timeoutCatchesWhenShellRunsLate() async throws {
         // Given
         let harness = Harness()
         let spec = try harness.frontend.workflow("""
@@ -388,10 +388,10 @@ struct EffectActionTests {
             value: ""
           - let: attempted
             value:
-              attempt:
+              try:
                 body:
                   - value: { call: { procedure: shell, arguments: { command: [ sleepy ], timeout: 0.05 } } }
-                rescue:
+                catch:
                   - set: slow
                     value: recovered
         result: { dictionary: [ [result, { ref: slow }] ] }
@@ -439,8 +439,8 @@ struct EffectActionTests {
         #expect(await harness.recorder.sessions.first?.model == "claude:opus")
     }
 
-    @Test("a turn the backend ends nonzero fails with nonzero_exit, as agent declares, and a rescue around agent takes it")
-    func agentFailureIsRescued() async throws {
+    @Test("a turn the backend ends nonzero fails with nonzero_exit, as agent declares, and a catch around agent takes it")
+    func agentFailureIsCaught() async throws {
         // Given
         let harness = Harness()
         let spec = try harness.frontend.workflow("""
@@ -461,11 +461,11 @@ struct EffectActionTests {
                           value: ""
                         - let: turn
                           value:
-                            attempt:
+                            try:
                               body:
                                 - set: said
                                   value: { agent: hello }
-                              rescue:
+                              catch:
                                 - set: said
                                   value: { ref: turn.type }
                       result: { ref: said }
@@ -642,8 +642,8 @@ struct EffectActionTests {
         #expect(outputs["where"] == .string("/resource-root/script/run.sh"))
     }
 
-    @Test("a rescue reads the shell failure as a value")
-    func rescueReadsShellFailurePayload() async throws {
+    @Test("a catch reads the shell failure as a value")
+    func catchReadsShellFailurePayload() async throws {
         // Given
         let harness = Harness()
         let spec = try harness.frontend.workflow("""
@@ -660,10 +660,10 @@ struct EffectActionTests {
             value: null
           - let: risky
             value:
-              attempt:
+              try:
                 body:
                   - value: { call: { procedure: shell, arguments: { command: [ fail-tool ] } } }
-                rescue:
+                catch:
                   - set: kind
                     value: { ref: risky.type }
                   - set: code
@@ -747,11 +747,11 @@ struct EffectActionTests {
             value: ""
           - let: fragile
             value:
-              attempt:
+              try:
                 body:
                   - let: broken
                     value: { call: { procedure: shell, arguments: { command: [ broken ] } } }
-                rescue:
+                catch:
                   - set: recovered
                     value: recovered
         result: { dictionary: [ [fine, { ref: fine }], [recovered, { ref: recovered }] ] }

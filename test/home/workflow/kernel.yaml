@@ -60,10 +60,10 @@ procedures:
         value: ""
       - let: caught
         value:
-          attempt:
+          try:
             body:
               - value: { abort: bail out }
-            rescue:
+            catch:
               - set: recovered
                 value: rescued
       - let: called

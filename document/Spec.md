@@ -110,10 +110,10 @@ Reads the values `outputs` names out of `text` (see *Output extractors*) and
 returns them by name, with the whole text under `_raw`. It reaches nothing
 outside the run. A text that does not hold what `outputs` asks (a path that
 is not there and has no `default`, a regex that does not match, a value that
-does not coerce to its type) fails with `extract_refused`, which a rescue may
+does not coerce to its type) fails with `extract_refused`, which a catch may
 take. What `outputs` itself gets wrong (a map that is no extractor, the key
 `_raw`, a path or a regex that does not parse) is the workflow's defect: it
-is refused before the text is read, and no rescue takes it.
+is refused before the text is read, and no catch takes it.
 
 ### `Forge.invoke`
 
@@ -157,9 +157,9 @@ failing `child_run_failed`, `timeout`. `inputs` defaults to an empty map.
 
 Runs the catalog workflow `name` as a run of its own, with its own policy
 check, slot and ledger, and returns its outputs. A child that fails at its
-work fails with `child_run_failed`, which a rescue may take. A child the
+work fails with `child_run_failed`, which a catch may take. A child the
 policy refuses, or one that faults or is cancelled, fails the parent past any
-rescue.
+catch.
 
 ### `Forge.resource`
 
@@ -300,10 +300,10 @@ procedures:
         value: ""
       - let: caught
         value:
-          attempt:
+          try:
             body:
               - value: { abort: bail out }
-            rescue:
+            catch:
               - set: rescued
                 value: { format: "rescued: ${message}", with: { message: { ref: caught.message } } }
     result:

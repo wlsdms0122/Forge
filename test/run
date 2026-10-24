@@ -150,12 +150,12 @@ def main():
             check(expected in kernel, f"kernel run yields '{expected}'", kernel)
 
         # Host seams — shell output, resource rendering and locating, and the
-        # failure-as-value rescue contract.
+        # failure-as-value catch contract.
         host = harness.forge("workflow", "dispatch", "host")
         check("shell:e2e" in host, "shell step answers", host)
         check("hello, e2e — from a resource file" in host, "resource content renders", host)
         check("stamp:e2e" in host, "a located resource script runs", host)
-        check("rescued(7): warned" in host, "a rescue reads the failure payload", host)
+        check("rescued(7): warned" in host, "a catch reads the failure payload", host)
 
         # Agent seams — the stub reports turn mode and session id, so continuity
         # and share_session inheritance are visible from the outside.
@@ -171,11 +171,11 @@ def main():
         parent = harness.forge("workflow", "dispatch", "parent")
         check("child:from-dispatch" in parent, "dispatch chain reaches the child", parent)
 
-        # Policy denial fails the run and is not swallowed by rescue.
+        # Policy denial fails the run and is not swallowed by catch.
         denied = harness.forge("workflow", "dispatch", "forbidden")
         check("status: failed" in denied, "denied dispatch fails the run", denied)
         check("PolicyDenied" in denied, "denial names the policy gate", denied)
-        check("should-not-swallow" not in denied, "rescue does not swallow the denial", denied)
+        check("should-not-swallow" not in denied, "catch does not swallow the denial", denied)
 
         # Policy and resource surfaces.
         policy = harness.forge("policy", "list")

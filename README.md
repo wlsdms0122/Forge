@@ -15,7 +15,7 @@ review, and trust to mean exactly what it says.
   - [Workflow](#workflow)
   - [Verbs](#verbs)
   - [Statements and expressions](#statements-and-expressions)
-  - [Rescue](#rescue)
+  - [Catch](#catch)
   - [Session](#session)
 - [Philosophy](#philosophy)
   - [Everything is data](#everything-is-data)
@@ -88,20 +88,20 @@ such as `{ of: x, plus: 1 }`, `format` templates, map literals). A bare
 string is always literal text, and `format` is closed over the bindings it
 declares under `with`. The front end's README documents the notation.
 
-### Rescue
+### Catch
 
-`attempt` runs a body and, when it fails with a declared failure, a
-`rescue`. Inside the rescue the failure is readable under the attempt's
+`try` runs a body and, when it fails with a declared failure, a
+`catch`. Inside the catch the failure is readable under the try's
 name: `type`, `message` and `details`, which each failure fills with its
 own fields (a shell failure: `exit_code`, `stderr`, `stdout`).
 
 ```yaml
 - let: checked
   value:
-    attempt:
+    try:
       body:
         - value: { call: { procedure: shell, arguments: { command: [jq, -e, .], stdin: { ref: draft } } } }
-      rescue:
+      catch:
         - set: draft
           value: { agent: { format: "invalid JSON: ${e}. Fix it.", with: { e: { ref: 'checked.details["stderr"]' } } } }
 ```
@@ -149,10 +149,10 @@ Three things stay apart:
 - **Recoverable failure**: the world did not cooperate. A nonzero exit, a
   failed child run, an expired deadline, a text that does not hold what an
   extraction asks, an author's own `abort`. Each is declared under
-  `failing`, and exactly this class is what a `rescue` may take.
+  `failing`, and exactly this class is what a `catch` may take.
 - **Fault**: what no declaration admits, a policy denial, cancellation, an
   extractor that does not parse.
-  Never taken by a rescue, so a rescue cannot swallow a defect that happened
+  Never taken by a catch, so a catch cannot swallow a defect that happened
   to sit near a timeout.
 
 ### Boundaries are signatures
@@ -216,12 +216,12 @@ procedures:
                               value: { of: { ref: rounds }, plus: 1 }
                             - let: checked
                               value:
-                                attempt:
+                                try:
                                   body:
                                     - value: { call: { procedure: shell, arguments: { command: [jq, -e, .], stdin: { ref: draft } } } }
                                     - set: valid
                                       value: true
-                                  rescue:
+                                  catch:
                                     - value:
                                         conditional:
                                           when: { of: { ref: rounds }, is: 3 }
@@ -233,7 +233,7 @@ procedures:
 ```
 
 Every piece is doing declared work: the session persists across retries,
-the failure crosses into `rescue` as a value, the budget is explicit, its
+the failure crosses into `catch` as a value, the budget is explicit, its
 exhaustion is an `abort` the declaration admits, and nothing in the file
 could mean anything other than what it says.
 

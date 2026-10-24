@@ -22,10 +22,10 @@ procedures:
         value: ""
       - let: fragile
         value:
-          attempt:
+          try:
             body:
               - value: { call: { procedure: shell, arguments: { command: [ /bin/sh, -c, "echo warned >&2; exit 7" ] } } }
-            rescue:
+            catch:
               - set: rescued
                 value:
                   format: "rescued(${code}): ${said}"
