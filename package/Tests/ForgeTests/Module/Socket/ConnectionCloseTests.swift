@@ -30,8 +30,12 @@ struct ConnectionCloseTests {
         try await Task.sleep(nanoseconds: 100_000_000)
         var pipeFDs: [Int32] = [0, 0]
         #expect(pipe(&pipeFDs) == 0)
-        #expect(dup2(pipeFDs[1], ours) == ours)
-        defer { Darwin.close(pipeFDs[0]); Darwin.close(pipeFDs[1]); Darwin.close(ours) }
+        // Tests run in parallel and open fds of their own; F_DUPFD takes the
+        // number only while it is free, where dup2 would replace another
+        // test's fd. A number already taken leaves no reuse to set up.
+        let reused = fcntl(pipeFDs[1], F_DUPFD, ours)
+        defer { Darwin.close(pipeFDs[0]); Darwin.close(pipeFDs[1]); Darwin.close(reused) }
+        guard reused == ours else { return }
         await conn.send(Data("late-write-must-not-appear\n".utf8))
         let flags = fcntl(pipeFDs[0], F_GETFL)
         _ = fcntl(pipeFDs[0], F_SETFL, flags | O_NONBLOCK)
