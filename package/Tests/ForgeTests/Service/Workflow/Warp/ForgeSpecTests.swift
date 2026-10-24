@@ -41,16 +41,36 @@ struct ForgeSpecTests {
         )
     }
 
-    @Test("each verb of the library stands over the native of its name, and every native has one")
-    func everyVerbStandsOverItsNative() throws {
+    @Test("each verb of the library is one call of the native of its name, handing its parameters in order, and every native has one")
+    func everyVerbCallsItsNative() throws {
         // Given
-        let natives = Set(try ForgeSpec.natives().procedures.keys.map(\.spelling))
+        let document = try ForgeSpec.library()
+        let library = try Loader().load(document, identity: try Identity.of(document))
+        let natives = Set(try ForgeSpec.natives().procedures.keys)
 
-        // When
-        let sut = Set(try ForgeSpec.verbs().map(\.spelling))
+        for (name, sut) in library.procedures {
+            // When
+            let sent = sut.body.statements.compactMap { statement -> Call? in
+                switch statement.expression {
+                case let .call(call), let .leave(.procedure(.call(call)?)):
+                    natives.contains(call.selector) ? call : nil
 
-        // Then
-        #expect(Set(sut.map { verb in verb.replacingOccurrences(of: "Forge.", with: "Forge.Native.") }) == natives)
+                default:
+                    nil
+                }
+            }
+            let handed = sent.first?.arguments.map { argument -> Name? in
+                guard case let .reference(path) = argument else { return nil }
+
+                return path.head
+            }
+
+            // Then
+            #expect(sent.map(\.selector.spelling) == [name.spelling.replacingOccurrences(of: "Forge.", with: "Forge.Native.")])
+            #expect(handed == sut.signature.parameters.map(\.name), "\(name)")
+        }
+
+        #expect(Set(library.procedures.keys.map { name in name.spelling.replacingOccurrences(of: "Forge.", with: "Forge.Native.") }) == Set(natives.map(\.spelling)))
     }
 
     @Test("the library builds with the natives and the standard vocabulary")
@@ -87,7 +107,7 @@ struct ForgeSpecTests {
         _ = try await Builder().build([module] + ForgeSpec.linkables())
     }
 
-    @Test("a native takes the value the library settles, so null where the library holds a default is refused by the build")
+    @Test("a native takes the value the library settles, so null where the library holds a default is refused by the build at that argument")
     func aNativeTakesTheSettledDefault() async throws {
         // Given
         let document = try ForgeSpec.frontend().document(from: workflowFile("""
@@ -97,10 +117,16 @@ struct ForgeSpecTests {
         """, named: "raw"))
         let module = try Loader().load(document, identity: try Identity.of(document))
 
-        // When / Then
-        await #expect(throws: (any Error).self) {
+        // When
+        let error = await #expect(throws: (any Error).self) {
             _ = try await Builder().build([module] + ForgeSpec.linkables())
         }
+
+        // Then
+        let refusal = try #require(error as? any WarpError)
+
+        #expect(refusal.place?.rendered?.hasSuffix("procedures.raw.body[0].leave.arguments[2]") == true, "\(refusal)")
+        #expect(refusal.message.contains("with env, which holds Null where Dictionary<String, String> is declared"), "\(refusal)")
     }
 
     // MARK: - Public

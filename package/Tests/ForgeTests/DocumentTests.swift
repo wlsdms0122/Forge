@@ -9,12 +9,14 @@ import Foundation
 import Testing
 import Warp
 import WarpSyntax
+import WarpYAML
 @testable import Forge
 
 // A reference nobody runs drifts, and the drift is invisible until an author
 // writes what it says and the build refuses. These read `document/Spec.md` and
 // hold it to the code: the verbs it documents are the verbs the Forge library
-// declares, and the workflow it prints is one that loads, builds and runs.
+// declares, each with the signature the library writes, and the workflow it
+// prints is one that loads, builds and runs.
 @Suite("The spec reference matches the Forge library")
 struct DocumentTests {
     // MARK: - Property
@@ -37,6 +39,42 @@ struct DocumentTests {
         let phantom = document.sections.subtracting(declared).sorted()
 
         #expect(phantom.isEmpty, "Spec.md documents verbs the Forge library does not declare: \(phantom)")
+    }
+
+    @Test("every verb's signature line says what lib/Forge.yaml declares: parameters and their types, what it returns, const and its failures")
+    func everySignatureIsTheLibrarys() throws {
+        // Given
+        guard
+            case let .dictionary(library) = try YAMLParser().parse(Library.text),
+            case let .dictionary(procedures)? = library[key: .string("procedures")]
+        else {
+            Issue.record("lib/Forge.yaml declares its verbs under procedures")
+            return
+        }
+
+        for (key, declared) in procedures.entries {
+            guard case let .string(verb) = key, case let .dictionary(procedure) = declared else { continue }
+
+            // When
+            let sut = try #require(document.signatures["Forge.\(verb)"], "Spec.md has no signature line for \(verb)")
+
+            // Then
+            #expect(sut.hasPrefix("`\(Self.signature(of: procedure, named: verb))`"), "\(verb): \(sut)")
+            #expect(sut.contains("const") == (procedure[key: .string("const")] == .bool(true)), "\(verb): \(sut)")
+
+            switch procedure[key: .string("failing")] {
+            case let .string(failing)?:
+                #expect(sut.contains("failing \(failing)"), "\(verb): \(sut)")
+
+            case let .array(failures)?:
+                let written = failures.map { failure in "`\(ValueBridge.text(failure))`" }.joined(separator: ", ")
+
+                #expect(sut.contains("failing \(written)"), "\(verb): \(sut)")
+
+            default:
+                #expect(!sut.contains("failing"), "\(verb): \(sut)")
+            }
+        }
     }
 
     @Test("every complete workflow the reference prints loads and builds")
@@ -78,6 +116,29 @@ struct DocumentTests {
 
         return (try await Builder().build([module] + ForgeSpec.linkables()), name)
     }
+
+    // A verb's signature as the library writes it: each parameter's name and
+    // the type it writes, whatever default it takes, and what it returns.
+    private static func signature(of procedure: Value.Dictionary, named verb: String) -> String {
+        var parameters: [Value] = []
+
+        if case let .array(declared)? = procedure[key: .string("parameters")] { parameters = declared }
+
+        let written = parameters.compactMap { parameter -> String? in
+            guard case let .dictionary(pair) = parameter, let (name, declared) = pair.entries.first else { return nil }
+
+            switch declared {
+            case let .dictionary(declaration):
+                return "\(ValueBridge.text(name)): \(ValueBridge.text(declaration[key: .string("type")] ?? .null))"
+
+            default:
+                return "\(ValueBridge.text(name)): \(ValueBridge.text(declared))"
+            }
+        }
+        let returns = ValueBridge.text(procedure[key: .string("returns")] ?? .null)
+
+        return "\(verb)(\(written.joined(separator: ", "))) -> \(returns)"
+    }
 }
 
 // The reference, read as data: which words it documents and which workflows it
@@ -87,6 +148,10 @@ private struct SpecDocument {
     // MARK: - Property
     let sections: Set<String>
     let workflows: [String]
+
+    // Each section's first paragraph, the verb's signature line, its lines
+    // joined by a space.
+    let signatures: [String: String]
 
     // MARK: - Initializer
     init() {
@@ -101,11 +166,24 @@ private struct SpecDocument {
 
         var sections: Set<String> = []
         var workflows: [String] = []
+        var signatures: [String: String] = [:]
         var fence: [String]?
+        var section: String?
 
         for line in lines {
             if line.hasPrefix("### `"), line.hasSuffix("`") {
-                sections.insert(String(line.dropFirst(5).dropLast()))
+                section = String(line.dropFirst(5).dropLast())
+                sections.insert(section ?? "")
+
+                continue
+            }
+
+            if let open = section {
+                if line.isEmpty, signatures[open] != nil {
+                    section = nil
+                } else if !line.isEmpty {
+                    signatures[open] = [signatures[open], String(line)].compactMap { part in part }.joined(separator: " ")
+                }
             }
 
             if line.hasPrefix("```") {
@@ -126,6 +204,7 @@ private struct SpecDocument {
 
         self.sections = sections
         self.workflows = workflows
+        self.signatures = signatures
     }
 
     // MARK: - Public
