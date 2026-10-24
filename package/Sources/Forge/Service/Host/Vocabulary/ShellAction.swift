@@ -42,6 +42,13 @@ struct ShellAction: ForgeAction {
     }
 
     // MARK: - Property
+    static let signature = Signature(
+        of: Self.self,
+        returns: .string,
+        failing: .these([BackendNonzeroExit.type, DeadlineExceeded.type]),
+        isolation: .isolated
+    )
+
     // MARK: - Initializer
     // MARK: - Public
     func act(_ invocation: Warp.Invocation<Self>, in environment: ForgeEnvironment) async throws -> Warp.Value {

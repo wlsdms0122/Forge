@@ -64,6 +64,8 @@ struct InvokeAction: ForgeAction {
     // What the body returns, which is what the session returns.
     static let result = TypeExpression.parameter(name: "Result")
 
+    static let signature = Signature(of: Self.self, returns: result, failing: .anything, isolation: .isolated)
+
     // MARK: - Initializer
     // MARK: - Public
     func act(_ invocation: Warp.Invocation<Self>, in environment: ForgeEnvironment) async throws -> Warp.Value {

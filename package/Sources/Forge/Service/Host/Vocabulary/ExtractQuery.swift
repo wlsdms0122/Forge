@@ -32,6 +32,14 @@ struct ExtractQuery: Warp.Query {
     }
 
     // MARK: - Property
+    static let signature = Signature(
+        of: Self.self,
+        returns: .dictionary(key: .string, value: .any),
+        failing: .these([OutputResolutionError.type]),
+        constness: .const,
+        isolation: .isolated
+    )
+
     // MARK: - Initializer
     // MARK: - Public
     func evaluate(_ question: Warp.Question<Self>) async throws -> Warp.Value {

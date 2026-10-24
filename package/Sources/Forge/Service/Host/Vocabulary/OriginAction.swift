@@ -14,6 +14,8 @@ struct OriginAction: ForgeAction {
     typealias Parameters = NoParameters
 
     // MARK: - Property
+    static let signature = Signature(of: Self.self, returns: .named(ForgeVocabulary.originType), isolation: .isolated)
+
     // MARK: - Initializer
     // MARK: - Public
     func act(_ invocation: Warp.Invocation<Self>, in environment: ForgeEnvironment) async throws -> Warp.Value {

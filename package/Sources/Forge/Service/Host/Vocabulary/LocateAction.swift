@@ -22,6 +22,8 @@ struct LocateAction: ForgeAction {
     }
 
     // MARK: - Property
+    static let signature = Signature(of: Self.self, returns: .string, isolation: .isolated)
+
     // MARK: - Initializer
     // MARK: - Public
     func act(_ invocation: Warp.Invocation<Self>, in environment: ForgeEnvironment) async throws -> Warp.Value {
