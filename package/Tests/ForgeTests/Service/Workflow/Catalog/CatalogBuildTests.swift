@@ -18,9 +18,9 @@ import WarpSyntax
 //   FORGE_CATALOG=<dir> swift test --filter CatalogBuildTests
 //
 // Each file prints one line: `<path>: ok`, or `<path>: load: <refusal>` or
-// `<path>: build: <refusal>`. A file is built with every sibling that loads, so
-// one broken file does not hide another's refusal, and the catalog is then
-// built whole.
+// `<path>: build: <refusal>`. A file is built with the siblings that build
+// alone, so a refusal is reported for the file that holds it and one broken
+// file does not hide another's, and the catalog is then built whole.
 @Suite("Catalog build")
 struct CatalogBuildTests {
     // MARK: - Property
@@ -48,10 +48,18 @@ struct CatalogBuildTests {
             }
         }
 
+        var standing: [Int] = []
+
         for (index, entry) in loaded.enumerated() {
-            let siblings = loaded.enumerated()
-                .filter { other in other.offset != index }
-                .map { other in other.element.module }
+            if (try? await Builder().build([entry.module] + linkables)) != nil {
+                standing.append(index)
+            }
+        }
+
+        for (index, entry) in loaded.enumerated() {
+            let siblings = standing
+                .filter { other in other != index }
+                .map { other in loaded[other].module }
 
             do {
                 _ = try await Builder().build([entry.module] + siblings + linkables)
