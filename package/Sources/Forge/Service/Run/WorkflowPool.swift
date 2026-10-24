@@ -191,7 +191,7 @@ actor WorkflowPool {
         principal: String
     ) throws {
         guard !shuttingDown else {
-            throw PoolShuttingDown("register: daemon is draining for shutdown — no new runs")
+            throw DaemonShuttingDown("register: daemon is draining for shutdown — no new runs")
         }
         
         if workflows[workflowID] != nil { return }

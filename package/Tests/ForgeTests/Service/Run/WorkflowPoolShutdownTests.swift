@@ -26,7 +26,7 @@ struct WorkflowPoolShutdownTests {
 
         // Then
             Issue.record("New runs should be rejected while draining")
-        } catch let error as PoolShuttingDown {
+        } catch let error as DaemonShuttingDown {
             #expect(error.message.contains("draining"), Comment(rawValue: error.message))
             #expect(!(error is any WorkFailure), "A shutdown rejection must carry no stamp — a fallback must not fake success on a dying daemon")
         }

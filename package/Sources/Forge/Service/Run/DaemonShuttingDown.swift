@@ -1,5 +1,5 @@
 //
-//  PoolShuttingDown.swift
+//  DaemonShuttingDown.swift
 //  Forge
 //
 //  Created by JSilver on 8/9/26.
@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct PoolShuttingDown: ForgeError {
+struct DaemonShuttingDown: ForgeError {
     // MARK: - Property
     let message: String
     
