@@ -570,7 +570,7 @@ struct EffectActionTests {
         #expect(outputs["result"] == .int(21))
     }
 
-    @Test("when a step runs, events flow through the bridge")
+    @Test("a statement that calls a verb is a step, named by its statement and acting as the verb")
     func eventsBridgeWhenStepsRun() async throws {
         // Given
         let harness = Harness()
@@ -580,6 +580,8 @@ struct EffectActionTests {
         body:
           - let: fine
             value: ok
+          - let: run
+            value: { call: { procedure: Forge.run, arguments: [] } }
           - var: recovered
             type: String
             value: ""
@@ -596,7 +598,8 @@ struct EffectActionTests {
         """)
         let bridge = EventBridge(
             workflowID: "wf-test",
-            workflowName: "observed"
+            workflowName: "observed",
+            verbs: Set(try ForgeSpec.vocabulary().procedures.keys)
         ) { event in
             await collected.append(event)
         }
@@ -608,22 +611,17 @@ struct EffectActionTests {
         // When
         _ = try await sut.run(spec)
 
-        // Then — the failed step reports failure, then completion as rescued
-        let kinds = await collected.events.map { event -> String in
-            let id = event.stepID ?? "?"
-
-            return "\(id):\(event.kind)"
+        // Then
+        let steps = await collected.events.map { event in
+            "\(event.stepID ?? "?"):\(event.kind.rawValue):\(event.action ?? "")"
         }
 
-        #expect(kinds.contains("fine:stepCompleted"))
-        #expect(kinds.contains("fragile:stepFailed"))
-        #expect(kinds.contains("broken:stepStarted"))
-
-        let rescuedEvents = await collected.events.filter { event in
-            event.stepID == "fragile" && event.kind == .stepCompleted
-        }
-
-        #expect(rescuedEvents.first?.absorbed == true)
+        #expect(steps == [
+            "run:step.started:Forge.run",
+            "run:step.completed:",
+            "broken:step.started:Forge.shell",
+            "broken:step.failed:"
+        ])
     }
 
     // MARK: - Public

@@ -62,7 +62,6 @@ struct DispatchStreamTests {
         #expect(eventKinds.contains("workflow.completed"))
         let stepStarts = events.filter { event in (event["event"] as? String) == "step.started" }
         .compactMap { line in line["step"] as? String }
-        .filter { step in !step.hasPrefix("[") }
         #expect(stepStarts == ["one", "two"], "\(stepStarts)")
         let terminal = try #require(lines.last)
         #expect(terminal["kind"] as? String == "workflow.result")

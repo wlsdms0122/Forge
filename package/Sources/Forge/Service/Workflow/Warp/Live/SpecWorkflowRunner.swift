@@ -217,14 +217,6 @@ actor SpecWorkflowRunner {
             rootID: LogContext.rootID ?? runID,
             origin: origin
         )
-        let executor = Warp.Executor(
-            observer: EventBridge(
-                workflowID: runID,
-                workflowName: name,
-                publish: { event in await eventBus.publish(event) }
-            ),
-            environment: environment
-        )
 
         do {
             // Linking is inside the do-block on purpose: a workflow naming a
@@ -243,6 +235,15 @@ actor SpecWorkflowRunner {
                 module.procedures[entry] == nil
             }
             let image = try await Builder().build([module] + world + ForgeSpec.linkables())
+            let executor = Warp.Executor(
+                observer: EventBridge(
+                    workflowID: runID,
+                    workflowName: name,
+                    verbs: Set(try ForgeSpec.vocabulary().procedures.keys),
+                    publish: { event in await eventBus.publish(event) }
+                ),
+                environment: environment
+            )
             let arguments = try Self.arguments(
                 inputs,
                 for: module.procedures[entry]?.signature

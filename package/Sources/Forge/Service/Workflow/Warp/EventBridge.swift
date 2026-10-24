@@ -8,72 +8,62 @@
 import Foundation
 import Warp
 
-// Adapts the language's execution observations to forge's event stream. Warp
-// reports statements; run-level framing (started/completed/failed) stays
+// Adapts the language's execution observations to forge's event stream. A
+// step is a statement that calls one of forge's verbs, and its action is the
+// verb's name; every other statement a run performs is the workflow's own
+// working and is no step. Run-level framing (started/completed/failed) stays
 // with whoever drives the executor.
-//
-// Two of forge's event fields have no counterpart in the language any more and
-// are reconstructed here: `absorbed` from the rescue the language announced, and
-// the step's word from the shape of the expression. Both belong to forge's
-// surface, which is why they are computed on this side of the seam.
 struct EventBridge: ExecutionObserver {
     // MARK: - Property
     let workflowID: String
     let workflowName: String
+    let verbs: Set<Name>
     let publish: @Sendable (WorkflowEvent) async -> Void
 
-    private let rescued = RescuedStatements()
+    private let steps = StartedSteps()
 
     // MARK: - Initializer
     init(
         workflowID: String,
         workflowName: String,
+        verbs: Set<Name>,
         publish: @escaping @Sendable (WorkflowEvent) async -> Void
     ) {
         self.workflowID = workflowID
         self.workflowName = workflowName
+        self.verbs = verbs
         self.publish = publish
     }
 
     // MARK: - Lifecycle
     func statementStarted(at trace: Trace, construct: Construct, callee: Name?) async {
+        guard let callee, verbs.contains(callee) else { return }
+
+        await steps.start(trace)
         await publish(WorkflowEvent(
             kind: .stepStarted,
             workflowID: workflowID,
             workflowName: workflowName,
-            stepID: trace.step
+            stepID: trace.step,
+            action: callee.spelling
         ))
     }
 
     func statementCompleted(at trace: Trace, result: Warp.Value) async {
+        guard await steps.end(trace) else { return }
+
         await publish(WorkflowEvent(
             kind: .stepCompleted,
             workflowID: workflowID,
             workflowName: workflowName,
             stepID: trace.step,
-            output: ValueBridge.json(result),
-            absorbed: await rescued.absorbed(trace.step)
-        ))
-    }
-
-    // A rescued failure never reaches `statementFailed`, so the ledger's record
-    // of it is published from here, and the completion that follows reports
-    // itself as absorbed.
-    func failureRescued(name: String?, error: any Error) async {
-        let step = name ?? ""
-
-        await rescued.record(step)
-        await publish(WorkflowEvent(
-            kind: .stepFailed,
-            workflowID: workflowID,
-            workflowName: workflowName,
-            stepID: step,
-            errorType: String(describing: type(of: error)),
-            errorMessage: "\(error)"
+            output: ValueBridge.json(result)
         ))
     }
 
     func statementFailed(at trace: Trace, error: any Error) async {
+        guard await steps.end(trace) else { return }
+
         await publish(WorkflowEvent(
             kind: .stepFailed,
             workflowID: workflowID,
@@ -88,18 +78,21 @@ struct EventBridge: ExecutionObserver {
     // MARK: - Private
 }
 
-private actor RescuedStatements {
+// The steps that started and have not ended, each by the occurrence its trace
+// names, since pieces of a fan-out and rounds of a loop run one statement many
+// times.
+private actor StartedSteps {
     // MARK: - Property
-    private var names: Set<String> = []
+    private var occurrences: Set<String> = []
 
     // MARK: - Initializer
     // MARK: - Public
-    func record(_ name: String) {
-        names.insert(name)
+    func start(_ trace: Trace) {
+        occurrences.insert(trace.rendered)
     }
 
-    func absorbed(_ name: String) -> Bool {
-        names.contains(name)
+    func end(_ trace: Trace) -> Bool {
+        occurrences.remove(trace.rendered) != nil
     }
 
     // MARK: - Private
