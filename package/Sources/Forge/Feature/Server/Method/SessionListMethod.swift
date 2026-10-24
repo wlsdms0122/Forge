@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import Warp
 
 struct SessionListMethod: Sendable {
     // MARK: - Property

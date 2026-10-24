@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import Warp
 
 struct WorkflowCancelMethod: Sendable {
     // MARK: - Property
