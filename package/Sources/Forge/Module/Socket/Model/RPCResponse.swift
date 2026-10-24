@@ -32,18 +32,10 @@ struct RPCResponse: @unchecked Sendable {
         self.id = id
 
         if let forgeError = error as? ForgeError {
-            var extra: [String: Any] = [:]
-
-            if let nonzeroExit = forgeError as? BackendNonzeroExit {
-                extra["exit_code"] = Int(nonzeroExit.exitCode)
-                extra["stderr"] = nonzeroExit.stderr
-                extra["stdout"] = nonzeroExit.stdout
-            }
-
             self.payload = .error(
                 wireType: forgeError.wireType,
                 message: forgeError.message,
-                extra: extra
+                extra: forgeError.wireDetails
             )
         } else {
             self.payload = .error(

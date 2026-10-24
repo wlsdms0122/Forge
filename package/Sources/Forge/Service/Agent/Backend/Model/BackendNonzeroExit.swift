@@ -14,6 +14,14 @@ struct BackendNonzeroExit: BackendError, WorkFailure {
     let stderr: String
     let stdout: String
 
+    var wireDetails: [String: Any] {
+        [
+            "exit_code": Int(exitCode),
+            "stderr": stderr,
+            "stdout": stdout
+        ]
+    }
+
     // MARK: - Initializer
     init(_ message: String, exitCode: Int32, stderr: String = "", stdout: String = "") {
         self.message = message
