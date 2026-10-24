@@ -27,20 +27,6 @@ struct Executor: Sendable {
         self.errorHooks = errorHooks
     }
     
-    init(
-        backend: any Backend,
-        preHooks: [any PreHook] = [],
-        postHooks: [any PostHook] = [],
-        errorHooks: [any ErrorHook] = []
-    ) {
-        self.init(
-            backends: BackendRegistry(["claude": backend]),
-            preHooks: preHooks,
-            postHooks: postHooks,
-            errorHooks: errorHooks
-        )
-    }
-    
     // MARK: - Public
     func openSession(provider: String?) throws -> any BackendSession {
         let backend = try backends.resolve(provider: provider)
