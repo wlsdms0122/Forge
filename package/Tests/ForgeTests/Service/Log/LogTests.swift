@@ -11,6 +11,14 @@ import Testing
 
 @Suite("Log Tests")
 struct LogTests {
+    private struct ResolvedModelFailureBackend: Backend {
+        func invoke(_ invocation: AgentInvocation) async throws -> BackendResponse {
+            invocation.executionContext.record(modelReference: try ModelReference(
+                    provider: "local", model: "qwen3:8b"))
+            throw BackendUnavailable("offline")
+        }
+    }
+    
     // MARK: - Property
     // MARK: - Initializer
     // MARK: - Test
@@ -124,13 +132,5 @@ struct LogTests {
         let payload = try #require(records.first?.payload)
         #expect(payload["model"] == .string("local:qwen3:8b"))
         #expect(payload["model_resolution"] == .string("specific"))
-    }
-}
-
-private struct ResolvedModelFailureBackend: Backend {
-    func invoke(_ invocation: AgentInvocation) async throws -> BackendResponse {
-        invocation.executionContext.record(modelReference: try ModelReference(
-                provider: "local", model: "qwen3:8b"))
-        throw BackendUnavailable("offline")
     }
 }

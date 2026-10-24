@@ -9,43 +9,42 @@ import Foundation
 import Testing
 @testable import Forge
 
-
-private actor FailOnceChatTransport: ChatTransport {
-    private var failed = false
-    private(set) var lastMessages: [ChatMessage] = []
-    func complete(
-        messages: [ChatMessage], tools: [ToolSpec], model: String?, jsonMode: Bool
-    ) async throws -> ChatCompletion {
-        lastMessages = messages
-        if !failed {
-            failed = true
-            throw BackendUnavailable("transient")
-        }
-        
-        return ChatCompletion(text: "recovered")
-    }
-}
-
-private actor FailAfterToolRoundTransport: ChatTransport {
-    private var call = 0
-    private let first: ChatCompletion
-    private(set) var lastMessages: [ChatMessage] = []
-    init(first: ChatCompletion) { self.first = first }
-    func complete(
-        messages: [ChatMessage], tools: [ToolSpec], model: String?, jsonMode: Bool
-    ) async throws -> ChatCompletion {
-        call += 1
-        lastMessages = messages
-        switch call {
-        case 1: return first
-        case 2: throw BackendUnavailable("mid-loop transient")
-        default: return ChatCompletion(text: "recovered")
-        }
-    }
-}
-
 @Suite("AgentLoopBackend Tests")
 struct AgentLoopBackendTests {
+    private actor FailOnceChatTransport: ChatTransport {
+        private var failed = false
+        private(set) var lastMessages: [ChatMessage] = []
+        func complete(
+            messages: [ChatMessage], tools: [ToolSpec], model: String?, jsonMode: Bool
+        ) async throws -> ChatCompletion {
+            lastMessages = messages
+            if !failed {
+                failed = true
+                throw BackendUnavailable("transient")
+            }
+            
+            return ChatCompletion(text: "recovered")
+        }
+    }
+    
+    private actor FailAfterToolRoundTransport: ChatTransport {
+        private var call = 0
+        private let first: ChatCompletion
+        private(set) var lastMessages: [ChatMessage] = []
+        init(first: ChatCompletion) { self.first = first }
+        func complete(
+            messages: [ChatMessage], tools: [ToolSpec], model: String?, jsonMode: Bool
+        ) async throws -> ChatCompletion {
+            call += 1
+            lastMessages = messages
+            switch call {
+            case 1: return first
+            case 2: throw BackendUnavailable("mid-loop transient")
+            default: return ChatCompletion(text: "recovered")
+            }
+        }
+    }
+    
     // MARK: - Property
     // MARK: - Initializer
     // MARK: - Test

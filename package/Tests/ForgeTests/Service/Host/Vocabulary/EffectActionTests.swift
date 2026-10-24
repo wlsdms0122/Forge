@@ -11,218 +11,231 @@ import Warp
 import WarpYAML
 @testable import Forge
 
-private actor Recorder {
-    // MARK: - Property
-    private(set) var shellRuns: [[String]] = []
-    private(set) var shellSteps: [String?] = []
-    private(set) var prompts: [String] = []
-    private(set) var sessions: [AgentSessionSettings] = []
-    private(set) var dispatches: [(name: String, inputs: [String: Warp.Value])] = []
-
-    // MARK: - Initializer
-    // MARK: - Public
-    func recordShell(_ command: [String], step: String?) {
-        shellRuns.append(command)
-        shellSteps.append(step)
-    }
-
-    func recordPrompt(_ prompt: String) {
-        prompts.append(prompt)
-    }
-
-    func recordSession(_ settings: AgentSessionSettings) {
-        sessions.append(settings)
-    }
-
-    func recordDispatch(name: String, inputs: [String: Warp.Value]) {
-        dispatches.append((name, inputs))
-    }
-
-    // MARK: - Private
-}
-
-private struct MockShell: ShellExecuting {
-    // MARK: - Property
-    let recorder: Recorder
-    let exitCode: Int32
-    let stdout: String
-    let stderr: String
-    let delaySeconds: Double
-
-    // MARK: - Initializer
-    init(
-        recorder: Recorder,
-        exitCode: Int32 = 0,
-        stdout: String = "",
-        stderr: String = "",
-        delaySeconds: Double = 0
-    ) {
-        self.recorder = recorder
-        self.exitCode = exitCode
-        self.stdout = stdout
-        self.stderr = stderr
-        self.delaySeconds = delaySeconds
-    }
-
-    // MARK: - Public
-    func run(
-        executable: String,
-        args: [String],
-        cwd: String?,
-        env: [String: String],
-        stdin: String?,
-        stepID: String?
-    ) async throws -> ShellRunOutput {
-        if delaySeconds > 0 {
-            try await Task.sleep(for: .seconds(delaySeconds))
-        }
-
-        await recorder.recordShell([executable] + args + (stdin.map { ["<\($0)"] } ?? []), step: stepID)
-
-        return ShellRunOutput(exitCode: exitCode, stdout: stdout, stderr: stderr)
-    }
-
-    // MARK: - Private
-}
-
-private struct MockAgent: AgentServing {
-    // MARK: - Property
-    @TaskLocal private static var sessionOpen = false
-
-    let recorder: Recorder
-    let reply: String
-
-    // The exit a turn's backend ends with, where it ends nonzero.
-    let exitCode: Int32?
-
-    // MARK: - Initializer
-    init(recorder: Recorder, reply: String = "agent-reply", exitCode: Int32? = nil) {
-        self.recorder = recorder
-        self.reply = reply
-        self.exitCode = exitCode
-    }
-
-    // MARK: - Public
-    func withSession(
-        _ settings: AgentSessionSettings,
-        body: @Sendable () async throws -> Warp.Value
-    ) async throws -> Warp.Value {
-        await recorder.recordSession(settings)
-
-        return try await Self.$sessionOpen.withValue(true) {
-            try await body()
-        }
-    }
-
-    func send(prompt: String) async throws -> String {
-        guard Self.sessionOpen else {
-            throw ExecutionError("agent step has no active session — run it inside invoke")
-        }
-
-        await recorder.recordPrompt(prompt)
-
-        if let exitCode {
-            throw BackendNonzeroExit("agent backend exited \(exitCode)", exitCode: exitCode)
-        }
-
-        return reply
-    }
-
-    // MARK: - Private
-}
-
-private struct MockDispatcher: RunDispatching {
-    // MARK: - Property
-    let recorder: Recorder
-    let result: Warp.Value
-
-    // MARK: - Initializer
-    init(recorder: Recorder, result: Warp.Value = .dictionary(Value.Dictionary(["ok": .bool(true)]))) {
-        self.recorder = recorder
-        self.result = result
-    }
-
-    // MARK: - Public
-    func dispatch(name: String, inputs: [String: Warp.Value]) async throws -> Warp.Value {
-        await recorder.recordDispatch(name: name, inputs: inputs)
-
-        return result
-    }
-
-    // MARK: - Private
-}
-
-private struct MockResources: ResourceReading {
-    // MARK: - Property
-    let files: [String: String]
-
-    // MARK: - Initializer
-    // MARK: - Public
-    func read(_ relative: String) async throws -> String {
-        guard let body = files[relative] else {
-            throw ExecutionError("no resource '\(relative)'")
-        }
-
-        return body
-    }
-
-    func locate(_ relative: String) async throws -> String {
-        guard files[relative] != nil else {
-            throw ExecutionError("no resource '\(relative)'")
-        }
-
-        return "/resource-root/" + relative
-    }
-
-    // MARK: - Private
-}
-
-private struct Harness {
-    // MARK: - Property
-    let recorder = Recorder()
-
-    var frontend: YAMLFrontend {
-        get throws { try ForgeVocabulary.shipped.get().frontend }
-    }
-
-    // MARK: - Initializer
-
-    // MARK: - Public
-    func executor(
-        shell: MockShell? = nil,
-        agentReply: String = "agent-reply",
-        agentExit: Int32? = nil,
-        dispatchResult: Warp.Value = .dictionary(Value.Dictionary(["ok": .bool(true)])),
-        files: [String: String] = [:],
-        publish: @escaping @Sendable (WorkflowEvent) async -> Void = { _ in }
-    ) throws -> Executor {
-        Executor(
-            environment: ForgeEnvironment(
-                capabilities: CapabilitySet(
-                    shell: shell ?? MockShell(recorder: recorder),
-                    agent: MockAgent(recorder: recorder, reply: agentReply, exitCode: agentExit),
-                    resources: MockResources(files: files)
-                ),
-                dispatcher: MockDispatcher(recorder: recorder, result: dispatchResult),
-                pool: WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: Int.max),
-                runID: "wf-test",
-                rootID: "wf-root",
-                origin: .manual,
-                bridge: EventBridge(
-                    runID: "wf-test",
-                    workflowName: "observed",
-                    verbs: try ForgeVocabulary.shipped.get().verbs,
-                    publish: publish
-                )
-            )
-        )
-    }
-
-    // MARK: - Private
-}
-
 @Suite
 struct EffectActionTests {
+    private actor Recorder {
+        // MARK: - Property
+        private(set) var shellRuns: [[String]] = []
+        private(set) var shellSteps: [String?] = []
+        private(set) var prompts: [String] = []
+        private(set) var sessions: [AgentSessionSettings] = []
+        private(set) var dispatches: [(name: String, inputs: [String: Warp.Value])] = []
+    
+        // MARK: - Initializer
+        // MARK: - Public
+        func recordShell(_ command: [String], step: String?) {
+            shellRuns.append(command)
+            shellSteps.append(step)
+        }
+    
+        func recordPrompt(_ prompt: String) {
+            prompts.append(prompt)
+        }
+    
+        func recordSession(_ settings: AgentSessionSettings) {
+            sessions.append(settings)
+        }
+    
+        func recordDispatch(name: String, inputs: [String: Warp.Value]) {
+            dispatches.append((name, inputs))
+        }
+    
+        // MARK: - Private
+    }
+    
+    private struct MockShell: ShellExecuting {
+        // MARK: - Property
+        let recorder: Recorder
+        let exitCode: Int32
+        let stdout: String
+        let stderr: String
+        let delaySeconds: Double
+    
+        // MARK: - Initializer
+        init(
+            recorder: Recorder,
+            exitCode: Int32 = 0,
+            stdout: String = "",
+            stderr: String = "",
+            delaySeconds: Double = 0
+        ) {
+            self.recorder = recorder
+            self.exitCode = exitCode
+            self.stdout = stdout
+            self.stderr = stderr
+            self.delaySeconds = delaySeconds
+        }
+    
+        // MARK: - Public
+        func run(
+            executable: String,
+            args: [String],
+            cwd: String?,
+            env: [String: String],
+            stdin: String?,
+            stepID: String?
+        ) async throws -> ShellRunOutput {
+            if delaySeconds > 0 {
+                try await Task.sleep(for: .seconds(delaySeconds))
+            }
+    
+            await recorder.recordShell([executable] + args + (stdin.map { ["<\($0)"] } ?? []), step: stepID)
+    
+            return ShellRunOutput(exitCode: exitCode, stdout: stdout, stderr: stderr)
+        }
+    
+        // MARK: - Private
+    }
+    
+    private struct MockAgent: AgentServing {
+        // MARK: - Property
+        @TaskLocal private static var sessionOpen = false
+    
+        let recorder: Recorder
+        let reply: String
+    
+        // The exit a turn's backend ends with, where it ends nonzero.
+        let exitCode: Int32?
+    
+        // MARK: - Initializer
+        init(recorder: Recorder, reply: String = "agent-reply", exitCode: Int32? = nil) {
+            self.recorder = recorder
+            self.reply = reply
+            self.exitCode = exitCode
+        }
+    
+        // MARK: - Public
+        func withSession(
+            _ settings: AgentSessionSettings,
+            body: @Sendable () async throws -> Warp.Value
+        ) async throws -> Warp.Value {
+            await recorder.recordSession(settings)
+    
+            return try await Self.$sessionOpen.withValue(true) {
+                try await body()
+            }
+        }
+    
+        func send(prompt: String) async throws -> String {
+            guard Self.sessionOpen else {
+                throw ExecutionError("agent step has no active session — run it inside invoke")
+            }
+    
+            await recorder.recordPrompt(prompt)
+    
+            if let exitCode {
+                throw BackendNonzeroExit("agent backend exited \(exitCode)", exitCode: exitCode)
+            }
+    
+            return reply
+        }
+    
+        // MARK: - Private
+    }
+    
+    private struct MockDispatcher: RunDispatching {
+        // MARK: - Property
+        let recorder: Recorder
+        let result: Warp.Value
+    
+        // MARK: - Initializer
+        init(recorder: Recorder, result: Warp.Value = .dictionary(Value.Dictionary(["ok": .bool(true)]))) {
+            self.recorder = recorder
+            self.result = result
+        }
+    
+        // MARK: - Public
+        func dispatch(name: String, inputs: [String: Warp.Value]) async throws -> Warp.Value {
+            await recorder.recordDispatch(name: name, inputs: inputs)
+    
+            return result
+        }
+    
+        // MARK: - Private
+    }
+    
+    private struct MockResources: ResourceReading {
+        // MARK: - Property
+        let files: [String: String]
+    
+        // MARK: - Initializer
+        // MARK: - Public
+        func read(_ relative: String) async throws -> String {
+            guard let body = files[relative] else {
+                throw ExecutionError("no resource '\(relative)'")
+            }
+    
+            return body
+        }
+    
+        func locate(_ relative: String) async throws -> String {
+            guard files[relative] != nil else {
+                throw ExecutionError("no resource '\(relative)'")
+            }
+    
+            return "/resource-root/" + relative
+        }
+    
+        // MARK: - Private
+    }
+    
+    private struct Harness {
+        // MARK: - Property
+        let recorder = Recorder()
+    
+        var frontend: YAMLFrontend {
+            get throws { try ForgeVocabulary.shipped.get().frontend }
+        }
+    
+        // MARK: - Initializer
+    
+        // MARK: - Public
+        func executor(
+            shell: MockShell? = nil,
+            agentReply: String = "agent-reply",
+            agentExit: Int32? = nil,
+            dispatchResult: Warp.Value = .dictionary(Value.Dictionary(["ok": .bool(true)])),
+            files: [String: String] = [:],
+            publish: @escaping @Sendable (WorkflowEvent) async -> Void = { _ in }
+        ) throws -> Executor {
+            Executor(
+                environment: ForgeEnvironment(
+                    capabilities: CapabilitySet(
+                        shell: shell ?? MockShell(recorder: recorder),
+                        agent: MockAgent(recorder: recorder, reply: agentReply, exitCode: agentExit),
+                        resources: MockResources(files: files)
+                    ),
+                    dispatcher: MockDispatcher(recorder: recorder, result: dispatchResult),
+                    pool: WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: Int.max),
+                    runID: "wf-test",
+                    rootID: "wf-root",
+                    origin: .manual,
+                    bridge: EventBridge(
+                        runID: "wf-test",
+                        workflowName: "observed",
+                        verbs: try ForgeVocabulary.shipped.get().verbs,
+                        publish: publish
+                    )
+                )
+            )
+        }
+    
+        // MARK: - Private
+    }
+    
+    private actor Collected {
+        // MARK: - Property
+        private(set) var events: [WorkflowEvent] = []
+    
+        // MARK: - Initializer
+        // MARK: - Public
+        func append(_ event: WorkflowEvent) {
+            events.append(event)
+        }
+    
+        // MARK: - Private
+    }
+    
     // MARK: - Property
     // MARK: - Initializer
     // MARK: - Test
@@ -833,18 +846,5 @@ struct EffectActionTests {
     }
 
     // MARK: - Public
-    // MARK: - Private
-}
-
-private actor Collected {
-    // MARK: - Property
-    private(set) var events: [WorkflowEvent] = []
-
-    // MARK: - Initializer
-    // MARK: - Public
-    func append(_ event: WorkflowEvent) {
-        events.append(event)
-    }
-
     // MARK: - Private
 }

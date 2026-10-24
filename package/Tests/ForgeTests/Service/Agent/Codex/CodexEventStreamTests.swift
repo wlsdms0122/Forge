@@ -9,23 +9,23 @@ import Foundation
 import Testing
 @testable import Forge
 
-private final class CompletedCodexTools: @unchecked Sendable {
-    private let lock = NSLock()
-    private var values: [(Int, ToolEvent)] = []
-    func append(sequence: Int, event: ToolEvent) {
-        lock.lock(); defer { lock.unlock() }
-        values.append((sequence, event))
-    }
-    
-    var snapshot: [(Int, ToolEvent)] {
-        lock.lock(); defer { lock.unlock() }
-        
-        return values
-    }
-}
-
 @Suite("CodexEventStream Tests")
 struct CodexEventStreamTests {
+    private final class CompletedCodexTools: @unchecked Sendable {
+        private let lock = NSLock()
+        private var values: [(Int, ToolEvent)] = []
+        func append(sequence: Int, event: ToolEvent) {
+            lock.lock(); defer { lock.unlock() }
+            values.append((sequence, event))
+        }
+        
+        var snapshot: [(Int, ToolEvent)] {
+            lock.lock(); defer { lock.unlock() }
+            
+            return values
+        }
+    }
+    
     // MARK: - Property
     // MARK: - Initializer
     // MARK: - Test

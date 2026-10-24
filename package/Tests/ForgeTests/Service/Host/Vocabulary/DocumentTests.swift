@@ -19,6 +19,79 @@ import WarpYAML
 // prints is one that loads, builds and runs.
 @Suite("The spec reference matches the Forge library")
 struct DocumentTests {
+    // The reference, read as data: which words it documents and which workflows it
+    // prints whole: the ones tagged ```yaml runnable, so an example that is a
+    // fragment rather than a workflow is not mistaken for one.
+    private struct SpecDocument {
+        // MARK: - Property
+        let sections: Set<String>
+        let workflows: [String]
+    
+        // Each section's first paragraph, the verb's signature line, its lines
+        // joined by a space.
+        let signatures: [String: String]
+    
+        // MARK: - Initializer
+        init() {
+            let url = URL(fileURLWithPath: #filePath)
+                .deletingLastPathComponent()   // Vocabulary
+                .deletingLastPathComponent()   // Host
+                .deletingLastPathComponent()   // Service
+                .deletingLastPathComponent()   // ForgeTests
+                .deletingLastPathComponent()   // Tests
+                .deletingLastPathComponent()   // package
+                .deletingLastPathComponent()   // repository root
+                .appendingPathComponent("document/Spec.md")
+            let text = try! String(contentsOf: url, encoding: .utf8)
+            let lines = text.split(separator: "\n", omittingEmptySubsequences: false)
+    
+            var sections: Set<String> = []
+            var workflows: [String] = []
+            var signatures: [String: String] = [:]
+            var fence: [String]?
+            var section: String?
+    
+            for line in lines {
+                if line.hasPrefix("### `"), line.hasSuffix("`") {
+                    section = String(line.dropFirst(5).dropLast())
+                    sections.insert(section ?? "")
+    
+                    continue
+                }
+    
+                if let open = section {
+                    if line.isEmpty, signatures[open] != nil {
+                        section = nil
+                    } else if !line.isEmpty {
+                        signatures[open] = [signatures[open], String(line)].compactMap { part in part }.joined(separator: " ")
+                    }
+                }
+    
+                if line.hasPrefix("```") {
+                    // Closing a block: keep it when it stands as a whole document.
+                    if let collected = fence {
+                        workflows.append(collected.joined(separator: "\n"))
+    
+                        fence = nil
+                    } else if line == "```yaml runnable" {
+                        fence = []
+                    }
+    
+                    continue
+                }
+    
+                if fence != nil { fence?.append(String(line)) }
+            }
+    
+            self.sections = sections
+            self.workflows = workflows
+            self.signatures = signatures
+        }
+    
+        // MARK: - Public
+        // MARK: - Private
+    }
+    
     // MARK: - Property
     private let document = SpecDocument()
 
@@ -139,77 +212,4 @@ struct DocumentTests {
 
         return "\(verb)(\(written.joined(separator: ", "))) -> \(returns)"
     }
-}
-
-// The reference, read as data: which words it documents and which workflows it
-// prints whole: the ones tagged ```yaml runnable, so an example that is a
-// fragment rather than a workflow is not mistaken for one.
-private struct SpecDocument {
-    // MARK: - Property
-    let sections: Set<String>
-    let workflows: [String]
-
-    // Each section's first paragraph, the verb's signature line, its lines
-    // joined by a space.
-    let signatures: [String: String]
-
-    // MARK: - Initializer
-    init() {
-        let url = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()   // Vocabulary
-            .deletingLastPathComponent()   // Host
-            .deletingLastPathComponent()   // Service
-            .deletingLastPathComponent()   // ForgeTests
-            .deletingLastPathComponent()   // Tests
-            .deletingLastPathComponent()   // package
-            .deletingLastPathComponent()   // repository root
-            .appendingPathComponent("document/Spec.md")
-        let text = try! String(contentsOf: url, encoding: .utf8)
-        let lines = text.split(separator: "\n", omittingEmptySubsequences: false)
-
-        var sections: Set<String> = []
-        var workflows: [String] = []
-        var signatures: [String: String] = [:]
-        var fence: [String]?
-        var section: String?
-
-        for line in lines {
-            if line.hasPrefix("### `"), line.hasSuffix("`") {
-                section = String(line.dropFirst(5).dropLast())
-                sections.insert(section ?? "")
-
-                continue
-            }
-
-            if let open = section {
-                if line.isEmpty, signatures[open] != nil {
-                    section = nil
-                } else if !line.isEmpty {
-                    signatures[open] = [signatures[open], String(line)].compactMap { part in part }.joined(separator: " ")
-                }
-            }
-
-            if line.hasPrefix("```") {
-                // Closing a block: keep it when it stands as a whole document.
-                if let collected = fence {
-                    workflows.append(collected.joined(separator: "\n"))
-
-                    fence = nil
-                } else if line == "```yaml runnable" {
-                    fence = []
-                }
-
-                continue
-            }
-
-            if fence != nil { fence?.append(String(line)) }
-        }
-
-        self.sections = sections
-        self.workflows = workflows
-        self.signatures = signatures
-    }
-
-    // MARK: - Public
-    // MARK: - Private
 }
