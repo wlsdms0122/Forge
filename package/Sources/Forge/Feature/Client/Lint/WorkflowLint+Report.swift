@@ -1,5 +1,5 @@
 //
-//  LintReport.swift
+//  WorkflowLint+Report.swift
 //  Forge
 //
 //  Created by JSilver on 8/8/26.
