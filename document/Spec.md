@@ -139,11 +139,13 @@ seconds fails with `timeout`.
 
 ### `Forge.agent`
 
-`agent(prompt: String) -> String`.
+`agent(prompt: String) -> String`, failing `nonzero_exit`.
 
 One prompt turn in the session the enclosing `invoke` opened, holding a step
 slot. Outside a session it is refused. A piece of a fan-out speaks to no
-session it did not open.
+session it did not open. A turn its backend refuses (a nonzero exit of the
+agent's CLI, an HTTP error below 500) fails with `nonzero_exit`, whose details
+are `exit_code`, `stderr` and `stdout`.
 
 ### `Forge.dispatch`
 

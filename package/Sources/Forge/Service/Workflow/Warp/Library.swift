@@ -74,6 +74,7 @@ enum Library {
             isolated: true
             parameters: [ prompt: String ]
             returns: String
+            failing: [nonzero_exit]
             result:
               call:
                 procedure: Forge.Native.agent

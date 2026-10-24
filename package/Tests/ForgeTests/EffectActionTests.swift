@@ -92,10 +92,14 @@ private struct MockAgent: AgentServing {
     let recorder: Recorder
     let reply: String
 
+    // The exit a turn's backend ends with, where it ends nonzero.
+    let exitCode: Int32?
+
     // MARK: - Initializer
-    init(recorder: Recorder, reply: String = "agent-reply") {
+    init(recorder: Recorder, reply: String = "agent-reply", exitCode: Int32? = nil) {
         self.recorder = recorder
         self.reply = reply
+        self.exitCode = exitCode
     }
 
     // MARK: - Public
@@ -116,6 +120,10 @@ private struct MockAgent: AgentServing {
         }
 
         await recorder.recordPrompt(prompt)
+
+        if let exitCode {
+            throw BackendNonzeroExit("agent backend exited \(exitCode)", exitCode: exitCode)
+        }
 
         return reply
     }
@@ -183,6 +191,7 @@ private struct Harness {
     func executor(
         shell: MockShell? = nil,
         agentReply: String = "agent-reply",
+        agentExit: Int32? = nil,
         dispatchResult: Warp.Value = .dictionary(Value.Dictionary(["ok": .bool(true)])),
         files: [String: String] = [:],
         observer: (any ExecutionObserver)? = nil
@@ -191,7 +200,7 @@ private struct Harness {
             observer: observer,
             environment: ForgeEnvironment(
                 shell: shell ?? MockShell(recorder: recorder),
-                agent: MockAgent(recorder: recorder, reply: agentReply),
+                agent: MockAgent(recorder: recorder, reply: agentReply, exitCode: agentExit),
                 dispatcher: MockDispatcher(recorder: recorder, result: dispatchResult),
                 resources: MockResources(files: files),
                 pool: WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: Int.max),
@@ -425,12 +434,54 @@ struct EffectActionTests {
         #expect(await harness.recorder.sessions.first?.model == "claude:opus")
     }
 
+    @Test("a turn the backend ends nonzero fails with nonzero_exit, as agent declares, and a rescue around agent takes it")
+    func agentFailureIsRescued() async throws {
+        // Given
+        let harness = Harness()
+        let spec = try harness.frontend.workflow("""
+        returns: "Dictionary<String, Any>"
+        failing: anything
+        body:
+          - let: session
+            value:
+              call:
+                procedure: invoke
+                arguments:
+                  body:
+                    closure:
+                      returns: String
+                      body:
+                        - var: said
+                          type: String
+                          value: ""
+                        - let: turn
+                          value:
+                            attempt:
+                              body:
+                                - set: said
+                                  value: { agent: hello }
+                              rescue:
+                                - set: said
+                                  value: { ref: turn.type }
+                      result: { ref: said }
+        result: { dictionary: [ [said, { ref: session }] ] }
+        """)
+        let sut = harness.executor(agentExit: 3)
+
+        // When
+        let outputs = try await sut.run(spec)
+
+        // Then
+        #expect(outputs["said"] == .string("nonzero_exit"))
+    }
+
     @Test("with no open session, an agent step fails")
     func agentFailsWhenNoSessionIsOpen() async throws {
         // Given — an agent step outside invoke is an authoring error
         let harness = Harness()
         let spec = try harness.frontend.workflow("""
         returns: String
+        failing: [nonzero_exit]
         result: { agent: "hello?" }
         """)
         let sut = harness.executor()

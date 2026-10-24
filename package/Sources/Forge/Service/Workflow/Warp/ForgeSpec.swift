@@ -80,7 +80,12 @@ enum ForgeSpec {
                     implementation: .query(ExtractQuery())
                 ),
                 "Forge.Native.agent": Procedure(
-                    signature: Signature(of: AgentAction.self, returns: .string, isolation: .isolated),
+                    signature: Signature(
+                        of: AgentAction.self,
+                        returns: .string,
+                        failing: .these([BackendNonzeroExit.type]),
+                        isolation: .isolated
+                    ),
                     implementation: .effect(AgentAction())
                 ),
                 "Forge.Native.invoke": Procedure(
