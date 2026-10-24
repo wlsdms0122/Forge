@@ -1,5 +1,5 @@
 //
-//  InvocationResult.swift
+//  AgentInvocationResult.swift
 //  Forge
 //
 //  Created by JSilver on 8/9/26.
@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct InvocationResult: Sendable, Equatable {
+struct AgentInvocationResult: Sendable, Equatable {
     // MARK: - Property
     let text: String
     let usage: AgentUsage?

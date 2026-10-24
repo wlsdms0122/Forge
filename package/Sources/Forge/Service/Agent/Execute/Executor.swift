@@ -34,7 +34,7 @@ struct Executor: Sendable {
         return backend.openSession()
     }
     
-    func run(_ original: AgentInvocation) async throws -> InvocationResult {
+    func run(_ original: AgentInvocation) async throws -> AgentInvocationResult {
         let started = ContinuousClock.now
         var invocation = original
         
@@ -52,7 +52,7 @@ struct Executor: Sendable {
             
             let durationMs = (ContinuousClock.now - started).milliseconds
             
-            return InvocationResult(
+            return AgentInvocationResult(
                 text: response.text,
                 usage: response.usage,
                 toolEvents: response.toolEvents,
@@ -73,7 +73,7 @@ struct Executor: Sendable {
                     
                     let durationMs = (ContinuousClock.now - started).milliseconds
                     
-                    return InvocationResult(
+                    return AgentInvocationResult(
                         text: response.text,
                         usage: response.usage,
                         toolEvents: response.toolEvents,
