@@ -17,31 +17,41 @@ struct ConnectionCloseTests {
     // MARK: - Test
     @Test("a send after close does not write to a reused fd")
     func sendAfterCloseDoesNotWriteToReusedFD() async throws {
-        // Given
-        var fds: [Int32] = [0, 0]
+        // Tests run in parallel and open fds of their own, so the closed
+        // number is not always free to reuse. Each attempt that finds it
+        // taken is set up again; one that takes it decides.
+        for _ in 0..<20 {
+            // Given
+            var fds: [Int32] = [0, 0]
+            #expect(socketpair(AF_UNIX, SOCK_STREAM, 0, &fds) == 0)
+            let (ours, peer) = (fds[0], fds[1])
+            let conn = Connection(fd: ours)
+            let drain = Task { for await _ in await conn.frames() {} }
+            Darwin.close(peer)
+            _ = await drain.value
+            try await Task.sleep(nanoseconds: 100_000_000)
+            var pipeFDs: [Int32] = [0, 0]
+            #expect(pipe(&pipeFDs) == 0)
+            // F_DUPFD takes the number only while it is free, where dup2
+            // would replace another test's fd.
+            let reused = fcntl(pipeFDs[1], F_DUPFD, ours)
+            defer { Darwin.close(pipeFDs[0]); Darwin.close(pipeFDs[1]); Darwin.close(reused) }
+            guard reused == ours else { continue }
 
-        // Then
-        #expect(socketpair(AF_UNIX, SOCK_STREAM, 0, &fds) == 0)
-        let (ours, peer) = (fds[0], fds[1])
-        let conn = Connection(fd: ours)
-        let drain = Task { for await _ in await conn.frames() {} }
-        Darwin.close(peer)
-        _ = await drain.value
-        try await Task.sleep(nanoseconds: 100_000_000)
-        var pipeFDs: [Int32] = [0, 0]
-        #expect(pipe(&pipeFDs) == 0)
-        // Tests run in parallel and open fds of their own; F_DUPFD takes the
-        // number only while it is free, where dup2 would replace another
-        // test's fd. A number already taken leaves no reuse to set up.
-        let reused = fcntl(pipeFDs[1], F_DUPFD, ours)
-        defer { Darwin.close(pipeFDs[0]); Darwin.close(pipeFDs[1]); Darwin.close(reused) }
-        guard reused == ours else { return }
-        await conn.send(Data("late-write-must-not-appear\n".utf8))
-        let flags = fcntl(pipeFDs[0], F_GETFL)
-        _ = fcntl(pipeFDs[0], F_SETFL, flags | O_NONBLOCK)
-        var buffer = [UInt8](repeating: 0, count: 128)
-        let bytesRead = read(pipeFDs[0], &buffer, buffer.count)
-        #expect(bytesRead <= 0, "a late send on a closed connection leaked into a reused fd: \(String(decoding: buffer.prefix(max(bytesRead, 0)), as: UTF8.self))")
+            // When
+            await conn.send(Data("late-write-must-not-appear\n".utf8))
+
+            // Then
+            let flags = fcntl(pipeFDs[0], F_GETFL)
+            _ = fcntl(pipeFDs[0], F_SETFL, flags | O_NONBLOCK)
+            var buffer = [UInt8](repeating: 0, count: 128)
+            let bytesRead = read(pipeFDs[0], &buffer, buffer.count)
+            #expect(bytesRead <= 0, "a late send on a closed connection leaked into a reused fd: \(String(decoding: buffer.prefix(max(bytesRead, 0)), as: UTF8.self))")
+
+            return
+        }
+
+        Issue.record("the closed fd number was taken in every attempt; the reuse was never set up")
     }
     
     @Test("writes made before close are flushed before closing")
