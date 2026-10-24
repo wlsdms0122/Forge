@@ -12,12 +12,12 @@ import Testing
 @Suite("TierGuard Tests")
 struct TierGuardTests {
     // MARK: - Property
-    private static let tiers = ["Core", "Module", "Service", "Feature"]
+    private static let tiers = ["Core", "Error", "Module", "Service", "Feature"]
     private static let declaration = #"(?:struct|class|enum|protocol|actor|typealias)\s+([A-Z]\w*)"#
 
     // MARK: - Initializer
     // MARK: - Test
-    @Test("a Core or Module file names no type of a higher tier")
+    @Test("a Core, Error or Module file names no type of a higher tier")
     func lowerTiersNameNoHigherTier() throws {
         // Given
         let package = try PackageSource()
@@ -34,13 +34,13 @@ struct TierGuardTests {
             }
         }
 
-        #expect(declared.values.contains(3), "if no Feature type was read, this guard is meaningless, not passing")
+        #expect(declared.values.contains(4), "if no Feature type was read, this guard is meaningless, not passing")
 
         // When
         var offenders: [String] = []
 
         for url in files {
-            guard let tier = Self.tier(of: url, under: root), tier <= 1 else { continue }
+            guard let tier = Self.tier(of: url, under: root), tier <= 2 else { continue }
 
             let code = try Self.code(of: url)
             let own = Set(try Self.matches(Self.declaration, in: code))
@@ -52,7 +52,7 @@ struct TierGuardTests {
         }
 
         // Then
-        #expect(offenders == [], "Core and Module name only their own tier and the tiers below")
+        #expect(offenders == [], "Core, Error and Module name only their own tier and the tiers below")
     }
 
     // MARK: - Public
