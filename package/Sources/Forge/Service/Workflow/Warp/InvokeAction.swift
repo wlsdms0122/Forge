@@ -78,11 +78,8 @@ struct InvokeAction: Warp.Effect {
         let settings = AgentSessionSettings(
             model: invocation.string(.model),
             allowed: invocation[.allowed],
-            cwd: try Self.optionalNonEmptyString(invocation[.cwd], field: "cwd"),
-            permissionMode: try Self.optionalNonEmptyString(
-                invocation[.permissionMode],
-                field: "permission_mode"
-            ),
+            cwd: try Self.nonEmpty(invocation.string(.cwd), field: "cwd"),
+            permissionMode: try Self.nonEmpty(invocation.string(.permissionMode), field: "permission_mode"),
             envExtra: try ValueBridge.strings(invocation[.envExtra]),
             shareSession: invocation[.shareSession] == .bool(true)
         )
@@ -97,28 +94,14 @@ struct InvokeAction: Warp.Effect {
     // MARK: - Private
     // null means "unset" and stays nil; an empty string is an author mistake, not
     // a quiet fallback into the daemon's own working directory.
-    private static func optionalNonEmptyString(
-        _ value: Warp.Value,
-        field: String
-    ) throws -> String? {
-        switch value {
-        case .null:
-            return nil
-
-        case let .string(string):
-            guard !string.isEmpty else {
-                throw ExecutionError(
-                    "invoke: \(field) must be a non-empty string, or omitted/null to"
-                        + " mean \"unset\" — got an empty string"
-                )
-            }
-
-            return string
-
-        case let other:
+    private static func nonEmpty(_ string: String?, field: String) throws -> String? {
+        guard string != "" else {
             throw ExecutionError(
-                "invoke: \(field) must resolve to a string or null, got \(other.nominal)"
+                "invoke: \(field) must be a non-empty string, or omitted/null to"
+                    + " mean \"unset\" — got an empty string"
             )
         }
+
+        return string
     }
 }

@@ -26,7 +26,7 @@ struct AgentAction: Warp.Effect {
     // MARK: - Public
     func run(_ invocation: Warp.Invocation<Self>) async throws -> Warp.Value {
         let environment = try ForgeEnvironment.from(invocation)
-        let prompt = invocation.string(.prompt) ?? ""
+        let prompt = ValueBridge.text(invocation[.prompt])
 
         return try await environment.withStepSlot {
             .string(try await environment.agent.send(prompt: prompt))

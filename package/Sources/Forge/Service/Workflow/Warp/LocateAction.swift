@@ -27,7 +27,7 @@ struct LocateAction: Warp.Effect {
     func run(_ invocation: Warp.Invocation<Self>) async throws -> Warp.Value {
         let environment = try ForgeEnvironment.from(invocation)
 
-        return .string(try await environment.resources.locate(invocation.string(.path) ?? ""))
+        return .string(try await environment.resources.locate(ValueBridge.text(invocation[.path])))
     }
 
     // MARK: - Private

@@ -35,7 +35,7 @@ struct ResourceAction: Warp.Effect {
     // MARK: - Public
     func run(_ invocation: Warp.Invocation<Self>) async throws -> Warp.Value {
         let environment = try ForgeEnvironment.from(invocation)
-        let body = try await environment.resources.read(invocation.string(.content) ?? "")
+        let body = try await environment.resources.read(ValueBridge.text(invocation[.content]))
 
         return .string(
             try ResourceTemplate(body).rendered(over: try ValueBridge.fields(invocation[.inputs]))

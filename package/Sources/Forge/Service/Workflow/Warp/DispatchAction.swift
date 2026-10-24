@@ -41,7 +41,7 @@ struct DispatchAction: Warp.Effect {
     // MARK: - Public
     func run(_ invocation: Warp.Invocation<Self>) async throws -> Warp.Value {
         let environment = try ForgeEnvironment.from(invocation)
-        let name = invocation.string(.name) ?? ""
+        let name = ValueBridge.text(invocation[.name])
         let inputs = try ValueBridge.fields(invocation[.inputs])
 
         return try await withDeadline(seconds: ValueBridge.number(invocation[.timeout])) {
