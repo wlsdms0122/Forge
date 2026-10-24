@@ -1116,7 +1116,7 @@ Inspect with `forge policy list` / `forge policy check`.
 
 ## 7. Error types
 
-The error envelope is `{"type": "<ErrorType>", "message": "<text>"}` and the fields a type carries beside them. A failed run's `error`, in a `workflow.dispatch` result and in a stream's `workflow.result`, is the same object, and a `workflow.event` names a failure by the same type. A failure that is none of the types below is `InternalError` with its text.
+The error envelope is `{"type": "<ErrorType>", "message": "<text>"}` and the fields a type carries beside them. A failed run's `error`, in a `workflow.dispatch` result and in a stream's `workflow.result`, is the same object, and a `workflow.event` names a failure by the same type. A run or a step that fails with a failure of the language (such as `aborted`, `cast_refused`, `concurrent_failed`, `timeout`) is typed by the name the language gives it, the name a workflow's `catch` reads. Any other failure that is none of the types below is `InternalError` with its text.
 
 | Type | Meaning |
 |------|---------|
@@ -1138,5 +1138,5 @@ The error envelope is `{"type": "<ErrorType>", "message": "<text>"}` and the fie
 | `OutputDeclarationError` | an `extract` step's `outputs` is no extractor declaration (a map that is no extractor, the key `_raw`, a path or a regex that does not parse) — fix the spec |
 | `RunCapExceeded` | run cap saturation (backpressure) — retry later is meaningful |
 | `RunCancelled` | the run was cancelled (`workflow.cancel`, or the daemon shutting down) |
-| `InternalError` | a failure Forge does not name (an error of the language or of the system); the message is its text |
+| `InternalError` | a failure neither Forge nor the language names (an error of the system); the message is its text |
 | `ChildRunFailed` | a `dispatch` step's child run completed as failed — message carries the child's error type |

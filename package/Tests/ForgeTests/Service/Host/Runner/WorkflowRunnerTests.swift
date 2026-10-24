@@ -138,6 +138,25 @@ struct WorkflowRunnerTests {
         #expect(result.error?.object.message.contains("boom reason") == true)
     }
 
+    @Test("a run ending in a failure of the language reports the language's name for it")
+    func languageFailureKeepsItsName() async throws {
+        // Given
+        let harness = try makeRunner(catalog: [
+            "boom": """
+            failing: [aborted]
+            body:
+              - value: { abort: "boom reason" }
+            """
+        ])
+        let workflow = try await harness.store.workflow(named: "boom")
+
+        // When
+        let sut = try await harness.dispatch(workflow)
+
+        // Then
+        #expect(sut.error?.object.type == "aborted")
+    }
+
     @Test("dispatch runs a child spec from the catalog as a new run and returns its outputs")
     func dispatchRunsChildSpec() async throws {
         // Given

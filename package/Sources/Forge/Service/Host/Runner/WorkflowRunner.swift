@@ -253,7 +253,7 @@ actor WorkflowRunner {
             )
         } catch {
             let duration = (ContinuousClock.now - started).milliseconds
-            let failure = ErrorObject(error)
+            let failure = ErrorObject(failure: error)
 
             await eventBus.publish(WorkflowEvent(
                 kind: .workflowFailed,

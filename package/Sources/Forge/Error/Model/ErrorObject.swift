@@ -26,6 +26,12 @@ struct ErrorObject: Sendable {
     }
 
     // MARK: - Initializer
+    init(type: String, message: String, details: [String: any Sendable]) {
+        self.type = type
+        self.message = message
+        self.details = details
+    }
+
     init(_ error: any Error) {
         if let forgeError = error as? any ForgeError {
             self.type = forgeError.wireType

@@ -69,7 +69,7 @@ struct EventBridge: Sendable {
                 workflowID: workflowID,
                 workflowName: workflowName,
                 stepID: step,
-                errorType: ErrorObject(error).type,
+                errorType: ErrorObject(failure: error).type,
                 errorMessage: "\(Self.traced(error, at: invocation.trace))"
             ))
 
