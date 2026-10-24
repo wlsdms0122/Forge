@@ -40,12 +40,12 @@ struct JobStoreTests {
         #expect(healthy != nil)
     }
     
-    @Test("Create works on a fresh session whose job directory does not exist yet")
+    @Test("Create works on a fresh instance whose job directory does not exist yet")
     func createWorksOnFreshDirectory() async throws {
         let parent = try temporary.make("fresh")
         defer { try? FileManager.default.removeItem(at: parent) }
         // A missing directory is a definitively empty store, not an unobservable
-        // one — the very first ticket of a session must be creatable.
+        // one — the very first ticket of an instance must be creatable.
         let directory = parent.appendingPathComponent("jobs")
         let store = JobStore(directory: directory)
         try await store.create(makeJob("first"))

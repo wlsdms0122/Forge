@@ -180,7 +180,7 @@ struct ServiceScopedGateTests {
             tokenAuthority: authority)
         let method = ServiceReloadMethod(supervisor: sup,
             configPath: nil,
-            sessionHome: FileManager.default.temporaryDirectory,
+            instanceHome: FileManager.default.temporaryDirectory,
             configSnapshot: ConfigSnapshot(ConfigReport(tomlPath: nil, entries: [])))
         let jira = authority.mint(TokenClaims(principal: "service:jira"))
         do {

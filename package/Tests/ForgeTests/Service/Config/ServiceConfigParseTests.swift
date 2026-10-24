@@ -38,7 +38,7 @@ struct ServiceConfigParseTests {
         command = ["sleep", "60"]
         """.write(to: toml, atomically: true, encoding: .utf8)
         let directory = URL(fileURLWithPath: temporaryDirectory.path, isDirectory: true)
-        let config = ConfigLoader.build(file: try ConfigLoader.parse(toml), tomlDirectory: directory, sessionHome: temporaryDirectory, environment: [:])
+        let config = ConfigLoader.build(file: try ConfigLoader.parse(toml), tomlDirectory: directory, instanceHome: temporaryDirectory, environment: [:])
 
         // Then
         #expect(config.services.count == 3)
@@ -70,7 +70,7 @@ struct ServiceConfigParseTests {
         command = ["../venv/bin/python", "-m", "svc"]
         """.write(to: toml, atomically: true, encoding: .utf8)
         let directory = URL(fileURLWithPath: temporaryDirectory.path, isDirectory: true)
-        let config = ConfigLoader.build(file: try ConfigLoader.parse(toml), tomlDirectory: directory, sessionHome: temporaryDirectory, environment: [:])
+        let config = ConfigLoader.build(file: try ConfigLoader.parse(toml), tomlDirectory: directory, instanceHome: temporaryDirectory, environment: [:])
 
         // Then
         let service = try #require(config.services.first)
@@ -92,7 +92,7 @@ struct ServiceConfigParseTests {
         """.write(to: toml, atomically: true, encoding: .utf8)
 
         // When
-        let config = try ConfigLoader.load(configPath: toml.path, sessionHome: temporaryDirectory)
+        let config = try ConfigLoader.load(configPath: toml.path, instanceHome: temporaryDirectory)
 
         // Then
         #expect(config.services.isEmpty)

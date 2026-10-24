@@ -39,18 +39,18 @@ struct ForgeCommand: AsyncParsableCommand {
             handed to its launcher (FORGE_BOOTSTRAP_FD).
 
             SOCKET DISCOVERY
-                The socket is <sessionHome>/forged.sock, where sessionHome =
-                <XDG_CONFIG_HOME|~/.config>/forge/<session> and session =
-                --session > FORGE_SESSION > "default". serve binds it; a client
+                The socket is <instanceHome>/forged.sock, where instanceHome =
+                <XDG_CONFIG_HOME|~/.config>/forge/<instance> and instance =
+                --instance > FORGE_INSTANCE > "default". serve binds it; a client
                 falls back to it but honors FORGE_SOCKET first (a spawned child
                 reaches its exact daemon). The client never reads config;
                 config (--config) is a `serve`-only input.
 
             ENVIRONMENT
-                FORGE_SESSION           default session name when --session is
+                FORGE_INSTANCE          default instance name when --instance is
                                         omitted — selects which daemon socket.
                 FORGE_SOCKET            exact socket path for a client to connect
-                                        (skips session derivation). Injected into
+                                        (skips instance derivation). Injected into
                                         spawned subprocesses by the daemon.
                 FORGE_ACCESS_TOKEN      daemon-signed bearer token carried on
                                         every RPC. Injected into workflow

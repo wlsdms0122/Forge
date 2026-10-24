@@ -29,17 +29,17 @@ struct StatusMethodTests {
 
         // Then
         let daemon = try #require(result["daemon"]?.objectValue)
-        #expect(daemon["session"]?.stringValue == "test")
+        #expect(daemon["instance"]?.stringValue == "test")
         #expect(daemon["socket"]?.stringValue == socket)
         #expect(daemon["pid"] != nil)
         let config = try #require(result["config"]?.objectValue)
         let values = try #require(config["values"]?.arrayValue)
         let socketEntry = try #require(values.first { value in (value["key"]?.stringValue) == "socket" })
         #expect(socketEntry["value"]?.stringValue == socket)
-        #expect(socketEntry["source"]?.stringValue == "session")
+        #expect(socketEntry["source"]?.stringValue == "instance")
         let runtimeEntry = try #require(values.first { value in (value["key"]?.stringValue) == "runtime_directory" })
         #expect(runtimeEntry["value"]?.stringValue == home.appendingPathComponent("runtime").path)
-        #expect(runtimeEntry["source"]?.stringValue == "session")
+        #expect(runtimeEntry["source"]?.stringValue == "instance")
         let runtime = try #require(result["runtime"]?.objectValue)
         #expect(runtime["workflows"]?.intValue == 0)
         #expect(runtime["jobs"]?.intValue == 0)
@@ -64,10 +64,10 @@ struct StatusMethodTests {
         let home = try temporary.make("snapshot-home")
         let configURL = try temporary.write("[pool]\nmaximum_concurrent_steps = 7\n", to: "config.toml")
         let (_, report) = try ConfigLoader.loadResolved(
-            configPath: configURL.path, sessionHome: home, environment: [:])
+            configPath: configURL.path, instanceHome: home, environment: [:])
         let authority = TokenAuthority()
         let method = DaemonStatusMethod(
-            session: "test",
+            instance: "test",
             socketPath: "/tmp/s.sock",
             runtimeDirectory: home.appendingPathComponent("runtime"),
             bootedAt: .fixture,
@@ -98,9 +98,9 @@ struct StatusMethodTests {
     private func makeMethod(_ home: URL, socket: String) throws -> (DaemonStatusMethod, TokenAuthority) {
         let authority = TokenAuthority()
         let method = DaemonStatusMethod(
-            session: "test", socketPath: socket, runtimeDirectory: home.appendingPathComponent("runtime"),
+            instance: "test", socketPath: socket, runtimeDirectory: home.appendingPathComponent("runtime"),
             bootedAt: .fixture,
-            configSnapshot: ConfigSnapshot((try? ConfigLoader.loadResolved(configPath: nil, sessionHome: home, environment: [:]).report)
+            configSnapshot: ConfigSnapshot((try? ConfigLoader.loadResolved(configPath: nil, instanceHome: home, environment: [:]).report)
                 ?? ConfigReport(tomlPath: nil, entries: [])),
             workflowStore: try WorkflowCatalog(directory: nil),
             scheduleStore: ScheduleStore(configDir: nil, runtimeDirectory: nil, stateFile: FileManager.default.temporaryDirectory.appendingPathComponent("forge-sched-enabled-\(UUID().uuidString.prefix(6)).json")),

@@ -9,7 +9,7 @@ import Foundation
 
 struct DaemonStatusMethod: Sendable {
     // MARK: - Property
-    let session: String
+    let instance: String
     let socketPath: String
     let runtimeDirectory: URL
     let bootedAt: Date
@@ -26,8 +26,8 @@ struct DaemonStatusMethod: Sendable {
         var config = await configSnapshot.current().fields
         
         if var values = config["values"]?.arrayValue {
-            values.append(["key": "socket", "value": .string(socketPath), "source": "session"])
-            values.append(["key": "runtime_directory", "value": .string(runtimeDirectory.path), "source": "session"])
+            values.append(["key": "socket", "value": .string(socketPath), "source": "instance"])
+            values.append(["key": "runtime_directory", "value": .string(runtimeDirectory.path), "source": "instance"])
             config["values"] = .array(values)
         }
         
@@ -38,7 +38,7 @@ struct DaemonStatusMethod: Sendable {
         let jobCount = await jobStore.all().count
         
         let daemon: JSONValue = [
-            "session": .string(session),
+            "instance": .string(instance),
             "version": .string(Version.current),
             "socket": .string(socketPath),
             "pid": .int(Int(ProcessInfo.processInfo.processIdentifier)),

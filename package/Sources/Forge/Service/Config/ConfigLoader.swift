@@ -67,50 +67,50 @@ enum ConfigLoader {
     // MARK: - Property
     // MARK: - Initializer
     // MARK: - Public
-    static func resolveConfigPath(_ explicit: String?, sessionHome: URL) -> URL? {
+    static func resolveConfigPath(_ explicit: String?, instanceHome: URL) -> URL? {
         if let explicit {
             let url = URL(fileURLWithPath: explicit)
             
             return FileManager.default.fileExists(atPath: url.path) ? url : nil
         }
         
-        let candidate = sessionHome.appendingPathComponent("config.toml")
+        let candidate = instanceHome.appendingPathComponent("config.toml")
         
         return FileManager.default.fileExists(atPath: candidate.path) ? candidate : nil
     }
     
-    static func load(configPath: String? = nil, sessionHome: URL) throws -> ForgeConfig {
+    static func load(configPath: String? = nil, instanceHome: URL) throws -> ForgeConfig {
         let environment = ProcessInfo.processInfo.environment
-        let tomlURL = resolveConfigPath(configPath, sessionHome: sessionHome)
+        let tomlURL = resolveConfigPath(configPath, instanceHome: instanceHome)
         let fromFile = try tomlURL.map { url in try parse(url) } ?? PartialConfig()
         
         return build(
             file: fromFile,
             tomlDirectory: tomlURL?.deletingLastPathComponent(),
-            sessionHome: sessionHome,
+            instanceHome: instanceHome,
             environment: environment
         )
     }
     
     static func loadWithSources(
         configPath: String? = nil,
-        sessionHome: URL,
+        instanceHome: URL,
         environment: [String: String] = ProcessInfo.processInfo.environment
     ) throws -> ConfigReport {
-        try loadResolved(configPath: configPath, sessionHome: sessionHome, environment: environment).report
+        try loadResolved(configPath: configPath, instanceHome: instanceHome, environment: environment).report
     }
     
     static func loadResolved(
         configPath: String? = nil,
-        sessionHome: URL,
+        instanceHome: URL,
         environment: [String: String] = ProcessInfo.processInfo.environment
     ) throws -> (config: ForgeConfig, report: ConfigReport) {
-        let tomlURL = resolveConfigPath(configPath, sessionHome: sessionHome)
+        let tomlURL = resolveConfigPath(configPath, instanceHome: instanceHome)
         let fromFile = try tomlURL.map { url in try parse(url) } ?? PartialConfig()
         let config = build(
             file: fromFile,
             tomlDirectory: tomlURL?.deletingLastPathComponent(),
-            sessionHome: sessionHome,
+            instanceHome: instanceHome,
             environment: environment
         )
         
@@ -357,13 +357,13 @@ enum ConfigLoader {
     static func build(
         file: PartialConfig,
         tomlDirectory: URL?,
-        sessionHome: URL,
+        instanceHome: URL,
         environment: [String: String]
     ) -> ForgeConfig {
         let providers = resolveProviders(file.providers, environment: environment)
-        let anchor = tomlDirectory ?? sessionHome
-        let runtimeDirectory = Session.runtimeDirectory(in: sessionHome)
-        let logDir = sessionHome.appendingPathComponent("log")
+        let anchor = tomlDirectory ?? instanceHome
+        let runtimeDirectory = Instance.runtimeDirectory(in: instanceHome)
+        let logDir = instanceHome.appendingPathComponent("log")
         let logJSONL = resolveURLWithDefault(
             cli: nil,
             environmentName: "FORGE_LOG_JSONL",
@@ -395,7 +395,7 @@ enum ConfigLoader {
                 environment: environment,
                 toml: toml,
                 anchor: anchor,
-                fallback: sessionHome.appendingPathComponent(name)
+                fallback: instanceHome.appendingPathComponent(name)
             )
         }
         

@@ -31,7 +31,7 @@ struct StatusCommand: ParsableCommand {
         switch client.send("daemon.status") {
         case .err(let type, let message):
             if type == "ClientError" {
-                reportNotRunning(session: global.session, socketPath: client.socketPath)
+                reportNotRunning(instance: global.instance, socketPath: client.socketPath)
             }
             
             client.fail(type: type, message: message)
@@ -50,7 +50,7 @@ struct StatusCommand: ParsableCommand {
     // MARK: - Private
     private func printPlain(_ result: JSONValue) {
         if let daemon = result["daemon"] {
-            for key in ["session", "version", "socket", "pid", "started_at", "uptime_s"] {
+            for key in ["instance", "version", "socket", "pid", "started_at", "uptime_s"] {
                 if let value = daemon[key] { print("\(key):\(pad(key))\(value.plainText)") }
             }
         }
@@ -103,10 +103,10 @@ struct StatusCommand: ParsableCommand {
         String(repeating: " ", count: max(1, 12 - key.count))
     }
     
-    private func reportNotRunning(session: String?, socketPath: String) {
+    private func reportNotRunning(instance: String?, socketPath: String) {
         if
-            let home = try? Session.home(session: session),
-            let data = try? Data(contentsOf: Session.runtimeInfo(in: home)),
+            let home = try? Instance.home(instance: instance),
+            let data = try? Data(contentsOf: Instance.runtimeInfo(in: home)),
             let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
         {
             let message = "daemon not reachable at \(socketPath) but runtime.json exists "
@@ -115,7 +115,7 @@ struct StatusCommand: ParsableCommand {
             
             FileHandle.standardError.write(Data(message.utf8))
         } else {
-            let message = "no daemon for this session — socket \(socketPath) not listening "
+            let message = "no daemon for this instance — socket \(socketPath) not listening "
                 + "(start one with `forge serve`)\n"
             
             FileHandle.standardError.write(Data(message.utf8))

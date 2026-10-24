@@ -27,9 +27,9 @@ package actor Server {
     let workRegistry: WorkRegistry
     let serviceSupervisor: ServiceSupervisor
     let tokenAuthority: TokenAuthority
-    let sessionHome: URL
+    let instanceHome: URL
     let socketPath: String
-    let session: String
+    let instance: String
     
     private let configSnapshot: ConfigSnapshot
     private let socketServer: UnixSocketServer
@@ -40,16 +40,16 @@ package actor Server {
     init(
         config: ForgeConfig,
         configReport: ConfigReport,
-        sessionHome: URL,
-        session: String,
+        instanceHome: URL,
+        instance: String,
         configPath: String? = nil,
         vocabulary: ForgeVocabulary
     ) {
         self.config = config
         self.configSnapshot = ConfigSnapshot(configReport)
-        self.sessionHome = sessionHome
-        self.socketPath = Session.socket(in: sessionHome)
-        self.session = session
+        self.instanceHome = instanceHome
+        self.socketPath = Instance.socket(in: instanceHome)
+        self.instance = instance
         self.bootedAt = Date()
         
         var byProvider: [String: any Backend] = [:]
@@ -154,7 +154,7 @@ package actor Server {
         self.serviceSupervisor = supervisorLocal
         
         let daemonStatusMethod = DaemonStatusMethod(
-            session: session,
+            instance: instance,
             socketPath: socketPath,
             runtimeDirectory: config.runtimeDirectory,
             bootedAt: self.bootedAt,
@@ -192,7 +192,7 @@ package actor Server {
             supervisor: supervisorLocal,
             handlerBus: handlerBus,
             configPath: configPath,
-            sessionHome: sessionHome,
+            instanceHome: instanceHome,
             configSnapshot: configSnapshot
         )
         let dispatch = DispatchService(
@@ -214,11 +214,11 @@ package actor Server {
     
     // MARK: - Public
     func boot() async throws {
-        try Session.checkSocketLength(socketPath)
+        try Instance.checkSocketLength(socketPath)
         
         if UnixSocketServer.isLive(path: socketPath) {
             throw SocketError("daemon already listening at \(socketPath) — "
-                + "stop it, or use a different --session")
+                + "stop it, or use a different --instance")
         }
         
         setenv("FORGE_SOCKET", socketPath, 1)
@@ -294,19 +294,19 @@ package actor Server {
         return isTTY ? .stdout : .withheld
     }
     
-    package static func run(configPath: String?, session: String?) async throws {
+    package static func run(configPath: String?, instance: String?) async throws {
         let absoluteConfigPath = configPath
             .map { path in URL(fileURLWithPath: path).standardizedFileURL.path }
-        let home = try Session.home(session: session)
+        let home = try Instance.home(instance: instance)
         let (configuration, report) = try ConfigLoader.loadResolved(
             configPath: absoluteConfigPath,
-            sessionHome: home
+            instanceHome: home
         )
         let server = Server(
             config: configuration,
             configReport: report,
-            sessionHome: home,
-            session: Session.name(session),
+            instanceHome: home,
+            instance: Instance.name(instance),
             configPath: absoluteConfigPath,
             vocabulary: try ForgeVocabulary()
         )
@@ -343,13 +343,13 @@ package actor Server {
     }
     
     private func runtimeInfoURL() -> URL {
-        Session.runtimeInfo(in: sessionHome)
+        Instance.runtimeInfo(in: instanceHome)
     }
     
     private func writeRuntimeInfo() {
         let info: [String: Any] = [
             "socket":                     socketPath,
-            "session":                    session,
+            "instance":                   instance,
             "version":                    Version.current,
             "pid":                        ProcessInfo.processInfo.processIdentifier,
             "started_at":                 ISO8601DateFormatter().string(from: bootedAt),

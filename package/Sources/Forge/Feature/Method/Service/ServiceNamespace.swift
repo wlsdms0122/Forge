@@ -17,7 +17,7 @@ struct ServiceNamespace: Sendable {
         supervisor: ServiceSupervisor,
         handlerBus: WorkflowHandlerBus,
         configPath: String?,
-        sessionHome: URL,
+        instanceHome: URL,
         configSnapshot: ConfigSnapshot
     ) {
         let run = ServiceRunMethod(supervisor: supervisor)
@@ -27,7 +27,7 @@ struct ServiceNamespace: Sendable {
         let reload = ServiceReloadMethod(
             supervisor: supervisor,
             configPath: configPath,
-            sessionHome: sessionHome,
+            instanceHome: instanceHome,
             configSnapshot: configSnapshot
         )
 

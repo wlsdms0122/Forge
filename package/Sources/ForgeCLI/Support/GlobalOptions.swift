@@ -10,8 +10,8 @@ import Foundation
 
 struct GlobalOptions: ParsableArguments {
     // MARK: - Property
-    @Option(help: "Session name — selects the daemon socket (default: default).")
-    var session: String?
+    @Option(help: "Instance name — selects the daemon socket (default: default).")
+    var instance: String?
     
     @Option(help: "Daemon-signed bearer token (overrides FORGE_ACCESS_TOKEN).")
     var token: String?

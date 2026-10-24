@@ -1,5 +1,5 @@
 //
-//  Session.swift
+//  Instance.swift
 //  Forge
 //
 //  Created by JSilver on 8/8/26.
@@ -7,7 +7,7 @@
 
 import Foundation
 
-package enum Session {
+package enum Instance {
     // MARK: - Property
     package static let defaultName = "default"
     
@@ -26,10 +26,10 @@ package enum Session {
     }
     
     package static func canonicalSocket(
-        session: String?,
+        instance: String?,
         env: [String: String] = ProcessInfo.processInfo.environment
     ) throws -> String {
-        let path = socket(in: try home(session: session, env: env))
+        let path = socket(in: try home(instance: instance, env: env))
         
         try checkSocketLength(path)
         
@@ -37,19 +37,19 @@ package enum Session {
     }
     
     package static func clientSocket(
-        session: String?,
+        instance: String?,
         env: [String: String] = ProcessInfo.processInfo.environment
     ) throws -> String {
         if let socket = env["FORGE_SOCKET"], !socket.isEmpty { return expand(socket) }
         
-        return try canonicalSocket(session: session, env: env)
+        return try canonicalSocket(instance: instance, env: env)
     }
     
     package static func home(
-        session: String?,
+        instance: String?,
         env: [String: String] = ProcessInfo.processInfo.environment
     ) throws -> URL {
-        let name = resolveName(session, env: env)
+        let name = resolveName(instance, env: env)
         
         try validate(name)
         
@@ -59,24 +59,24 @@ package enum Session {
     }
     
     package static func name(
-        _ session: String?,
+        _ instance: String?,
         env: [String: String] = ProcessInfo.processInfo.environment
     ) -> String {
-        resolveName(session, env: env)
+        resolveName(instance, env: env)
     }
     
     package static func checkSocketLength(_ path: String) throws {
         let limit = 104
         
         guard path.utf8.count < limit else {
-            throw SessionError.socketPathTooLong(path: path, limit: limit)
+            throw InstanceError.socketPathTooLong(path: path, limit: limit)
         }
     }
     
     // MARK: - Private
     private static func resolveName(_ explicit: String?, env: [String: String]) -> String {
         if let explicit, !explicit.isEmpty { return explicit }
-        if let fromEnv = env["FORGE_SESSION"], !fromEnv.isEmpty { return fromEnv }
+        if let fromEnv = env["FORGE_INSTANCE"], !fromEnv.isEmpty { return fromEnv }
         
         return defaultName
     }
@@ -99,7 +99,7 @@ package enum Session {
                 || character == "."
         }
         
-        guard ok, name != ".", name != ".." else { throw SessionError.invalidName(name) }
+        guard ok, name != ".", name != ".." else { throw InstanceError.invalidName(name) }
     }
     
     private static func expand(_ raw: String) -> String {

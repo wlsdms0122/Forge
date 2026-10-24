@@ -11,7 +11,7 @@ struct ServiceReloadMethod: Sendable {
     // MARK: - Property
     let supervisor: ServiceSupervisor
     let configPath: String?
-    let sessionHome: URL
+    let instanceHome: URL
     let configSnapshot: ConfigSnapshot
 
     // MARK: - Initializer
@@ -21,7 +21,7 @@ struct ServiceReloadMethod: Sendable {
 
         let (config, report) = try ConfigLoader.loadResolved(
             configPath: configPath,
-            sessionHome: sessionHome
+            instanceHome: instanceHome
         )
         let diff = await supervisor.reload(config.services)
 

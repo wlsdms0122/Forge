@@ -30,7 +30,7 @@ struct Client {
     // one up front.
     init(_ global: GlobalOptions, context: String, token: String) {
         do {
-            self.socketPath = try Session.clientSocket(session: global.session)
+            self.socketPath = try Instance.clientSocket(instance: global.instance)
         } catch {
             die("\(error)", code: 4)
         }

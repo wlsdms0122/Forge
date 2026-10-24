@@ -1,6 +1,6 @@
 # Forge
 
-Forge is a per-session daemon that runs **workflows written as pure data** —
+Forge is a per-instance daemon that runs **workflows written as pure data** —
 shell work, LLM agent sessions, and cross-workflow dispatch, driven by a
 small YAML-shaped language in which no string is ever secretly code.
 
@@ -108,8 +108,8 @@ own fields (a shell failure: `exit_code`, `stderr`, `stdout`).
 
 ### Session
 
-Each named session (`--session dev`) is its own daemon: socket, config,
-token, catalog, schedules. Agent conversations are sessions too: `invoke`
+Each named instance (`--instance dev`) is its own daemon: socket, config,
+token, catalog, schedules. An agent conversation is a session: `invoke`
 opens one LLM session around a body, and each `agent` call in it is one
 turn, so a validate-and-retry loop *continues the same dialogue* instead of
 starting over, and the model remembers what it already produced.
@@ -244,14 +244,14 @@ invokes `forge` as a subprocess, and clients speak JSON-RPC to the daemon's
 Unix socket underneath.
 
 ```sh
-forge serve --session dev            # the daemon (one per session)
+forge serve --instance dev           # the daemon (one per instance)
 forge workflow list                  # catalog, with per-file failures
 forge workflow check <file>...       # read as the daemon reads, no daemon needed
 forge workflow dispatch <name> --input key=value
 forge status
 ```
 
-The operational surface — sessions, config, tokens, schedules, services,
+The operational surface — instances, config, tokens, schedules, services,
 jobs, RPC methods — is documented in [API.md](document/API.md).
 
 ## Documents
@@ -259,7 +259,7 @@ jobs, RPC methods — is documented in [API.md](document/API.md).
 | Document | Covers |
 |----------|--------|
 | [Spec.md](document/Spec.md) | what Forge adds over the Warp language and its YAML front end: the workflow file, its inputs and result, and the verbs of the `Forge` library |
-| [API.md](document/API.md) | the binary: CLI subcommands, configuration, sessions, and the JSON-RPC methods underneath |
+| [API.md](document/API.md) | the binary: CLI subcommands, configuration, instances, and the JSON-RPC methods underneath |
 
 `DocumentTests` holds Spec.md to the `Forge` library and runs its tour.
 
@@ -273,7 +273,7 @@ swift build -c release --package-path package
 test/run package/.build/release/ForgeCLI    # release e2e gate (~3s, 44 checks)
 ```
 
-The e2e gate boots a real daemon against the in-repo session home
+The e2e gate boots a real daemon against the in-repo instance home
 (`test/home`) with a stub agent, walks every user-facing feature shallowly,
 and tears everything down. It is the last gate before a binary ships.
 

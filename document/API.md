@@ -27,7 +27,7 @@ For what a workflow file holds and the verbs Forge lends a run, see
 
 `forge --version` prints the product version (e.g. `0.1.0`) and exits. The same
 version appears in `forge status` under the daemon's identity and in the
-session's `runtime.json`, so a client can tell which build a running daemon is.
+instance's `runtime.json`, so a client can tell which build a running daemon is.
 
 ### Binary discovery
 
@@ -38,27 +38,27 @@ session's `runtime.json`, so a client can tell which build a running daemon is.
 
 ### Socket discovery
 
-The socket is a pure function of the session — config has no say:
+The socket is a pure function of the instance — config has no say:
 
 ```
-socket      = <sessionHome>/forged.sock
-sessionHome = <XDG_CONFIG_HOME | ~/.config>/forge/<session>
-session     = --session  >  FORGE_SESSION  >  "default"
+socket       = <instanceHome>/forged.sock
+instanceHome = <XDG_CONFIG_HOME | ~/.config>/forge/<instance>
+instance     = --instance  >  FORGE_INSTANCE  >  "default"
 ```
 
 `serve` binds that canonical socket. A client falls back to it but honors
 `FORGE_SOCKET` first, so a spawned child reaches the exact daemon that spawned it
-without re-deriving the session. A client never reads config.
+without re-deriving the instance. A client never reads config.
 
-A *session* names a daemon instance (its public address). Multiple daemons =
-distinct sessions; the bundled bot runs the `default` session.
+An *instance* is one named daemon (its public address). Multiple daemons =
+distinct instances; the bundled bot runs the `default` instance.
 
 ### Config resolution (`serve` only)
 
 The daemon resolves `config.toml` with this precedence — clients are never involved:
 
 ```
---config flag  >  <sessionHome>/config.toml  >  FORGE_* env vars  >  built-in defaults
+--config flag  >  <instanceHome>/config.toml  >  FORGE_* env vars  >  built-in defaults
 ```
 
 env only fills keys that the toml leaves silent (emergency override).
@@ -68,20 +68,20 @@ env only fills keys that the toml leaves silent (emergency override).
 Everything is optional — each key has a built-in default, so a minimal toml only
 declares deviations, managed services, and secrets-by-env. **Path anchoring:**
 a relative path written in the toml resolves against the toml's directory;
-unspecified catalogs/logs default under `sessionHome`. The runtime dir is
-session-owned (`<sessionHome>/runtime`) and not configurable — like the socket.
+unspecified catalogs/logs default under `instanceHome`. The runtime dir is
+instance-owned (`<instanceHome>/runtime`) and not configurable — like the socket.
 
 | Table / key | Default | Meaning |
 |---|---|---|
-| `[dir]` `workflow`/`schedule`/`resource`/`policy` | `<sessionHome>/<key>` | source catalog roots; a relative value resolves against the toml's directory. |
-| `[log]` `jsonl` / `error` | `<sessionHome>/log/forge.log.jsonl` · `…/error.log` | structured + stderr logs |
+| `[dir]` `workflow`/`schedule`/`resource`/`policy` | `<instanceHome>/<key>` | source catalog roots; a relative value resolves against the toml's directory. |
+| `[log]` `jsonl` / `error` | `<instanceHome>/log/forge.log.jsonl` · `…/error.log` | structured + stderr logs |
 | `[log]` `maximum_bytes` | `52428800` (50 MiB) | single-file rotation threshold; ≤0 disables rotation |
 | `[pool]` `maximum_concurrent_steps` | `4` | concurrent leaf-step (invoke/shell) cap; excess queues FIFO |
 | `[providers.<name>]` `kind` (+ settings) | one `claude` (claude-cli) | backend instances. `kind` = `claude-cli` \| `codex-cli` \| `openai-compat`. CLI kinds accept `bin`; OpenAI-compatible accepts `endpoint` and requires an explicit model in each Agent reference. Declaring any drops the built-in claude default — list it explicitly alongside others. API keys via `FORGE_PROVIDER_<NAME>_API_KEY` env only. |
 | `[service.<name>]` `command` (+ `cwd`/`env`/`auto_spawn`/`log_file`/`restart_*`) | — (must declare) | managed child processes forge spawns/supervises (§3 of `forge serve -h`) |
 | `[hooks]` `logging` | `true` | structured event logging |
 
-The socket is **not** a config key — it lives at `<sessionHome>/forged.sock`
+The socket is **not** a config key — it lives at `<instanceHome>/forged.sock`
 (see *Socket discovery*). Run `forge status` (or `--json`) to print the daemon's
 effective config + every key's source (`toml`/`env`/`default`).
 
@@ -90,19 +90,19 @@ effective config + every key's source (`toml`/`env`/`default`).
 | Var | Meaning |
 |-----|---------|
 | `FORGE_BIN` | path to the `forge` binary (consumer-side discovery) |
-| `FORGE_SESSION` | session name when `--session` omitted — selects which daemon socket |
-| `FORGE_SOCKET` | exact socket path; overrides session. Injected into spawned subprocesses |
+| `FORGE_INSTANCE` | instance name when `--instance` omitted — selects which daemon socket |
+| `FORGE_SOCKET` | exact socket path; overrides instance. Injected into spawned subprocesses |
 | `FORGE_RUNTIME` | daemon runtime dir injected into subprocesses for `$FORGE_RUNTIME/scratch/…` artifacts (not socket discovery) |
 | `FORGE_ACCESS_TOKEN` | daemon-signed bearer token carried on every RPC — injected into workflow subprocesses at spawn, set by operators for direct use |
 
 ### Global options
 
 Every client subcommand accepts these, placed **after** the leaf subcommand
-(`forge workflow list --session prod`):
+(`forge workflow list --instance prod`):
 
 | Option | Meaning |
 |--------|---------|
-| `--session <name>` | session selecting the daemon socket (default `default`) |
+| `--instance <name>` | instance selecting the daemon socket (default `default`) |
 | `--token <token>` | bearer token for the call; overrides `FORGE_ACCESS_TOKEN` |
 
 (To reach a daemon at a non-default socket, set `FORGE_SOCKET` — children inherit it.)
@@ -138,12 +138,12 @@ Run the LLM-invocation daemon over a Unix socket. Long-running; owns LLM
 backends, workflow execution, schedules, and the ACL gate.
 
 ```
-forge serve [--session <name>] [--config <config>]
+forge serve [--instance <name>] [--config <config>]
 ```
 
-`--session` picks where to bind (`<sessionHome>/forged.sock`); `--config` only
-locates the daemon's settings/data. Under `<sessionHome>`: `forged.sock` (RPC socket) and
-`runtime.json` (self-record: pid, session, socket, resolved paths — written on
+`--instance` picks where to bind (`<instanceHome>/forged.sock`); `--config` only
+locates the daemon's settings/data. Under `<instanceHome>`: `forged.sock` (RPC socket) and
+`runtime.json` (self-record: pid, instance, socket, resolved paths — written on
 boot, deleted on clean shutdown). Refuses to start if a live daemon already holds
 the socket. Signals `SIGINT`/`SIGTERM` → graceful shutdown.
 
@@ -482,7 +482,7 @@ may not use `reload` (global control).
 
 ### `forge status`
 
-Print the daemon's identity (session, version, socket, pid, uptime), its effective
+Print the daemon's identity (instance, version, socket, pid, uptime), its effective
 `ForgeConfig` with each value's source (toml / env / default), and runtime counts
 (workflows, schedules, jobs, services). RPC: `daemon.status` (token-free). If the
 socket is dead, falls back to reading `runtime.json` for a "not running / crashed"
@@ -522,7 +522,7 @@ issue gate. The very first token comes from the daemon's boot fd, not this call.
 ## 3. RPC transport
 
 Clients speak **line-delimited JSON-RPC over a Unix domain socket**
-(`<sessionHome>/forged.sock`). One JSON object per line, `\n`-terminated.
+(`<instanceHome>/forged.sock`). One JSON object per line, `\n`-terminated.
 
 **Request**
 
@@ -1092,7 +1092,7 @@ Every `workflow.dispatch` — operator, runner, admin, or a nested call from
 inside a workflow — is gated by the policy store.
 
 - YAML files (`*.yaml`) under the policy dir (`[dir] policy`, default
-  `<sessionHome>/policy`). Each file is a flat mapping of **principal
+  `<instanceHome>/policy`). Each file is a flat mapping of **principal
   patterns** to lists of **workflow-name patterns**.
 - Multiple files are union-merged by principal key. Changes hot-reload on the
   next dispatch — no daemon restart.
