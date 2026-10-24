@@ -60,7 +60,7 @@ struct ShellAction: ForgeAction {
         let env = try ValueBridge.strings(invocation[.env])
         let step = invocation.trace.step(sentFrom: environment.bridge.verbs)
         let result = try await environment.withStepSlot {
-            try await withDeadline(seconds: ValueBridge.number(invocation[.timeout])) {
+            try await Deadline(seconds: ValueBridge.number(invocation[.timeout])).run {
                 try await environment.capabilities.shell.run(
                     executable: arguments[0],
                     args: Array(arguments.dropFirst()),

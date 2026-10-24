@@ -84,7 +84,7 @@ struct InvokeAction: ForgeAction {
             shareSession: invocation[.shareSession] == .bool(true)
         )
 
-        return try await withDeadline(seconds: ValueBridge.number(invocation[.timeout])) {
+        return try await Deadline(seconds: ValueBridge.number(invocation[.timeout])).run {
             try await environment.capabilities.agent.withSession(settings) {
                 try await invocation.call(body)
             }

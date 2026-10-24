@@ -11,7 +11,7 @@ import Foundation
 // without a daemon.
 //
 // An implementation MUST kill its process when its task is cancelled:
-// `withDeadline` and forge's runaway control act solely through task
+// `Deadline` and forge's runaway control act solely through task
 // cancellation, so a seam that ignores it makes timeouts and cancel
 // decorative.
 protocol ShellExecuting: Sendable {

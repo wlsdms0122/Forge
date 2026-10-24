@@ -50,7 +50,7 @@ struct DispatchAction: ForgeAction {
         let name = ValueBridge.text(invocation[.name])
         let inputs = try ValueBridge.fields(invocation[.inputs])
 
-        return try await withDeadline(seconds: ValueBridge.number(invocation[.timeout])) {
+        return try await Deadline(seconds: ValueBridge.number(invocation[.timeout])).run {
             try await environment.dispatcher.dispatch(name: name, inputs: inputs)
         }
     }
