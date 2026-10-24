@@ -28,20 +28,12 @@ with `Forge.dispatch`.
 - **Failures** the body lets out are declared under `failing`, as the language
   asks of any procedure.
 
-A value an author wants when an input is left out is settled at the top of the
-body:
+An input with a value it takes when left out writes it under `default:`, as
+the front end reads it: the input reads `String?` to a caller, so the daemon
+hands it null when left out, and the body starts by settling the default.
 
 ```yaml
-parameters: [ who: String? ]
-failing: [cast_refused]
-body:
-  - var: name
-    type: String
-    value: world
-  - value:
-      conditional:
-        when: { present: { ref: who } }
-        then: [ { set: name, value: { as: { of: { ref: who }, type: String } } } ]
+parameters: [ who: { type: String, default: world } ]
 ```
 
 ## The `Forge` module
@@ -132,7 +124,8 @@ What started this run, and the id of the schedule or caller where there is one.
 ## Concurrency
 
 Pieces of work run at once through `Standard.Concurrent.allKeyed` (or `all`),
-each piece an isolated closure:
+each piece an isolated closure. The front end completes a piece from its slot
+and the piece writes what it returns:
 
 ```yaml
 - let: both
@@ -141,8 +134,8 @@ each piece an isolated closure:
       procedure: Standard.Concurrent.allKeyed
       arguments:
         - dictionary:
-            - [left, { closure: { isolated: true, returns: Int, result: 1 } }]
-            - [right, { closure: { isolated: true, returns: Int, result: 2 } }]
+            - [left, { closure: { returns: Int, result: 1 } }]
+            - [right, { closure: { returns: Int, result: 2 } }]
 ```
 
 ## Output extractors
@@ -190,25 +183,18 @@ outside the run.
 procedures:
   tour:
     access: public
-    parameters: [ who: String? ]
+    parameters: [ who: { type: String, default: world } ]
     returns: "Dictionary<String, Any>"
-    failing: [aborted, cast_refused, concurrent_failed]
+    failing: [aborted, concurrent_failed]
     body:
-      - var: name
-        type: String
-        value: world
-      - value:
-          conditional:
-            when: { present: { ref: who } }
-            then: [ { set: name, value: { as: { of: { ref: who }, type: String } } } ]
       - let: greeting
-        value: { format: "hello, ${name}", with: { name: { ref: name } } }
+        value: { format: "hello, ${who}", with: { who: { ref: who } } }
       - var: branch
         type: String
         value: ""
       - value:
           cases:
-            - when: { of: { ref: name }, is: world }
+            - when: { of: { ref: who }, is: world }
               then: [ { set: branch, value: took-a } ]
             - else: [ { set: branch, value: took-b } ]
       - var: rounds
@@ -238,8 +224,8 @@ procedures:
             procedure: Standard.Concurrent.allKeyed
             arguments:
               - dictionary:
-                  - [left, { closure: { isolated: true, returns: Int, result: 1 } }]
-                  - [right, { closure: { isolated: true, returns: Int, result: 2 } }]
+                  - [left, { closure: { returns: Int, result: 1 } }]
+                  - [right, { closure: { returns: Int, result: 2 } }]
       - var: rescued
         type: String
         value: ""
