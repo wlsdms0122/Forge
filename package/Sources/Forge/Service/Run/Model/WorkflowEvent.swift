@@ -38,7 +38,7 @@ struct WorkflowEvent: Sendable {
     var fields: [String: JSONValue] {
         var object: [String: JSONValue] = [
             "event": .string(kind.rawValue),
-            "workflow_id": .string(runID),
+            "run_id": .string(runID),
             "workflow_name": .string(workflowName),
             "ts": .int(Int(timestamp.timeIntervalSince1970))
         ]

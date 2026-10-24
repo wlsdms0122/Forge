@@ -180,7 +180,7 @@ The absolute path of the resource file `path`, which is not read.
 
 ### `Forge.run`
 
-`run() -> Forge.Run`, where `Forge.Run` is `{ workflow_id: String, root_id: String }`.
+`run() -> Forge.Run`, where `Forge.Run` is `{ run_id: String, root_id: String }`.
 
 This run's id, and the id of the run that started the chain.
 

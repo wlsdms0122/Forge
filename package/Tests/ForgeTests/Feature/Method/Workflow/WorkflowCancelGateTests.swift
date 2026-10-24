@@ -21,7 +21,7 @@ struct WorkflowCancelGateTests {
         do {
             _ = try await method.handle(RPCRequest(
                     id: "x", method: "workflow.cancel",
-                    params: ["token": .string(attacker), "workflow_id": "r1"]), claims: try #require(authority.verify(attacker)))
+                    params: ["token": .string(attacker), "run_id": "r1"]), claims: try #require(authority.verify(attacker)))
 
         // Then
             Issue.record("Run-control by an out-of-scope principal should be rejected")
@@ -37,7 +37,7 @@ struct WorkflowCancelGateTests {
         let owner = authority.mint(TokenClaims(principal: "cli:owner"))
         let result = try await method.handle(RPCRequest(
                 id: "x", method: "workflow.cancel",
-                params: ["token": .string(owner), "workflow_id": "r1"]), claims: try #require(authority.verify(owner)))
+                params: ["token": .string(owner), "run_id": "r1"]), claims: try #require(authority.verify(owner)))
 
         // Then
         #expect(result["cancelled"]?.boolValue == true, "A permitted principal should be able to cancel a run within its authority")
@@ -50,7 +50,7 @@ struct WorkflowCancelGateTests {
         let attacker = authority.mint(TokenClaims(principal: "cli:attacker"))
         let result = try await method.handle(RPCRequest(
                 id: "x", method: "workflow.cancel",
-                params: ["token": .string(attacker), "workflow_id": "does-not-exist"]), claims: try #require(authority.verify(attacker)))
+                params: ["token": .string(attacker), "run_id": "does-not-exist"]), claims: try #require(authority.verify(attacker)))
 
         // Then
         #expect(result["cancelled"]?.boolValue == false)

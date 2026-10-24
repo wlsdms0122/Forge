@@ -46,7 +46,7 @@ struct WorkflowHealthCommand: ParsableCommand {
         
         if let oldest = runs?["oldest"]?.arrayValue?.first,
             let age = oldest["age_ms"]?.intValue, active > 0 {
-            runLine += "   oldest \(age / 1000)s (\(oldest["workflow_id"]?.stringValue ?? "?") \(oldest["workflow_name"]?.stringValue ?? "?"))"
+            runLine += "   oldest \(age / 1000)s (\(oldest["run_id"]?.stringValue ?? "?") \(oldest["workflow_name"]?.stringValue ?? "?"))"
         }
         
         print(runLine)

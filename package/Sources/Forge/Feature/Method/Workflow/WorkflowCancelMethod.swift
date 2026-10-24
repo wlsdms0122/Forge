@@ -20,8 +20,8 @@ struct WorkflowCancelMethod: Sendable {
 
     // MARK: - Public
     func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONValue {
-        guard let id = request.params["workflow_id"]?.stringValue, !id.isEmpty else {
-            throw ProtocolError("workflow.cancel: 'workflow_id' (string) required")
+        guard let id = request.params["run_id"]?.stringValue, !id.isEmpty else {
+            throw ProtocolError("workflow.cancel: 'run_id' (string) required")
         }
 
         try await DispatchAuthorization.requireRunControl(
@@ -34,7 +34,7 @@ struct WorkflowCancelMethod: Sendable {
 
         let cancelled = await pool.cancel(runID: id)
 
-        return ["cancelled": .bool(cancelled), "workflow_id": .string(id)]
+        return ["cancelled": .bool(cancelled), "run_id": .string(id)]
     }
 
     // MARK: - Private

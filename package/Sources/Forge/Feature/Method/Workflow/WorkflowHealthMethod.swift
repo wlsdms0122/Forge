@@ -37,7 +37,7 @@ struct WorkflowHealthMethod: Sendable {
             flags.append([
                 "kind": "long_wait",
                 "class": "saturation",
-                "workflow_id": .string(waiter.runID),
+                "run_id": .string(waiter.runID),
                 "waited_ms": .int(waiter.waitedMs)
             ])
         }
@@ -46,7 +46,7 @@ struct WorkflowHealthMethod: Sendable {
             flags.append([
                 "kind": "long_run",
                 "class": "anomaly",
-                "workflow_id": .string(run.runID),
+                "run_id": .string(run.runID),
                 "workflow_name": .string(run.workflowName),
                 "age_ms": .int(run.ageMs)
             ])
@@ -84,11 +84,11 @@ struct WorkflowHealthMethod: Sendable {
     func handle(_ request: RPCRequest) async throws -> JSONValue {
         let health = await pool.health()
         let waiters: [JSONValue] = health.waiters.map { waiter in
-            ["workflow_id": .string(waiter.runID), "waited_ms": .int(waiter.waitedMs)]
+            ["run_id": .string(waiter.runID), "waited_ms": .int(waiter.waitedMs)]
         }
         let oldest: [JSONValue] = health.oldestRuns.map { run in
             [
-                "workflow_id": .string(run.runID),
+                "run_id": .string(run.runID),
                 "workflow_name": .string(run.workflowName),
                 "state": .string(run.state),
                 "age_ms": .int(run.ageMs)

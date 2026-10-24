@@ -32,7 +32,7 @@ actor ServiceHandle {
         let messageID = "m-\(UUID().uuidString.prefix(12))"
         
         var envelopeObject: [String: JSONValue] = [
-            "workflow_id": .string(envelope.runID),
+            "run_id": .string(envelope.runID),
             "origin": envelope.origin.jsonValue
         ]
         

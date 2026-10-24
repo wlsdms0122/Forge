@@ -82,7 +82,7 @@ struct LogContextRunTests {
 
         // Then
         #expect(started?.runID == result.runID)
-        #expect(started?.rootID == result.runID, "top-level run: root_id(trace_id) == workflow_id")
+        #expect(started?.rootID == result.runID, "top-level run: root_id(trace_id) == run_id")
     }
     
     // MARK: - Private

@@ -52,12 +52,12 @@ struct WorkflowDispatchTests {
                 params: ["token": .string(token), "spec": .object(anonSpec)]), claims: try #require(authority.verify(token)))
 
         // Then
-        let firstID = try #require(first["workflow_id"]?.stringValue)
+        let firstID = try #require(first["run_id"]?.stringValue)
         #expect(firstID.hasPrefix("wf-"), "runID should be forge-minted (wf-*) — borrowing the wire id is forbidden (finding J): \(firstID)")
         #expect(firstID != wireID, "runID must not equal the client wire id")
         let second = try await method.handle(RPCRequest(id: wireID, method: "workflow.dispatch",
                 params: ["token": .string(token), "spec": .object(anonSpec)]), claims: try #require(authority.verify(token)))
-        let secondID = try #require(second["workflow_id"]?.stringValue)
+        let secondID = try #require(second["run_id"]?.stringValue)
         #expect(firstID != secondID, "Two dispatches with the same wire id sharing a runID means cross-run contamination (finding J)")
     }
 

@@ -21,7 +21,7 @@ struct ServiceSendCommand: ParsableCommand {
 
             IDENTITY
                 The bearer token (FORGE_ACCESS_TOKEN or --token) carries the
-                caller's identity. principal / workflow_id / origin /
+                caller's identity. principal / run_id / origin /
                 correlator are derived server-side from the token — not
                 spoofable.
 

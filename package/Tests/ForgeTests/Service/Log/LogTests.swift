@@ -60,7 +60,7 @@ struct LogTests {
     @Test("The snapshotted log context carries over intact into a detached task", .exclusive(.logSink))
     func agentEventSnapshotCrossesDetachedTaskBoundary() async throws {
         // Given
-        let metadata: LogPayload = ["workflow_id": "wf-context", "workflow_name": "review"]
+        let metadata: LogPayload = ["run_id": "wf-context", "workflow_name": "review"]
 
         // When
         let records = try await LogSinkCapture.capture("log-agent-context") { capture in
@@ -94,7 +94,7 @@ struct LogTests {
         #expect(record.rootID == "wf-context")
         #expect(record.nodeID == "wf-context")
         #expect(record.parameters["ticket"] == .string("T-1"))
-        #expect(record.payload["workflow_id"] == .string("wf-context"))
+        #expect(record.payload["run_id"] == .string("wf-context"))
     }
 
     @Test("Even when the backend fails, the translated model reference remains in agent.error", .exclusive(.logSink))

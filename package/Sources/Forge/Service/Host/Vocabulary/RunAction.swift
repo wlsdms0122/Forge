@@ -20,7 +20,7 @@ struct RunAction: ForgeAction {
     func act(_ invocation: Invocation<Self>, in environment: ForgeEnvironment) async throws -> Warp.Value {
         return try Value.holding(
             [
-                (name: "workflow_id", value: .string(environment.runID)),
+                (name: "run_id", value: .string(environment.runID)),
                 (name: "root_id", value: .string(environment.rootID))
             ],
             named: ForgeVocabulary.runType

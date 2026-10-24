@@ -364,7 +364,7 @@ actor WorkflowScheduler {
             LogPayload([
                 "schedule_id":  id,
                 "workflow":    target.name,
-                "workflow_id": runID,
+                "run_id": runID,
                 "principal":   principal,
             ]),
             level: .info,
@@ -386,7 +386,7 @@ actor WorkflowScheduler {
                 LogPayload([
                     "schedule_id":  id,
                     "workflow":    target.name,
-                    "workflow_id": runID,
+                    "run_id": runID,
                     "principal":   principal,
                     "stage":       "dispatch",
                     "error":       String(describing: error),

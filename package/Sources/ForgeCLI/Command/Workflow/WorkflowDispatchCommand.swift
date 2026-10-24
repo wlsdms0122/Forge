@@ -32,7 +32,7 @@ struct WorkflowDispatchCommand: ParsableCommand {
             BLOCKING vs --async vs --stream
                 `dispatch` blocks until the workflow completes and returns
                 the full result. Pass --async to return as soon as the run
-                is dispatched: { workflow_id, name, status: "running" } —
+                is dispatched: { run_id, name, status: "running" } —
                 fire-and-forget; the run continues in the background and is
                 observable in the forge log.
 

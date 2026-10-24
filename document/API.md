@@ -177,18 +177,18 @@ forge workflow dispatch [<name>] [--spec <spec>] [--inputs <json>]
 | `--parameters` | caller passthrough, JSON object — rides the log envelope only |
 | `--correlator` | opaque string — ridden through to handler frames |
 | `--origin` | `{"kind":"...","id":"..."}` — what dispatched the run |
-| `--root-id` / `--parent-id` | parent node-tree context to inherit (tree root id + parent node) — normally omitted; each run self-roots at its own workflow_id |
+| `--root-id` / `--parent-id` | parent node-tree context to inherit (tree root id + parent node) — normally omitted; each run self-roots at its own run_id |
 | `--async` | return as soon as dispatched (fire-and-forget) |
 | `--stream` | stream the run's progress as JSONL (mutually exclusive with `--async`) |
 
 **Blocking vs `--async`** — without `--async`, blocks until the workflow
 completes and returns the full result. With `--async`, returns immediately:
-`{workflow_id, name, status:"running"}`; the run continues in the background
+`{run_id, name, status:"running"}`; the run continues in the background
 and is observable in the forge log.
 
 **`--stream`** — keeps the connection open and prints the run's progress as
 JSONL, one object per line (RPC: `workflow.dispatch_stream`): first the ack
-(`{id, result:{workflow_id, name, status:"streaming"}}`), then
+(`{id, result:{run_id, name, status:"streaming"}}`), then
 `{"kind":"workflow.event", ...}` lines, then a terminal
 `{"kind":"workflow.result","result":{...}}` — same result shape as blocking
 dispatch. Child workflows dispatched by the run share its root and stream
@@ -268,7 +268,7 @@ forge workflow health [--json]
 Cancel a queued or running workflow. RPC: `workflow.cancel`.
 
 ```
-forge workflow cancel <workflow-id> [--json]
+forge workflow cancel <run-id> [--json]
 ```
 
 #### `forge workflow check`
@@ -609,20 +609,20 @@ calls and nested calls from inside a workflow are distinguished by the **token**
 | `async` | — | bool, default `false` |
 | `parameters` / `correlator` / `origin` / `root` | — | honored only for fresh-root tokens; for a workflow-subprocess token they are inherited from the parent `WorkRecord` and caller values are ignored |
 
-`root`: `{"root_id": "...", "parent_id": "..."}` — parent node-tree to attach under. Omit to self-root (the run's node tree roots at its own workflow_id, so `root_id == workflow_id`).
+`root`: `{"root_id": "...", "parent_id": "..."}` — parent node-tree to attach under. Omit to self-root (the run's node tree roots at its own run_id, so `root_id == run_id`).
 `origin`: `{"kind": "...", "id": "..."}` — what dispatched this run (`manual`/`rpc`/`schedule`/`workflow`). Exposed inside the workflow as `{ ref: origin.kind }` / `{ ref: origin.id }`.
 
 **result** — `async=false`:
 
 ```json
-{"workflow_id":"...","name":"...","status":"ok"|"failed",
+{"run_id":"...","name":"...","status":"ok"|"failed",
  "duration_ms":1234,"outputs":{...},"error":{"type":"...","message":"..."}}
 ```
 
 `error` is present only when `status` is `failed`. **result** — `async=true`:
 
 ```json
-{"workflow_id":"...","name":"...","status":"running"}
+{"run_id":"...","name":"...","status":"running"}
 ```
 
 `running` acknowledges acceptance, not completion. The policy gate is
@@ -637,8 +637,8 @@ identity/envelope/policy rules. The connection stays open for the run's
 lifetime and relays its progress:
 
 ```json
-{"id":"<client-id>","result":{"workflow_id":"...","name":"...","status":"streaming"}}
-{"kind":"workflow.event","event":"workflow.started","workflow_id":"...","workflow_name":"...","root_id":"...","ts":...}
+{"id":"<client-id>","result":{"run_id":"...","name":"...","status":"streaming"}}
+{"kind":"workflow.event","event":"workflow.started","run_id":"...","workflow_name":"...","root_id":"...","ts":...}
 {"kind":"workflow.event","event":"step.started","step":"...","action":"Forge.shell|Forge.agent|...","node_id":"...","parent_node_id":"...", ...}
 {"kind":"workflow.event","event":"step.completed","step":"...","duration_ms":..., "output_preview":"...","output_len":..., ...}
 {"kind":"workflow.result","result":{...same shape as blocking dispatch result...}}
@@ -703,7 +703,7 @@ workflow → WorkflowNotFound `workflow not found: <name>`.
 **params** `{"token"}`. **result**
 
 ```json
-{"workflows":[{"workflow_id","workflow_name","origin","principal","state",
+{"workflows":[{"run_id","workflow_name","origin","principal","state",
                "enqueued_at","started_at","held_slots"}],
  "maximum_concurrent_steps":N,"free_slots":N,"queued_waiters":N}
 ```
@@ -718,9 +718,9 @@ One-shot pool health snapshot with advisory flags.
 **params** `{"token"}`. **result**
 
 ```json
-{"slots":{"max":N,"free":N,"waiters":[{"workflow_id","waited_ms"}]},
+{"slots":{"max":N,"free":N,"waiters":[{"run_id","waited_ms"}]},
  "runs":{"active":N,"cap":N,"refused_total":N,
-         "oldest":[{"workflow_id","workflow_name","state","age_ms"}],
+         "oldest":[{"run_id","workflow_name","state","age_ms"}],
          "trees":[{"root_id","runs":N,"names":[...]}]},
  "dispatch":{"last_60s":N},
  "flags":[{"kind":"...","class":"saturation|anomaly", ...}]}
@@ -733,7 +733,7 @@ Each flag carries the fields of the row that tripped it.
 
 ### `workflow.cancel`
 
-**params** `{"token","workflow_id"}`. **result** `{"cancelled":bool,"workflow_id"}`.
+**params** `{"token","run_id"}`. **result** `{"cancelled":bool,"run_id"}`.
 `cancelled=false` means the id was already unregistered (finished/failed).
 Cancelling a live run is gated by policy on that run's workflow name — the
 same dispatch ACL, so a principal that may not dispatch a workflow may not
@@ -975,7 +975,7 @@ client → daemon : {"method":"handler.ack","params":{...}}                     
 ```
 
 The `envelope` carries forge's server-side coordinates:
-`{workflow_id, origin, root_id?, id?, correlator?}`. The `payload` is
+`{run_id, origin, root_id?, id?, correlator?}`. The `payload` is
 caller-sent and opaque to forge. Closing the connection unregisters the service.
 
 ### `handler.ack`
@@ -1029,7 +1029,7 @@ first token, from the daemon's boot fd handed to its launcher.
 
 The daemon signs tokens with a random seed minted at boot and held only in
 memory: `base64(claims).base64(HMAC-SHA256(claims, seed))`. Claims carry the
-`principal` and, for workflow-subprocess tokens, a `workflow_id`.
+`principal` and, for workflow-subprocess tokens, a `run_id`.
 
 - **Unforgeable** — only forge knows the seed.
 - **Revocation by restart** — a daemon restart rotates the seed, invalidating

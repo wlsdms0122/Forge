@@ -18,7 +18,7 @@ struct ResultTextTests {
     func workflowResultShowsOutputs() {
         // Given
         let dict: [String: JSONValue] = [
-            "workflow_id": "wf-A4057576",
+            "run_id": "wf-A4057576",
             "name": "<inline>",
             "status": "ok",
             "duration_ms": 9,
@@ -49,7 +49,7 @@ struct ResultTextTests {
         // Given
         let dict: [String: JSONValue] = [
             "status": "failed",
-            "workflow_id": "wf-x",
+            "run_id": "wf-x",
             "error": ["type": "ShellError", "message": "exit 1"],
         ]
         let output = renderResultPlain(dict)

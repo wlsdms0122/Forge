@@ -48,11 +48,11 @@ struct DispatchStreamTests {
         #expect(ack["id"]?.stringValue == "r-stream")
         let ackResult = try #require(ack["result"]?.objectValue)
         #expect(ackResult["status"]?.stringValue == "streaming")
-        let runID = try #require(ackResult["workflow_id"]?.stringValue)
+        let runID = try #require(ackResult["run_id"]?.stringValue)
         let events = lines.dropFirst().dropLast()
         for error in events {
             #expect(error["kind"]?.stringValue == "workflow.event")
-            #expect(error["workflow_id"]?.stringValue == runID)
+            #expect(error["run_id"]?.stringValue == runID)
         }
 
         let eventKinds = events.compactMap { event in event["event"]?.stringValue }
@@ -67,7 +67,7 @@ struct DispatchStreamTests {
         #expect(terminal["kind"]?.stringValue == "workflow.result")
         let result = try #require(terminal["result"]?.objectValue)
         #expect(result["status"]?.stringValue == "ok")
-        #expect(result["workflow_id"]?.stringValue == runID)
+        #expect(result["run_id"]?.stringValue == runID)
         #expect((result["outputs"]?.objectValue)?["v"] != nil)
     }
 
@@ -120,7 +120,7 @@ struct DispatchStreamTests {
         for _ in 0..<100 {
             if let ack = (await sink.snapshot()).first,
             let payload = ack["result"]?.objectValue,
-            let identifier = payload["workflow_id"]?.stringValue { runID = identifier; break }
+            let identifier = payload["run_id"]?.stringValue { runID = identifier; break }
             try await Task.sleep(nanoseconds: 10_000_000)
         }
 
@@ -137,9 +137,9 @@ struct DispatchStreamTests {
                 stepID: "gs", rootID: rootID, parentRunID: "child-run"))
         try await handleTask.value
         let lines = await sink.snapshot()
-        let leaked = lines.filter { line in (line["workflow_id"]?.stringValue) == "intruder-run" }
+        let leaked = lines.filter { line in (line["run_id"]?.stringValue) == "intruder-run" }
         #expect(leaked.isEmpty, "Events from outside the subtree leaked despite sharing the root: \(leaked)")
-        let relayedIDs = Set(lines.compactMap { line in line["workflow_id"]?.stringValue })
+        let relayedIDs = Set(lines.compactMap { line in line["run_id"]?.stringValue })
         #expect(relayedIDs.contains("child-run"), "Child run events should flow through: \(relayedIDs)")
         #expect(relayedIDs.contains("grandchild-run"), "Grandchild runs should flow through the chain too: \(relayedIDs)")
         let ownKinds = lines.compactMap { line in line["event"]?.stringValue }
@@ -168,7 +168,7 @@ struct DispatchStreamTests {
         for _ in 0..<100 {
             if let ack = (await sink.snapshot()).first,
             let payload = ack["result"]?.objectValue,
-            let identifier = payload["workflow_id"]?.stringValue { runID = identifier; break }
+            let identifier = payload["run_id"]?.stringValue { runID = identifier; break }
             try await Task.sleep(nanoseconds: 10_000_000)
         }
 
@@ -186,9 +186,9 @@ struct DispatchStreamTests {
         try await handleTask.value
         let lines = await sink.snapshot()
         func unawaitedFlag(_ id: String) -> Bool? {
-            lines.first { line in (line["workflow_id"]?.stringValue) == id }?["unawaited"]?.boolValue
+            lines.first { line in (line["run_id"]?.stringValue) == id }?["unawaited"]?.boolValue
         }
-        #expect(lines.first { line in (line["workflow_id"]?.stringValue) == "job-run" } != nil, "Unawaited children are still in the lineage subtree — the relay does not filter them")
+        #expect(lines.first { line in (line["run_id"]?.stringValue) == "job-run" } != nil, "Unawaited children are still in the lineage subtree — the relay does not filter them")
         #expect(unawaitedFlag("job-run") == true, "Run that crossed an async edge")
         #expect(unawaitedFlag("job-child") == true, "The root does not wait for sync grandchildren below it either")
         #expect(unawaitedFlag("sync-child") == nil, "The root waits for sync children — no flag")

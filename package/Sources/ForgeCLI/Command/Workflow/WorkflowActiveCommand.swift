@@ -39,7 +39,7 @@ struct WorkflowActiveCommand: ParsableCommand {
             print("(no active workflows)")
         } else {
             for row in rows {
-                let id = row["workflow_id"]?.stringValue ?? "?"
+                let id = row["run_id"]?.stringValue ?? "?"
                 let name = row["workflow_name"]?.stringValue ?? "?"
                 let state = row["state"]?.stringValue ?? "?"
                 let principal = row["principal"]?.stringValue ?? "?"

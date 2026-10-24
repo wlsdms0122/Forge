@@ -144,7 +144,7 @@ struct WorkflowDispatchMethod: Sendable {
                         "dispatch.failed",
                         LogPayload([
                             "workflow":    workflowName,
-                            "workflow_id": runID,
+                            "run_id": runID,
                             "principal":   principal,
                             "error":       String(describing: error),
                         ]),
@@ -155,7 +155,7 @@ struct WorkflowDispatchMethod: Sendable {
             }
 
             return [
-                "workflow_id": .string(runID),
+                "run_id": .string(runID),
                 "name":        .string(workflowName),
                 "status":      "running"
             ]
@@ -164,7 +164,7 @@ struct WorkflowDispatchMethod: Sendable {
 
     func encodeResult(_ result: WorkflowRunResult) -> JSONValue {
         var object: [String: JSONValue] = [
-            "workflow_id": .string(result.runID),
+            "run_id": .string(result.runID),
             "name":        .string(result.workflowName),
             "status":      "ok",
             "duration_ms": .int(result.durationMs),

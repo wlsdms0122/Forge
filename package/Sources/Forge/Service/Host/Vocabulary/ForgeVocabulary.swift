@@ -51,7 +51,7 @@ struct ForgeVocabulary: Sendable {
     static func natives() throws -> Module {
         try Module(
             types: [
-                runType: .struct(["workflow_id": .string, "root_id": .string]),
+                runType: .struct(["run_id": .string, "root_id": .string]),
                 originType: .struct(["kind": .string, "id": .optional(.string)])
             ],
             procedures: [
