@@ -8,7 +8,7 @@
 import Foundation
 
 actor WorkflowPool {
-    enum WorkflowState: String, Sendable {
+    enum RunState: String, Sendable {
         case queued
         case running
         case cancelling
@@ -22,7 +22,7 @@ actor WorkflowPool {
         let origin: DispatchOrigin
         let principal: String
         
-        var state: WorkflowState
+        var state: RunState
         
         let enqueuedAt: Date
         let enqueuedInstant: ContinuousClock.Instant
