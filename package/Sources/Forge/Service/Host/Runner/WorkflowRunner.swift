@@ -402,7 +402,7 @@ extension WorkflowRunner: RunDispatching {
             )
 
         case .missing:
-            throw DispatchTargetNotFound("dispatch: workflow '\(name)' not found")
+            throw WorkflowNotFound("dispatch: workflow '\(name)' not found")
         }
 
         let parentName = WorkflowExecutionState.context?.workflowName ?? "unknown"

@@ -1,5 +1,5 @@
 //
-//  DispatchTargetNotFound.swift
+//  WorkflowNotFound.swift
 //  Forge
 //
 //  Created by JSilver on 8/9/26.
@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct DispatchTargetNotFound: WorkFailure {
+struct WorkflowNotFound: WorkFailure {
     // MARK: - Property
     let message: String
 
