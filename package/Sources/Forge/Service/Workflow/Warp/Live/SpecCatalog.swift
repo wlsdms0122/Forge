@@ -45,7 +45,6 @@ actor SpecCatalog {
 
     // MARK: - Property
     let directory: URL?
-    let frontend: YAMLFrontend
 
     private var cache: [String: Entry] = [:]
     private var failureCache: [String: LoadFailure] = [:]
@@ -72,9 +71,8 @@ actor SpecCatalog {
     }
 
     // MARK: - Initializer
-    init(directory: URL?, frontend: YAMLFrontend) {
+    init(directory: URL?) {
         self.directory = directory
-        self.frontend = frontend
     }
 
     // MARK: - Public
@@ -224,7 +222,7 @@ actor SpecCatalog {
     // A workflow file as the front end writes it, loaded the way any runtime
     // receives a document.
     func load(_ data: Data) throws -> Warp.Module {
-        let document = try frontend.document(from: data)
+        let document = try ForgeSpec.frontend().document(from: data)
 
         return try Loader().load(document, identity: try Identity.of(document))
     }

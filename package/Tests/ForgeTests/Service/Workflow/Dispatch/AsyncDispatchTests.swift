@@ -21,7 +21,7 @@ struct AsyncDispatchTests {
         let token = authority.mint(TokenClaims(principal: "system:rpc"))
         let specJSON: [String: Any] = [
             "failing": ["nonzero_exit", "timeout"],
-            "body": [["let": "x", "value": ["call": ["procedure": "Forge.Native.shell", "arguments": [["/bin/echo", "nope"], NSNull(), NSNull(), NSNull(), NSNull()]]]]],
+            "body": [["let": "x", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/echo", "nope"], NSNull(), NSNull(), NSNull(), NSNull()]]]]],
         ]
         do {
             _ = try await method.handle(RPCRequest(
@@ -45,7 +45,7 @@ struct AsyncDispatchTests {
         let specJSON: [String: Any] = [
             "failing": ["nonzero_exit", "timeout"],
             "body": [
-                ["let": "x", "value": ["call": ["procedure": "Forge.Native.shell", "arguments": [["/bin/echo", "done"], NSNull(), NSNull(), NSNull(), NSNull()]]]],
+                ["let": "x", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/echo", "done"], NSNull(), NSNull(), NSNull(), NSNull()]]]],
             ],
             "returns": "Dictionary<String, Any>",
             "result": ["dictionary": [["v", ["ref": "x"]]]],
@@ -70,7 +70,7 @@ struct AsyncDispatchTests {
         let specJSON: [String: Any] = [
             "failing": ["nonzero_exit", "timeout"],
             "body": [
-                ["let": "slow", "value": ["call": ["procedure": "Forge.Native.shell", "arguments": [["/bin/sleep", "0.3"], NSNull(), NSNull(), NSNull(), NSNull()]]]],
+                ["let": "slow", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/sleep", "0.3"], NSNull(), NSNull(), NSNull(), NSNull()]]]],
             ],
         ]
         let startedAt = ContinuousClock.now
@@ -100,7 +100,7 @@ struct AsyncDispatchTests {
     }
 
     private func makeMethod(policy: [String: [String]]) throws -> (WorkflowDispatchMethod, TokenAuthority) {
-        let store = SpecCatalog(directory: nil, frontend: ForgeSpec.frontend())
+        let store = SpecCatalog(directory: nil)
         let bus = WorkflowEventBus()
         let authority = TokenAuthority()
         let runner = SpecWorkflowRunner(catalog: store,

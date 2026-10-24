@@ -239,7 +239,7 @@ actor SpecWorkflowRunner {
                 observer: EventBridge(
                     workflowID: runID,
                     workflowName: name,
-                    verbs: Set(try ForgeSpec.natives().procedures.keys),
+                    verbs: try ForgeSpec.verbs(),
                     publish: { event in await eventBus.publish(event) }
                 ),
                 environment: environment

@@ -53,6 +53,7 @@ struct ShellAction: Warp.Effect {
 
         let arguments = command.map(ValueBridge.text)
         let env = try ValueBridge.strings(invocation[.env])
+        let step = invocation.trace.step(sentFrom: try ForgeSpec.verbs())
         let result = try await environment.withStepSlot {
             try await withDeadline(seconds: ValueBridge.number(invocation[.timeout])) {
                 try await environment.shell.run(
@@ -61,7 +62,7 @@ struct ShellAction: Warp.Effect {
                     cwd: invocation.string(.cwd),
                     env: env,
                     stdin: invocation.string(.stdin),
-                    stepID: invocation.trace.step
+                    stepID: step
                 )
             }
         }

@@ -14,14 +14,16 @@ import WarpYAML
 private actor Recorder {
     // MARK: - Property
     private(set) var shellRuns: [[String]] = []
+    private(set) var shellSteps: [String?] = []
     private(set) var prompts: [String] = []
     private(set) var sessions: [AgentSessionSettings] = []
     private(set) var dispatches: [(name: String, inputs: [String: Warp.Value])] = []
 
     // MARK: - Initializer
     // MARK: - Public
-    func recordShell(_ command: [String]) {
+    func recordShell(_ command: [String], step: String?) {
         shellRuns.append(command)
+        shellSteps.append(step)
     }
 
     func recordPrompt(_ prompt: String) {
@@ -75,7 +77,7 @@ private struct MockShell: ShellExecuting {
             try await Task.sleep(for: .seconds(delaySeconds))
         }
 
-        await recorder.recordShell([executable] + args + (stdin.map { ["<\($0)"] } ?? []))
+        await recorder.recordShell([executable] + args + (stdin.map { ["<\($0)"] } ?? []), step: stepID)
 
         return ShellRunOutput(exitCode: exitCode, stdout: stdout, stderr: stderr)
     }
@@ -170,12 +172,12 @@ private struct MockResources: ResourceReading {
 private struct Harness {
     // MARK: - Property
     let recorder = Recorder()
-    let frontend: YAMLFrontend
+
+    var frontend: YAMLFrontend {
+        get throws { try ForgeSpec.frontend() }
+    }
 
     // MARK: - Initializer
-    init() {
-        self.frontend = ForgeSpec.frontend()
-    }
 
     // MARK: - Public
     func executor(
@@ -220,13 +222,10 @@ struct EffectActionTests {
           - let: echo
             value:
               call:
-                procedure: Forge.Native.shell
+                procedure: shell
                 arguments:
-                  - [ echo, { format: "hi ${who}", with: { who: { ref: who } } } ]
-                  - null
-                  - null
-                  - { ref: who }
-                  - null
+                  command: [ echo, { format: "hi ${who}", with: { who: { ref: who } } } ]
+                  stdin: { ref: who }
         result: { dictionary: [ [result, { ref: echo }] ] }
         """)
         let sut = harness.executor(
@@ -255,7 +254,7 @@ struct EffectActionTests {
             value:
               attempt:
                 body:
-                  - value: { call: { procedure: Forge.Native.shell, arguments: [ [ "false" ], null, null, null, null ] } }
+                  - value: { call: { procedure: shell, arguments: { command: [ "false" ] } } }
                 rescue:
                   - set: broken
                     value: recovered
@@ -281,14 +280,14 @@ struct EffectActionTests {
         failing: [nonzero_exit, timeout]
         body:
           - let: probe
-            value: { call: { procedure: Forge.Native.shell, arguments: [ [ probe ], null, null, null, null ] } }
+            value: { call: { procedure: shell, arguments: { command: [ probe ] } } }
           - let: fields
             value:
               call:
-                procedure: Forge.Native.extract
+                procedure: extract
                 arguments:
-                  - { ref: probe }
-                  - { dictionary: [ [code, { dictionary: [ [regex, "code=(\\\\d+)"], [type, int] ] }] ] }
+                  text: { ref: probe }
+                  outputs: { dictionary: [ [code, { dictionary: [ [regex, "code=(\\\\d+)"], [type, int] ] }] ] }
         result: { dictionary: [ [result, { ref: 'fields["code"]' }], [raw, { ref: 'fields["_raw"]' }] ] }
         """)
         let sut = harness.executor(
@@ -317,7 +316,7 @@ struct EffectActionTests {
             value:
               attempt:
                 body:
-                  - value: { call: { procedure: Forge.Native.shell, arguments: [ [ sleepy ], null, null, null, 0.05 ] } }
+                  - value: { call: { procedure: shell, arguments: { command: [ sleepy ], timeout: 0.05 } } }
                 rescue:
                   - set: slow
                     value: recovered
@@ -346,21 +345,13 @@ struct EffectActionTests {
           - let: session
             value:
               call:
-                procedure: Forge.Native.invoke
+                procedure: invoke
                 arguments:
-                  - claude:opus
-                  - null
-                  - null
-                  - null
-                  - null
-                  - null
-                  - null
-                  - closure:
+                  model: claude:opus
+                  body:
+                    closure:
                       returns: String
-                      result:
-                        call:
-                          procedure: Forge.Native.agent
-                          arguments: [ { format: "tell me about ${topic}", with: { topic: { ref: topic } } } ]
+                      result: { agent: { format: "tell me about ${topic}", with: { topic: { ref: topic } } } }
         result: { dictionary: [ [result, { ref: session }] ] }
         """)
         let sut = harness.executor(agentReply: "sure!")
@@ -380,7 +371,7 @@ struct EffectActionTests {
         let harness = Harness()
         let spec = try harness.frontend.workflow("""
         returns: String
-        result: { call: { procedure: Forge.Native.agent, arguments: [ "hello?" ] } }
+        result: { agent: "hello?" }
         """)
         let sut = harness.executor()
 
@@ -400,7 +391,7 @@ struct EffectActionTests {
         failing: [child_run_failed, timeout]
         body:
           - let: child
-            value: { call: { procedure: Forge.Native.dispatch, arguments: [ worker, { dictionary: [ [job_id, { ref: job }] ] }, null ] } }
+            value: { call: { procedure: dispatch, arguments: { name: worker, inputs: { dictionary: [ [job_id, { ref: job }] ] } } } }
         result: { dictionary: [ [result, { ref: 'child["ok"]' }] ] }
         """)
         let sut = harness.executor()
@@ -419,7 +410,7 @@ struct EffectActionTests {
     @Test("an invalid inline spec is refused when it is read, before it runs")
     func inlineRejectsWhenSpecIsMalformed() throws {
         // Given — the inline door reads one procedure in the YAML notation
-        let store = SpecCatalog(directory: nil, frontend: ForgeSpec.frontend())
+        let store = SpecCatalog(directory: nil)
         let spec = try YAMLParser().parse("""
         returns: String
         result: ok
@@ -443,7 +434,7 @@ struct EffectActionTests {
           - let: axes
             value: "tech, persona"
           - let: prompt
-            value: { call: { procedure: Forge.Native.resource, arguments: [ prompt/enrich.md, { dictionary: [ [axes, { ref: axes }] ] } ] } }
+            value: { call: { procedure: resource, arguments: { content: prompt/enrich.md, inputs: { dictionary: [ [axes, { ref: axes }] ] } } } }
         result: { dictionary: [ [result, { ref: prompt }] ] }
         """)
         let sut = harness.executor(files: [
@@ -465,7 +456,7 @@ struct EffectActionTests {
         returns: "Dictionary<String, Any>"
         body:
           - let: prompt
-            value: { call: { procedure: Forge.Native.resource, arguments: [ prompt/enrich.md, { dictionary: [ [axes, null] ] } ] } }
+            value: { call: { procedure: resource, arguments: { content: prompt/enrich.md, inputs: { dictionary: [ [axes, null] ] } } } }
         result: { dictionary: [ [result, { ref: prompt }] ] }
         """)
         let sut = harness.executor(files: [
@@ -488,7 +479,7 @@ struct EffectActionTests {
         returns: "Dictionary<String, Any>"
         body:
           - let: script
-            value: { call: { procedure: Forge.Native.locate, arguments: [ script/run.sh ] } }
+            value: { locate: script/run.sh }
         result: { dictionary: [ [where, { ref: script }] ] }
         """)
         let sut = harness.executor(files: [
@@ -522,7 +513,7 @@ struct EffectActionTests {
             value:
               attempt:
                 body:
-                  - value: { call: { procedure: Forge.Native.shell, arguments: [ [ fail-tool ], null, null, null, null ] } }
+                  - value: { call: { procedure: shell, arguments: { command: [ fail-tool ] } } }
                 rescue:
                   - set: kind
                     value: { ref: risky.type }
@@ -570,7 +561,7 @@ struct EffectActionTests {
             encoding: .utf8
         )
 
-        let store = SpecCatalog(directory: directory, frontend: harness.frontend)
+        let store = SpecCatalog(directory: directory)
         let caller = try harness.frontend.workflow("""
         returns: "Dictionary<String, Any>"
         body:
@@ -588,7 +579,7 @@ struct EffectActionTests {
         #expect(outputs["result"] == .int(21))
     }
 
-    @Test("a statement that calls a verb is a step, named by its statement and acting as the verb")
+    @Test("a statement that calls a verb is a step, named by its statement and acting as the verb, and the native under it runs for that step")
     func eventsBridgeWhenStepsRun() async throws {
         // Given
         let harness = Harness()
@@ -599,7 +590,7 @@ struct EffectActionTests {
           - let: fine
             value: ok
           - let: run
-            value: { call: { procedure: Forge.Native.run, arguments: [] } }
+            value: { call: { procedure: run, arguments: {} } }
           - var: recovered
             type: String
             value: ""
@@ -608,7 +599,7 @@ struct EffectActionTests {
               attempt:
                 body:
                   - let: broken
-                    value: { call: { procedure: Forge.Native.shell, arguments: [ [ broken ], null, null, null, null ] } }
+                    value: { call: { procedure: shell, arguments: { command: [ broken ] } } }
                 rescue:
                   - set: recovered
                     value: recovered
@@ -617,7 +608,7 @@ struct EffectActionTests {
         let bridge = EventBridge(
             workflowID: "wf-test",
             workflowName: "observed",
-            verbs: Set(try ForgeSpec.natives().procedures.keys)
+            verbs: try ForgeSpec.verbs()
         ) { event in
             await collected.append(event)
         }
@@ -635,11 +626,12 @@ struct EffectActionTests {
         }
 
         #expect(steps == [
-            "run:step.started:Forge.Native.run",
+            "run:step.started:Forge.run",
             "run:step.completed:",
-            "broken:step.started:Forge.Native.shell",
+            "broken:step.started:Forge.shell",
             "broken:step.failed:"
         ])
+        #expect(await harness.recorder.shellSteps == ["broken"])
     }
 
     // MARK: - Public

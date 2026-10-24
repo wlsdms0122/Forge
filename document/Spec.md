@@ -5,7 +5,8 @@ Warp YAML front end (`warp-frontend-yaml`, its README), which turns it into a
 canonical document that the Warp runtime loads, builds and runs. The language
 itself, its constructs, types and standard vocabulary, is the Warp
 specification's. This page says what Forge adds: how a workflow file is laid
-out, and the verbs the daemon lends a run as the `Forge` module.
+out, and the verbs a workflow writes, which Forge's library declares over the
+native procedures the daemon lends a run.
 
 ## The file
 
@@ -15,9 +16,9 @@ identity in the catalog. The procedure is `access: public`, since a run starts
 from it.
 
 Every run is built from the dispatched workflow, every other workflow in the
-catalog, the `Forge` module and the standard vocabulary. A workflow calls
-another one in the same run with `call`, by its name, and starts another run
-with `Forge.Native.dispatch`.
+catalog, the library, the natives under it and the standard vocabulary. A
+workflow calls another one in the same run with `call`, by its name, and starts
+another run with `dispatch`.
 
 - **Inputs** are the procedure's parameters. A caller hands them by name. An
   input of an optional type (`String?`) may be left out, and the daemon hands
@@ -36,56 +37,87 @@ hands it null when left out, and the body starts by settling the default.
 parameters: [ who: { type: String, default: world } ]
 ```
 
-## The `Forge` module
+## The `Forge` library
 
-The verbs are native procedures. They are called like any procedure, every
-argument written in the order the procedure declares it, null where an
-optional one says nothing. Each one may run beside another in a fan-out.
+The verbs are the procedures of Forge's library, a document in the front
+end's notation that the daemon carries (`Forge.yaml` in the package) and that
+every workflow leans on. A verb is written by its short name, and its
+arguments by name, in any order; an optional one left out is null, and one
+with a default takes it:
 
-### `Forge.Native.shell`
+```yaml
+- let: listed
+  value: { call: { procedure: shell, arguments: { command: [ls, -la], timeout: 30 } } }
+- let: reply
+  value: { agent: hello }
+```
 
-`Forge.Native.shell(command: Array<String>, cwd: String?, env: Dictionary<String, String>?, stdin: String?, timeout: Double?) -> String`,
-failing `nonzero_exit`, `timeout`.
+A verb with one argument may be written as a mapping of its name to the
+argument, as `agent` is above. A closure handed to a verb takes from the verb
+what its signature leaves out, so `invoke`'s body writes only what it returns
+and its statements. Every verb may run beside another in a fan-out.
+
+Under each verb is the native procedure the daemon implements,
+`Forge.Native.<verb>`, which takes every argument by position, defaults
+settled. A workflow writes the library's verbs.
+
+### `Forge.shell`
+
+`shell(command: Array<String>, cwd: String?, env: Dictionary<String, String>, stdin: String?, timeout: Double?) -> String`,
+failing `nonzero_exit`, `timeout`. `env` defaults to an empty map.
 
 Runs `command[0]` with the rest as its arguments, holding one of the daemon's
-step slots for the whole run, and returns its standard output. A nonzero exit
-fails with `nonzero_exit`, whose details are `exit_code`, `stderr` and
+step slots for the whole run, and returns its standard output. `cwd` left out
+is the daemon's own, and `env` is set over the daemon's environment. A nonzero
+exit fails with `nonzero_exit`, whose details are `exit_code`, `stderr` and
 `stdout`. A command still running after `timeout` seconds fails with
 `timeout`, whose details are `seconds`.
 
-### `Forge.Native.extract`
+### `Forge.extract`
 
-`Forge.Native.extract(text: String, outputs: Dictionary<String, Any>) -> Dictionary<String, Any>`, const.
+`extract(text: String, outputs: Dictionary<String, Any>) -> Dictionary<String, Any>`, const.
 
 Reads the values `outputs` names out of `text` (see *Output extractors*) and
 returns them by name, with the whole text under `_raw`. It reaches nothing
 outside the run.
 
-### `Forge.Native.invoke`
+### `Forge.invoke`
 
-`Forge.Native.invoke<Result>(model: String?, allowed: Any, env_extra: Dictionary<String, String>?, cwd: String?, permission_mode: String?, share_session: Bool?, timeout: Double?, body: () throws -> Result) -> Result`,
-failing anything.
+`invoke(model: String?, allowed: Array<Any>?, env_extra: Dictionary<String, String>, cwd: String?, permission_mode: String?, share_session: Bool, timeout: Double?, body: () throws -> some Result) -> some Result`,
+failing anything. `env_extra` defaults to an empty map and `share_session` to
+`false`.
 
 Opens an agent session with these settings and calls `body` inside it; what
-the body returns is what `invoke` returns. `model` is
-`<provider>[:<model>]`. `allowed` is the list of tools to expose, or null for
-the backend's own setting. `cwd` and `permission_mode` are null for unset; an
-empty string is refused. `share_session: true` reuses the session of an
-enclosing `invoke` where there is one. A session still open after `timeout`
+the body returns is what `invoke` returns, so the body writes its `returns`.
+`model` is `<provider>[:<model>]`. `allowed` is the list of tools to expose,
+each a name or a map of `command` to a pattern; left out, the backend's own
+setting stands, and `[]` exposes none. `cwd` and `permission_mode` left out are
+unset; an empty string is refused. `share_session: true` reuses the session of
+an enclosing `invoke` where there is one. A session still open after `timeout`
 seconds fails with `timeout`.
 
-### `Forge.Native.agent`
+```yaml
+- let: answer
+  value:
+    call:
+      procedure: invoke
+      arguments:
+        model: claude
+        body: { closure: { returns: String, result: { agent: hello } } }
+```
 
-`Forge.Native.agent(prompt: String) -> String`.
+### `Forge.agent`
 
-One prompt turn in the session the enclosing `Forge.Native.invoke` opened, holding a
-step slot. Outside a session it is refused. A piece of a fan-out speaks to no
+`agent(prompt: String) -> String`.
+
+One prompt turn in the session the enclosing `invoke` opened, holding a step
+slot. Outside a session it is refused. A piece of a fan-out speaks to no
 session it did not open.
 
-### `Forge.Native.dispatch`
+### `Forge.dispatch`
 
-`Forge.Native.dispatch(name: String, inputs: Dictionary<String, Any>?, timeout: Double?) -> Dictionary<String, Any>`,
-failing `child_run_failed`, `timeout`.
+`dispatch(name: String, inputs: Dictionary<String, Any>, timeout: Double?) -> Dictionary<String, Any>`,
+failing `child_run_failed`, `timeout`. `inputs` defaults to an empty map.
 
 Runs the catalog workflow `name` as a run of its own, with its own policy
 check, slot and ledger, and returns its outputs. A child that fails at its
@@ -93,9 +125,10 @@ work fails with `child_run_failed`, which a rescue may take. A child the
 policy refuses, or one that faults or is cancelled, fails the parent past any
 rescue.
 
-### `Forge.Native.resource`
+### `Forge.resource`
 
-`Forge.Native.resource(content: String, inputs: Dictionary<String, Any>?) -> String`.
+`resource(content: String, inputs: Dictionary<String, Any>) -> String`.
+`inputs` defaults to an empty map.
 
 Reads the resource file `content`, relative to the resource directory, and
 renders it as a template over `inputs`: `${name}` stands for the input of that
@@ -103,21 +136,21 @@ name and `$${` writes `${`. A null input is written `null`, as the language's
 `format` writes it, and a name the inputs do not hold is refused. An input
 that must not be null is declared without `?`.
 
-### `Forge.Native.locate`
+### `Forge.locate`
 
-`Forge.Native.locate(path: String) -> String`.
+`locate(path: String) -> String`.
 
 The absolute path of the resource file `path`, which is not read.
 
-### `Forge.Native.run`
+### `Forge.run`
 
-`Forge.Native.run() -> Forge.Run`, where `Forge.Run` is `{ workflow_id: String, root_id: String }`.
+`run() -> Forge.Run`, where `Forge.Run` is `{ workflow_id: String, root_id: String }`.
 
 This run's id, and the id of the run that started the chain.
 
-### `Forge.Native.origin`
+### `Forge.origin`
 
-`Forge.Native.origin() -> Forge.Origin`, where `Forge.Origin` is `{ kind: String, id: String? }`.
+`origin() -> Forge.Origin`, where `Forge.Origin` is `{ kind: String, id: String? }`.
 
 What started this run, and the id of the schedule or caller where there is one.
 
@@ -140,7 +173,7 @@ and the piece writes what it returns:
 
 ## Output extractors
 
-`Forge.Native.extract` reads a text, usually what `Forge.Native.shell` returned; every other
+`extract` reads a text, usually what `shell` returned; every other
 verb speaks structured values already. The `outputs` argument is a map from a
 name to an extractor. Shorthand (bare JSONPath):
 

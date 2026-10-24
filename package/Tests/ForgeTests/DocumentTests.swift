@@ -13,30 +13,30 @@ import WarpSyntax
 
 // A reference nobody runs drifts, and the drift is invisible until an author
 // writes what it says and the build refuses. These read `document/Spec.md` and
-// hold it to the code: the verbs it documents are the verbs the Forge module
+// hold it to the code: the verbs it documents are the verbs the Forge library
 // declares, and the workflow it prints is one that loads, builds and runs.
-@Suite("The spec reference matches the Forge module")
+@Suite("The spec reference matches the Forge library")
 struct DocumentTests {
     // MARK: - Property
     private let document = SpecDocument()
 
     // MARK: - Lifecycle
     // MARK: - Test
-    @Test("every verb the Forge module declares has a section")
+    @Test("every verb the Forge library declares has a section")
     func everyWordIsDocumented() throws {
-        let missing = Set(try ForgeSpec.natives().procedures.keys.map(\.spelling))
+        let missing = Set(try ForgeSpec.verbs().map(\.spelling))
             .subtracting(document.sections)
             .sorted()
 
         #expect(missing.isEmpty, "documented nowhere in Spec.md: \(missing)")
     }
 
-    @Test("every verb the reference documents is one the Forge module declares")
+    @Test("every verb the reference documents is one the Forge library declares")
     func everyDocumentedWordExists() throws {
-        let declared = Set(try ForgeSpec.natives().procedures.keys.map(\.spelling))
+        let declared = Set(try ForgeSpec.verbs().map(\.spelling))
         let phantom = document.sections.subtracting(declared).sorted()
 
-        #expect(phantom.isEmpty, "Spec.md documents verbs the Forge module does not declare: \(phantom)")
+        #expect(phantom.isEmpty, "Spec.md documents verbs the Forge library does not declare: \(phantom)")
     }
 
     @Test("every complete workflow the reference prints loads and builds")

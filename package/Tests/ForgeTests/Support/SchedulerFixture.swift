@@ -55,7 +55,7 @@ struct SchedulerFixture {
             failing: [nonzero_exit, timeout]
             body:
               - let: s
-                value: { call: { procedure: Forge.Native.shell, arguments: [ ["/bin/sh", "-c", "\(script)"], null, null, null, null ] } }
+                value: { call: { procedure: shell, arguments: { command: ["/bin/sh", "-c", "\(script)"] } } }
             """
         )
     }
@@ -75,7 +75,7 @@ struct SchedulerFixture {
     }
 
     func catalog(directory: URL?) -> SpecCatalog {
-        SpecCatalog(directory: directory, frontend: ForgeSpec.frontend())
+        SpecCatalog(directory: directory)
     }
 
     func runner(catalog: SpecCatalog) -> SpecWorkflowRunner {

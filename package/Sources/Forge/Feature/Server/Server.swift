@@ -83,10 +83,7 @@ package actor Server {
             postHooks: postHooks,
             errorHooks: errorHooks
         )
-        let workflowStoreLocal = SpecCatalog(
-            directory: config.workflowDirectory,
-            frontend: ForgeSpec.frontend()
-        )
+        let workflowStoreLocal = SpecCatalog(directory: config.workflowDirectory)
         let runtimeScheduleDirectory = config.runtimeDirectory.appendingPathComponent("schedule")
         let scheduleStore = ScheduleStore(
             configDir: config.scheduleDirectory,

@@ -636,7 +636,7 @@ lifetime and relays its progress:
 ```json
 {"id":"<client-id>","result":{"workflow_id":"...","name":"...","status":"streaming"}}
 {"kind":"workflow.event","event":"workflow.started","workflow_id":"...","workflow_name":"...","root_id":"...","ts":...}
-{"kind":"workflow.event","event":"step.started","step":"...","action":"Forge.Native.shell|Forge.Native.agent|...","node_id":"...","parent_node_id":"...", ...}
+{"kind":"workflow.event","event":"step.started","step":"...","action":"Forge.shell|Forge.agent|...","node_id":"...","parent_node_id":"...", ...}
 {"kind":"workflow.event","event":"step.completed","step":"...","duration_ms":..., "output_preview":"...","output_len":..., ...}
 {"kind":"workflow.result","result":{...same shape as blocking dispatch result...}}
 ```
@@ -645,7 +645,7 @@ Event lines are `WorkflowEvent` objects (`workflow.started/completed/failed`,
 `step.started/completed/failed/skipped`) filtered to this run's **root**. A
 step is a statement that calls one of the `Forge` module's verbs, named by its
 statement, and its `action` is the verb's full name. Child workflows
-dispatched by the run (a `Forge.Native.dispatch` step) inherit the root and stream
+dispatched by the run (a `dispatch` step) inherit the root and stream
 too; `root_id`/`node_id`/`parent_node_id` let the consumer rebuild the
 tree. A policy denial is returned as a plain RPC error line (no stream). If
 the run fails to even start after the ack (e.g. run cap), the terminal

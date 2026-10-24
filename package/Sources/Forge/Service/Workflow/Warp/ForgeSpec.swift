@@ -8,6 +8,7 @@
 import Foundation
 import Warp
 import WarpStandard
+import WarpSyntax
 import WarpYAML
 
 enum ForgeSpec {
@@ -16,11 +17,29 @@ enum ForgeSpec {
     static let runType: Name = "Forge.Run"
     static let originType: Name = "Forge.Origin"
 
+    // Forge's grammar: the library document the package carries, written in
+    // the YAML notation over the native verbs and spent once. A workflow
+    // leans on it and every link holds it.
+    private static let shipped = Result {
+        guard let url = Bundle.module.url(forResource: "Forge", withExtension: "yaml") else {
+            throw CocoaError(.fileNoSuchFile, userInfo: [NSFilePathErrorKey: "Forge.yaml"])
+        }
+
+        return try YAMLFrontend().document(from: try Data(contentsOf: url))
+    }
+
+    // The library loaded the way a runtime receives it.
+    private static let loaded = Result {
+        let document = try shipped.get()
+
+        return try Loader().load(document, identity: try Identity.of(document))
+    }
+
     // MARK: - Initializer
     // MARK: - Public
-    // The verbs forge reaches the world with, as native procedures. Each one
-    // runs outside the program, may run beside another, and says what it fails
-    // with.
+    // The native verbs the library is written over. Each one runs outside
+    // the program, may run beside another, and says what it fails with; each
+    // takes every argument by position.
     static func natives() throws -> Module {
         try Module(
             types: [
@@ -88,15 +107,26 @@ enum ForgeSpec {
         )
     }
 
-    // What every link holds beside the workflows: forge's verbs and the
-    // standard vocabulary.
-    static func linkables() throws -> [Module] {
-        [try natives()] + Module.standard
+    // The library's document, the one a workflow leans on.
+    static func library() throws -> Value {
+        try shipped.get()
     }
 
-    // The one front end forge reads a workflow with.
-    static func frontend() -> YAMLFrontend {
-        YAMLFrontend()
+    // The verbs a workflow writes, the library's procedures. A statement that
+    // calls one is a step.
+    static func verbs() throws -> Set<Name> {
+        Set(try loaded.get().procedures.keys)
+    }
+
+    // What every link holds beside the workflows: the library, the native
+    // verbs under it and the standard vocabulary.
+    static func linkables() throws -> [Module] {
+        [try loaded.get(), try natives()] + Module.standard
+    }
+
+    // The one front end forge reads a workflow with, leaning on the library.
+    static func frontend() throws -> YAMLFrontend {
+        YAMLFrontend(symbols: try SymbolTable(documents: [try library()]))
     }
 
     // MARK: - Private

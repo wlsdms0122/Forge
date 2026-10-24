@@ -2,33 +2,15 @@
 procedures:
   kernel:
     access: public
-    parameters: [ who: String?, mode: String?, items: "Array<String>?" ]
+    parameters:
+      - who: { type: String, default: world }
+      - mode: { type: String, default: a }
+      - items: { type: "Array<String>", default: [ one, two ] }
     returns: "Dictionary<String, Any>"
-    failing: [aborted, cast_refused, concurrent_failed]
+    failing: [aborted, concurrent_failed]
     body:
-      - var: name
-        type: String
-        value: world
-      - value:
-          conditional:
-            when: { present: { ref: who } }
-            then: [ { set: name, value: { as: { of: { ref: who }, type: String } } } ]
-      - var: picked
-        type: String
-        value: a
-      - value:
-          conditional:
-            when: { present: { ref: mode } }
-            then: [ { set: picked, value: { as: { of: { ref: mode }, type: String } } } ]
-      - var: list
-        type: "Array<String>"
-        value: [ one, two ]
-      - value:
-          conditional:
-            when: { present: { ref: items } }
-            then: [ { set: list, value: { as: { of: { ref: items }, type: "Array<String>" } } } ]
       - let: greet
-        value: { format: "hello, ${name}", with: { name: { ref: name } } }
+        value: { format: "hello, ${name}", with: { name: { ref: who } } }
       - let: quoted
         value: { dictionary: [ [ref, kept-as-data] ] }
       - var: pick
@@ -36,7 +18,7 @@ procedures:
         value: ""
       - value:
           cases:
-            - when: { of: { ref: picked }, is: a }
+            - when: { of: { ref: mode }, is: a }
               then: [ { set: pick, value: took-a } ]
             - else: [ { set: pick, value: took-b } ]
       - var: rounds
@@ -59,7 +41,7 @@ procedures:
       - let: walk
         value:
           each:
-            of: { ref: list }
+            of: { ref: items }
             as: item
             index: at
             body:
@@ -71,8 +53,8 @@ procedures:
             procedure: Standard.Concurrent.allKeyed
             arguments:
               - dictionary:
-                  - [left, { closure: { isolated: true, returns: Int, result: 1 } }]
-                  - [right, { closure: { isolated: true, returns: Int, result: 2 } }]
+                  - [left, { closure: { returns: Int, result: 1 } }]
+                  - [right, { closure: { returns: Int, result: 2 } }]
       - var: recovered
         type: String
         value: ""

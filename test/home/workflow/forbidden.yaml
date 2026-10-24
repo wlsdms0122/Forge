@@ -13,7 +13,7 @@ procedures:
           attempt:
             body:
               - set: blocked
-                value: { call: { procedure: Forge.Native.dispatch, arguments: [ kernel, null, 60 ] } }
+                value: { call: { procedure: dispatch, arguments: { name: kernel, timeout: 60 } } }
             rescue:
               - set: blocked
                 value: should-not-swallow

@@ -26,7 +26,7 @@ struct WorkflowDescribeTests {
         failing: [nonzero_exit, timeout]
         body:
           - let: x
-            value: { call: { procedure: Forge.Native.shell, arguments: [ ["/bin/echo", { ref: msg }], null, null, null, null ] } }
+            value: { call: { procedure: shell, arguments: { command: ["/bin/echo", { ref: msg }] } } }
         returns: "Dictionary<String, Any>"
         result: { dictionary: [ [v, { ref: x }] ] }
         """#, named: "echo").write(to: directory.appendingPathComponent("echo.yaml"),
@@ -57,7 +57,7 @@ struct WorkflowDescribeTests {
         failing: [nonzero_exit, timeout]
         body:
           - let: x
-            value: { call: { procedure: Forge.Native.shell, arguments: [ ["/bin/true"], null, null, null, null ] } }
+            value: { call: { procedure: shell, arguments: { command: ["/bin/true"] } } }
         """#, named: "noop").write(to: directory.appendingPathComponent("noop.yaml"),
             atomically: true, encoding: .utf8)
         let token = authority.mint(TokenClaims(principal: "system:admin"))
@@ -112,7 +112,7 @@ struct WorkflowDescribeTests {
     
     -> (WorkflowDescribeMethod, TokenAuthority, URL) {
         let directory = try temporary.make(test)
-        let store = SpecCatalog(directory: directory, frontend: ForgeSpec.frontend())
+        let store = SpecCatalog(directory: directory)
         let authority = TokenAuthority()
         
         return (WorkflowDescribeMethod(store: store, tokenAuthority: authority), authority, directory)

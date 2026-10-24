@@ -1,5 +1,6 @@
 # Agent seams: invoke turns, in-session continuity, and share_session
-# inheritance.
+# inheritance. The workflow's own name is agent, so the verb is written in
+# full.
 procedures:
   agent:
     access: public
@@ -9,39 +10,25 @@ procedures:
       - let: outer
         value:
           call:
-            procedure: Forge.Native.invoke
+            procedure: invoke
             arguments:
-              - claude
-              - null
-              - null
-              - null
-              - null
-              - null
-              - null
-              - closure:
+              model: claude
+              body:
+                closure:
                   returns: "Dictionary<String, Any>"
-                  failing: anything
                   body:
                     - let: first
-                      value: { call: { procedure: Forge.Native.agent, arguments: [ ping one ] } }
+                      value: { call: { procedure: Forge.agent, arguments: { prompt: ping one } } }
                     - let: second
-                      value: { call: { procedure: Forge.Native.agent, arguments: [ ping two ] } }
+                      value: { call: { procedure: Forge.agent, arguments: { prompt: ping two } } }
                     - let: nested
                       value:
                         call:
-                          procedure: Forge.Native.invoke
+                          procedure: invoke
                           arguments:
-                            - claude
-                            - null
-                            - null
-                            - null
-                            - null
-                            - true
-                            - null
-                            - closure:
-                                returns: String
-                                failing: anything
-                                result: { call: { procedure: Forge.Native.agent, arguments: [ ping three ] } }
+                            model: claude
+                            share_session: true
+                            body: { closure: { returns: String, result: { call: { procedure: Forge.agent, arguments: { prompt: ping three } } } } }
                   result:
                     dictionary:
                       - [first, { ref: first }]
