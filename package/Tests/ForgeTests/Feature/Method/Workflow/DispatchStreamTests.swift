@@ -228,7 +228,7 @@ struct DispatchStreamTests {
         ), claims: try #require(authority.verify(token)))
 
         // Then
-        #expect(ack.dict["status"] as? String == "running")
+        #expect(ack["status"]?.stringValue == "running")
         var sawCompleted = false
         for await event in stream {
             #expect(event.asyncDispatch, "Events from an async run should carry that fact: \(event.kind)")

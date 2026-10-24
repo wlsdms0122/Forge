@@ -44,7 +44,7 @@ actor WorkflowLogger {
     
     // MARK: - Private
     private func write(_ event: WorkflowEvent) async {
-        var payload = event.toJSONObject()
+        var payload = event.fields.mapValues(\.jsonObject)
         
         for envelopeOwned in ["event", "ts", "root_id", "node_id", "parent_node_id", "parameters"] {
             payload.removeValue(forKey: envelopeOwned)

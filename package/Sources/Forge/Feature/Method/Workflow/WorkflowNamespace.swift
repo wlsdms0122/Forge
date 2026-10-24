@@ -31,25 +31,25 @@ struct WorkflowNamespace: Sendable {
 
         self.methods = [
             RPCMethod("workflow.dispatch", .unary(.token) { request, claims in
-                try await dispatch.handle(request, claims: claims)
+                JSONObject(try await dispatch.handle(request, claims: claims))
             }),
             RPCMethod("workflow.dispatch_stream", .streaming(.token) { request, claims, sink in
                 try await dispatchStream.handle(request, claims: claims, sink: sink)
             }),
             RPCMethod("workflow.list", .unary(.token) { request, _ in
-                try await list.handle(request)
+                JSONObject(try await list.handle(request))
             }),
             RPCMethod("workflow.describe", .unary(.token) { request, _ in
-                try await describe.handle(request)
+                JSONObject(try await describe.handle(request))
             }),
             RPCMethod("workflow.list_active", .unary(.token) { request, _ in
-                try await listActive.handle(request)
+                JSONObject(try await listActive.handle(request))
             }),
             RPCMethod("workflow.health", .unary(.token) { request, _ in
-                try await health.handle(request)
+                JSONObject(try await health.handle(request))
             }),
             RPCMethod("workflow.cancel", .unary(.token) { request, claims in
-                try await cancel.handle(request, claims: claims)
+                JSONObject(try await cancel.handle(request, claims: claims))
             })
         ]
     }

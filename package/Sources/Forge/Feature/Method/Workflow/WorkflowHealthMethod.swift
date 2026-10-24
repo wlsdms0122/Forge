@@ -30,15 +30,15 @@ struct WorkflowHealthMethod: Sendable {
     }
 
     // MARK: - Public
-    static func computeFlags(_ health: WorkflowPool.HealthSnapshot) -> [[String: Any]] {
-        var flags: [[String: Any]] = []
+    static func computeFlags(_ health: WorkflowPool.HealthSnapshot) -> [JSONValue] {
+        var flags: [JSONValue] = []
 
         for waiter in health.waiters where waiter.waitedMs >= Advisory.longWaitMs {
             flags.append([
                 "kind": "long_wait",
                 "class": "saturation",
-                "workflow_id": waiter.workflowID,
-                "waited_ms": waiter.waitedMs,
+                "workflow_id": .string(waiter.workflowID),
+                "waited_ms": .int(waiter.waitedMs)
             ])
         }
 
@@ -46,9 +46,9 @@ struct WorkflowHealthMethod: Sendable {
             flags.append([
                 "kind": "long_run",
                 "class": "anomaly",
-                "workflow_id": run.workflowID,
-                "workflow_name": run.workflowName,
-                "age_ms": run.ageMs,
+                "workflow_id": .string(run.workflowID),
+                "workflow_name": .string(run.workflowName),
+                "age_ms": .int(run.ageMs)
             ])
         }
 
@@ -56,8 +56,8 @@ struct WorkflowHealthMethod: Sendable {
             flags.append([
                 "kind": "big_tree",
                 "class": "anomaly",
-                "root_id": tree.rootID,
-                "runs": tree.count,
+                "root_id": .string(tree.rootID),
+                "runs": .int(tree.count)
             ])
         }
 
@@ -65,7 +65,7 @@ struct WorkflowHealthMethod: Sendable {
             flags.append([
                 "kind": "high_rate",
                 "class": "anomaly",
-                "dispatches_last_60s": health.dispatchesLast60s,
+                "dispatches_last_60s": .int(health.dispatchesLast60s)
             ])
         }
 
@@ -73,43 +73,50 @@ struct WorkflowHealthMethod: Sendable {
             flags.append([
                 "kind": "runs_refused",
                 "class": "saturation",
-                "refused_last_60s": health.refusedLast60s,
-                "total": health.refusedRuns,
+                "refused_last_60s": .int(health.refusedLast60s),
+                "total": .int(health.refusedRuns)
             ])
         }
 
         return flags
     }
 
-    func handle(_ request: RPCRequest) async throws -> JSONObject {
+    func handle(_ request: RPCRequest) async throws -> JSONValue {
         let health = await pool.health()
+        let waiters: [JSONValue] = health.waiters.map { waiter in
+            ["workflow_id": .string(waiter.workflowID), "waited_ms": .int(waiter.waitedMs)]
+        }
+        let oldest: [JSONValue] = health.oldestRuns.map { run in
+            [
+                "workflow_id": .string(run.workflowID),
+                "workflow_name": .string(run.workflowName),
+                "state": .string(run.state),
+                "age_ms": .int(run.ageMs)
+            ]
+        }
+        let trees: [JSONValue] = health.trees.map { tree in
+            [
+                "root_id": .string(tree.rootID),
+                "runs": .int(tree.count),
+                "names": .object(tree.names.mapValues(JSONValue.int))
+            ]
+        }
 
         return [
             "slots": [
-                "max":  health.slotsMax,
-                "free": health.slotsFree,
-                "waiters": health.waiters.map { waiter in
-                    ["workflow_id": waiter.workflowID, "waited_ms": waiter.waitedMs]
-                },
-            ] as [String: Any],
+                "max":     .int(health.slotsMax),
+                "free":    .int(health.slotsFree),
+                "waiters": .array(waiters)
+            ],
             "runs": [
-                "active":        health.activeRuns,
-                "cap":           health.runCap,
-                "refused_total": health.refusedRuns,
-                "oldest": health.oldestRuns.map { run in
-                    [
-                        "workflow_id": run.workflowID,
-                        "workflow_name": run.workflowName,
-                        "state": run.state,
-                        "age_ms": run.ageMs,
-                    ]
-                },
-                "trees": health.trees.map { tree in
-                    ["root_id": tree.rootID, "runs": tree.count, "names": tree.names]
-                },
-            ] as [String: Any],
-            "dispatch": ["last_60s": health.dispatchesLast60s] as [String: Any],
-            "flags": Self.computeFlags(health),
+                "active":        .int(health.activeRuns),
+                "cap":           .int(health.runCap),
+                "refused_total": .int(health.refusedRuns),
+                "oldest":        .array(oldest),
+                "trees":         .array(trees)
+            ],
+            "dispatch": ["last_60s": .int(health.dispatchesLast60s)],
+            "flags": .array(Self.computeFlags(health))
         ]
     }
 

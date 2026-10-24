@@ -57,8 +57,8 @@ struct AsyncDispatchTests {
         ), claims: try #require(authority.verify(token)))
 
         // Then
-        #expect(result.dict["status"] as? String == "ok")
-        let outputs = result.dict["outputs"] as? [String: Any]
+        #expect(result["status"]?.stringValue == "ok")
+        let outputs = result["outputs"]?.objectValue
         #expect(outputs?["v"] != nil)
     }
     
@@ -85,8 +85,8 @@ struct AsyncDispatchTests {
 
         // Then
         #expect(elapsedMs < 100, "async=true should return before the workflow completes (actual: \(elapsedMs)ms)")
-        #expect(result.dict["status"] as? String == "running")
-        let wfID = try #require(result.dict["workflow_id"] as? String)
+        #expect(result["status"]?.stringValue == "running")
+        let wfID = try #require(result["workflow_id"]?.stringValue)
         #expect(wfID.hasPrefix("wf-"), "runID should be forge-minted (wf-*): \(wfID)")
         #expect(wfID != "r-async")
         try await Task.sleep(for: .milliseconds(500))

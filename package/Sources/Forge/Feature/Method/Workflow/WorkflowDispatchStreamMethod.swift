@@ -36,14 +36,16 @@ struct WorkflowDispatchStreamMethod: Sendable {
         let (token, stream) = await eventBus.subscribe()
         let expectedRoot = prepared.effectiveRootID
 
-        await sink.emit(JSONObject([
-            "id": request.id,
+        let acknowledgement: JSONValue = [
+            "id": .string(request.id),
             "result": [
-                "workflow_id": prepared.workflowID,
-                "name":        prepared.workflow.name,
-                "status":      "streaming",
-            ] as [String: Any],
-        ]))
+                "workflow_id": .string(prepared.workflowID),
+                "name":        .string(prepared.workflow.name),
+                "status":      "streaming"
+            ]
+        ]
+
+        await sink.emit(JSONObject(acknowledgement))
 
         let dispatchMethodLocal = dispatchMethod
         let eventBusLocal = eventBus
@@ -97,32 +99,34 @@ struct WorkflowDispatchStreamMethod: Sendable {
                 }
             }
 
-            var line = event.toJSONObject()
+            var line = event.fields
             line["kind"] = "workflow.event"
 
             if unawaited.contains(id) { line["unawaited"] = true }
 
-            await sink.emit(JSONObject(line))
+            await sink.emit(JSONObject(.object(line)))
         }
 
         if Task.isCancelled { return }
 
-        let resultObject: [String: Any]
+        let resultValue: JSONValue
 
         switch await runTask.value {
         case .success(let result):
-            resultObject = dispatchMethod.encodeResult(result).dict
+            resultValue = dispatchMethod.encodeResult(result)
 
         case .failure(let error):
-            resultObject = [
-                "workflow_id": prepared.workflowID,
-                "name":        prepared.workflow.name,
+            resultValue = [
+                "workflow_id": .string(prepared.workflowID),
+                "name":        .string(prepared.workflow.name),
                 "status":      "failed",
-                "error":       ErrorObject(error).jsonValue.jsonObject,
+                "error":       ErrorObject(error).jsonValue
             ]
         }
 
-        await sink.emit(JSONObject(["kind": "workflow.result", "result": resultObject]))
+        let resultFrame: JSONValue = ["kind": "workflow.result", "result": resultValue]
+
+        await sink.emit(JSONObject(resultFrame))
     }
 
     // MARK: - Private

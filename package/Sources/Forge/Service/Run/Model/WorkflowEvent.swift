@@ -34,6 +34,39 @@ struct WorkflowEvent: Sendable {
     let parentRunID: String?
     let asyncDispatch: Bool
 
+    // The event's fields as the stream and the log write them.
+    var fields: [String: JSONValue] {
+        var object: [String: JSONValue] = [
+            "event": .string(kind.rawValue),
+            "workflow_id": .string(workflowID),
+            "workflow_name": .string(workflowName),
+            "ts": .int(Int(timestamp.timeIntervalSince1970))
+        ]
+
+        if let stepID { object["step"] = .string(stepID) }
+        if let origin { object["origin"] = origin.jsonValue }
+        if let parameters { object["parameters"] = .object(parameters) }
+        if let inputs { object["inputs"] = .object(inputs) }
+        if let output { object["output"] = output }
+        if let outputs { object["outputs"] = .object(outputs) }
+        if let errorType { object["error_type"] = .string(errorType) }
+        if let errorMessage { object["error_message"] = .string(errorMessage) }
+        if let durationMs { object["duration_ms"] = .int(durationMs) }
+        if let action { object["action"] = .string(action) }
+        if let exitCode { object["exit_code"] = .int(exitCode) }
+        if let outputPreview { object["output_preview"] = .string(outputPreview) }
+        if let outputLen { object["output_len"] = .int(outputLen) }
+        if let inputPreview { object["input_preview"] = .string(inputPreview) }
+        if let inputLen { object["input_len"] = .int(inputLen) }
+        if let rootID { object["root_id"] = .string(rootID) }
+        if let nodeID { object["node_id"] = .string(nodeID) }
+        if let parentNodeID { object["parent_node_id"] = .string(parentNodeID) }
+        if let parentRunID { object["parent_run_id"] = .string(parentRunID) }
+        if asyncDispatch { object["async"] = true }
+
+        return object
+    }
+
     // MARK: - Initializer
     init(
         kind: WorkflowEventKind,
@@ -88,61 +121,5 @@ struct WorkflowEvent: Sendable {
     }
 
     // MARK: - Public
-    func toJSONObject() -> [String: Any] {
-        var object: [String: Any] = [
-            "event": kind.rawValue,
-            "workflow_id": workflowID,
-            "workflow_name": workflowName,
-            "ts": Int(timestamp.timeIntervalSince1970)
-        ]
-
-        if let stepID { object["step"] = stepID }
-        if let origin { object["origin"] = origin.asPayload }
-        if let parameters { object["parameters"] = parameters.mapValues(toAny) }
-        if let inputs { object["inputs"] = inputs.mapValues(toAny) }
-        if let output { object["output"] = toAny(output) }
-        if let outputs { object["outputs"] = outputs.mapValues(toAny) }
-        if let errorType { object["error_type"] = errorType }
-        if let errorMessage { object["error_message"] = errorMessage }
-        if let durationMs { object["duration_ms"] = durationMs }
-        if let action { object["action"] = action }
-        if let exitCode { object["exit_code"] = exitCode }
-        if let outputPreview { object["output_preview"] = outputPreview }
-        if let outputLen { object["output_len"] = outputLen }
-        if let inputPreview { object["input_preview"] = inputPreview }
-        if let inputLen { object["input_len"] = inputLen }
-        if let rootID { object["root_id"] = rootID }
-        if let nodeID { object["node_id"] = nodeID }
-        if let parentNodeID { object["parent_node_id"] = parentNodeID }
-        if let parentRunID { object["parent_run_id"] = parentRunID }
-        if asyncDispatch { object["async"] = true }
-
-        return object
-    }
-
     // MARK: - Private
-    private func toAny(_ value: JSONValue) -> Any {
-        switch value {
-        case .null:
-            return NSNull()
-
-        case .bool(let bool):
-            return bool
-
-        case .int(let integer):
-            return integer
-
-        case .double(let double):
-            return double
-
-        case .string(let string):
-            return string
-
-        case .array(let array):
-            return array.map(toAny)
-
-        case .object(let object):
-            return object.mapValues(toAny)
-        }
-    }
 }

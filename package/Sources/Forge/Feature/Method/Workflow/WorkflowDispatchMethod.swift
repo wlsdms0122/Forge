@@ -51,10 +51,8 @@ struct WorkflowDispatchMethod: Sendable {
             workflowID: claims.workflowID,
             context: "workflow.dispatch"
         )
-        let workflow = try await resolveProgram(request.rawParams)
-        let inputs = try decodeJSONValueDict(
-            (request.rawParams["inputs"] as? [String: Any]) ?? [:]
-        )
+        let workflow = try await resolveProgram(request.params)
+        let inputs = request.params["inputs"]?.objectValue ?? [:]
         let workflowID = WorkflowRunner.newRunID()
         let rootID: String?
         let parentNodeID: String?
@@ -71,21 +69,16 @@ struct WorkflowDispatchMethod: Sendable {
             parameters   = record.parameters
             origin      = DispatchOrigin(kind: "workflow", id: record.workflowID)
         } else {
-            let rootField = request.rawParams["root"] as? [String: Any]
-            rootID      = rootField?["root_id"] as? String
-            parentNodeID = rootField?["parent_id"] as? String
+            let rootField = request.params["root"]
+            rootID      = rootField?["root_id"]?.stringValue
+            parentNodeID = rootField?["parent_id"]?.stringValue
             parentRunID  = nil
-            correlator   = request.rawParams["correlator"] as? String
+            correlator   = request.params["correlator"]?.stringValue
+            parameters   = request.params["parameters"]?.objectValue
 
-            if let parametersObject = request.rawParams["parameters"] as? [String: Any] {
-                parameters = try decodeJSONValueDict(parametersObject)
-            } else {
-                parameters = nil
-            }
-
-            if let originField = request.rawParams["origin"] as? [String: Any],
-                let kind = originField["kind"] as? String {
-                origin = DispatchOrigin(kind: kind, id: originField["id"] as? String)
+            if let originField = request.params["origin"],
+                let kind = originField["kind"]?.stringValue {
+                origin = DispatchOrigin(kind: kind, id: originField["id"]?.stringValue)
             } else {
                 origin = .rpc
             }
@@ -124,9 +117,9 @@ struct WorkflowDispatchMethod: Sendable {
         )
     }
 
-    func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONObject {
+    func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONValue {
         let prepared = try await prepare(request, claims: claims)
-        let isAsync = (request.rawParams["async"] as? Bool) ?? false
+        let isAsync = request.params["async"]?.boolValue ?? false
         let principal = prepared.principal
         let workflowID = prepared.workflowID
 
@@ -162,51 +155,47 @@ struct WorkflowDispatchMethod: Sendable {
             }
 
             return [
-                "workflow_id": workflowID,
-                "name":        workflowName,
-                "status":      "running",
+                "workflow_id": .string(workflowID),
+                "name":        .string(workflowName),
+                "status":      "running"
             ]
         }
     }
 
-    func encodeResult(_ result: WorkflowRunResult) -> JSONObject {
+    func encodeResult(_ result: WorkflowRunResult) -> JSONValue {
+        var object: [String: JSONValue] = [
+            "workflow_id": .string(result.workflowID),
+            "name":        .string(result.workflowName),
+            "status":      "ok",
+            "duration_ms": .int(result.durationMs),
+            "outputs":     .object(result.outputs)
+        ]
+
         if let failure = result.error {
-            return [
-                "workflow_id": result.workflowID,
-                "name":        result.workflowName,
-                "status":      "failed",
-                "duration_ms": result.durationMs,
-                "outputs":     jsonValueDictToAny(result.outputs),
-                "error":       failure.object.jsonValue.jsonObject,
-            ]
+            object["status"] = "failed"
+            object["error"] = failure.object.jsonValue
         }
 
-        return [
-            "workflow_id": result.workflowID,
-            "name":        result.workflowName,
-            "status":      "ok",
-            "duration_ms": result.durationMs,
-            "outputs":     jsonValueDictToAny(result.outputs),
-        ]
+        return .object(object)
     }
 
     // MARK: - Private
     private func resolveProgram(
-        _ params: [String: Any]
+        _ params: [String: JSONValue]
     ) async throws -> Workflow {
-        if let specObject = params["spec"] as? [String: Any] {
-            guard specObject["name"] == nil else {
+        if let spec = params["spec"]?.objectValue {
+            guard spec["name"] == nil else {
                 throw ProtocolError("workflow.dispatch: inline 'spec' must be anonymous — a 'name' key is not allowed (the name is fixed to '\(WorkflowCatalog.inlineSigil)')")
             }
 
             do {
-                return try await store.inline(.object(try decodeJSONValueDict(specObject)))
+                return try await store.inline(.object(spec))
             } catch {
                 throw ProtocolError("workflow.dispatch: malformed 'spec' — \(error)")
             }
         }
 
-        if let name = params["name"] as? String, !name.isEmpty {
+        if let name = params["name"]?.stringValue, !name.isEmpty {
             return try await store.workflow(named: name)
         }
 

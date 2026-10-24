@@ -7,6 +7,7 @@
 
 import ArgumentParser
 import Foundation
+import Forge
 
 struct WorkflowDispatchCommand: ParsableCommand {
     // MARK: - Property
@@ -104,31 +105,31 @@ struct WorkflowDispatchCommand: ParsableCommand {
             die("workflow dispatch: pass exactly one of a workflow name argument or --spec", code: 4)
         }
         
-        var params: [String: Any] = ["async": isAsync]
+        var params: [String: JSONValue] = ["async": .bool(isAsync)]
         
-        if let name { params["name"] = name }
-        if let spec { params["spec"] = parseJSONObjectArg(spec, flag: "--spec") }
+        if let name { params["name"] = .string(name) }
+        if let spec { params["spec"] = JSONValue(objectArgument: spec, flag: "--spec") }
         
         params["inputs"] = inputs
-            .map { value in parseJSONObjectArg(value, flag: "--inputs") } ?? [:]
+            .map { value in JSONValue(objectArgument: value, flag: "--inputs") } ?? [:]
         
         if let parameters {
-            params["parameters"] = parseJSONObjectArg(parameters, flag: "--parameters")
+            params["parameters"] = JSONValue(objectArgument: parameters, flag: "--parameters")
         }
         
-        if let correlator { params["correlator"] = correlator }
+        if let correlator { params["correlator"] = .string(correlator) }
         
         if let origin {
-            params["origin"] = parseJSONObjectArg(origin, flag: "--origin")
+            params["origin"] = JSONValue(objectArgument: origin, flag: "--origin")
         }
         
         if rootID != nil || parentNodeID != nil {
-            var root: [String: Any] = [:]
+            var root: [String: JSONValue] = [:]
             
-            if let rootID { root["root_id"] = rootID }
-            if let parentNodeID { root["parent_id"] = parentNodeID }
+            if let rootID { root["root_id"] = .string(rootID) }
+            if let parentNodeID { root["parent_id"] = .string(parentNodeID) }
             
-            params["root"] = root
+            params["root"] = .object(root)
         }
         
         if stream {
@@ -139,20 +140,20 @@ struct WorkflowDispatchCommand: ParsableCommand {
             runStream(client, params: params)
         }
         
-        printResult(client.rawCall("workflow.dispatch", params), json: json)
+        printResult(client.call("workflow.dispatch", params), json: json)
         
         ForgeCommand.exit()
     }
     
     // MARK: - Private
-    private func runStream(_ client: Client, params: [String: Any]) -> Never {
+    private func runStream(_ client: Client, params: [String: JSONValue]) -> Never {
         var streamParams = params
-        streamParams["token"] = client.token
+        streamParams["token"] = .string(client.token)
         streamParams.removeValue(forKey: "async")
         
         guard let requestData = RPC.requestLine(
             method: "workflow.dispatch_stream",
-            params: streamParams
+            params: JSONValue.object(streamParams).jsonObject as? [String: Any] ?? [:]
         ) else {
             die("workflow dispatch: encode request failed", code: 4)
         }
@@ -180,8 +181,8 @@ struct WorkflowDispatchCommand: ParsableCommand {
         while let frame = socket.readFrame() {
             emitStdoutLine(String(decoding: frame, as: UTF8.self))
             
-            if let object = try? JSONSerialization.jsonObject(with: frame) as? [String: Any],
-                (object["kind"] as? String) == "workflow.result" {
+            if let object = try? JSONDecoder().decode(JSONValue.self, from: frame),
+                object["kind"]?.stringValue == "workflow.result" {
                 ForgeCommand.exit()
             }
         }

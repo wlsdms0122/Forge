@@ -7,6 +7,7 @@
 
 import ArgumentParser
 import Foundation
+import Forge
 
 struct ServiceRegisterCommand: ParsableCommand {
     // MARK: - Property
@@ -51,7 +52,9 @@ struct ServiceRegisterCommand: ParsableCommand {
     // MARK: - Public
     func run() throws {
         let client = Client(global, context: "service register")
-        let schemaObject = schema.map { value in parseJSONObjectArg(value, flag: "--schema") }
+        let schemaObject = schema.map { value in
+            JSONValue(objectArgument: value, flag: "--schema").jsonObject as? [String: Any] ?? [:]
+        }
         let bridge = ServiceBridge(
             service: name,
             socketPath: client.socketPath,

@@ -17,34 +17,34 @@ struct WorkflowListActiveMethod: Sendable {
     }
 
     // MARK: - Public
-    func handle(_ request: RPCRequest) async throws -> JSONObject {
+    func handle(_ request: RPCRequest) async throws -> JSONValue {
         let snapshot = await pool.snapshot()
         let slots  = await pool.configuredSlots
         let free   = await pool.freeSlots
         let queued = await pool.queuedWaiters
-        let rows: [[String: Any]] = snapshot.map { info in
-            var row: [String: Any] = [
-                "workflow_id":   info.workflowID,
-                "workflow_name": info.workflowName,
-                "origin":       info.origin.asPayload,
-                "principal":     info.principal,
-                "state":         info.state.rawValue,
-                "enqueued_at":   Int(info.enqueuedAt.timeIntervalSince1970),
-                "held_slots":    info.heldSlots,
+        let rows: [JSONValue] = snapshot.map { info in
+            var row: [String: JSONValue] = [
+                "workflow_id":   .string(info.workflowID),
+                "workflow_name": .string(info.workflowName),
+                "origin":        info.origin.jsonValue,
+                "principal":     .string(info.principal),
+                "state":         .string(info.state.rawValue),
+                "enqueued_at":   .int(Int(info.enqueuedAt.timeIntervalSince1970)),
+                "held_slots":    .int(info.heldSlots)
             ]
 
             if let startedAt = info.startedAt {
-                row["started_at"] = Int(startedAt.timeIntervalSince1970)
+                row["started_at"] = .int(Int(startedAt.timeIntervalSince1970))
             }
 
-            return row
+            return .object(row)
         }
 
         return [
-            "workflows":            rows,
-            "maximum_concurrent_steps": slots,
-            "free_slots":           free,
-            "queued_waiters":       queued,
+            "workflows":                .array(rows),
+            "maximum_concurrent_steps": .int(slots),
+            "free_slots":               .int(free),
+            "queued_waiters":           .int(queued)
         ]
     }
 

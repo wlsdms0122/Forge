@@ -7,6 +7,7 @@
 
 import ArgumentParser
 import Foundation
+import Forge
 
 struct JobCreateCommand: ParsableCommand {
     // MARK: - Property
@@ -78,7 +79,7 @@ struct JobCreateCommand: ParsableCommand {
             params["refs"] = array
         }
         
-        if let origin { params["origin"] = parseJSONObjectArg(origin, flag: "--origin") }
+        if let origin { params["origin"] = JSONValue(objectArgument: origin, flag: "--origin").jsonObject }
         
         if let plan {
             guard let data = plan.data(using: .utf8),

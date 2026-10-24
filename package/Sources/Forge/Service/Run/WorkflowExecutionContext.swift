@@ -17,7 +17,7 @@ struct WorkflowExecutionContext: Sendable {
         [
             "workflow_id": workflowID,
             "workflow_name": workflowName,
-            "origin": origin.asPayload
+            "origin": origin.jsonValue.jsonObject
         ]
     }
     

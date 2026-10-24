@@ -7,6 +7,7 @@
 
 import ArgumentParser
 import Foundation
+import Forge
 
 struct ScheduleCreateCommand: ParsableCommand {
     // MARK: - Property
@@ -111,9 +112,9 @@ struct ScheduleCreateCommand: ParsableCommand {
         }
         
         if let workflow { params["workflow"] = workflow }
-        if let spec { params["spec"] = parseJSONObjectArg(spec, flag: "--spec") }
+        if let spec { params["spec"] = JSONValue(objectArgument: spec, flag: "--spec").jsonObject }
         if let id { params["id"] = id }
-        if let inputs { params["inputs"] = parseJSONObjectArg(inputs, flag: "--inputs") }
+        if let inputs { params["inputs"] = JSONValue(objectArgument: inputs, flag: "--inputs").jsonObject }
         if let concurrency { params["concurrency"] = concurrency }
         
         printResult(client.rawCall("schedule.create", params), json: json)

@@ -40,7 +40,7 @@ struct WorkflowCancelGateTests {
                 params: ["token": owner, "workflow_id": "r1"]), claims: try #require(authority.verify(owner)))
 
         // Then
-        #expect(result.dict["cancelled"] as? Bool == true, "A permitted principal should be able to cancel a run within its authority")
+        #expect(result["cancelled"]?.boolValue == true, "A permitted principal should be able to cancel a run within its authority")
     }
     
     @Test("Cancelling an unknown run is a no-op, not an error")
@@ -53,7 +53,7 @@ struct WorkflowCancelGateTests {
                 params: ["token": attacker, "workflow_id": "does-not-exist"]), claims: try #require(authority.verify(attacker)))
 
         // Then
-        #expect(result.dict["cancelled"] as? Bool == false)
+        #expect(result["cancelled"]?.boolValue == false)
     }
     
     // MARK: - Private

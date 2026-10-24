@@ -7,6 +7,7 @@
 
 import ArgumentParser
 import Foundation
+import Forge
 
 struct WorkflowCancelCommand: ParsableCommand {
     // MARK: - Property
@@ -28,7 +29,7 @@ struct WorkflowCancelCommand: ParsableCommand {
     func run() throws {
         let client = Client(global, context: "workflow cancel")
         
-        printResult(client.rawCall("workflow.cancel", ["workflow_id": workflowID]), json: json)
+        printResult(client.call("workflow.cancel", ["workflow_id": .string(workflowID)]), json: json)
     }
     
     // MARK: - Private

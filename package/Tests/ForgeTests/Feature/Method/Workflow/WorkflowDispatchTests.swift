@@ -38,8 +38,8 @@ struct WorkflowDispatchTests {
         let result = try await method.handle(request(["token": token, "spec": anonSpec]), claims: try #require(authority.verify(token)))
 
         // Then
-        #expect(result.dict["status"] as? String == "ok")
-        #expect(result.dict["name"] as? String == WorkflowCatalog.inlineSigil, "The result name of an inline run is fixed to the sigil")
+        #expect(result["status"]?.stringValue == "ok")
+        #expect(result["name"]?.stringValue == WorkflowCatalog.inlineSigil, "The result name of an inline run is fixed to the sigil")
     }
 
     @Test("Run id is freshly minted — the wire id is not borrowed")
@@ -52,12 +52,12 @@ struct WorkflowDispatchTests {
                 params: ["token": token, "spec": anonSpec]), claims: try #require(authority.verify(token)))
 
         // Then
-        let firstID = try #require(first.dict["workflow_id"] as? String)
+        let firstID = try #require(first["workflow_id"]?.stringValue)
         #expect(firstID.hasPrefix("wf-"), "runID should be forge-minted (wf-*) — borrowing the wire id is forbidden (finding J): \(firstID)")
         #expect(firstID != wireID, "runID must not equal the client wire id")
         let second = try await method.handle(RPCRequest(id: wireID, method: "workflow.dispatch",
                 params: ["token": token, "spec": anonSpec]), claims: try #require(authority.verify(token)))
-        let secondID = try #require(second.dict["workflow_id"] as? String)
+        let secondID = try #require(second["workflow_id"]?.stringValue)
         #expect(firstID != secondID, "Two dispatches with the same wire id sharing a runID means cross-run contamination (finding J)")
     }
 
@@ -107,7 +107,7 @@ struct WorkflowDispatchTests {
         let result = try await method.handle(request(["token": token, "spec": anonSpec]), claims: try #require(authority.verify(token)))
 
         // Then
-        #expect(result.dict["status"] as? String == "ok")
+        #expect(result["status"]?.stringValue == "ok")
     }
 
     @Test("A malformed spec answers with a readable error")
@@ -167,8 +167,8 @@ struct WorkflowDispatchTests {
         let result = try await method.handle(request(["token": token, "name": "echo"]), claims: try #require(authority.verify(token)))
 
         // Then
-        #expect(result.dict["status"] as? String == "ok")
-        #expect(result.dict["name"] as? String == "echo")
+        #expect(result["status"]?.stringValue == "ok")
+        #expect(result["name"]?.stringValue == "echo")
     }
 
     @Test("Rejected when neither name nor spec is given")
@@ -208,8 +208,8 @@ struct WorkflowDispatchTests {
         let result = try await method.handle(request(["token": token, "name": "echo"]), claims: try #require(authority.verify(token)))
 
         // Then
-        #expect(result.dict["status"] as? String == "ok")
-        #expect(result.dict["name"] as? String == "echo")
+        #expect(result["status"]?.stringValue == "ok")
+        #expect(result["name"]?.stringValue == "echo")
     }
 
     @Test("A token of a finished run is rejected")

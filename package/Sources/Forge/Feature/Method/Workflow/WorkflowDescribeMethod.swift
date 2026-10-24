@@ -17,8 +17,8 @@ struct WorkflowDescribeMethod: Sendable {
     }
 
     // MARK: - Public
-    func handle(_ request: RPCRequest) async throws -> JSONObject {
-        guard let name = request.rawParams["name"] as? String, !name.isEmpty else {
+    func handle(_ request: RPCRequest) async throws -> JSONValue {
+        guard let name = request.params["name"]?.stringValue, !name.isEmpty else {
             throw ProtocolError("workflow.describe: 'name' (string) required")
         }
 
@@ -29,31 +29,31 @@ struct WorkflowDescribeMethod: Sendable {
         }
 
         let contract = entry.workflow.contract
-        var result: [String: Any] = [
-            "name":        entry.workflow.name,
-            "source":      entry.source,
+        var result: [String: JSONValue] = [
+            "name":    .string(entry.workflow.name),
+            "source":  .string(entry.source),
+            "inputs":  .object(Self.inputs(of: contract)),
+            "returns": .string(contract.returns)
         ]
 
-        result["description"] = entry.workflow.description
-        result["inputs"] = Self.inputs(of: contract)
-        result["returns"] = contract.returns
+        result["description"] = entry.workflow.description.map(JSONValue.string)
 
-        return JSONObject(result)
+        return .object(result)
     }
 
     // MARK: - Private
     // Each input by name, with its type, and the default and the hint the
     // file writes.
-    private static func inputs(of contract: WorkflowContract) -> [String: Any] {
+    private static func inputs(of contract: WorkflowContract) -> [String: JSONValue] {
         Dictionary(
             contract.inputs.map { input in
-                var described: [String: Any] = ["type": input.type]
+                var described: [String: JSONValue] = ["type": .string(input.type)]
 
-                if let written = input.defaultValue { described["default"] = jsonValueToAny(written) }
+                if let written = input.defaultValue { described["default"] = written }
 
-                if let hint = input.hint { described["hint"] = hint }
+                if let hint = input.hint { described["hint"] = .string(hint) }
 
-                return (input.name, described)
+                return (input.name, .object(described))
             },
             uniquingKeysWith: { first, _ in first }
         )

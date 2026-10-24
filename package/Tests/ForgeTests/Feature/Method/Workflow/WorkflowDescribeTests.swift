@@ -37,16 +37,16 @@ struct WorkflowDescribeTests {
         let result = try await method.handle(request(["token": token, "name": "echo"]))
 
         // Then
-        #expect(result.dict["name"] as? String == "echo")
-        #expect(result.dict["source"] as? String == "echo.yaml")
-        let inputs = result.dict["inputs"] as? [String: Any] ?? [:]
-        let message = inputs["msg"] as? [String: Any] ?? [:]
-        #expect(message["type"] as? String == "String")
+        #expect(result["name"]?.stringValue == "echo")
+        #expect(result["source"]?.stringValue == "echo.yaml")
+        let inputs = result["inputs"]?.objectValue ?? [:]
+        let message = inputs["msg"]?.objectValue ?? [:]
+        #expect(message["type"]?.stringValue == "String")
         #expect(!message.keys.contains("default"))
-        let tag = inputs["tag"] as? [String: Any] ?? [:]
-        #expect(tag["type"] as? String == "String?")
+        let tag = inputs["tag"]?.objectValue ?? [:]
+        #expect(tag["type"]?.stringValue == "String?")
         #expect(!tag.keys.contains("default"), "an input whose file writes no default reports none")
-        #expect(result.dict["returns"] as? String == "Dictionary<String, Any>")
+        #expect(result["returns"]?.stringValue == "Dictionary<String, Any>")
     }
     
     @Test("Describe and list answer the description and each input's hint the file writes beside them")
@@ -69,13 +69,13 @@ struct WorkflowDescribeTests {
         let listed = try await list.handle(RPCRequest(id: "r-list", method: "workflow.list", params: ["token": token]))
 
         // Then
-        #expect(described.dict["description"] as? String == "Says hello.")
-        let inputs = described.dict["inputs"] as? [String: Any] ?? [:]
-        #expect((inputs["who"] as? [String: Any])?["hint"] as? String == "whom to greet")
-        #expect((inputs["loud"] as? [String: Any])?["hint"] == nil)
-        #expect((inputs["loud"] as? [String: Any])?["default"] as? Bool == false, "the default the file writes")
-        let workflows = listed.dict["workflows"] as? [[String: Any]] ?? []
-        #expect(workflows.first?["description"] as? String == "Says hello.")
+        #expect(described["description"]?.stringValue == "Says hello.")
+        let inputs = described["inputs"]?.objectValue ?? [:]
+        #expect((inputs["who"]?.objectValue)?["hint"]?.stringValue == "whom to greet")
+        #expect((inputs["loud"]?.objectValue)?["hint"] == nil)
+        #expect((inputs["loud"]?.objectValue)?["default"]?.boolValue == false, "the default the file writes")
+        let workflows = listed["workflows"]?.arrayValue ?? []
+        #expect(workflows.first?["description"]?.stringValue == "Says hello.")
     }
 
     @Test("A workflow with no parameters answers empty inputs and returns Null")
@@ -96,8 +96,8 @@ struct WorkflowDescribeTests {
         let result = try await method.handle(request(["token": token, "name": "noop"]))
 
         // Then
-        #expect((result.dict["inputs"]  as? [String: Any])?.isEmpty == true)
-        #expect(result.dict["returns"] as? String == "Null")
+        #expect((result["inputs"]?.objectValue)?.isEmpty == true)
+        #expect(result["returns"]?.stringValue == "Null")
     }
     
     @Test("Throws when the name parameter is missing")

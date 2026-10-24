@@ -17,29 +17,27 @@ struct WorkflowListMethod: Sendable {
     }
 
     // MARK: - Public
-    func handle(_ request: RPCRequest) async throws -> JSONObject {
+    func handle(_ request: RPCRequest) async throws -> JSONValue {
         let catalog = await store.catalog()
-        let summary: [[String: Any]] = catalog.entries.map { entry in
-            var listed: [String: Any] = [
-                "name":        entry.workflow.name,
-                "source":      entry.source,
+        let summary: [JSONValue] = catalog.entries.map { entry in
+            var listed: [String: JSONValue] = [
+                "name":   .string(entry.workflow.name),
+                "source": .string(entry.source)
             ]
 
-            if let description = entry.workflow.description {
-                listed["description"] = description
-            }
+            listed["description"] = entry.workflow.description.map(JSONValue.string)
 
-            return listed
+            return .object(listed)
         }
-        let failureSummary: [[String: Any]] = catalog.failures.map { failure in
+        let failureSummary: [JSONValue] = catalog.failures.map { failure in
             [
-                "path":   failure.path,
-                "reason": failure.reason,
-                "mtime":  ISO8601.string(failure.mtime),
+                "path":   .string(failure.path),
+                "reason": .string(failure.reason),
+                "mtime":  .string(ISO8601.string(failure.mtime))
             ]
         }
 
-        return ["workflows": summary, "failures": failureSummary]
+        return ["workflows": .array(summary), "failures": .array(failureSummary)]
     }
 
     // MARK: - Private

@@ -169,10 +169,10 @@ struct WorkflowHealthTests {
             trees: [.init(rootID: "r", count: 17, names: ["loop": 17])],
             dispatchesLast60s: 31, refusedLast60s: 3)
         let flags = WorkflowHealthMethod.computeFlags(noisy)
-        let kinds = Set(flags.compactMap { flag in flag["kind"] as? String })
+        let kinds = Set(flags.compactMap { flag in flag["kind"]?.stringValue })
         #expect(kinds == ["long_wait", "long_run", "big_tree", "high_rate", "runs_refused"])
-        let byClass = Dictionary(grouping: flags, by: { flag in flag["class"] as? String ?? "?" })
-        .mapValues { group in Set(group.compactMap { flag in flag["kind"] as? String }) }
+        let byClass = Dictionary(grouping: flags, by: { flag in flag["class"]?.stringValue ?? "?" })
+        .mapValues { group in Set(group.compactMap { flag in flag["kind"]?.stringValue }) }
         #expect(byClass["saturation"] == ["long_wait", "runs_refused"])
         #expect(byClass["anomaly"] == ["long_run", "big_tree", "high_rate"])
     }

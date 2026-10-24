@@ -7,6 +7,7 @@
 
 import ArgumentParser
 import Foundation
+import Forge
 
 struct WorkflowListCommand: ParsableCommand {
     // MARK: - Property
@@ -24,7 +25,7 @@ struct WorkflowListCommand: ParsableCommand {
     // MARK: - Public
     func run() throws {
         let client = Client(global, context: "workflow list")
-        let result = client.rawCall("workflow.list")
+        let result = client.call("workflow.list")
         
         if json {
             printJSON(result)
@@ -32,8 +33,8 @@ struct WorkflowListCommand: ParsableCommand {
             return
         }
         
-        let workflows = (result["workflows"] as? [[String: Any]]) ?? []
-        let failures  = (result["failures"]  as? [[String: Any]]) ?? []
+        let workflows = result["workflows"]?.arrayValue ?? []
+        let failures  = result["failures"]?.arrayValue ?? []
         
         if workflows.isEmpty && failures.isEmpty {
             print("(no workflows registered)")
@@ -42,8 +43,8 @@ struct WorkflowListCommand: ParsableCommand {
         }
         
         for workflow in workflows {
-            let name = workflow["name"] as? String ?? "?"
-            let description = workflow["description"] as? String ?? ""
+            let name = workflow["name"]?.stringValue ?? "?"
+            let description = workflow["description"]?.stringValue ?? ""
             
             print(description.isEmpty ? name : "\(name)\t\(description)")
         }
@@ -53,8 +54,8 @@ struct WorkflowListCommand: ParsableCommand {
             print("FAILED (\(failures.count)):")
             
             for failure in failures {
-                let path   = failure["path"]   as? String ?? "?"
-                let reason = failure["reason"] as? String ?? "?"
+                let path   = failure["path"]?.stringValue ?? "?"
+                let reason = failure["reason"]?.stringValue ?? "?"
                 
                 print("  \(path): \(reason)")
             }

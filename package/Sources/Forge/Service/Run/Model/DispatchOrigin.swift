@@ -15,12 +15,12 @@ struct DispatchOrigin: Sendable {
     let kind: String
     let id: String?
     
-    var asPayload: [String: Any] {
-        var payload: [String: Any] = ["kind": kind]
+    var jsonValue: JSONValue {
+        var object: [String: JSONValue] = ["kind": .string(kind)]
         
-        if let id { payload["id"] = id }
+        if let id { object["id"] = .string(id) }
         
-        return payload
+        return .object(object)
     }
     
     // MARK: - Initializer
