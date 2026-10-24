@@ -286,22 +286,21 @@ actor WorkflowCatalog {
             _ = ledger.reuse(source: source, mtime: failure.mtime)
         }
 
-        var (live, collided) = partitionUniqueKeys(candidates)
+        let partition = KeyPartition(candidates)
+        var live = partition.live
+        var collided = partition.collisions
 
         for (key, sources) in collidedNames where sources.contains(where: isUnobserved) {
             live.removeValue(forKey: key)
 
-            if !collided.contains(where: { entry in entry.key == key }) {
-                collided.append((key: key, sources: sources))
+            if !collided.contains(where: { collision in collision.key == key }) {
+                collided.append(KeyCollision(key: key, sources: sources))
             }
         }
 
-        let freshCollisions = collisionFailures(
-            kind: "workflow name",
-            collided,
-            standing: collisions,
-            recording: &ledger
-        )
+        let freshCollisions = collided.flatMap { collision in
+            collision.failures(kind: "workflow name", standing: collisions, recording: &ledger)
+        }
         let standing = await built(live, recording: &ledger)
 
         cache = standing.entries
@@ -311,7 +310,7 @@ actor WorkflowCatalog {
         collisions = freshCollisions
         scanObstructions = scan.obstructions
         collidedNames = Dictionary(
-            uniqueKeysWithValues: collided.map { entry in (entry.key, entry.sources) }
+            uniqueKeysWithValues: collided.map { collision in (collision.key, collision.sources) }
         )
         generation = observation
         reading = spending.frontend

@@ -124,9 +124,11 @@ actor ScheduleStore {
             obstructed += reading.scanFailures
         }
         
-        let (live, collided) = partitionUniqueKeys(candidates)
-        collisions = collisionFailures(kind: "schedule id", collided, standing: collisions, recording: &ledger)
-        collidedIDs = Set(collided.map(\.key))
+        let partition = KeyPartition(candidates)
+        collisions = partition.collisions.flatMap { collision in
+            collision.failures(kind: "schedule id", standing: collisions, recording: &ledger)
+        }
+        collidedIDs = Set(partition.collisions.map(\.key))
         
         failureCache = ledger.fresh
         failedIDs = Set(failureCache.keys.map { source in
@@ -134,7 +136,7 @@ actor ScheduleStore {
         })
         scanFailures = obstructed
         scanIncomplete = !obstructed.isEmpty
-        cache = live
+        cache = partition.live
         FileHandle.standardError.write(Data(ledger.announcement.utf8))
         
         return currentSnapshot
