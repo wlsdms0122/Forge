@@ -34,7 +34,6 @@ struct SpecDirectory<Value> {
         // The obstructions as the store's list reports them.
         let scanFailures: [LoadFailure]
         
-        
         // MARK: - Initializer
         // MARK: - Public
         // MARK: - Private

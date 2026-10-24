@@ -111,7 +111,6 @@ actor ScheduleStore {
         var candidates: [(key: String, source: String, value: Entry)] = []
         var obstructed: [LoadFailure] = []
         
-        
         for runtime in [false, true] {
             guard var files = runtime ? runtimeFiles : configFiles else { continue }
             
@@ -120,8 +119,6 @@ actor ScheduleStore {
             }
             
             if runtime { runtimeFiles = files } else { configFiles = files }
-            
-
             
             candidates += reading.loaded.map { loaded in (loaded.value.schedule.id, loaded.file.file.source, loaded.value) }
             obstructed += reading.scanFailures
