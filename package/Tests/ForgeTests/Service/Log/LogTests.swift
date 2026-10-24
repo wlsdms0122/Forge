@@ -101,7 +101,7 @@ struct LogTests {
     func failedInvocationLogsTranslatedModelReference() async throws {
         // Given
         let logging = LoggingHook()
-        let executor = Executor(
+        let executor = AgentExecutor(
             backends: BackendRegistry(["local": ResolvedModelFailureBackend()]),
             preHooks: [logging],
             errorHooks: [logging])

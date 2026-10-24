@@ -100,7 +100,7 @@ struct WorkflowHealthTests {
             tokenAuthority: TokenAuthority(),
             capabilities: CapabilitySet(
                 shell: LiveShell(),
-                agent: LiveAgent(executor: Executor(backend: StubBackend("noop"))),
+                agent: LiveAgent(executor: AgentExecutor(backend: StubBackend("noop"))),
                 resources: LiveResources(store: ResourceStore(directory: nil))
             ))
         try await pool.register(workflowID: "occupier", workflowName: "other", rootID: "occupier",

@@ -11,7 +11,7 @@ import Warp
 
 let entryName = "entry"
 
-extension Warp.Executor {
+extension Executor {
     // Builds the module beside the others, the Forge module and the standard
     // vocabulary, runs the entry, and returns the fields of the struct or map
     // it returns. An optional parameter the inputs leave out is handed null.

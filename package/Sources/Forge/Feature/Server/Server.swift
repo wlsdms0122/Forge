@@ -78,7 +78,7 @@ package actor Server {
         if config.hooks.logging { postHooks.append(logging) }
         if config.hooks.logging { errorHooks.append(logging) }
         
-        let executor = Executor(
+        let executor = AgentExecutor(
             backends: backends,
             preHooks: preHooks,
             postHooks: postHooks,

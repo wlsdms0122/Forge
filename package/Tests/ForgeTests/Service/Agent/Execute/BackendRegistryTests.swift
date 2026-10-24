@@ -27,7 +27,7 @@ struct BackendRegistryTests {
                 "claude": TaggedBackend(tag: "claude"),
                 "codex":  TaggedBackend(tag: "codex"),
         ])
-        let executor = Executor(backends: registry)
+        let executor = AgentExecutor(backends: registry)
 
         // When
         let rClaude = try await executor.run(makeInv(provider: "claude"))
@@ -42,7 +42,7 @@ struct BackendRegistryTests {
     func unknownProviderThrows() async {
         // Given
         let registry = BackendRegistry(["claude": TaggedBackend(tag: "claude")])
-        let executor = Executor(backends: registry)
+        let executor = AgentExecutor(backends: registry)
         do {
 
         // When

@@ -195,8 +195,8 @@ private struct Harness {
         dispatchResult: Warp.Value = .dictionary(Value.Dictionary(["ok": .bool(true)])),
         files: [String: String] = [:],
         publish: @escaping @Sendable (WorkflowEvent) async -> Void = { _ in }
-    ) throws -> Warp.Executor {
-        Warp.Executor(
+    ) throws -> Executor {
+        Executor(
             environment: ForgeEnvironment(
                 capabilities: CapabilitySet(
                     shell: shell ?? MockShell(recorder: recorder),

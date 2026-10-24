@@ -1,5 +1,5 @@
 //
-//  Executor.swift
+//  AgentExecutor.swift
 //  Forge
 //
 //  Created by JSilver on 8/8/26.
@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct Executor: Sendable {
+struct AgentExecutor: Sendable {
     // MARK: - Property
     let backends: BackendRegistry
     let preHooks: [any PreHook]

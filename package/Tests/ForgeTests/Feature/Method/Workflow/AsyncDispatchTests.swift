@@ -113,7 +113,7 @@ struct AsyncDispatchTests {
             tokenAuthority: authority,
             capabilities: CapabilitySet(
                 shell: LiveShell(),
-                agent: LiveAgent(executor: Executor(backend: StubBackend("noop"))),
+                agent: LiveAgent(executor: AgentExecutor(backend: StubBackend("noop"))),
                 resources: LiveResources(store: ResourceStore(directory: nil))
             ))
         let method = WorkflowDispatchMethod(runner: runner, store: store,

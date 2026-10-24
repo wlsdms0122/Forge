@@ -88,7 +88,7 @@ struct SchedulerFixture {
             tokenAuthority: TokenAuthority(),
             capabilities: CapabilitySet(
                 shell: LiveShell(),
-                agent: LiveAgent(executor: Executor(backend: StubBackend("noop"))),
+                agent: LiveAgent(executor: AgentExecutor(backend: StubBackend("noop"))),
                 resources: LiveResources(store: ResourceStore(directory: nil))
             )
         )

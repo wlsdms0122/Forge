@@ -117,7 +117,7 @@ struct CatalogGenerationTests {
         #expect(catalog.entries.map(\.workflow.name) == ["caller", "scaled"])
 
         let image = try await Builder().build(await sut.modules() + ForgeVocabulary.shipped.get().linkables)
-        let answer = try await Warp.Executor().run(image, entry: try Name("caller"), arguments: [:])
+        let answer = try await Executor().run(image, entry: try Name("caller"), arguments: [:])
 
         #expect(answer == .int(42))
     }
@@ -180,7 +180,7 @@ struct CatalogGenerationTests {
         #expect(catalog.failures.compactMap(\.name) == ["is"])
 
         let image = try await Builder().build(await sut.modules() + ForgeVocabulary.shipped.get().linkables)
-        let answer = try await Warp.Executor().run(image, entry: try Name("same"), arguments: [:])
+        let answer = try await Executor().run(image, entry: try Name("same"), arguments: [:])
 
         #expect(answer == .bool(false))
     }

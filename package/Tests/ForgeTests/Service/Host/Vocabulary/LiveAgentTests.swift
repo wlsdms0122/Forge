@@ -19,7 +19,7 @@ struct LiveAgentTests {
     func sendSpeaksThroughAmbientSession() async throws {
         // Given
         let recorder = AgentRecorder()
-        let sut = LiveAgent(executor: Executor(backend: recorder))
+        let sut = LiveAgent(executor: AgentExecutor(backend: recorder))
         let settings = AgentSessionSettings(model: "claude:probe")
 
         // When
@@ -35,7 +35,7 @@ struct LiveAgentTests {
     @Test("send without a session throws as an author error")
     func sendThrowsWithoutSession() async throws {
         // Given
-        let sut = LiveAgent(executor: Executor(backend: StubBackend()))
+        let sut = LiveAgent(executor: AgentExecutor(backend: StubBackend()))
 
         // When / Then
         await #expect(throws: AgentSessionMissing.self) {
@@ -47,7 +47,7 @@ struct LiveAgentTests {
     func shareSessionReusesAmbientSession() async throws {
         // Given
         let recorder = AgentRecorder()
-        let sut = LiveAgent(executor: Executor(backend: recorder))
+        let sut = LiveAgent(executor: AgentExecutor(backend: recorder))
         let outer = AgentSessionSettings(model: "claude:outer")
         let inner = AgentSessionSettings(shareSession: true)
 
@@ -67,7 +67,7 @@ struct LiveAgentTests {
         // Given — share_session is conditional joining, so it carries a config for the
         // case where joining fails. Without an ambient session, that config is used.
         let recorder = AgentRecorder()
-        let sut = LiveAgent(executor: Executor(backend: recorder))
+        let sut = LiveAgent(executor: AgentExecutor(backend: recorder))
         let settings = AgentSessionSettings(model: "claude:fallback", shareSession: true)
 
         // When
@@ -83,7 +83,7 @@ struct LiveAgentTests {
     @Test("an invalid permission_mode throws")
     func unknownPermissionModeThrows() async throws {
         // Given
-        let sut = LiveAgent(executor: Executor(backend: StubBackend()))
+        let sut = LiveAgent(executor: AgentExecutor(backend: StubBackend()))
         let settings = AgentSessionSettings(model: "claude", permissionMode: "yolo")
 
         // When / Then

@@ -1,5 +1,5 @@
 //
-//  Executor+Backend.swift
+//  AgentExecutor+Backend.swift
 //  ForgeTests
 //
 //  Created by JSilver on 10/24/26.
@@ -7,7 +7,7 @@
 
 @testable import Forge
 
-extension Executor {
+extension AgentExecutor {
     // An executor with one backend, registered under the provider `claude`.
     init(
         backend: any Backend,

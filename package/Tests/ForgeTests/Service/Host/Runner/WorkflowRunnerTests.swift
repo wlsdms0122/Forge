@@ -493,7 +493,7 @@ struct WorkflowRunnerTests {
             tokenAuthority: TokenAuthority(),
             capabilities: CapabilitySet(
                 shell: LiveShell(),
-                agent: LiveAgent(executor: Executor(backend: backend ?? EchoBackend())),
+                agent: LiveAgent(executor: AgentExecutor(backend: backend ?? EchoBackend())),
                 resources: LiveResources(store: ResourceStore(directory: nil))
             )
         )

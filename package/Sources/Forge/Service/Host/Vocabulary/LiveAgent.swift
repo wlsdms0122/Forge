@@ -14,10 +14,10 @@ import Warp
 // task-local scoping.
 struct LiveAgent: AgentServing {
     // MARK: - Property
-    let executor: Executor
+    let executor: AgentExecutor
 
     // MARK: - Initializer
-    init(executor: Executor) {
+    init(executor: AgentExecutor) {
         self.executor = executor
     }
 

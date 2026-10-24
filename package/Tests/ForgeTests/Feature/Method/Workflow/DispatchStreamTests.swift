@@ -211,7 +211,7 @@ struct DispatchStreamTests {
             tokenAuthority: authority,
             capabilities: CapabilitySet(
                 shell: LiveShell(),
-                agent: LiveAgent(executor: Executor(backend: StubBackend("noop"))),
+                agent: LiveAgent(executor: AgentExecutor(backend: StubBackend("noop"))),
                 resources: LiveResources(store: ResourceStore(directory: nil))
             ))
         let dispatchMethod = WorkflowDispatchMethod(runner: runner, store: store,
@@ -283,7 +283,7 @@ struct DispatchStreamTests {
             tokenAuthority: authority,
             capabilities: CapabilitySet(
                 shell: LiveShell(),
-                agent: LiveAgent(executor: Executor(backend: StubBackend("stub"))),
+                agent: LiveAgent(executor: AgentExecutor(backend: StubBackend("stub"))),
                 resources: LiveResources(store: ResourceStore(directory: nil))
             ))
         let dispatchMethod = WorkflowDispatchMethod(runner: runner, store: store,
@@ -327,7 +327,7 @@ struct DispatchStreamTests {
             tokenAuthority: authority,
             capabilities: CapabilitySet(
                 shell: LiveShell(),
-                agent: LiveAgent(executor: Executor(backend: StubBackend("noop"))),
+                agent: LiveAgent(executor: AgentExecutor(backend: StubBackend("noop"))),
                 resources: LiveResources(store: ResourceStore(directory: nil))
             ))
         let dispatchMethod = WorkflowDispatchMethod(runner: runner, store: store,

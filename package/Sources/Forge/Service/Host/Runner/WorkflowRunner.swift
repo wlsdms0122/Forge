@@ -223,7 +223,7 @@ actor WorkflowRunner {
                     publish: { event in await eventBus.publish(event) }
                 )
             )
-            let executor = Warp.Executor(environment: environment)
+            let executor = Executor(environment: environment)
             let arguments = try Self.arguments(
                 inputs,
                 for: workflow.module.procedures[entry]?.signature

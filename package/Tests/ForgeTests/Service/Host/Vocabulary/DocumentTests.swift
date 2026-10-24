@@ -90,7 +90,7 @@ struct DocumentTests {
     func theTourRuns() async throws {
         let written = try #require(document.workflows.first)
         let (image, name) = try await Self.image(of: written)
-        let returned = try await Warp.Executor().run(image, entry: name, arguments: ["who": .null])
+        let returned = try await Executor().run(image, entry: name, arguments: ["who": .null])
         let result = try ValueBridge.fields(returned)
 
         #expect(result["greeting"] == .string("hello, world"))
