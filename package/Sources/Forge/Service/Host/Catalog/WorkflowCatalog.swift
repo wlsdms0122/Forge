@@ -79,13 +79,7 @@ actor WorkflowCatalog {
     private var image: Image?
 
     private var currentCatalog: Catalog {
-        let scanFailures = scanObstructions.map { obstruction in
-            LoadFailure(
-                path: "<scan>",
-                reason: "workflow directory scan incomplete — \(obstruction.description)",
-                mtime: .distantPast
-            )
-        }
+        let scanFailures = scanObstructions.map { obstruction in obstruction.failure(kind: "workflow") }
 
         return Catalog(
             entries: cache.values

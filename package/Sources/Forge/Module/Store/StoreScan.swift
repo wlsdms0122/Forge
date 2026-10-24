@@ -23,6 +23,15 @@ struct StoreScan {
             scope.isEmpty || source == scope || source.hasPrefix(scope + "/")
         }
         
+        // The obstruction as a store's list reports it.
+        func failure(kind: String) -> LoadFailure {
+            LoadFailure(
+                path: "<scan>",
+                reason: "\(kind) directory scan incomplete — \(description)",
+                mtime: .distantPast
+            )
+        }
+        
         // MARK: - Private
     }
     

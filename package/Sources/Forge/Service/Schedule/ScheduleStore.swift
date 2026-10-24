@@ -62,6 +62,7 @@ actor ScheduleStore {
     private var stateFailure: LoadFailure?
     private var failureCache: [String: LoadFailure] = [:]
     private var collisions: [LoadFailure] = []
+    private var scanFailures: [LoadFailure] = []
     private var collidedIDs: Set<String> = []
     private var failedIDs: Set<String> = []
     private var scanIncomplete = false
@@ -72,6 +73,7 @@ actor ScheduleStore {
             failures: (
                 Array(failureCache.values)
                     + collisions
+                    + scanFailures
                     + (stateFailure.map { failure in [failure] } ?? [])
             )
                 .sorted { lhs, rhs in lhs.path < rhs.path }
@@ -107,7 +109,8 @@ actor ScheduleStore {
     func catalog() async -> Catalog {
         var ledger = LoadFailureLedger(prior: failureCache)
         var candidates: [(key: String, source: String, value: Entry)] = []
-        var incomplete = false
+        var obstructed: [LoadFailure] = []
+        
         
         for runtime in [false, true] {
             guard var files = runtime ? runtimeFiles : configFiles else { continue }
@@ -121,7 +124,7 @@ actor ScheduleStore {
 
             
             candidates += reading.loaded.map { loaded in (loaded.value.schedule.id, loaded.file.file.source, loaded.value) }
-            incomplete = incomplete || !reading.obstructions.isEmpty
+            obstructed += reading.scanFailures
         }
         
         let (live, collided) = partitionUniqueKeys(candidates)
@@ -132,7 +135,8 @@ actor ScheduleStore {
         failedIDs = Set(failureCache.keys.map { source in
             URL(fileURLWithPath: source).deletingPathExtension().lastPathComponent
         })
-        scanIncomplete = incomplete
+        scanFailures = obstructed
+        scanIncomplete = !obstructed.isEmpty
         cache = live
         FileHandle.standardError.write(Data(ledger.announcement.utf8))
         

@@ -776,7 +776,9 @@ until a human removes it). `flags` mirrors `workflow.health` advisory
 conventions: `schedule_denied` marks schedules whose latest slot could not
 launch, so a permanently-broken schedule is visible at a glance; it clears on
 the next successful fire. `runtime` flags origin (true = created via
-`schedule.create`).
+`schedule.create`). `failures` lists the schedule files left out, as
+`workflow.list` does, a part of a directory the scan could not see among
+them at path `<scan>`.
 
 ### `schedule.set_enabled`
 

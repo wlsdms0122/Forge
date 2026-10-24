@@ -228,6 +228,33 @@ struct CatalogGenerationTests {
         #expect(catalog.failures.map(\.path) == ["bad.yaml"])
     }
     
+    @Test("A schedule directory the scan could not enter is a failure at <scan>")
+    func scheduleScanObstructionIsReported() async throws {
+        // Given
+        let config = try temporary.make("sched-obstruction")
+        let closed = config.appendingPathComponent("closed")
+        try FileManager.default.createDirectory(at: closed, withIntermediateDirectories: true)
+        try write("workflow: w\nevery: 1h\n", named: "visible", in: config)
+        try write("workflow: w\nevery: 1h\n", named: "hidden", in: closed)
+        try FileManager.default.setAttributes([.posixPermissions: 0o000],
+            ofItemAtPath: closed.path)
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o755],
+                ofItemAtPath: closed.path)
+            try? FileManager.default.removeItem(at: config)
+        }
+        let store = ScheduleStore(configDir: config,
+            stateFile: config.appendingPathComponent("state.json"))
+
+        // When
+        let catalog = await store.catalog()
+
+        // Then
+        #expect(catalog.entries.map(\.schedule.id) == ["visible"])
+        #expect(catalog.failures.map(\.path) == ["<scan>"])
+        #expect(catalog.failures.first?.reason.hasPrefix("schedule directory scan incomplete — closed") == true)
+    }
+    
     // MARK: - PolicyStore
     @Test("The policy catalog is also one observation")
     func policyCatalogIsOneObservation() async throws {

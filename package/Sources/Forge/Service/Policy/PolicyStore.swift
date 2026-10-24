@@ -58,13 +58,7 @@ actor PolicyStore {
         }
         
         self.files = files
-        scanFailures = reading.obstructions.map { obstruction in
-            LoadFailure(
-                path: "<scan>",
-                reason: "policy directory scan incomplete — \(obstruction.description)",
-                mtime: .distantPast
-            )
-        }
+        scanFailures = reading.scanFailures
 
         failureCache = ledger.fresh
         FileHandle.standardError.write(Data(ledger.announcement.utf8))

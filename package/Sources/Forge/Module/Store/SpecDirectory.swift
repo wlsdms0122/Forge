@@ -31,6 +31,9 @@ struct SpecDirectory<Value> {
         // What the scan could not see, a file whose metadata could not be
         // read among them.
         let obstructions: [StoreScan.Obstruction]
+        // The obstructions as the store's list reports them.
+        let scanFailures: [LoadFailure]
+        
         
         // MARK: - Initializer
         // MARK: - Public
@@ -63,7 +66,7 @@ struct SpecDirectory<Value> {
         guard FileManager.default.fileExists(atPath: directory.path) else {
             decoded = [:]
             
-            return Reading(observed: [], loaded: [], obstructions: [])
+            return Reading(observed: [], loaded: [], obstructions: [], scanFailures: [])
         }
         
         let nestedPath = nested?.standardizedFileURL.path
@@ -112,7 +115,8 @@ struct SpecDirectory<Value> {
         return Reading(
             observed: observed,
             loaded: observed.compactMap { file in fresh[file.file.url] },
-            obstructions: scan.obstructions
+            obstructions: scan.obstructions,
+            scanFailures: scan.obstructions.map { obstruction in obstruction.failure(kind: kind) }
         )
     }
     
