@@ -431,7 +431,13 @@ actor ScheduleStore {
             return Node("null")
         
         default:
-            throw ProtocolError("unrepresentable value in schedule serialization: \(type(of: any))")
+            throw EncodingError.invalidValue(
+                any,
+                EncodingError.Context(
+                    codingPath: [],
+                    debugDescription: "unrepresentable value in schedule serialization: \(type(of: any))"
+                )
+            )
         }
     }
     
