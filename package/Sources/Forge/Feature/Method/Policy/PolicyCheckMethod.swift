@@ -17,21 +17,21 @@ struct PolicyCheckMethod: Sendable {
     }
 
     // MARK: - Public
-    func handle(_ request: RPCRequest) async throws -> JSONObject {
-        guard let principal = request.rawParams["principal"] as? String, !principal.isEmpty else {
+    func handle(_ request: RPCRequest) async throws -> JSONValue {
+        guard let principal = request.params["principal"]?.stringValue, !principal.isEmpty else {
             throw ProtocolError("policy.check: 'principal' (string) required")
         }
 
-        guard let workflow = request.rawParams["workflow"] as? String, !workflow.isEmpty else {
+        guard let workflow = request.params["workflow"]?.stringValue, !workflow.isEmpty else {
             throw ProtocolError("policy.check: 'workflow' (string) required")
         }
 
         let allowed = await store.allows(principal: principal, workflow: workflow)
 
         return [
-            "principal": principal,
-            "workflow":  workflow,
-            "allowed":   allowed,
+            "principal": .string(principal),
+            "workflow": .string(workflow),
+            "allowed": .bool(allowed)
         ]
     }
 

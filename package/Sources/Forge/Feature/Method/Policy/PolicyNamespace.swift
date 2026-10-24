@@ -21,10 +21,10 @@ struct PolicyNamespace: Sendable {
 
         self.methods = [
             RPCMethod("policy.list", .unary(.token) { request, _ in
-                try await list.handle(request)
+                JSONObject(try await list.handle(request))
             }),
             RPCMethod("policy.check", .unary(.token) { request, _ in
-                try await check.handle(request)
+                JSONObject(try await check.handle(request))
             })
         ]
     }

@@ -17,17 +17,18 @@ struct PolicyListMethod: Sendable {
     }
 
     // MARK: - Public
-    func handle(_ request: RPCRequest) async throws -> JSONObject {
+    func handle(_ request: RPCRequest) async throws -> JSONValue {
         let catalog = await store.catalog()
-        let failureSummary: [[String: Any]] = catalog.failures.map { failure in
+        let policy = catalog.policy.mapValues { workflows in JSONValue.array(workflows.map(JSONValue.string)) }
+        let failureSummary: [JSONValue] = catalog.failures.map { failure in
             [
-                "path": failure.path,
-                "reason": failure.reason,
-                "mtime": ISO8601.string(failure.mtime),
+                "path": .string(failure.path),
+                "reason": .string(failure.reason),
+                "mtime": .string(ISO8601.string(failure.mtime))
             ]
         }
-
-        return ["policy": catalog.policy, "failures": failureSummary]
+        
+        return ["policy": .object(policy), "failures": .array(failureSummary)]
     }
 
     // MARK: - Private

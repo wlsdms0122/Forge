@@ -38,9 +38,7 @@ struct PolicyCheckCommand: ParsableCommand {
     // MARK: - Public
     func run() throws {
         let client = Client(global, context: "policy check")
-        let params: [String: Any] = ["principal": principal, "workflow": workflow]
-        
-        let result = client.rawCall("policy.check", params)
+        let result = client.call("policy.check", ["principal": .string(principal), "workflow": .string(workflow)])
         
         if json {
             printJSON(result)
@@ -48,9 +46,9 @@ struct PolicyCheckCommand: ParsableCommand {
             return
         }
         
-        let allowed = (result["allowed"] as? Bool) ?? false
-        let principal = (result["principal"] as? String) ?? principal
-        let workflow = (result["workflow"] as? String) ?? workflow
+        let allowed = result["allowed"]?.boolValue ?? false
+        let principal = result["principal"]?.stringValue ?? principal
+        let workflow = result["workflow"]?.stringValue ?? workflow
         
         print("\(principal) → \(workflow): \(allowed ? "allowed" : "denied")")
         

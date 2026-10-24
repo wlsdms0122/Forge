@@ -24,7 +24,7 @@ struct PolicyListCommand: ParsableCommand {
     // MARK: - Public
     func run() throws {
         let client = Client(global, context: "policy list")
-        let result = client.rawCall("policy.list")
+        let result = client.call("policy.list")
         
         if json {
             printJSON(result)
@@ -32,7 +32,9 @@ struct PolicyListCommand: ParsableCommand {
             return
         }
         
-        let policy = (result["policy"] as? [String: [String]]) ?? [:]
+        let policy = (result["policy"]?.objectValue ?? [:]).mapValues { workflows in
+            workflows.arrayValue?.compactMap(\.stringValue) ?? []
+        }
         
         if policy.isEmpty {
             print("(empty)")
