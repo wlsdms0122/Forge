@@ -146,10 +146,6 @@ actor WorkflowCatalog {
         .snapshot
     }
 
-    func all() async -> Snapshot {
-        await reload()
-    }
-
     // An inline spec: one procedure written in the YAML notation, read the
     // way a catalog file is, leaning on the library and on the catalog's
     // files, and declared public under the inline sigil, which a run starts
