@@ -24,7 +24,7 @@ struct WorkflowSchedulerLedgerTests {
         let workflow = fixture.markerWorkflow(name: "wfo", marker: marker, tag: "S", sleep: 2.5)
         let wfDir = try fixture.temporary.make("outcome-wf")
         try fixture.write(workflow, to: wfDir)
-        let workflowStore = try fixture.catalog(directory: wfDir)
+        let workflowStore = fixture.catalog(directory: wfDir)
         let schedDir = try fixture.temporary.make("outcome-sched")
         try "id: ok\nworkflow: wfo\nevery: 1s\nconcurrency: skip\n"
         .write(to: schedDir.appendingPathComponent("ok.yaml"), atomically: true, encoding: .utf8)
@@ -59,7 +59,7 @@ struct WorkflowSchedulerLedgerTests {
         try fixture.write(fixture.markerWorkflow(
                 name: "wfl", marker: fixture.temporary.make("live-m").appendingPathComponent("m"), tag: "S", sleep: 0),
             to: wfDir)
-        let workflowStore = try fixture.catalog(directory: wfDir)
+        let workflowStore = fixture.catalog(directory: wfDir)
         let configDir = try fixture.temporary.make("live-cfg")
         let schedFile = configDir.appendingPathComponent("keep.yaml")
         let body = "id: keep\nworkflow: wfl\nonce: \"2020-01-01 00:00:00\"\ntimezone: Asia/Seoul\n"

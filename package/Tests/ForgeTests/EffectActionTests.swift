@@ -173,7 +173,7 @@ private struct Harness {
     let frontend: YAMLFrontend
 
     // MARK: - Initializer
-    init() throws {
+    init() {
         self.frontend = ForgeSpec.frontend()
     }
 
@@ -211,7 +211,7 @@ struct EffectActionTests {
     @Test("a shell step runs its command once references resolve")
     func shellRunsWhenReferencesResolve() async throws {
         // Given
-        let harness = try Harness()
+        let harness = Harness()
         let spec = try harness.frontend.workflow("""
         parameters: [ who: String ]
         returns: "Dictionary<String, Any>"
@@ -245,7 +245,7 @@ struct EffectActionTests {
     @Test("a nonzero exit code is absorbed by an attempt's rescue")
     func nonzeroExitRescuesWhenStepDeclaresCatch() async throws {
         // Given — a nonzero exit is the world's failure, so rescue absorbs it
-        let harness = try Harness()
+        let harness = Harness()
         let spec = try harness.frontend.workflow("""
         returns: "Dictionary<String, Any>"
         body:
@@ -276,7 +276,7 @@ struct EffectActionTests {
     @Test("when shell declares outputs, values are extracted from stdout")
     func outputsExtractWhenShellDeclaresThem() async throws {
         // Given
-        let harness = try Harness()
+        let harness = Harness()
         let spec = try harness.frontend.workflow("""
         returns: "Dictionary<String, Any>"
         failing: [nonzero_exit, timeout, cast_refused]
@@ -310,7 +310,7 @@ struct EffectActionTests {
     @Test("when shell exceeds its timeout, rescue recovers it")
     func timeoutRescuesWhenShellRunsLate() async throws {
         // Given
-        let harness = try Harness()
+        let harness = Harness()
         let spec = try harness.frontend.workflow("""
         returns: "Dictionary<String, Any>"
         body:
@@ -341,7 +341,7 @@ struct EffectActionTests {
     @Test("when invoke opens a session, agent steps converse over it")
     func agentSpeaksWhenInvokeOpensSession() async throws {
         // Given
-        let harness = try Harness()
+        let harness = Harness()
         let spec = try harness.frontend.workflow("""
         parameters: [ topic: String ]
         returns: "Dictionary<String, Any>"
@@ -381,7 +381,7 @@ struct EffectActionTests {
     @Test("with no open session, an agent step fails")
     func agentFailsWhenNoSessionIsOpen() async throws {
         // Given — an agent step outside invoke is an authoring error
-        let harness = try Harness()
+        let harness = Harness()
         let spec = try harness.frontend.workflow("""
         returns: String
         result: { call: { procedure: Forge.agent, arguments: [ "hello?" ] } }
@@ -397,7 +397,7 @@ struct EffectActionTests {
     @Test("when the daemon responds, dispatch delegates execution")
     func dispatchDelegatesWhenDaemonAnswers() async throws {
         // Given
-        let harness = try Harness()
+        let harness = Harness()
         let spec = try harness.frontend.workflow("""
         parameters: [ job: String ]
         returns: "Dictionary<String, Any>"
@@ -440,7 +440,7 @@ struct EffectActionTests {
     func resourceRendersWhenInputsComeFromScope() async throws {
         // Given — the resource is a runtime value source: its inputs are live
         // step outputs
-        let harness = try Harness()
+        let harness = Harness()
         let spec = try harness.frontend.workflow("""
         returns: "Dictionary<String, Any>"
         body:
@@ -465,7 +465,7 @@ struct EffectActionTests {
     func resourcePathLocatesWithoutRendering() async throws {
         // Given — the body holds shell syntax that is not template dialect;
         // locating must never read or render it
-        let harness = try Harness()
+        let harness = Harness()
         let spec = try harness.frontend.workflow("""
         returns: "Dictionary<String, Any>"
         body:
@@ -487,7 +487,7 @@ struct EffectActionTests {
     @Test("a rescue reads the shell failure as a value")
     func rescueReadsShellFailurePayload() async throws {
         // Given
-        let harness = try Harness()
+        let harness = Harness()
         let spec = try harness.frontend.workflow("""
         returns: "Dictionary<String, Any>"
         body:
@@ -532,7 +532,7 @@ struct EffectActionTests {
     @Test("a call resolves against the modules the catalog hands to the link")
     func catalogSuppliesTheLinkSet() async throws {
         // Given
-        let harness = try Harness()
+        let harness = Harness()
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("forge-spec-store-\(UUID().uuidString)")
 
@@ -573,7 +573,7 @@ struct EffectActionTests {
     @Test("when a step runs, events flow through the bridge")
     func eventsBridgeWhenStepsRun() async throws {
         // Given
-        let harness = try Harness()
+        let harness = Harness()
         let collected = Collected()
         let spec = try harness.frontend.workflow("""
         returns: "Dictionary<String, Any>"
