@@ -25,13 +25,18 @@ struct ConnectionCloseTests {
             var fds: [Int32] = [0, 0]
             #expect(socketpair(AF_UNIX, SOCK_STREAM, 0, &fds) == 0)
             let (ours, peer) = (fds[0], fds[1])
+            // The pipe is opened before the close, so it cannot take the
+            // closed number itself.
+            var pipeFDs: [Int32] = [0, 0]
+            #expect(pipe(&pipeFDs) == 0)
             let conn = Connection(fd: ours)
             let drain = Task { for await _ in await conn.frames() {} }
             Darwin.close(peer)
             _ = await drain.value
-            try await Task.sleep(nanoseconds: 100_000_000)
-            var pipeFDs: [Int32] = [0, 0]
-            #expect(pipe(&pipeFDs) == 0)
+            let deadline = ContinuousClock.now + .seconds(1)
+            while fcntl(ours, F_GETFD) != -1, ContinuousClock.now < deadline {
+                await Task.yield()
+            }
             // F_DUPFD takes the number only while it is free, where dup2
             // would replace another test's fd.
             let reused = fcntl(pipeFDs[1], F_DUPFD, ours)
