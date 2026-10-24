@@ -9,7 +9,7 @@ import Foundation
 import Testing
 @testable import Forge
 
-/// The contract for reading schedules from the config directory and building the catalog.
+// The contract for reading schedules from the config directory into a snapshot.
 @Suite("ScheduleStore Tests")
 struct ScheduleStoreTests {
     // MARK: - Property

@@ -8,7 +8,7 @@
 import Foundation
 import Warp
 
-// The live resource seam — the same jailed catalog the daemon watches.
+// The live resource seam over the daemon's jailed resource store.
 struct LiveResources: ResourceReading {
     // MARK: - Property
     let store: ResourceStore

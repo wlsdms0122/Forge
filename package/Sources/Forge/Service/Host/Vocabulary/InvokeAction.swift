@@ -8,7 +8,7 @@
 import Foundation
 import Warp
 
-// The agent session envelope — not a plain group. It resolves the session
+// The agent session envelope. It resolves the session
 // settings (model, permissions, cwd, ...) at its boundary, opens the ambient
 // session through the environment, and runs its steps inside; `agent` steps only make
 // sense in here.

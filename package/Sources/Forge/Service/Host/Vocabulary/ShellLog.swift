@@ -7,8 +7,7 @@
 
 import Foundation
 
-// One shell-invocation log schema, one writer — whichever engine runs the
-// process, the log consumer sees the same fields.
+// The shell-invocation log schema and its one writer.
 enum ShellLog {
     // MARK: - Property
     private static let category = "hook.logging"

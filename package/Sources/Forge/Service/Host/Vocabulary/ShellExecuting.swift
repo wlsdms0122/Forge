@@ -7,15 +7,13 @@
 
 import Foundation
 
-// forge's runtime services, behind seams so effects unit-test without a
-// daemon. The live wiring (Subprocess, agent backends, the dispatcher pool)
-// arrives with the engine swap; actions only ever see these protocols.
+// The shell seam: actions run a process through it, so effects unit-test
+// without a daemon.
 //
-// Cancellation contract for every seam: an implementation MUST terminate its
-// underlying resource (kill the process, abort the agent turn, cancel the
-// remote run) when its task is cancelled — `withDeadline` and forge's
-// runaway control both act solely through task cancellation, so a seam that
-// ignores it makes timeouts and cancel decorative.
+// An implementation MUST kill its process when its task is cancelled:
+// `withDeadline` and forge's runaway control act solely through task
+// cancellation, so a seam that ignores it makes timeouts and cancel
+// decorative.
 protocol ShellExecuting: Sendable {
     // `env` entries override the implementation's baseline environment; keys
     // not listed keep their baseline values. `stepID` is diagnostic identity for

@@ -374,9 +374,8 @@ actor WorkflowRunner {
     }
 }
 
-// A `dispatch` step lands here — resolved against the daemon catalog (or
-// lowered from the inline body the loader admitted at load time), then walked
-// through the same dispatch door as any RPC caller.
+// A `dispatch` step lands here: resolved against the daemon catalog, then
+// walked through the same dispatch door as any RPC caller.
 extension WorkflowRunner: RunDispatching {
     func dispatch(name: String, inputs: [String: Warp.Value]) async throws -> Warp.Value {
         let workflow = try await catalog.workflow(named: name)
