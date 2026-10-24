@@ -42,7 +42,8 @@ package actor Server {
         configReport: ConfigReport,
         sessionHome: URL,
         session: String,
-        configPath: String? = nil
+        configPath: String? = nil,
+        vocabulary: ForgeVocabulary
     ) {
         self.config = config
         self.configSnapshot = ConfigSnapshot(configReport)
@@ -83,7 +84,10 @@ package actor Server {
             postHooks: postHooks,
             errorHooks: errorHooks
         )
-        let workflowStoreLocal = WorkflowCatalog(directory: config.workflowDirectory)
+        let workflowStoreLocal = WorkflowCatalog(
+            directory: config.workflowDirectory,
+            builder: WorkflowBuilder(vocabulary: vocabulary)
+        )
         let runtimeScheduleDirectory = config.runtimeDirectory.appendingPathComponent("schedule")
         let scheduleStore = ScheduleStore(
             configDir: config.scheduleDirectory,
@@ -435,7 +439,8 @@ package actor Server {
             configReport: report,
             sessionHome: home,
             session: Session.name(session),
-            configPath: absoluteConfigPath
+            configPath: absoluteConfigPath,
+            vocabulary: try ForgeVocabulary()
         )
         
         try await server.boot()

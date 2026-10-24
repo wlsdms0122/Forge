@@ -64,6 +64,10 @@ actor WorkflowCatalog {
 
     let directory: URL?
 
+    // What the workflows are written over, which every run of one links.
+    let vocabulary: ForgeVocabulary
+
+    private let builder: WorkflowBuilder
     private var cache: [String: Entry] = [:]
     private var failureCache: [String: LoadFailure] = [:]
     private var collisions: [LoadFailure] = []
@@ -106,8 +110,10 @@ actor WorkflowCatalog {
     }
 
     // MARK: - Initializer
-    init(directory: URL?) {
+    init(directory: URL?, builder: WorkflowBuilder) {
         self.directory = directory
+        self.vocabulary = builder.vocabulary
+        self.builder = builder
     }
 
     // MARK: - Public
@@ -185,7 +191,7 @@ actor WorkflowCatalog {
         // The caller wrote an object and no text, so a refusal names its
         // place in the document and not a line of the text written here.
         do {
-            document = try (reading ?? ForgeVocabulary.frontend()).document(from: text)
+            document = try (reading ?? vocabulary.frontend).document(from: text)
         } catch let refusal as AuthoringError {
             throw refusal.refusal
         }
@@ -200,7 +206,7 @@ actor WorkflowCatalog {
     // The image a run of this module runs: for a file of the catalog, the
     // one the reload linked; for another module, an inline spec, the module
     // compiled against every file that built, as each was compiled at the
-    // reload, and the vocabulary compiled once a process, and linked beside
+    // reload, and the vocabulary compiled once, and linked beside
     // them, a file declaring the name it runs by left out, since the
     // caller's is the one meant.
     func image(running module: Warp.Module, entry: Name) async throws -> Image {
@@ -217,7 +223,7 @@ actor WorkflowCatalog {
             .filter { file in files[file.name]?.workflow.module.procedures[entry] == nil }
             .map(\.compiled)
 
-        return try await ForgeVocabulary.linked(world + ForgeVocabulary.compiled([module], beside: world))
+        return try await builder.linked(world + builder.compiled([module], beside: world))
     }
 
     func resolve(_ name: String) async -> Lookup {
@@ -378,7 +384,7 @@ actor WorkflowCatalog {
             let leaning: (frontend: YAMLFrontend, refusals: [Int: any Error])
 
             do {
-                leaning = try ForgeVocabulary.frontend(leaningOn: texts.map(\.text))
+                leaning = try builder.frontend(leaningOn: texts.map(\.text))
             } catch {
                 for (file, _) in texts {
                     record(file, refusal: "\(error)", in: &ledger)
@@ -405,7 +411,7 @@ actor WorkflowCatalog {
                     let module = try Loader().load(document, identity: try Identity.of(document))
                     let documentation = try leaning.frontend.documentation(from: text)
 
-                    if let breach = try convention(module, named: base) {
+                    if let breach = convention(module, named: base) {
                         ledger.record(
                             source: file.file.source,
                             reason: breach.reason,
@@ -457,7 +463,7 @@ actor WorkflowCatalog {
     private func convention(
         _ module: Warp.Module,
         named base: String
-    ) throws -> (reason: String, line: String)? {
+    ) -> (reason: String, line: String)? {
         let declared = module.procedures.keys.map(\.spelling).sorted()
 
         guard declared == [base], let name = module.procedures.keys.first else {
@@ -469,7 +475,7 @@ actor WorkflowCatalog {
             )
         }
 
-        if let shadowed = try ForgeVocabulary.frontend().shadowing(name, as: .procedure) {
+        if let shadowed = vocabulary.frontend.shadowing(name, as: .procedure) {
             return (
                 "a workflow is called by its name, and one named so shadows what the library, std or the notation"
                     + " give: \(shadowed)",
@@ -481,7 +487,7 @@ actor WorkflowCatalog {
     }
 
     // The entries that build, each compiled against the vocabulary, which
-    // is compiled once a process: all of them where they build together,
+    // is compiled once: all of them where they build together,
     // and otherwise each against the entries compiled before it, until a
     // round admits none. An entry left is recorded with its build refusal,
     // and no run links it. The image is the last link that admitted, which
@@ -493,8 +499,8 @@ actor WorkflowCatalog {
         var pending = live.values.sorted { left, right in left.workflow.name < right.workflow.name }
 
         if
-            let together = try? await ForgeVocabulary.compiled(pending.map(\.workflow.module)),
-            let image = try? await ForgeVocabulary.linked(together)
+            let together = try? await builder.compiled(pending.map(\.workflow.module)),
+            let image = try? await builder.linked(together)
         {
             return (live, zip(pending, together).map { entry, object in (entry.workflow.name, object) }, image)
         }
@@ -510,9 +516,9 @@ actor WorkflowCatalog {
 
             for entry in pending {
                 do {
-                    let own = try await ForgeVocabulary.compiled([entry.workflow.module], beside: compiled.map(\.compiled))
+                    let own = try await builder.compiled([entry.workflow.module], beside: compiled.map(\.compiled))
 
-                    image = try await ForgeVocabulary.linked(compiled.map(\.compiled) + own)
+                    image = try await builder.linked(compiled.map(\.compiled) + own)
                     standing[entry.workflow.name] = entry
                     compiled += own.map { object in (entry.workflow.name, object) }
                     admitted = true

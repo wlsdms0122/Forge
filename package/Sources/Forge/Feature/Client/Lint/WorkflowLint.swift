@@ -9,15 +9,27 @@ import Foundation
 import Warp
 import WarpYAML
 
-package enum WorkflowLint {
+package struct WorkflowLint: Sendable {
     // MARK: - Property
+    // How the files are built, the daemon's way.
+    let builder: WorkflowBuilder
+
     // MARK: - Initializer
+    // A lint over the vocabulary the binary carries.
+    package init() throws {
+        self.init(builder: WorkflowBuilder(vocabulary: try ForgeVocabulary()))
+    }
+
+    init(builder: WorkflowBuilder) {
+        self.builder = builder
+    }
+
     // MARK: - Public
     // The files admitted as the daemon admits its catalog's at a reload,
     // read through the catalog itself, with what it records for each, and
     // the authoring issues the catalog has no rule for. One report per path
     // in the order given.
-    package static func check(paths: [String]) async -> [Report] {
+    package func check(paths: [String]) async -> [Report] {
         var read: [(path: String, data: Data)] = []
         var unread: [String: String] = [:]
 
@@ -29,13 +41,13 @@ package enum WorkflowLint {
             }
         }
 
-        let catalog = await WorkflowCatalog(directory: nil).catalog(of: read.map(\.path))
+        let catalog = await WorkflowCatalog(directory: nil, builder: builder).catalog(of: read.map(\.path))
         let refusals = Dictionary(
             catalog.failures.map { failure in (failure.path, failure.reason) },
             uniquingKeysWith: { first, _ in first }
         )
         let issues = Dictionary(
-            read.map { file in (file.path, staleTemplateIssues(data: file.data)) },
+            read.map { file in (file.path, Self.staleTemplateIssues(data: file.data)) },
             uniquingKeysWith: { first, _ in first }
         )
 

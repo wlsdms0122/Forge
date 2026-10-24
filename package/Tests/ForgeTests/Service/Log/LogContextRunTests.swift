@@ -53,7 +53,7 @@ struct LogContextRunTests {
           - let: x
             value: { call: { procedure: shell, arguments: { command: ["/bin/echo", "ok"] } } }
         """#, named: "echo").write(to: directory.appendingPathComponent("echo.yaml"), atomically: true, encoding: .utf8)
-        let store = WorkflowCatalog(directory: directory)
+        let store = try WorkflowCatalog(directory: directory)
         let bus = WorkflowEventBus()
         let runner = WorkflowRunner(
             catalog: store,

@@ -11,44 +11,40 @@ import WarpStandard
 import WarpSyntax
 import WarpYAML
 
-enum ForgeVocabulary {
+// What Forge lends a workflow: the library document the binary carries,
+// written in the YAML notation over the native verbs, the natives, and the
+// standard vocabulary, with the front end a workflow written over them is
+// read with.
+struct ForgeVocabulary: Sendable {
     // MARK: - Property
     // The structs forge's verbs return.
     static let runType: Name = "Forge.Run"
     static let originType: Name = "Forge.Origin"
 
-    // Forge's grammar: the library document the binary carries, written in
-    // the YAML notation over the native verbs and spent once. A workflow
-    // leans on it and every link holds it.
-    private static let shipped = Result {
-        try YAMLFrontend().document(from: Library.text)
-    }
+    // The library's document, the one a workflow leans on.
+    let library: Value
 
-    // The library loaded the way a runtime receives it.
-    private static let loaded = Result {
-        let document = try shipped.get()
+    // What every link holds beside the workflows: the library, the native
+    // verbs under it and the standard vocabulary.
+    let linkables: [Module]
 
-        return try Loader().load(document, identity: try Identity.of(document))
-    }
+    // The verbs a workflow writes, the library's procedures.
+    let verbs: Set<Name>
 
-    // The front end leaning on the library.
-    private static let leaning = Result {
-        try YAMLFrontend(symbols: try SymbolTable(documents: [try shipped.get()]))
-    }
-
-    // The library, the natives and std compiled once a process, laid down
-    // as a compile against them reads them, and the native code they bring:
-    // they are fixed for its life, so a build of workflows compiles the
-    // workflows and links them beside these.
-    private static let built = Task {
-        let modules = try linkables()
-        let supplying = try Supplying(modules)
-        let compiled = try await Builder().compile(modules, against: [], supplying: supplying)
-
-        return (compiled: compiled, laid: try Builder().lay(compiled, supplying: supplying), supplying: supplying)
-    }
+    // The one front end forge reads a workflow with, leaning on the library.
+    let frontend: YAMLFrontend
 
     // MARK: - Initializer
+    init() throws {
+        let library = try YAMLFrontend().document(from: Library.text)
+        let loaded = try Loader().load(library, identity: try Identity.of(library))
+
+        self.library = library
+        self.linkables = [loaded, try Self.natives()] + Module.standard
+        self.verbs = Set(loaded.procedures.keys)
+        self.frontend = try YAMLFrontend(symbols: try SymbolTable(documents: [library]))
+    }
+
     // MARK: - Public
     // The native verbs the library is written over, each with the signature
     // its action declares.
@@ -76,73 +72,6 @@ enum ForgeVocabulary {
                 "Forge.Native.origin": Procedure(signature: OriginAction.signature, implementation: .effect(OriginAction()))
             ]
         )
-    }
-
-    // The library's document, the one a workflow leans on.
-    static func library() throws -> Value {
-        try shipped.get()
-    }
-
-    // The verbs a workflow writes, the library's procedures.
-    static func verbs() throws -> Set<Name> {
-        Set(try loaded.get().procedures.keys)
-    }
-
-    // What every link holds beside the workflows: the library, the native
-    // verbs under it and the standard vocabulary.
-    static func linkables() throws -> [Module] {
-        [try loaded.get(), try natives()] + Module.standard
-    }
-
-    // Workflows compiled against the vocabulary and the workflows already
-    // compiled beside it, in the order they are handed: against the
-    // vocabulary as it was laid down once, where nothing stands beside it.
-    static func compiled(_ modules: [Module], beside standing: [Compiled] = []) async throws -> [Compiled] {
-        let vocabulary = try await built.value
-
-        guard !standing.isEmpty else {
-            return try await Builder().compile(modules, against: vocabulary.laid)
-        }
-
-        return try await Builder().compile(modules, against: vocabulary.compiled + standing, supplying: vocabulary.supplying)
-    }
-
-    // The image of compiled workflows linked beside the vocabulary.
-    static func linked(_ compiled: [Compiled]) async throws -> Image {
-        let vocabulary = try await built.value
-
-        return try Builder().link(vocabulary.compiled + compiled, supplying: vocabulary.supplying)
-    }
-
-    // The one front end forge reads a workflow with, leaning on the library.
-    static func frontend() throws -> YAMLFrontend {
-        try leaning.get()
-    }
-
-    // The front end leaning on the library and on these texts, which lean on
-    // each other. A text that does not parse leans on nothing, and its
-    // refusal, as it reads alone, is handed back under its position.
-    static func frontend(leaningOn texts: [String]) throws -> (frontend: YAMLFrontend, refusals: [Int: any Error]) {
-        let frontend = try frontend()
-        var standing = Array(texts.indices)
-        var refusals: [Int: any Error] = [:]
-
-        while true {
-            do {
-                return (try frontend.leaning(on: standing.map { index in texts[index] }), refusals)
-            } catch let refusal as AuthoringError {
-                guard let position = refusal.text else { throw refusal }
-
-                let index = standing.remove(at: position)
-
-                do {
-                    _ = try frontend.document(from: texts[index])
-                    refusals[index] = refusal
-                } catch {
-                    refusals[index] = error
-                }
-            }
-        }
     }
 
     // MARK: - Private

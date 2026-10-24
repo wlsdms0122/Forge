@@ -74,7 +74,7 @@ struct AsyncDispatchTests {
             ],
         ]
         // The library is read once a process; what is timed is the dispatch.
-        _ = try ForgeVocabulary.frontend()
+        _ = try ForgeVocabulary.shipped.get().frontend
         let startedAt = ContinuousClock.now
         let result = try await method.handle(RPCRequest(
                 id: "r-async",
@@ -102,7 +102,7 @@ struct AsyncDispatchTests {
     }
 
     private func makeMethod(policy: [String: [String]]) throws -> (WorkflowDispatchMethod, TokenAuthority) {
-        let store = WorkflowCatalog(directory: nil)
+        let store = try WorkflowCatalog(directory: nil)
         let bus = WorkflowEventBus()
         let authority = TokenAuthority()
         let runner = WorkflowRunner(catalog: store,

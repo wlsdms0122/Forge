@@ -33,7 +33,7 @@ struct CatalogGenerationTests {
         let directory = try temporary.make("wf-repair")
         defer { try? FileManager.default.removeItem(at: directory) }
         try writeWorkflow(brokenBody, named: "mender", in: directory)
-        let store = WorkflowCatalog(directory: directory)
+        let store = try WorkflowCatalog(directory: directory)
 
         // When
         var catalog = await store.catalog()
@@ -57,7 +57,7 @@ struct CatalogGenerationTests {
         // When
         try writeWorkflow(validBody, named: "ok", in: directory)
         try writeWorkflow(brokenBody, named: "bad", in: directory)
-        let catalog = await WorkflowCatalog(directory: directory).catalog()
+        let catalog = try await WorkflowCatalog(directory: directory).catalog()
         try assertAccountedForExactlyOnce(catalog, in: directory)
 
         // Then
@@ -74,7 +74,7 @@ struct CatalogGenerationTests {
         try writeWorkflow("""
         result: { call: { procedure: Nowhere.missing, arguments: [] } }
         """, named: "unbuilt", in: directory)
-        let sut = WorkflowCatalog(directory: directory)
+        let sut = try WorkflowCatalog(directory: directory)
 
         // When
         let catalog = await sut.catalog()
@@ -90,7 +90,7 @@ struct CatalogGenerationTests {
             return
         }
 
-        _ = try await Builder().build(await sut.modules() + ForgeVocabulary.linkables())
+        _ = try await Builder().build(await sut.modules() + ForgeVocabulary.shipped.get().linkables)
     }
 
     @Test("Workflows lean on each other: one calls another by its short name and its arguments by name")
@@ -107,7 +107,7 @@ struct CatalogGenerationTests {
         returns: Int
         result: { of: { ref: base }, times: { ref: by } }
         """, named: "scaled", in: directory)
-        let sut = WorkflowCatalog(directory: directory)
+        let sut = try WorkflowCatalog(directory: directory)
 
         // When
         let catalog = await sut.catalog()
@@ -116,7 +116,7 @@ struct CatalogGenerationTests {
         #expect(catalog.failures.isEmpty)
         #expect(catalog.entries.map(\.workflow.name) == ["caller", "scaled"])
 
-        let image = try await Builder().build(await sut.modules() + ForgeVocabulary.linkables())
+        let image = try await Builder().build(await sut.modules() + ForgeVocabulary.shipped.get().linkables)
         let answer = try await Warp.Executor().run(image, entry: try Name("caller"), arguments: [:])
 
         #expect(answer == .int(42))
@@ -143,7 +143,7 @@ struct CatalogGenerationTests {
         returns: Int
         result: { call: { procedure: count, arguments: [ [1, 2, 3] ] } }
         """, named: "sized", in: directory)
-        let sut = WorkflowCatalog(directory: directory)
+        let sut = try WorkflowCatalog(directory: directory)
 
         // When
         let catalog = await sut.catalog()
@@ -170,7 +170,7 @@ struct CatalogGenerationTests {
         returns: Bool
         result: { of: 1, is: 2 }
         """, named: "same", in: directory)
-        let sut = WorkflowCatalog(directory: directory)
+        let sut = try WorkflowCatalog(directory: directory)
 
         // When
         let catalog = await sut.catalog()
@@ -179,7 +179,7 @@ struct CatalogGenerationTests {
         #expect(catalog.entries.map(\.workflow.name) == ["same"])
         #expect(catalog.failures.compactMap(\.name) == ["is"])
 
-        let image = try await Builder().build(await sut.modules() + ForgeVocabulary.linkables())
+        let image = try await Builder().build(await sut.modules() + ForgeVocabulary.shipped.get().linkables)
         let answer = try await Warp.Executor().run(image, entry: try Name("same"), arguments: [:])
 
         #expect(answer == .bool(false))
@@ -202,7 +202,7 @@ struct CatalogGenerationTests {
         }
 
         // When
-        let catalog = await WorkflowCatalog(directory: directory).catalog()
+        let catalog = try await WorkflowCatalog(directory: directory).catalog()
 
         // Then
         #expect(catalog.entries.map(\.workflow.name) == ["visible"])

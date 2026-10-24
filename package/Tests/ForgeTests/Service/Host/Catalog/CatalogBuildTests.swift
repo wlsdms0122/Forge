@@ -29,7 +29,7 @@ struct CatalogBuildTests {
     func catalogBuilds() async throws {
         guard let path = ProcessInfo.processInfo.environment["FORGE_CATALOG"] else { return }
 
-        let sut = WorkflowCatalog(directory: URL(fileURLWithPath: path).standardizedFileURL)
+        let sut = try WorkflowCatalog(directory: URL(fileURLWithPath: path).standardizedFileURL)
         let catalog = await sut.catalog()
 
         for entry in catalog.entries {
@@ -40,7 +40,7 @@ struct CatalogBuildTests {
             print("\(failure.path): \(failure.reason)")
         }
 
-        _ = try await Builder().build(await sut.modules() + ForgeVocabulary.linkables())
+        _ = try await Builder().build(await sut.modules() + ForgeVocabulary.shipped.get().linkables)
         print("catalog: ok, \(catalog.entries.count) of \(catalog.entries.count + catalog.failures.count)")
 
         let descriptions = catalog.entries.filter { entry in entry.workflow.description != nil }.count

@@ -460,7 +460,7 @@ struct WorkflowRunnerTests {
             )
         }
 
-        let store = WorkflowCatalog(directory: directory)
+        let store = try WorkflowCatalog(directory: directory)
         let eventBus = WorkflowEventBus()
         let poolLocal = pool
             ?? WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: Int.max)

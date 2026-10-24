@@ -44,7 +44,7 @@ struct ForgeVocabularyTests {
     @Test("each verb of the library is one call of the native of its name, handing its parameters in order, and every native has one")
     func everyVerbCallsItsNative() throws {
         // Given
-        let document = try ForgeVocabulary.library()
+        let document = try ForgeVocabulary.shipped.get().library
         let library = try Loader().load(document, identity: try Identity.of(document))
         let natives = Set(try ForgeVocabulary.natives().procedures.keys)
 
@@ -76,7 +76,7 @@ struct ForgeVocabularyTests {
     @Test("the library builds with the natives and the standard vocabulary")
     func theLibraryBuilds() async throws {
         // Given
-        let sut = try ForgeVocabulary.linkables()
+        let sut = try ForgeVocabulary.shipped.get().linkables
 
         // When / Then
         _ = try await Builder().build(sut)
@@ -85,7 +85,7 @@ struct ForgeVocabularyTests {
     @Test("a workflow names a verb by its short name and its arguments by name, and a default fills the rest")
     func aVerbIsCalledByNameWithItsDefaults() async throws {
         // Given
-        let sut = try ForgeVocabulary.frontend()
+        let sut = try ForgeVocabulary.shipped.get().frontend
 
         // When
         let document = try sut.document(from: workflowFile("""
@@ -104,13 +104,13 @@ struct ForgeVocabularyTests {
 
         let module = try Loader().load(document, identity: try Identity.of(document))
 
-        _ = try await Builder().build([module] + ForgeVocabulary.linkables())
+        _ = try await Builder().build([module] + ForgeVocabulary.shipped.get().linkables)
     }
 
     @Test("a native takes the value the library settles, so null where the library holds a default is refused by the build at that argument")
     func aNativeTakesTheSettledDefault() async throws {
         // Given
-        let document = try ForgeVocabulary.frontend().document(from: workflowFile("""
+        let document = try ForgeVocabulary.shipped.get().frontend.document(from: workflowFile("""
         returns: String
         failing: [nonzero_exit, timeout]
         result: { call: { procedure: Forge.Native.shell, arguments: [ [ls], null, null, null, null ] } }
@@ -119,7 +119,7 @@ struct ForgeVocabularyTests {
 
         // When
         let error = await #expect(throws: (any Error).self) {
-            _ = try await Builder().build([module] + ForgeVocabulary.linkables())
+            _ = try await Builder().build([module] + ForgeVocabulary.shipped.get().linkables)
         }
 
         // Then

@@ -182,7 +182,7 @@ private struct Harness {
     let recorder = Recorder()
 
     var frontend: YAMLFrontend {
-        get throws { try ForgeVocabulary.frontend() }
+        get throws { try ForgeVocabulary.shipped.get().frontend }
     }
 
     // MARK: - Initializer
@@ -209,7 +209,7 @@ private struct Harness {
                 bridge: EventBridge(
                     workflowID: "wf-test",
                     workflowName: "observed",
-                    verbs: try ForgeVocabulary.verbs(),
+                    verbs: try ForgeVocabulary.shipped.get().verbs,
                     publish: publish
                 )
             )
@@ -526,7 +526,7 @@ struct EffectActionTests {
     @Test("an invalid inline spec is refused when it is read, before it runs")
     func inlineRejectsWhenSpecIsMalformed() async throws {
         // Given — the inline door reads one procedure in the YAML notation
-        let store = WorkflowCatalog(directory: nil)
+        let store = try WorkflowCatalog(directory: nil)
         let spec = JSONValue.object(["returns": .string("String"), "result": .string("ok"), "fallbck": .string("typo")])
 
         // When / Then
@@ -550,7 +550,7 @@ struct EffectActionTests {
         returns: String
         result: { format: "said ${word}", with: { word: { ref: word } } }
         """, named: "said").write(to: directory.appendingPathComponent("said.yaml"), atomically: true, encoding: .utf8)
-        let store = WorkflowCatalog(directory: directory)
+        let store = try WorkflowCatalog(directory: directory)
         let spec = ValueBridge.json(try YAMLParser().parse("""
         returns: "Dictionary<String, Any>"
         failing: [nonzero_exit, timeout]
@@ -710,7 +710,7 @@ struct EffectActionTests {
             encoding: .utf8
         )
 
-        let store = WorkflowCatalog(directory: directory)
+        let store = try WorkflowCatalog(directory: directory)
         let caller = try harness.frontend.workflow("""
         returns: "Dictionary<String, Any>"
         body:

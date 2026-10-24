@@ -72,7 +72,7 @@ struct StatusMethodTests {
             runtimeDirectory: home.appendingPathComponent("runtime"),
             bootedAt: .fixture,
             configSnapshot: ConfigSnapshot(report),
-            workflowStore: WorkflowCatalog(directory: nil),
+            workflowStore: try WorkflowCatalog(directory: nil),
             scheduleStore: ScheduleStore(
                 configDir: nil,
                 runtimeDirectory: nil,
@@ -102,7 +102,7 @@ struct StatusMethodTests {
             bootedAt: .fixture,
             configSnapshot: ConfigSnapshot((try? ConfigLoader.loadResolved(configPath: nil, sessionHome: home, environment: [:]).report)
                 ?? ConfigReport(tomlPath: nil, entries: [])),
-            workflowStore: WorkflowCatalog(directory: nil),
+            workflowStore: try WorkflowCatalog(directory: nil),
             scheduleStore: ScheduleStore(configDir: nil, runtimeDirectory: nil, stateFile: FileManager.default.temporaryDirectory.appendingPathComponent("forge-sched-enabled-\(UUID().uuidString.prefix(6)).json")),
             jobStore: JobStore(directory: nil),
             supervisor: ServiceSupervisor(services: [], runtimeDirectory: home, tokenAuthority: authority),

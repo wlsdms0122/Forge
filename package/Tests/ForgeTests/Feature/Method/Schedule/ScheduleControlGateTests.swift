@@ -93,7 +93,7 @@ struct ScheduleControlGateTests {
             stateFile: FileManager.default.temporaryDirectory
             .appendingPathComponent("forge-sched-enabled-\(UUID().uuidString.prefix(6)).json"))
         let create = ScheduleCreateMethod(
-            store: store, workflowStore: WorkflowCatalog(directory: nil),
+            store: store, workflowStore: try WorkflowCatalog(directory: nil),
             policyStore: PolicyStore(seed: ["cli:owner": ["<inline>"]]), tokenAuthority: authority)
         let ownerToken = authority.mint(TokenClaims(principal: "cli:owner"))
         _ = try await create.handle(RPCRequest(

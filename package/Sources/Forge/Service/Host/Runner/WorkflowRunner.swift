@@ -229,7 +229,7 @@ actor WorkflowRunner {
                 bridge: EventBridge(
                     workflowID: runID,
                     workflowName: name,
-                    verbs: try ForgeVocabulary.verbs(),
+                    verbs: catalog.vocabulary.verbs,
                     publish: { event in await eventBus.publish(event) }
                 )
             )

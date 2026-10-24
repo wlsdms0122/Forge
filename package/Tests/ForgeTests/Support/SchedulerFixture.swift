@@ -74,8 +74,8 @@ struct SchedulerFixture {
         (try? String(contentsOf: marker, encoding: .utf8)) ?? ""
     }
 
-    func catalog(directory: URL?) -> WorkflowCatalog {
-        WorkflowCatalog(directory: directory)
+    func catalog(directory: URL?) throws -> WorkflowCatalog {
+        try WorkflowCatalog(directory: directory)
     }
 
     func runner(catalog: WorkflowCatalog) -> WorkflowRunner {
@@ -117,7 +117,7 @@ struct SchedulerFixture {
             runtimeDirectory: try temporary.make("schedule-rt"),
             ids: seeds)
         let path = try ledgerPath ?? temporary.file("fire-ledger.json")
-        let workflowStore = catalog(directory: workflowDirectoryectory)
+        let workflowStore = try catalog(directory: workflowDirectoryectory)
 
         // Read before the first tick, as the daemon reads its catalog before
         // its scheduler starts.
@@ -151,7 +151,7 @@ struct SchedulerFixture {
             runtimeDirectory: runtimeDirectory,
             ids: [(onceFileName as NSString).deletingPathExtension: Self.declaredWorkflow(onceYAML)])
         let ledger = FireLedger(path: try temporary.make("once-led").appendingPathComponent("l.json"))
-        let workflowStore = catalog(directory: workflowDirectoryectory)
+        let workflowStore = try catalog(directory: workflowDirectoryectory)
 
         await workflowStore.catalog()
         let scheduler = WorkflowScheduler(

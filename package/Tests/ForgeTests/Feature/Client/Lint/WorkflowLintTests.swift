@@ -90,8 +90,8 @@ struct WorkflowLintTests {
         """, named: "callee").write(to: callee, atomically: true, encoding: .utf8)
 
         // When
-        let together = await WorkflowLint.check(paths: [caller.path, callee.path])
-        let alone = await WorkflowLint.check(paths: [caller.path])
+        let together = try await WorkflowLint(builder: WorkflowBuilder.shipped.get()).check(paths: [caller.path, callee.path])
+        let alone = try await WorkflowLint(builder: WorkflowBuilder.shipped.get()).check(paths: [caller.path])
 
         // Then
         #expect(together.map(\.ok) == [true, true])
@@ -117,6 +117,6 @@ struct WorkflowLintTests {
 
         try workflowFile(yaml, named: name).write(to: file, atomically: true, encoding: .utf8)
 
-        return try #require(await WorkflowLint.check(paths: [file.path]).first)
+        return try #require(try await WorkflowLint(builder: WorkflowBuilder.shipped.get()).check(paths: [file.path]).first)
     }
 }

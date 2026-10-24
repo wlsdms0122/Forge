@@ -22,7 +22,7 @@ extension Warp.Executor {
         inputs: [String: Warp.Value] = [:]
     ) async throws -> [String: Warp.Value] {
         let name = try Name(entry)
-        let image = try await Builder().build([module] + others + ForgeVocabulary.linkables())
+        let image = try await Builder().build([module] + others + ForgeVocabulary.shipped.get().linkables)
         var arguments: [Name: Warp.Value] = [:]
 
         for (key, value) in inputs {
