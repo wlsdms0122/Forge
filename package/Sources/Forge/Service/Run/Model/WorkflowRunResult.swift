@@ -7,8 +7,7 @@
 
 import Foundation
 
-// The daemon-side vocabulary of a run — result, session and dispatch mode.
-// These outlive the engine that first defined them.
+// What a finished run answers: its status, outputs, duration and failure.
 struct WorkflowRunResult: Sendable {
     enum Status: String, Sendable {
         case ok
