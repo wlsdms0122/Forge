@@ -25,7 +25,7 @@ struct WorkflowDescribeMethod: Sendable {
         let entries = await store.catalog().entries
 
         guard let entry = entries.first(where: { entry in entry.workflow.name == name }) else {
-            throw ResolutionError("workflow not found: \(name)")
+            throw WorkflowNotFound("workflow not found: \(name)")
         }
 
         let contract = entry.workflow.contract

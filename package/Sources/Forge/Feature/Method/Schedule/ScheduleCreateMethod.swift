@@ -232,19 +232,9 @@ func resolveDispatchTarget(
 
     switch (nameParam, specParam) {
     case let (name?, nil):
-        switch await workflowStore.resolve(name) {
-        case .found:
-            return (name, nil)
+        _ = try await workflowStore.workflow(named: name)
 
-        case .invalid(let reason):
-            throw WorkflowValidationError("\(context): workflow '\(name)' is broken — \(reason)")
-
-        case .unobserved(let reason):
-            throw ResolutionError("\(context): workflow '\(name)' could not be resolved — \(reason)")
-
-        case .missing:
-            throw ResolutionError("\(context): workflow '\(name)' is not registered")
-        }
+        return (name, nil)
 
     case let (nil, raw?):
         guard raw["name"] == nil else {

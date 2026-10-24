@@ -694,7 +694,7 @@ as the file writes it in the notation, which is what the workflow settles an
 omitted or null argument to; an input whose file writes none has no
 `default`. `hint` is what the file writes under the input's `hint:`. `returns` is the declared return type. Empty `inputs` is returned as
 `{}` (not omitted) so the caller can iterate without null-checks. Unknown
-workflow → ResolutionError `workflow not found: <name>`.
+workflow → WorkflowNotFound `workflow not found: <name>`.
 
 ### `workflow.list_active`
 
@@ -1124,7 +1124,8 @@ The error envelope is `{"type": "<ErrorType>", "message": "<text>"}`.
 | `BackendNonzeroExit` | a backend exited non-zero (also carries `exit_code`, `stderr`, `stdout`) |
 | `BackendUnavailable` | a backend could not be reached (e.g. an OpenAI-compatible endpoint refused or errored) |
 | `MalformedOutput` | a backend response was not the promised shape |
-| `ResolutionError` | provider/workflow spec invalid, or workflow not found |
+| `ResolutionError` | provider spec invalid, or a workflow name the catalog cannot answer for while its directory is not fully read |
+| `WorkflowNotFound` | no workflow of that name in the catalog (`workflow.dispatch`, `workflow.describe`, `schedule.create`, a `dispatch` step) |
 | `ProtocolError` | request envelope / payload malformed |
 | `TokenRejected` | token failed verification — re-issue and retry once |
 | `UnknownMethod` | the daemon does not know the method name |

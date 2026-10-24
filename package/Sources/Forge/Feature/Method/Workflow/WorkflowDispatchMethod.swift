@@ -207,19 +207,7 @@ struct WorkflowDispatchMethod: Sendable {
         }
 
         if let name = params["name"] as? String, !name.isEmpty {
-            switch await store.resolve(name) {
-            case .found(let stored):
-                return stored
-
-            case .invalid(let reason):
-                throw WorkflowValidationError("workflow.dispatch: workflow '\(name)' is broken — \(reason)")
-
-            case .unobserved(let reason):
-                throw ResolutionError("workflow.dispatch: workflow '\(name)' could not be resolved — \(reason)")
-
-            case .missing:
-                throw ResolutionError("workflow not found: \(name)")
-            }
+            return try await store.workflow(named: name)
         }
 
         throw ProtocolError("workflow.dispatch: one of 'spec' or 'name' is required")

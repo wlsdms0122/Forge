@@ -385,25 +385,7 @@ actor WorkflowRunner {
 // through the same dispatch door as any RPC caller.
 extension WorkflowRunner: RunDispatching {
     func dispatch(name: String, inputs: [String: Warp.Value]) async throws -> Warp.Value {
-        let workflow: Workflow
-
-        switch await catalog.resolve(name) {
-        case let .found(found):
-            workflow = found
-
-        case let .invalid(reason):
-            throw WorkflowValidationError(
-                "dispatch: workflow '\(name)' is broken — \(reason)"
-            )
-
-        case let .unobserved(reason):
-            throw ResolutionError(
-                "dispatch: workflow '\(name)' could not be resolved — \(reason)"
-            )
-
-        case .missing:
-            throw WorkflowNotFound("dispatch: workflow '\(name)' not found")
-        }
+        let workflow = try await catalog.workflow(named: name)
 
         let parentName = WorkflowExecutionState.context?.workflowName ?? "unknown"
 

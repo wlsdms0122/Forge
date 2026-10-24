@@ -130,8 +130,8 @@ struct WorkflowDescribeTests {
             _ = try await method.handle(request(["token": token, "name": "nope"]))
 
         // Then
-            Issue.record("expected ResolutionError")
-        } catch let error as ResolutionError {
+            Issue.record("expected WorkflowNotFound")
+        } catch let error as WorkflowNotFound {
             #expect(error.message.contains("nope"), Comment(rawValue: error.message))
         }
     }
