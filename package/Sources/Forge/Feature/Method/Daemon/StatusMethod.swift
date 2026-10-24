@@ -22,13 +22,13 @@ struct DaemonStatusMethod: Sendable {
     
     // MARK: - Initializer
     // MARK: - Public
-    func handle(_ request: RPCRequest) async throws -> JSONObject {
-        var config = await configSnapshot.current().asJSONDict()
+    func handle(_ request: RPCRequest) async throws -> JSONValue {
+        var config = await configSnapshot.current().fields
         
-        if var values = config["values"] as? [[String: Any]] {
-            values.append(["key": "socket", "value": socketPath, "source": "session"])
-            values.append(["key": "runtime_directory", "value": runtimeDirectory.path, "source": "session"])
-            config["values"] = values
+        if var values = config["values"]?.arrayValue {
+            values.append(["key": "socket", "value": .string(socketPath), "source": "session"])
+            values.append(["key": "runtime_directory", "value": .string(runtimeDirectory.path), "source": "session"])
+            config["values"] = .array(values)
         }
         
         let schedules = await scheduleStore.all()
@@ -37,33 +37,33 @@ struct DaemonStatusMethod: Sendable {
         let workflowCount = await workflowStore.catalog().entries.count
         let jobCount = await jobStore.all().count
         
-        let daemon: [String: Any] = [
-            "session": session,
-            "version": Version.current,
-            "socket": socketPath,
-            "pid": Int(ProcessInfo.processInfo.processIdentifier),
-            "started_at": ISO8601.string(bootedAt),
-            "uptime_s": Int(Date().timeIntervalSince(bootedAt))
+        let daemon: JSONValue = [
+            "session": .string(session),
+            "version": .string(Version.current),
+            "socket": .string(socketPath),
+            "pid": .int(Int(ProcessInfo.processInfo.processIdentifier)),
+            "started_at": .string(ISO8601.string(bootedAt)),
+            "uptime_s": .int(Int(Date().timeIntervalSince(bootedAt)))
         ]
         
-        let runtime: [String: Any] = [
-            "workflows": workflowCount,
+        let runtime: JSONValue = [
+            "workflows": .int(workflowCount),
             "schedules": [
-                "total": schedules.count,
-                "enabled": schedules.filter { schedule in schedule.enabled }.count
+                "total": .int(schedules.count),
+                "enabled": .int(schedules.filter { schedule in schedule.enabled }.count)
             ],
-            "jobs": jobCount,
-            "services": services.map { record -> [String: Any] in
-                var dictionary = record.fields.mapValues(\.jsonObject)
-                dictionary["registered"] = registered.contains(record.name)
+            "jobs": .int(jobCount),
+            "services": .array(services.map { record in
+                var object = record.fields
+                object["registered"] = .bool(registered.contains(record.name))
                 
-                return dictionary
-            }
+                return .object(object)
+            })
         ]
         
         return [
             "daemon": daemon,
-            "config": config,
+            "config": .object(config),
             "runtime": runtime
         ]
     }

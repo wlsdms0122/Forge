@@ -25,24 +25,24 @@ struct StatusMethodTests {
         let token = authority.mint(TokenClaims(principal: "system:admin"))
 
         // When
-        let result = try await method.handle(request(["token": token])).dict
+        let result = try await method.handle(request(["token": token]))
 
         // Then
-        let daemon = try #require(result["daemon"] as? [String: Any])
-        #expect(daemon["session"] as? String == "test")
-        #expect(daemon["socket"] as? String == socket)
+        let daemon = try #require(result["daemon"]?.objectValue)
+        #expect(daemon["session"]?.stringValue == "test")
+        #expect(daemon["socket"]?.stringValue == socket)
         #expect(daemon["pid"] != nil)
-        let config = try #require(result["config"] as? [String: Any])
-        let values = try #require(config["values"] as? [[String: Any]])
-        let socketEntry = try #require(values.first { value in (value["key"] as? String) == "socket" })
-        #expect(socketEntry["value"] as? String == socket)
-        #expect(socketEntry["source"] as? String == "session")
-        let runtimeEntry = try #require(values.first { value in (value["key"] as? String) == "runtime_directory" })
-        #expect(runtimeEntry["value"] as? String == home.appendingPathComponent("runtime").path)
-        #expect(runtimeEntry["source"] as? String == "session")
-        let runtime = try #require(result["runtime"] as? [String: Any])
-        #expect(runtime["workflows"] as? Int == 0)
-        #expect(runtime["jobs"] as? Int == 0)
+        let config = try #require(result["config"]?.objectValue)
+        let values = try #require(config["values"]?.arrayValue)
+        let socketEntry = try #require(values.first { value in (value["key"]?.stringValue) == "socket" })
+        #expect(socketEntry["value"]?.stringValue == socket)
+        #expect(socketEntry["source"]?.stringValue == "session")
+        let runtimeEntry = try #require(values.first { value in (value["key"]?.stringValue) == "runtime_directory" })
+        #expect(runtimeEntry["value"]?.stringValue == home.appendingPathComponent("runtime").path)
+        #expect(runtimeEntry["source"]?.stringValue == "session")
+        let runtime = try #require(result["runtime"]?.objectValue)
+        #expect(runtime["workflows"]?.intValue == 0)
+        #expect(runtime["jobs"]?.intValue == 0)
     }
     
     @Test("status queries stay open even without a token")
@@ -52,7 +52,7 @@ struct StatusMethodTests {
         let (method, _) = try makeMethod(home, socket: home.appendingPathComponent("forged.sock").path)
 
         // When
-        let result = try await method.handle(request([:])).dict
+        let result = try await method.handle(request([:]))
 
         // Then
         #expect(result["daemon"] != nil, "daemon section returned even without a token")
@@ -86,11 +86,11 @@ struct StatusMethodTests {
         let output = try await method.handle(request([:]))
 
         // Then
-        let config = try #require(output.dict["config"] as? [String: Any])
-        let values = try #require(config["values"] as? [[String: Any]])
+        let config = try #require(output["config"]?.objectValue)
+        let values = try #require(config["values"]?.arrayValue)
         let pool = try #require(
-            values.first { value in (value["key"] as? String) == "pool.maximum_concurrent_steps" })
-        #expect(pool["value"] as? String == "7", "must be the boot snapshot value — re-parsing from disk would lose it to the corrupted toml")
+            values.first { value in (value["key"]?.stringValue) == "pool.maximum_concurrent_steps" })
+        #expect(pool["value"]?.stringValue == "7", "must be the boot snapshot value — re-parsing from disk would lose it to the corrupted toml")
     }
 
     // MARK: - Private

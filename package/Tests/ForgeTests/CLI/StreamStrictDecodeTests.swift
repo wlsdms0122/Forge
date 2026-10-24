@@ -69,7 +69,7 @@ struct StreamStrictDecodeTests {
             return
         }
         
-        #expect(result["v"] as? Int == 1)
+        #expect(result["v"]?.intValue == 1)
     }
     
     // MARK: - Private

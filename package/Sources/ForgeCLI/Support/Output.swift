@@ -20,12 +20,6 @@ func printJSON(_ value: JSONValue) {
     }
 }
 
-// The commands that read a result as Foundation's JSON objects print it
-// through this.
-func printJSON(_ object: [String: Any]) {
-    printJSON((try? JSONValue(jsonObject: object)) ?? .object([:]))
-}
-
 // The default answer of a client command: the whole result, as JSON when the
 // caller asked for it and as an indented tree otherwise. A command only writes
 // its own renderer when the plain form would bury what the command is for.
@@ -35,12 +29,6 @@ func printResult(_ value: JSONValue, json: Bool) {
     } else {
         print(renderResultPlain(value.objectValue ?? [:]))
     }
-}
-
-// The commands that read a result as Foundation's JSON objects print it
-// through this.
-func printResult(_ object: [String: Any], json: Bool) {
-    printResult((try? JSONValue(jsonObject: object)) ?? .object([:]), json: json)
 }
 
 func die(_ message: String, code: Int32) -> Never {
