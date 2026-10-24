@@ -7,8 +7,8 @@
 
 @testable import Forge
 
-/// A backend that returns the same answer no matter what it is asked, for tests where
-/// the backend is not the concern (workflow execution, dispatch, scheduling).
+// A backend that returns the same answer no matter what it is asked, for tests where
+// the backend is not the concern (workflow execution, dispatch, scheduling).
 struct StubBackend: Backend {
     // MARK: - Property
     private let text: String

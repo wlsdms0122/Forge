@@ -9,7 +9,7 @@ import Foundation
 import Testing
 @testable import Forge
 
-/// A guard that reads the source to check an invariant — it inspects the codebase's *shape*, not the subject's *behavior*.
+// A guard that reads the source to check an invariant — it inspects the codebase's *shape*, not the subject's *behavior*.
 @Suite("PipeOwnershipGuard Tests")
 struct PipeOwnershipGuardTests {
     // MARK: - Property
@@ -65,7 +65,7 @@ struct PipeOwnershipGuardTests {
     }
 
     // MARK: - Private
-    /// The single home of the child output wiring. Throws instead of staying silent when unreadable.
+    // The single home of the child output wiring. Throws instead of staying silent when unreadable.
     private static func subprocessSource() throws -> NSString {
         let package = try PackageSource()
         let url = package.sources

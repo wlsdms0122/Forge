@@ -9,7 +9,7 @@ import Foundation
 import Testing
 @testable import Forge
 
-/// Schedules created and deleted at runtime — do they stay separate from config-owned ones?
+// Schedules created and deleted at runtime — do they stay separate from config-owned ones?
 @Suite("ScheduleStoreRuntime Tests")
 struct ScheduleStoreRuntimeTests {
     // MARK: - Property

@@ -10,7 +10,7 @@ import Testing
 import Yams
 @testable import Forge
 
-/// once schedules — whether they stay or are removed after a single fire, and the outcome on resolution failure.
+// once schedules — whether they stay or are removed after a single fire, and the outcome on resolution failure.
 @Suite("WorkflowSchedulerOnce Tests", .exclusive(.logSink), .exclusive(.standardError))
 struct WorkflowSchedulerOnceTests {
     // MARK: - Property

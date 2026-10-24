@@ -8,14 +8,14 @@
 import Foundation
 @testable import Forge
 
-/// The stage that scheduler tests set up.
-///
-/// Running a scheduler at all requires a workflow catalog, schedule definitions, a fire
-/// ledger, and a runner, so a test spends twenty lines before reaching its actual concern
-/// (does the policy run correctly). Those twenty lines are the same in every test, so they
-/// are set up once here. The stage's lifetime is owned by the temporary directory.
+// The stage that scheduler tests set up.
+//
+// Running a scheduler at all requires a workflow catalog, schedule definitions, a fire
+// ledger, and a runner, so a test spends twenty lines before reaching its actual concern
+// (does the policy run correctly). Those twenty lines are the same in every test, so they
+// are set up once here. The stage's lifetime is owned by the temporary directory.
 struct SchedulerFixture {
-    /// A spec-format workflow fixture — the file basename is its identity, so it carries name and body together.
+    // A spec-format workflow fixture — the file basename is its identity, so it carries name and body together.
     struct WorkflowFixture {
         // MARK: - Property
         let name: String
@@ -35,7 +35,7 @@ struct SchedulerFixture {
     }
 
     // MARK: - Public
-    /// A workflow that leaves its tag in a marker file when run. Who ran, and when, is read from the file contents.
+    // A workflow that leaves its tag in a marker file when run. Who ran, and when, is read from the file contents.
     func markerWorkflow(
         name: String,
         marker: URL,
@@ -167,7 +167,7 @@ struct SchedulerFixture {
         return (scheduler, ledger, onceFile)
     }
 
-    /// A store that starts enabled, with (id, workflow) pre-seeded into the ledger.
+    // A store that starts enabled, with (id, workflow) pre-seeded into the ledger.
     func scheduleStore(configDir: URL?, runtimeDirectory: URL?, ids: [String: String]) throws -> ScheduleStore {
         let state = try temporary.make("enabled").appendingPathComponent("schedule-enabled.json")
         try JSONSerialization.data(withJSONObject: ids).write(to: state)
@@ -175,7 +175,7 @@ struct SchedulerFixture {
         return ScheduleStore(configDir: configDir, runtimeDirectory: runtimeDirectory, stateFile: state)
     }
 
-    /// A path that cannot be created because its parent is a file — triggers a ledger persist failure.
+    // A path that cannot be created because its parent is a file — triggers a ledger persist failure.
     func unwritableLedgerPath(_ tag: String) throws -> URL {
         let blocker = try temporary.make("led-block-\(tag)").appendingPathComponent("blocker")
         try Data("x".utf8).write(to: blocker)

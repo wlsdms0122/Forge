@@ -9,7 +9,7 @@ import Foundation
 import Testing
 @testable import Forge
 
-/// How overlapping fires are handled — skip/queue/replace policies and non-blocking firing.
+// How overlapping fires are handled — skip/queue/replace policies and non-blocking firing.
 @Suite("WorkflowSchedulerConcurrency Tests")
 struct WorkflowSchedulerConcurrencyTests {
     // MARK: - Property

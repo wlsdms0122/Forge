@@ -9,7 +9,7 @@ import Foundation
 import Testing
 @testable import Forge
 
-/// On/off lives in the ledger, not the definition file — the machine never rewrites human-authored YAML.
+// On/off lives in the ledger, not the definition file — the machine never rewrites human-authored YAML.
 @Suite("ScheduleStoreEnabled Tests")
 struct ScheduleStoreEnabledTests {
     // MARK: - Property

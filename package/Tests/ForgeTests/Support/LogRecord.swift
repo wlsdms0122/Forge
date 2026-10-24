@@ -8,7 +8,7 @@
 import Foundation
 @testable import Forge
 
-/// One JSONL line that `Log` wrote to the sink.
+// One JSONL line that `Log` wrote to the sink.
 struct LogRecord: Decodable {
     // MARK: - Property
     let kind: String
@@ -22,7 +22,7 @@ struct LogRecord: Decodable {
 
     // MARK: - Initializer
     // MARK: - Public
-    /// The workflow this record belongs to. If absent, the log came from outside a workflow.
+    // The workflow this record belongs to. If absent, the log came from outside a workflow.
     var runID: String? {
         guard case .string(let identifier) = payload["run_id"] else { return nil }
 

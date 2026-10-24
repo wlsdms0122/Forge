@@ -9,7 +9,7 @@ import Foundation
 import Testing
 @testable import Forge
 
-/// Fire ledger — records slot outcomes, blocks divergence when persist fails, recovers from corruption.
+// Fire ledger — records slot outcomes, blocks divergence when persist fails, recovers from corruption.
 @Suite("WorkflowSchedulerLedger Tests", .exclusive(.logSink), .exclusive(.standardError))
 struct WorkflowSchedulerLedgerTests {
     // MARK: - Property
