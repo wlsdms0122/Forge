@@ -73,7 +73,7 @@ struct JobUpdateCommand: ParsableCommand {
         if let itemStatus { params["item_status"] = itemStatus }
         if let status { params["status"] = status }
         
-        printResult(client.call("job.update", params), json: json)
+        printResult(client.rawCall("job.update", params), json: json)
     }
     
     // MARK: - Private

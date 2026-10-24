@@ -18,11 +18,11 @@ struct PolicyCheckMethod: Sendable {
 
     // MARK: - Public
     func handle(_ request: RPCRequest) async throws -> JSONObject {
-        guard let principal = request.params["principal"] as? String, !principal.isEmpty else {
+        guard let principal = request.rawParams["principal"] as? String, !principal.isEmpty else {
             throw ProtocolError("policy.check: 'principal' (string) required")
         }
 
-        guard let workflow = request.params["workflow"] as? String, !workflow.isEmpty else {
+        guard let workflow = request.rawParams["workflow"] as? String, !workflow.isEmpty else {
             throw ProtocolError("policy.check: 'workflow' (string) required")
         }
 

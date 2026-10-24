@@ -15,27 +15,27 @@ extension JSONValue:
     ExpressibleByArrayLiteral,
     ExpressibleByDictionaryLiteral
 {
-    init(booleanLiteral value: Bool) {
+    package init(booleanLiteral value: Bool) {
         self = .bool(value)
     }
     
-    init(integerLiteral value: Int) {
+    package init(integerLiteral value: Int) {
         self = .int(value)
     }
     
-    init(floatLiteral value: Double) {
+    package init(floatLiteral value: Double) {
         self = .double(value)
     }
     
-    init(stringLiteral value: String) {
+    package init(stringLiteral value: String) {
         self = .string(value)
     }
     
-    init(arrayLiteral elements: JSONValue...) {
+    package init(arrayLiteral elements: JSONValue...) {
         self = .array(elements)
     }
     
-    init(dictionaryLiteral elements: (String, JSONValue)...) {
+    package init(dictionaryLiteral elements: (String, JSONValue)...) {
         self = .object(Dictionary(elements) { _, last in last })
     }
 }

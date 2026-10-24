@@ -7,7 +7,7 @@
 
 import Foundation
 
-indirect enum JSONValue: Sendable, Codable, Equatable {
+package indirect enum JSONValue: Sendable, Codable, Equatable {
     case null
     case bool(Bool)
     case int(Int)
@@ -17,37 +17,37 @@ indirect enum JSONValue: Sendable, Codable, Equatable {
     case object([String: JSONValue])
     
     // The value of each case, nil for any other case.
-    var objectValue: [String: JSONValue]? {
+    package var objectValue: [String: JSONValue]? {
         guard case let .object(object) = self else { return nil }
         
         return object
     }
     
-    var arrayValue: [JSONValue]? {
+    package var arrayValue: [JSONValue]? {
         guard case let .array(array) = self else { return nil }
         
         return array
     }
     
-    var stringValue: String? {
+    package var stringValue: String? {
         guard case let .string(string) = self else { return nil }
         
         return string
     }
     
-    var intValue: Int? {
+    package var intValue: Int? {
         guard case let .int(number) = self else { return nil }
         
         return number
     }
     
-    var doubleValue: Double? {
+    package var doubleValue: Double? {
         guard case let .double(number) = self else { return nil }
         
         return number
     }
     
-    var boolValue: Bool? {
+    package var boolValue: Bool? {
         guard case let .bool(flag) = self else { return nil }
         
         return flag
@@ -55,11 +55,11 @@ indirect enum JSONValue: Sendable, Codable, Equatable {
     
     // The member under a key of an object, nil for a missing key or any
     // other case.
-    subscript(key: String) -> JSONValue? {
+    package subscript(key: String) -> JSONValue? {
         objectValue?[key]
     }
     
-    init(from decoder: Decoder) throws {
+    package init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         
         if container.decodeNil() {
@@ -112,7 +112,7 @@ indirect enum JSONValue: Sendable, Codable, Equatable {
         )
     }
     
-    func encode(to encoder: Encoder) throws {
+    package func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         
         switch self {
@@ -139,7 +139,7 @@ indirect enum JSONValue: Sendable, Codable, Equatable {
         }
     }
     
-    func numericEqual(_ other: JSONValue) -> Bool {
+    package func numericEqual(_ other: JSONValue) -> Bool {
         switch (self, other) {
         case let (.int(left), .double(right)):
             return Double(left) == right

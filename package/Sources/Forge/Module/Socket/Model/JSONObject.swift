@@ -16,6 +16,10 @@ struct JSONObject: @unchecked Sendable, ExpressibleByDictionaryLiteral {
         self.dict = dict
     }
 
+    init(_ value: JSONValue) {
+        self.dict = value.jsonObject as? [String: Any] ?? [:]
+    }
+
     init(dictionaryLiteral elements: (String, Any)...) {
         var dict: [String: Any] = [:]
 

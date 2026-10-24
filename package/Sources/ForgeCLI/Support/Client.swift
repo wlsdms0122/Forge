@@ -40,7 +40,15 @@ struct Client {
     }
     
     // MARK: - Public
-    func call(_ method: String, _ params: [String: Any] = [:]) -> [String: Any] {
+    func call(_ method: String, _ params: [String: JSONValue] = [:]) -> JSONValue {
+        let result = rawCall(method, JSONValue.object(params).jsonObject as? [String: Any] ?? [:])
+
+        return (try? JSONValue(jsonObject: result)) ?? .object([:])
+    }
+
+    // The call for the commands that read the result as Foundation's JSON
+    // objects.
+    func rawCall(_ method: String, _ params: [String: Any] = [:]) -> [String: Any] {
         switch send(method, params) {
         case .ok(let result):
             return result

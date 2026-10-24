@@ -29,7 +29,7 @@ struct ScheduleEnableCommand: ParsableCommand {
         let client = Client(global, context: "schedule enable")
         
         printResult(
-            client.call("schedule.set_enabled", ["id": id, "enabled": true]),
+            client.rawCall("schedule.set_enabled", ["id": id, "enabled": true]),
             json: json
         )
     }

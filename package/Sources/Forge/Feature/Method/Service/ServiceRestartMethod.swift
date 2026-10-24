@@ -14,7 +14,7 @@ struct ServiceRestartMethod: Sendable {
     // MARK: - Initializer
     // MARK: - Public
     func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONObject {
-        guard let name = request.params["name"] as? String, !name.isEmpty else {
+        guard let name = request.rawParams["name"] as? String, !name.isEmpty else {
             throw ProtocolError("service.restart: 'name' (string) required")
         }
 

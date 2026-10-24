@@ -24,7 +24,7 @@ struct PolicyListCommand: ParsableCommand {
     // MARK: - Public
     func run() throws {
         let client = Client(global, context: "policy list")
-        let result = client.call("policy.list")
+        let result = client.rawCall("policy.list")
         
         if json {
             printJSON(result)

@@ -35,7 +35,7 @@ struct ServiceRunCommand: ParsableCommand {
     func run() throws {
         let client = Client(global, context: "service run")
         
-        printResult(client.call("service.run", ["name": name]), json: json)
+        printResult(client.rawCall("service.run", ["name": name]), json: json)
     }
     
     // MARK: - Private

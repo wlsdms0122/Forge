@@ -76,7 +76,7 @@ struct ServiceSendCommand: ParsableCommand {
             "async": isAsync
         ]
         
-        printResult(client.call("session.send", params), json: json)
+        printResult(client.rawCall("session.send", params), json: json)
         
         ForgeCommand.exit()
     }

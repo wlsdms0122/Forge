@@ -20,7 +20,7 @@ struct ScheduleDeleteMethod: Sendable {
 
     // MARK: - Public
     func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONObject {
-        guard let id = request.params["id"] as? String, !id.isEmpty else {
+        guard let id = request.rawParams["id"] as? String, !id.isEmpty else {
             throw ProtocolError("schedule.delete: 'id' (string) required")
         }
 

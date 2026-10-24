@@ -33,7 +33,7 @@ struct ServiceDescribeCommand: ParsableCommand {
     // MARK: - Public
     func run() throws {
         let client = Client(global, context: "service describe")
-        let result = client.call("session.list")
+        let result = client.rawCall("session.list")
         
         let services = (result["services"] as? [[String: Any]]) ?? []
         

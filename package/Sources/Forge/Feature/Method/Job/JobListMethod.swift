@@ -20,12 +20,12 @@ struct JobListMethod: Sendable {
     func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONObject {
         var jobs = await store.all()
 
-        if let status = request.params["status"] as? String, !status.isEmpty {
+        if let status = request.rawParams["status"] as? String, !status.isEmpty {
             jobs = jobs.filter { job in job.status == status }
         }
 
-        if let key = request.params["origin_key"] as? String, !key.isEmpty,
-            let value = request.params["origin_value"] as? String {
+        if let key = request.rawParams["origin_key"] as? String, !key.isEmpty,
+            let value = request.rawParams["origin_value"] as? String {
             jobs = jobs.filter { job in
                 guard let origin = job.origin?[key], case .string(let string) = origin else {
                     return false

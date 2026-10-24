@@ -44,7 +44,7 @@ struct DispatchService: Sendable {
     
     // MARK: - Private
     private func claims(of request: RPCRequest, access: RPCMethod.Access) throws -> TokenClaims {
-        guard let token = request.params["token"] as? String, !token.isEmpty else {
+        guard let token = request.rawParams["token"] as? String, !token.isEmpty else {
             throw ProtocolError("'token' (string) required — issue one with `forge token issue`")
         }
         

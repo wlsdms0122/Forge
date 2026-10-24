@@ -33,7 +33,7 @@ struct JobDeleteCommand: ParsableCommand {
     func run() throws {
         let client = Client(global, context: "job delete")
         
-        printResult(client.call("job.delete", ["id": id]), json: json)
+        printResult(client.rawCall("job.delete", ["id": id]), json: json)
     }
     
     // MARK: - Private

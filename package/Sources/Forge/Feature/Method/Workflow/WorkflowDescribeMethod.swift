@@ -18,7 +18,7 @@ struct WorkflowDescribeMethod: Sendable {
 
     // MARK: - Public
     func handle(_ request: RPCRequest) async throws -> JSONObject {
-        guard let name = request.params["name"] as? String, !name.isEmpty else {
+        guard let name = request.rawParams["name"] as? String, !name.isEmpty else {
             throw ProtocolError("workflow.describe: 'name' (string) required")
         }
 

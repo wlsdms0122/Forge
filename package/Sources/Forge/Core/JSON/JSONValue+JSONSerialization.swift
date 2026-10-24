@@ -11,13 +11,13 @@ import Foundation
 // and writes: a number is read the way `JSONDecoder` reads its text, so a
 // whole number is an `int`.
 extension JSONValue {
-    init(jsonObject: Any) throws {
+    package init(jsonObject: Any) throws {
         let data = try JSONSerialization.data(withJSONObject: jsonObject, options: [.fragmentsAllowed])
         
         self = try JSONDecoder().decode(JSONValue.self, from: data)
     }
     
-    var jsonObject: Any {
+    package var jsonObject: Any {
         switch self {
         case .null:
             NSNull()

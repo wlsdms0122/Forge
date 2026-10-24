@@ -11,13 +11,18 @@ struct RPCRequest: @unchecked Sendable {
     // MARK: - Property
     let id: String
     let method: String
-    let params: [String: Any]
+    let params: [String: JSONValue]
+
+    // The params as Foundation's JSON objects, for the methods that read
+    // them so.
+    let rawParams: [String: Any]
 
     // MARK: - Initializer
     init(id: String, method: String, params: [String: Any]) {
         self.id = id
         self.method = method
-        self.params = params
+        self.params = (try? JSONValue(jsonObject: params))?.objectValue ?? [:]
+        self.rawParams = params
     }
 
     // MARK: - Public

@@ -48,7 +48,7 @@ struct TokenIssueMethod: Sendable {
     
     func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONObject {
         guard
-            let principal = request.params["principal"] as? String,
+            let principal = request.rawParams["principal"] as? String,
             !principal.isEmpty
         else {
             throw ProtocolError("token.issue: 'principal' (string) required")

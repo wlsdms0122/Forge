@@ -32,7 +32,7 @@ struct ServiceShutdownCommand: ParsableCommand {
     func run() throws {
         let client = Client(global, context: "service shutdown")
         
-        printResult(client.call("service.shutdown", ["name": name]), json: json)
+        printResult(client.rawCall("service.shutdown", ["name": name]), json: json)
     }
     
     // MARK: - Private

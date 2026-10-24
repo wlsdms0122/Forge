@@ -24,7 +24,7 @@ struct WorkflowHealthCommand: ParsableCommand {
     // MARK: - Public
     func run() throws {
         let client = Client(global, context: "workflow health")
-        let result = client.call("workflow.health")
+        let result = client.rawCall("workflow.health")
         
         if json {
             printJSON(result)

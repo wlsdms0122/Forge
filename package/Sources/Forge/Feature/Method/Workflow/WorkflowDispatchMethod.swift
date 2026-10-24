@@ -51,9 +51,9 @@ struct WorkflowDispatchMethod: Sendable {
             workflowID: claims.workflowID,
             context: "workflow.dispatch"
         )
-        let workflow = try await resolveProgram(request.params)
+        let workflow = try await resolveProgram(request.rawParams)
         let inputs = try decodeJSONValueDict(
-            (request.params["inputs"] as? [String: Any]) ?? [:]
+            (request.rawParams["inputs"] as? [String: Any]) ?? [:]
         )
         let workflowID = WorkflowRunner.newRunID()
         let rootID: String?
@@ -71,19 +71,19 @@ struct WorkflowDispatchMethod: Sendable {
             parameters   = record.parameters
             origin      = DispatchOrigin(kind: "workflow", id: record.workflowID)
         } else {
-            let rootField = request.params["root"] as? [String: Any]
+            let rootField = request.rawParams["root"] as? [String: Any]
             rootID      = rootField?["root_id"] as? String
             parentNodeID = rootField?["parent_id"] as? String
             parentRunID  = nil
-            correlator   = request.params["correlator"] as? String
+            correlator   = request.rawParams["correlator"] as? String
 
-            if let parametersObject = request.params["parameters"] as? [String: Any] {
+            if let parametersObject = request.rawParams["parameters"] as? [String: Any] {
                 parameters = try decodeJSONValueDict(parametersObject)
             } else {
                 parameters = nil
             }
 
-            if let originField = request.params["origin"] as? [String: Any],
+            if let originField = request.rawParams["origin"] as? [String: Any],
                 let kind = originField["kind"] as? String {
                 origin = DispatchOrigin(kind: kind, id: originField["id"] as? String)
             } else {
@@ -126,7 +126,7 @@ struct WorkflowDispatchMethod: Sendable {
 
     func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONObject {
         let prepared = try await prepare(request, claims: claims)
-        let isAsync = (request.params["async"] as? Bool) ?? false
+        let isAsync = (request.rawParams["async"] as? Bool) ?? false
         let principal = prepared.principal
         let workflowID = prepared.workflowID
 

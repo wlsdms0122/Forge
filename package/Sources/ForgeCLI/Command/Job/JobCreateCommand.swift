@@ -95,7 +95,7 @@ struct JobCreateCommand: ParsableCommand {
         if let status { params["status"] = status }
         if let id { params["id"] = id }
         
-        printResult(client.call("job.create", params), json: json)
+        printResult(client.rawCall("job.create", params), json: json)
     }
     
     // MARK: - Private

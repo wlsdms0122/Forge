@@ -24,7 +24,7 @@ struct WorkflowListCommand: ParsableCommand {
     // MARK: - Public
     func run() throws {
         let client = Client(global, context: "workflow list")
-        let result = client.call("workflow.list")
+        let result = client.rawCall("workflow.list")
         
         if json {
             printJSON(result)

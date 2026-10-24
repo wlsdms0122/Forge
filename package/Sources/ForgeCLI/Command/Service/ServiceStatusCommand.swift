@@ -30,7 +30,7 @@ struct ServiceStatusCommand: ParsableCommand {
     // MARK: - Public
     func run() throws {
         let client = Client(global, context: "service status")
-        let result = client.call("service.status")
+        let result = client.rawCall("service.status")
         
         if json {
             printJSON(result)

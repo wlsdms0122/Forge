@@ -27,7 +27,7 @@ struct TokenIssueCommand: ParsableCommand {
     // MARK: - Public
     func run() throws {
         let client = Client(global, context: "token issue")
-        let result = client.call("token.issue", ["principal": principal])
+        let result = client.rawCall("token.issue", ["principal": principal])
         
         if json {
             printJSON(result)

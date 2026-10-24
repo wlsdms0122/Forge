@@ -6,6 +6,11 @@
 //
 
 import Foundation
+import Forge
+
+func printJSON(_ value: JSONValue) {
+    printJSON(value.jsonObject as? [String: Any] ?? [:])
+}
 
 func printJSON(_ object: [String: Any]) {
     if

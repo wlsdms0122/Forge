@@ -40,7 +40,7 @@ struct JobListCommand: ParsableCommand {
         if let originValue { params["origin_value"] = originValue }
         if let status { params["status"] = status }
         
-        let result = client.call("job.list", params)
+        let result = client.rawCall("job.list", params)
         
         if json {
             printJSON(result)

@@ -25,7 +25,7 @@ struct JobCreateMethod: Sendable {
 
     // MARK: - Public
     func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONObject {
-        guard let title = request.params["title"] as? String, !title.isEmpty else {
+        guard let title = request.rawParams["title"] as? String, !title.isEmpty else {
             throw ProtocolError("job.create: 'title' (string) required")
         }
 
@@ -33,15 +33,15 @@ struct JobCreateMethod: Sendable {
 
         var origin: [String: JSONValue]?
 
-        if let rawOrigin = request.params["origin"] as? [String: Any] {
+        if let rawOrigin = request.rawParams["origin"] as? [String: Any] {
             origin = try decodeJSONValueDict(rawOrigin)
         }
 
-        let brief = (request.params["brief"] as? String) ?? ""
+        let brief = (request.rawParams["brief"] as? String) ?? ""
 
         var refs: [Job.Ref] = []
 
-        if let rawRefs = request.params["refs"] as? [Any] {
+        if let rawRefs = request.rawParams["refs"] as? [Any] {
             refs = try rawRefs.enumerated().map { index, item in
                 if let string = item as? String { return Job.Ref(ref: string) }
 
@@ -53,13 +53,13 @@ struct JobCreateMethod: Sendable {
 
                 return Job.Ref(ref: ref, note: dictionary["note"] as? String)
             }
-        } else if request.params["refs"] != nil {
+        } else if request.rawParams["refs"] != nil {
             throw ProtocolError("job.create: 'refs' must be a JSON array of {ref,note?} objects or strings")
         }
 
         var planEntries: [Job.Plan.Entry] = []
 
-        if let rawPlan = request.params["plan"] as? [Any] {
+        if let rawPlan = request.rawParams["plan"] as? [Any] {
             for (index, item) in rawPlan.enumerated() {
                 if let string = item as? String {
                     planEntries.append(.auto(desc: string, status: "todo"))
@@ -92,7 +92,7 @@ struct JobCreateMethod: Sendable {
                     planEntries.append(.auto(desc: desc, status: status))
                 }
             }
-        } else if request.params["plan"] != nil {
+        } else if request.rawParams["plan"] != nil {
             throw ProtocolError("job.create: 'plan' must be a JSON array of {id?,desc,status?} objects or strings")
         }
 
@@ -104,19 +104,19 @@ struct JobCreateMethod: Sendable {
             throw ProtocolError("job.create: \(error.message)")
         }
 
-        let parentJob = (request.params["parent_job"] as? String)
+        let parentJob = (request.rawParams["parent_job"] as? String)
             .flatMap { value in value.isEmpty ? nil : value }
 
         if let parentJob, await store.lookup(parentJob) == nil {
             throw ProtocolError("job.create: parent job not found: '\(parentJob)'")
         }
 
-        let status = (request.params["status"] as? String)
+        let status = (request.rawParams["status"] as? String)
             .flatMap { value in value.isEmpty ? nil : value } ?? "open"
 
         let id: String
 
-        if let given = request.params["id"] as? String, !given.isEmpty {
+        if let given = request.rawParams["id"] as? String, !given.isEmpty {
             id = given
         } else {
             id = "j-" + UUID().uuidString.prefix(8).lowercased()

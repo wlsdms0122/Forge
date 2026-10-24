@@ -20,7 +20,7 @@ struct WorkflowCancelMethod: Sendable {
 
     // MARK: - Public
     func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONObject {
-        guard let id = request.params["workflow_id"] as? String, !id.isEmpty else {
+        guard let id = request.rawParams["workflow_id"] as? String, !id.isEmpty else {
             throw ProtocolError("workflow.cancel: 'workflow_id' (string) required")
         }
 

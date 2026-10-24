@@ -48,7 +48,7 @@ struct ScheduleListCommand: ParsableCommand {
     // MARK: - Public
     func run() throws {
         let client = Client(global, context: "schedule list")
-        let result = client.call("schedule.list")
+        let result = client.rawCall("schedule.list")
         
         if json {
             printJSON(result)

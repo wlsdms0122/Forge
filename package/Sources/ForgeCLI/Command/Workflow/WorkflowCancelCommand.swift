@@ -28,7 +28,7 @@ struct WorkflowCancelCommand: ParsableCommand {
     func run() throws {
         let client = Client(global, context: "workflow cancel")
         
-        printResult(client.call("workflow.cancel", ["workflow_id": workflowID]), json: json)
+        printResult(client.rawCall("workflow.cancel", ["workflow_id": workflowID]), json: json)
     }
     
     // MARK: - Private

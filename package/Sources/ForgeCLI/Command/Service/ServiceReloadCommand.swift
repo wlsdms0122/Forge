@@ -30,7 +30,7 @@ struct ServiceReloadCommand: ParsableCommand {
     func run() throws {
         let client = Client(global, context: "service reload")
         
-        printResult(client.call("service.reload"), json: json)
+        printResult(client.rawCall("service.reload"), json: json)
     }
     
     // MARK: - Private

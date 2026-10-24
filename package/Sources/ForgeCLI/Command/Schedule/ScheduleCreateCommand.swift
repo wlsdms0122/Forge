@@ -116,7 +116,7 @@ struct ScheduleCreateCommand: ParsableCommand {
         if let inputs { params["inputs"] = parseJSONObjectArg(inputs, flag: "--inputs") }
         if let concurrency { params["concurrency"] = concurrency }
         
-        printResult(client.call("schedule.create", params), json: json)
+        printResult(client.rawCall("schedule.create", params), json: json)
     }
     
     // MARK: - Private

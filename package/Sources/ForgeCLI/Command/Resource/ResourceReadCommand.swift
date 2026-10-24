@@ -35,7 +35,7 @@ struct ResourceReadCommand: ParsableCommand {
         
         if let maxBytes { params["maximum_bytes"] = maxBytes }
         
-        let result = client.call("resource.read", params)
+        let result = client.rawCall("resource.read", params)
         
         if json {
             printJSON(result)

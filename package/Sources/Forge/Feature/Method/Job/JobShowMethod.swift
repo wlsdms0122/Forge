@@ -58,7 +58,7 @@ struct JobShowMethod: Sendable {
 
     // MARK: - Public
     func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONObject {
-        let id = try requireID(request.params, "job.show")
+        let id = try requireID(request.rawParams, "job.show")
 
         guard let job = await store.lookup(id) else {
             throw ProtocolError("job not found: \(id)")

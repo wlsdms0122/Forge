@@ -20,11 +20,11 @@ struct ScheduleSetEnabledMethod: Sendable {
 
     // MARK: - Public
     func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONObject {
-        guard let id = request.params["id"] as? String else {
+        guard let id = request.rawParams["id"] as? String else {
             throw ProtocolError("schedule.set_enabled: 'id' (string) required")
         }
 
-        guard let enabled = request.params["enabled"] as? Bool else {
+        guard let enabled = request.rawParams["enabled"] as? Bool else {
             throw ProtocolError("schedule.set_enabled: 'enabled' (bool) required")
         }
 

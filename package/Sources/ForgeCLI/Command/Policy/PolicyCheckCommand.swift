@@ -40,7 +40,7 @@ struct PolicyCheckCommand: ParsableCommand {
         let client = Client(global, context: "policy check")
         let params: [String: Any] = ["principal": principal, "workflow": workflow]
         
-        let result = client.call("policy.check", params)
+        let result = client.rawCall("policy.check", params)
         
         if json {
             printJSON(result)

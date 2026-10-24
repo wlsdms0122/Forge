@@ -24,7 +24,7 @@ struct ResourceListCommand: ParsableCommand {
     // MARK: - Public
     func run() throws {
         let client = Client(global, context: "resource list")
-        let result = client.call("resource.list")
+        let result = client.rawCall("resource.list")
         
         if json {
             printJSON(result)

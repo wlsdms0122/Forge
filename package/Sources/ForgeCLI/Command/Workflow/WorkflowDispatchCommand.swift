@@ -139,7 +139,7 @@ struct WorkflowDispatchCommand: ParsableCommand {
             runStream(client, params: params)
         }
         
-        printResult(client.call("workflow.dispatch", params), json: json)
+        printResult(client.rawCall("workflow.dispatch", params), json: json)
         
         ForgeCommand.exit()
     }

@@ -22,7 +22,7 @@ struct SessionHandlerRegisterMethod: Sendable {
         claims: TokenClaims,
         sink: any EventSink
     ) async throws {
-        guard let service = request.params["service"] as? String, !service.isEmpty else {
+        guard let service = request.rawParams["service"] as? String, !service.isEmpty else {
             throw ProtocolError("session.handler.register: 'service' (string) required")
         }
 
@@ -32,7 +32,7 @@ struct SessionHandlerRegisterMethod: Sendable {
             method: "session.handler.register"
         )
 
-        let schemaObject = request.params["schema"] as? [String: Any]
+        let schemaObject = request.rawParams["schema"] as? [String: Any]
         let schema = schemaObject.map { object in JSONObject(object) }
         let handle = await handlerBus.register(service: service, schema: schema, sink: sink)
 

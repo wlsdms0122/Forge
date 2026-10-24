@@ -84,7 +84,7 @@ struct ScheduleCreateMethod: Sendable {
 
     func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONObject {
         let (workflowName, specJSON) = try await resolveDispatchTarget(
-            params: request.params,
+            params: request.rawParams,
             context: "schedule.create",
             workflowStore: workflowStore
         )
@@ -96,10 +96,10 @@ struct ScheduleCreateMethod: Sendable {
             context: "schedule.create"
         )
 
-        let trigger = try Self.parseTrigger(request.params, now: Date())
+        let trigger = try Self.parseTrigger(request.rawParams, now: Date())
         let concurrency: ConcurrencyPolicy
 
-        if let raw = request.params["concurrency"] as? String {
+        if let raw = request.rawParams["concurrency"] as? String {
             guard let policy = ConcurrencyPolicy(rawValue: raw) else {
                 throw ProtocolError("schedule.create: concurrency must be one of queue|skip|replace — '\(raw)'")
             }
@@ -111,7 +111,7 @@ struct ScheduleCreateMethod: Sendable {
 
         let inputs: [String: JSONValue]?
 
-        if let object = request.params["inputs"] as? [String: Any] {
+        if let object = request.rawParams["inputs"] as? [String: Any] {
             inputs = try decodeJSONValueDict(object)
         } else {
             inputs = nil
@@ -119,7 +119,7 @@ struct ScheduleCreateMethod: Sendable {
 
         let scheduleID: String
 
-        if let given = request.params["id"] as? String, !given.isEmpty {
+        if let given = request.rawParams["id"] as? String, !given.isEmpty {
             scheduleID = given
         } else {
             scheduleID = "s-\(Int(Date().timeIntervalSince1970))-"
