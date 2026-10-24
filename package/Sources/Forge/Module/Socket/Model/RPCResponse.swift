@@ -42,7 +42,7 @@ struct RPCResponse: @unchecked Sendable {
             object["result"] = result
 
         case let .error(error):
-            object["error"] = error.dict
+            object["error"] = error.jsonValue.jsonObject
         }
 
         let data = try JSONSerialization.data(

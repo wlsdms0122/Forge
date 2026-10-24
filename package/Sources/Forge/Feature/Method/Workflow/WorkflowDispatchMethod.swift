@@ -177,7 +177,7 @@ struct WorkflowDispatchMethod: Sendable {
                 "status":      "failed",
                 "duration_ms": result.durationMs,
                 "outputs":     jsonValueDictToAny(result.outputs),
-                "error":       failure.object.dict,
+                "error":       failure.object.jsonValue.jsonObject,
             ]
         }
 

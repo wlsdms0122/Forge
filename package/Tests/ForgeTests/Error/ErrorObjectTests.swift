@@ -24,14 +24,18 @@ struct ErrorObjectTests {
         let error = BackendNonzeroExit("exited 2", exitCode: 2, stderr: "err", stdout: "out")
 
         // When
-        let sut = ErrorObject(error).dict
+        let sut = ErrorObject(error).jsonValue
 
         // Then
-        #expect(sut["type"] as? String == "BackendNonzeroExit")
-        #expect(sut["message"] as? String == "exited 2")
-        #expect(sut["exit_code"] as? Int == 2)
-        #expect(sut["stderr"] as? String == "err")
-        #expect(sut["stdout"] as? String == "out")
+        #expect(
+            sut == [
+                "type": "BackendNonzeroExit",
+                "message": "exited 2",
+                "exit_code": 2,
+                "stderr": "err",
+                "stdout": "out"
+            ]
+        )
     }
 
     @Test("An error that is not Forge's is an InternalError with its text")

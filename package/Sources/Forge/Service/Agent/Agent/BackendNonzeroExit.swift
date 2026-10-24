@@ -14,11 +14,11 @@ struct BackendNonzeroExit: BackendError, WorkFailure {
     let stderr: String
     let stdout: String
 
-    var wireDetails: [String: any Sendable] {
+    var wireDetails: [String: JSONValue] {
         [
-            "exit_code": Int(exitCode),
-            "stderr": stderr,
-            "stdout": stdout
+            "exit_code": .int(Int(exitCode)),
+            "stderr": .string(stderr),
+            "stdout": .string(stdout)
         ]
     }
 

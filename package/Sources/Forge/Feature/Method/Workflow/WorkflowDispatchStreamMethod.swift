@@ -118,7 +118,7 @@ struct WorkflowDispatchStreamMethod: Sendable {
                 "workflow_id": prepared.workflowID,
                 "name":        prepared.workflow.name,
                 "status":      "failed",
-                "error":       ErrorObject(error).dict,
+                "error":       ErrorObject(error).jsonValue.jsonObject,
             ]
         }
 

@@ -14,19 +14,20 @@ struct ErrorObject: Sendable {
     // MARK: - Property
     let type: String
     let message: String
-    let details: [String: any Sendable]
+    let details: [String: JSONValue]
 
     // The object the wire carries under `error`.
-    var dict: [String: Any] {
-        var object: [String: Any] = ["type": type, "message": message]
+    var jsonValue: JSONValue {
+        var object: [String: JSONValue] = details
 
-        for (key, value) in details { object[key] = value }
+        object["type"] = .string(type)
+        object["message"] = .string(message)
 
-        return object
+        return .object(object)
     }
 
     // MARK: - Initializer
-    init(type: String, message: String, details: [String: any Sendable]) {
+    init(type: String, message: String, details: [String: JSONValue]) {
         self.type = type
         self.message = message
         self.details = details
