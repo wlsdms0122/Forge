@@ -11,13 +11,13 @@ import WarpYAML
 
 struct WorkflowDescribeMethod: Sendable {
     // MARK: - Property
-    let store: SpecCatalog
+    let store: WorkflowCatalog
     let tokenAuthority: TokenAuthority
 
     private let contract = WorkflowContract()
 
     // MARK: - Initializer
-    init(store: SpecCatalog, tokenAuthority: TokenAuthority) {
+    init(store: WorkflowCatalog, tokenAuthority: TokenAuthority) {
         self.store = store
         self.tokenAuthority = tokenAuthority
     }

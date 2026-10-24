@@ -23,7 +23,7 @@ struct RunAction: Warp.Effect {
                 (name: "workflow_id", value: .string(environment.runID)),
                 (name: "root_id", value: .string(environment.rootID))
             ],
-            named: ForgeSpec.runType
+            named: ForgeVocabulary.runType
         )
     }
 

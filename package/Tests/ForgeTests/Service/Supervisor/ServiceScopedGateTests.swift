@@ -197,10 +197,10 @@ struct ServiceScopedGateTests {
     @Test("Denial wording comes from a single owner across all gates — it does not vary per gate")
     func policyDenialMessageIsUniformAcrossServiceGates() async throws {
         // Given
-        let store = SpecCatalog(directory: nil)
+        let store = WorkflowCatalog(directory: nil)
         let bus = WorkflowEventBus()
         let authority = TokenAuthority()
-        let runner = SpecWorkflowRunner(
+        let runner = WorkflowRunner(
             catalog: store,
             eventBus: bus,
             policyStore: PolicyStore(seed: ["system:other": ["*"]]),

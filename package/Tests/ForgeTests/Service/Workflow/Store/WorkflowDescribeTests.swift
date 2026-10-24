@@ -142,7 +142,7 @@ struct WorkflowDescribeTests {
     
     -> (WorkflowDescribeMethod, TokenAuthority, URL) {
         let directory = try temporary.make(test)
-        let store = SpecCatalog(directory: directory)
+        let store = WorkflowCatalog(directory: directory)
         let authority = TokenAuthority()
         
         return (WorkflowDescribeMethod(store: store, tokenAuthority: authority), authority, directory)

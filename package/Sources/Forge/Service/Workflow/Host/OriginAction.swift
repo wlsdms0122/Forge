@@ -24,7 +24,7 @@ struct OriginAction: Warp.Effect {
                 (name: "kind", value: .string(environment.origin.kind)),
                 (name: Name("id"), value: environment.origin.id.map { id in Value.string(id) } ?? .null)
             ],
-            named: ForgeSpec.originType
+            named: ForgeVocabulary.originType
         )
     }
 

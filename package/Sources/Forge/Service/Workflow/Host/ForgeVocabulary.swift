@@ -1,5 +1,5 @@
 //
-//  ForgeSpec.swift
+//  ForgeVocabulary.swift
 //  Forge
 //
 //  Created by JSilver on 8/9/26.
@@ -11,7 +11,7 @@ import WarpStandard
 import WarpSyntax
 import WarpYAML
 
-enum ForgeSpec {
+enum ForgeVocabulary {
     // MARK: - Property
     // The structs forge's verbs return.
     static let runType: Name = "Forge.Run"
@@ -40,7 +40,7 @@ enum ForgeSpec {
     // as a compile against them reads them, and the native code they bring:
     // they are fixed for its life, so a build of workflows compiles the
     // workflows and links them beside these.
-    private static let vocabulary = Task {
+    private static let built = Task {
         let modules = try linkables()
         let supplying = try Supplying(modules)
         let compiled = try await Builder().compile(modules, against: [], supplying: supplying)
@@ -147,7 +147,7 @@ enum ForgeSpec {
     // compiled beside it, in the order they are handed: against the
     // vocabulary as it was laid down once, where nothing stands beside it.
     static func compiled(_ modules: [Module], beside standing: [Compiled] = []) async throws -> [Compiled] {
-        let vocabulary = try await vocabulary.value
+        let vocabulary = try await built.value
 
         guard !standing.isEmpty else {
             return try await Builder().compile(modules, against: vocabulary.laid)
@@ -158,7 +158,7 @@ enum ForgeSpec {
 
     // The image of compiled workflows linked beside the vocabulary.
     static func linked(_ compiled: [Compiled]) async throws -> Image {
-        let vocabulary = try await vocabulary.value
+        let vocabulary = try await built.value
 
         return try Builder().link(vocabulary.compiled + compiled, supplying: vocabulary.supplying)
     }

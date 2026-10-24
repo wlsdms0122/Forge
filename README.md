@@ -279,7 +279,7 @@ and tears everything down. It is the last gate before a binary ships.
 
 The library is edited in `lib/Forge.yaml`. The binary carries a copy of it,
 `Library.swift`, which `tool/embed-library.sh` writes; run it after an edit.
-`ForgeSpecTests` holds the copy to the file, so an edit that was not
+`ForgeVocabularyTests` holds the copy to the file, so an edit that was not
 embedded is a red test.
 
 ```

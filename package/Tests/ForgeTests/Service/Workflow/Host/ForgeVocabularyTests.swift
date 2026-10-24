@@ -1,5 +1,5 @@
 //
-//  ForgeSpecTests.swift
+//  ForgeVocabularyTests.swift
 //  ForgeTests
 //
 //  Created by JSilver on 10/24/26.
@@ -13,7 +13,7 @@ import WarpYAML
 @testable import Forge
 
 @Suite("Forge's library over the native verbs")
-struct ForgeSpecTests {
+struct ForgeVocabularyTests {
     // MARK: - Property
     // MARK: - Initializer
     // MARK: - Test
@@ -21,7 +21,7 @@ struct ForgeSpecTests {
     func whatShipsIsWhatTheRepositoryHolds() throws {
         // Given
         let file = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()   // Warp
+            .deletingLastPathComponent()   // Host
             .deletingLastPathComponent()   // Workflow
             .deletingLastPathComponent()   // Service
             .deletingLastPathComponent()   // ForgeTests
@@ -44,9 +44,9 @@ struct ForgeSpecTests {
     @Test("each verb of the library is one call of the native of its name, handing its parameters in order, and every native has one")
     func everyVerbCallsItsNative() throws {
         // Given
-        let document = try ForgeSpec.library()
+        let document = try ForgeVocabulary.library()
         let library = try Loader().load(document, identity: try Identity.of(document))
-        let natives = Set(try ForgeSpec.natives().procedures.keys)
+        let natives = Set(try ForgeVocabulary.natives().procedures.keys)
 
         for (name, sut) in library.procedures {
             // When
@@ -76,7 +76,7 @@ struct ForgeSpecTests {
     @Test("the library builds with the natives and the standard vocabulary")
     func theLibraryBuilds() async throws {
         // Given
-        let sut = try ForgeSpec.linkables()
+        let sut = try ForgeVocabulary.linkables()
 
         // When / Then
         _ = try await Builder().build(sut)
@@ -85,7 +85,7 @@ struct ForgeSpecTests {
     @Test("a workflow names a verb by its short name and its arguments by name, and a default fills the rest")
     func aVerbIsCalledByNameWithItsDefaults() async throws {
         // Given
-        let sut = try ForgeSpec.frontend()
+        let sut = try ForgeVocabulary.frontend()
 
         // When
         let document = try sut.document(from: workflowFile("""
@@ -104,13 +104,13 @@ struct ForgeSpecTests {
 
         let module = try Loader().load(document, identity: try Identity.of(document))
 
-        _ = try await Builder().build([module] + ForgeSpec.linkables())
+        _ = try await Builder().build([module] + ForgeVocabulary.linkables())
     }
 
     @Test("a native takes the value the library settles, so null where the library holds a default is refused by the build at that argument")
     func aNativeTakesTheSettledDefault() async throws {
         // Given
-        let document = try ForgeSpec.frontend().document(from: workflowFile("""
+        let document = try ForgeVocabulary.frontend().document(from: workflowFile("""
         returns: String
         failing: [nonzero_exit, timeout]
         result: { call: { procedure: Forge.Native.shell, arguments: [ [ls], null, null, null, null ] } }
@@ -119,7 +119,7 @@ struct ForgeSpecTests {
 
         // When
         let error = await #expect(throws: (any Error).self) {
-            _ = try await Builder().build([module] + ForgeSpec.linkables())
+            _ = try await Builder().build([module] + ForgeVocabulary.linkables())
         }
 
         // Then

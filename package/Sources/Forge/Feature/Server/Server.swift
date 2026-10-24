@@ -11,7 +11,7 @@ package actor Server {
     // MARK: - Property
     let config: ForgeConfig
     let bootedAt: Date
-    let workflowStore: SpecCatalog
+    let workflowStore: WorkflowCatalog
     let scheduleStore: ScheduleStore
     let fireLedger: FireLedger
     let runtimeScheduleDirectory: URL
@@ -21,7 +21,7 @@ package actor Server {
     let workflowEventBus: WorkflowEventBus
     let workflowLogger: WorkflowLogger
     let workflowPool: WorkflowPool
-    let workflowRunner: SpecWorkflowRunner
+    let workflowRunner: WorkflowRunner
     let workflowScheduler: WorkflowScheduler
     let workflowHandlerBus: WorkflowHandlerBus
     let workRegistry: WorkRegistry
@@ -83,7 +83,7 @@ package actor Server {
             postHooks: postHooks,
             errorHooks: errorHooks
         )
-        let workflowStoreLocal = SpecCatalog(directory: config.workflowDirectory)
+        let workflowStoreLocal = WorkflowCatalog(directory: config.workflowDirectory)
         let runtimeScheduleDirectory = config.runtimeDirectory.appendingPathComponent("schedule")
         let scheduleStore = ScheduleStore(
             configDir: config.scheduleDirectory,
@@ -106,7 +106,7 @@ package actor Server {
             maximumConcurrentSteps: config.pool.maximumConcurrentSteps,
             maximumActiveRuns: config.pool.maximumActiveRuns
         )
-        let runnerLocal = SpecWorkflowRunner(
+        let runnerLocal = WorkflowRunner(
             catalog: workflowStoreLocal,
             eventBus: bus,
             policyStore: policyStoreLocal,

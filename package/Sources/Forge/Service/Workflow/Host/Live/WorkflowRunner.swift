@@ -1,5 +1,5 @@
 //
-//  SpecWorkflowRunner.swift
+//  WorkflowRunner.swift
 //  Forge
 //
 //  Created by JSilver on 8/9/26.
@@ -15,9 +15,9 @@ import Warp
 // isolated run, and every entrance (RPC method, scheduler, child step) walks
 // through the same `dispatch(module:...)` door — authz, pool registration,
 // log adoption — before a run begins.
-actor SpecWorkflowRunner {
+actor WorkflowRunner {
     // MARK: - Property
-    let catalog: SpecCatalog
+    let catalog: WorkflowCatalog
     let eventBus: WorkflowEventBus
     let policyStore: PolicyStore
     let pool: WorkflowPool
@@ -30,7 +30,7 @@ actor SpecWorkflowRunner {
 
     // MARK: - Initializer
     init(
-        catalog: SpecCatalog,
+        catalog: WorkflowCatalog,
         eventBus: WorkflowEventBus,
         policyStore: PolicyStore,
         pool: WorkflowPool,
@@ -230,8 +230,8 @@ actor SpecWorkflowRunner {
                 observer: EventBridge(
                     workflowID: runID,
                     workflowName: name,
-                    verbs: try ForgeSpec.verbs(),
-                    natives: Set(try ForgeSpec.natives().procedures.keys),
+                    verbs: try ForgeVocabulary.verbs(),
+                    natives: Set(try ForgeVocabulary.natives().procedures.keys),
                     publish: { event in await eventBus.publish(event) }
                 ),
                 environment: environment
@@ -395,7 +395,7 @@ actor SpecWorkflowRunner {
 // A `dispatch` step lands here — resolved against the daemon catalog (or
 // lowered from the inline body the loader admitted at load time), then walked
 // through the same dispatch door as any RPC caller.
-extension SpecWorkflowRunner: RunDispatching {
+extension WorkflowRunner: RunDispatching {
     func dispatch(name: String, inputs: [String: Warp.Value]) async throws -> Warp.Value {
         let module: Warp.Module
 

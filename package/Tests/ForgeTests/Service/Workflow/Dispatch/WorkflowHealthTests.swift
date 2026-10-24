@@ -90,8 +90,8 @@ struct WorkflowHealthTests {
             to: directory.appendingPathComponent("echo3.yaml"), atomically: true, encoding: .utf8)
         let pool = WorkflowPool(maximumConcurrentSteps: 1, maximumActiveRuns: 1)
 
-        let store = SpecCatalog(directory: directory)
-        let runner = SpecWorkflowRunner(
+        let store = WorkflowCatalog(directory: directory)
+        let runner = WorkflowRunner(
             catalog: store,
             eventBus: WorkflowEventBus(),
             policyStore: PolicyStore(seed: ["*": ["*"]]),

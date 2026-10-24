@@ -74,12 +74,12 @@ struct SchedulerFixture {
         (try? String(contentsOf: marker, encoding: .utf8)) ?? ""
     }
 
-    func catalog(directory: URL?) -> SpecCatalog {
-        SpecCatalog(directory: directory)
+    func catalog(directory: URL?) -> WorkflowCatalog {
+        WorkflowCatalog(directory: directory)
     }
 
-    func runner(catalog: SpecCatalog) -> SpecWorkflowRunner {
-        SpecWorkflowRunner(
+    func runner(catalog: WorkflowCatalog) -> WorkflowRunner {
+        WorkflowRunner(
             catalog: catalog,
             eventBus: WorkflowEventBus(),
             policyStore: PolicyStore(seed: ["*": ["*"]]),

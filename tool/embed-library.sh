@@ -3,14 +3,14 @@
 # grammar a workflow leans on arrives with the binary rather than off a disk
 # the daemon may not have.
 #
-# The document is the source; this is a copy of it. `ForgeSpecTests` holds
+# The document is the source; this is a copy of it. `ForgeVocabularyTests` holds
 # the two to being the same text, so a library edited without running this
 # is a red test.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 library="$root/lib/Forge.yaml"
-written="$root/package/Sources/Forge/Service/Workflow/Warp/Library.swift"
+written="$root/package/Sources/Forge/Service/Workflow/Host/Library.swift"
 
 {
     echo "//"

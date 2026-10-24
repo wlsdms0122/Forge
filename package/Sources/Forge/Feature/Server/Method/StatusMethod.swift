@@ -14,7 +14,7 @@ struct DaemonStatusMethod: Sendable {
     let runtimeDirectory: URL
     let bootedAt: Date
     let configSnapshot: ConfigSnapshot
-    let workflowStore: SpecCatalog
+    let workflowStore: WorkflowCatalog
     let scheduleStore: ScheduleStore
     let jobStore: JobStore
     let supervisor: ServiceSupervisor

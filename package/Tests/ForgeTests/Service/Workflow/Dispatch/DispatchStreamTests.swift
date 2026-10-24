@@ -198,11 +198,11 @@ struct DispatchStreamTests {
     @Test("Async dispatch marks the run as async")
     func asyncDispatchMarksRunAsync() async throws {
         // Given
-        let store = SpecCatalog(directory: nil)
+        let store = WorkflowCatalog(directory: nil)
         let bus = WorkflowEventBus()
         let authority = TokenAuthority()
         let registry = WorkRegistry()
-        let runner = SpecWorkflowRunner(
+        let runner = WorkflowRunner(
             catalog: store,
             eventBus: bus,
             policyStore: PolicyStore(seed: ["*": ["*"]]),
@@ -266,14 +266,14 @@ struct DispatchStreamTests {
     @Test("The terminal event preserves the failure type instead of flattening it")
     func streamTerminalPreservesFailureType() async throws {
         // Given
-        let store = SpecCatalog(directory: nil)
+        let store = WorkflowCatalog(directory: nil)
         let bus = WorkflowEventBus()
         let pool = WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: 1)
         try await pool.register(workflowID: "occupier", workflowName: "other", rootID: "occupier",
             origin: .manual, principal: "t")
         let authority = TokenAuthority()
         let registry = WorkRegistry()
-        let runner = SpecWorkflowRunner(
+        let runner = WorkflowRunner(
             catalog: store,
             eventBus: bus,
             policyStore: PolicyStore(seed: ["*": ["*"]]),
@@ -312,11 +312,11 @@ struct DispatchStreamTests {
     -> (WorkflowDispatchStreamMethod, TokenAuthority, WorkflowEventBus)
 
     {
-        let store = SpecCatalog(directory: nil)
+        let store = WorkflowCatalog(directory: nil)
         let bus = WorkflowEventBus()
         let authority = TokenAuthority()
         let registry = WorkRegistry()
-        let runner = SpecWorkflowRunner(
+        let runner = WorkflowRunner(
             catalog: store,
             eventBus: bus,
             policyStore: PolicyStore(seed: policySeed),

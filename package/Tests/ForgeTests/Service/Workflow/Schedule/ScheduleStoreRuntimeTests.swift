@@ -378,7 +378,7 @@ struct ScheduleStoreRuntimeTests {
         }
         
         #expect(object == ["body": .array([])], "an inline spec is one procedure, which the notation names nowhere")
-        _ = try await SpecCatalog(directory: nil).inline(.object(object))
+        _ = try await WorkflowCatalog(directory: nil).inline(.object(object))
     }
 
     @Test("A broken file and an id collision both surface as failures, and the collided id is excluded on both sides")

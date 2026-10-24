@@ -210,10 +210,10 @@ struct LiveAgentTests {
     }
 }
 
-// MARK: - SpecWorkflowRunner
+// MARK: - WorkflowRunner
 
-@Suite("SpecWorkflowRunner Tests")
-struct SpecWorkflowRunnerTests {
+@Suite("WorkflowRunner Tests")
+struct WorkflowRunnerTests {
     // MARK: - Property
     private let temporary = TemporaryDirectory("spec-runner")
 
@@ -624,8 +624,8 @@ struct SpecWorkflowRunnerTests {
     // MARK: - Private
     private struct Harness {
         // MARK: - Property
-        let runner: SpecWorkflowRunner
-        let store: SpecCatalog
+        let runner: WorkflowRunner
+        let store: WorkflowCatalog
         let eventBus: WorkflowEventBus
         let pool: WorkflowPool
 
@@ -667,11 +667,11 @@ struct SpecWorkflowRunnerTests {
             )
         }
 
-        let store = SpecCatalog(directory: directory)
+        let store = WorkflowCatalog(directory: directory)
         let eventBus = WorkflowEventBus()
         let poolLocal = pool
             ?? WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: Int.max)
-        let runner = SpecWorkflowRunner(
+        let runner = WorkflowRunner(
             catalog: store,
             eventBus: eventBus,
             policyStore: PolicyStore(seed: policy),

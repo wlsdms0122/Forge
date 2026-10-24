@@ -26,7 +26,7 @@ struct DocumentTests {
     // MARK: - Test
     @Test("every verb the Forge library declares has a section")
     func everyWordIsDocumented() throws {
-        let missing = Set(try ForgeSpec.verbs().map(\.spelling))
+        let missing = Set(try ForgeVocabulary.verbs().map(\.spelling))
             .subtracting(document.sections)
             .sorted()
 
@@ -35,7 +35,7 @@ struct DocumentTests {
 
     @Test("every verb the reference documents is one the Forge library declares")
     func everyDocumentedWordExists() throws {
-        let declared = Set(try ForgeSpec.verbs().map(\.spelling))
+        let declared = Set(try ForgeVocabulary.verbs().map(\.spelling))
         let phantom = document.sections.subtracting(declared).sorted()
 
         #expect(phantom.isEmpty, "Spec.md documents verbs the Forge library does not declare: \(phantom)")
@@ -107,14 +107,14 @@ struct DocumentTests {
     // on top of the language, one procedure per file, so an example the daemon
     // would refuse cannot pass here.
     private static func image(of written: String) async throws -> (Image, Name) {
-        let document = try ForgeSpec.frontend().document(from: written)
+        let document = try ForgeVocabulary.frontend().document(from: written)
         let module = try Loader().load(document, identity: try Identity.of(document))
 
         guard module.procedures.count == 1, let name = module.procedures.keys.first else {
             throw ExecutionError("a complete workflow in Spec.md declares one procedure")
         }
 
-        return (try await Builder().build([module] + ForgeSpec.linkables()), name)
+        return (try await Builder().build([module] + ForgeVocabulary.linkables()), name)
     }
 
     // A verb's signature as the library writes it: each parameter's name and

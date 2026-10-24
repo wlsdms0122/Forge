@@ -33,15 +33,15 @@ struct WorkflowDispatchMethod: Sendable {
     // MARK: - Property
     static let inlineSigil = "<inline>"
 
-    let runner: SpecWorkflowRunner
-    let store: SpecCatalog
+    let runner: WorkflowRunner
+    let store: WorkflowCatalog
     let workRegistry: WorkRegistry
     let tokenAuthority: TokenAuthority
 
     // MARK: - Initializer
     init(
-        runner: SpecWorkflowRunner,
-        store: SpecCatalog,
+        runner: WorkflowRunner,
+        store: WorkflowCatalog,
         workRegistry: WorkRegistry,
         tokenAuthority: TokenAuthority
     ) {
@@ -63,7 +63,7 @@ struct WorkflowDispatchMethod: Sendable {
         let inputs = try decodeJSONValueDict(
             (request.params["inputs"] as? [String: Any]) ?? [:]
         )
-        let workflowID = SpecWorkflowRunner.newRunID()
+        let workflowID = WorkflowRunner.newRunID()
         let rootID: String?
         let parentNodeID: String?
         let parentRunID: String?

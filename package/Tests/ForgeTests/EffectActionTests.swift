@@ -182,7 +182,7 @@ private struct Harness {
     let recorder = Recorder()
 
     var frontend: YAMLFrontend {
-        get throws { try ForgeSpec.frontend() }
+        get throws { try ForgeVocabulary.frontend() }
     }
 
     // MARK: - Initializer
@@ -521,7 +521,7 @@ struct EffectActionTests {
     @Test("an invalid inline spec is refused when it is read, before it runs")
     func inlineRejectsWhenSpecIsMalformed() async throws {
         // Given — the inline door reads one procedure in the YAML notation
-        let store = SpecCatalog(directory: nil)
+        let store = WorkflowCatalog(directory: nil)
         let spec = JSONValue.object(["returns": .string("String"), "result": .string("ok"), "fallbck": .string("typo")])
 
         // When / Then
@@ -545,7 +545,7 @@ struct EffectActionTests {
         returns: String
         result: { format: "said ${word}", with: { word: { ref: word } } }
         """, named: "said").write(to: directory.appendingPathComponent("said.yaml"), atomically: true, encoding: .utf8)
-        let store = SpecCatalog(directory: directory)
+        let store = WorkflowCatalog(directory: directory)
         let spec = ValueBridge.json(try YAMLParser().parse("""
         returns: "Dictionary<String, Any>"
         failing: [nonzero_exit, timeout]
@@ -705,7 +705,7 @@ struct EffectActionTests {
             encoding: .utf8
         )
 
-        let store = SpecCatalog(directory: directory)
+        let store = WorkflowCatalog(directory: directory)
         let caller = try harness.frontend.workflow("""
         returns: "Dictionary<String, Any>"
         body:
@@ -754,8 +754,8 @@ struct EffectActionTests {
         let bridge = EventBridge(
             workflowID: "wf-test",
             workflowName: "observed",
-            verbs: try ForgeSpec.verbs(),
-            natives: Set(try ForgeSpec.natives().procedures.keys)
+            verbs: try ForgeVocabulary.verbs(),
+            natives: Set(try ForgeVocabulary.natives().procedures.keys)
         ) { event in
             await collected.append(event)
         }

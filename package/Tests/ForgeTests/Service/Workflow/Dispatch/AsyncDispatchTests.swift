@@ -74,7 +74,7 @@ struct AsyncDispatchTests {
             ],
         ]
         // The library is read once a process; what is timed is the dispatch.
-        _ = try ForgeSpec.frontend()
+        _ = try ForgeVocabulary.frontend()
         let startedAt = ContinuousClock.now
         let result = try await method.handle(RPCRequest(
                 id: "r-async",
@@ -102,10 +102,10 @@ struct AsyncDispatchTests {
     }
 
     private func makeMethod(policy: [String: [String]]) throws -> (WorkflowDispatchMethod, TokenAuthority) {
-        let store = SpecCatalog(directory: nil)
+        let store = WorkflowCatalog(directory: nil)
         let bus = WorkflowEventBus()
         let authority = TokenAuthority()
-        let runner = SpecWorkflowRunner(catalog: store,
+        let runner = WorkflowRunner(catalog: store,
             eventBus: bus,
             policyStore: PolicyStore(seed: policy),
             pool: WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: Int.max),

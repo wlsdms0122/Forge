@@ -29,7 +29,7 @@ package enum WorkflowLint {
             }
         }
 
-        let catalog = await SpecCatalog(directory: nil).catalog(of: read.map(\.path))
+        let catalog = await WorkflowCatalog(directory: nil).catalog(of: read.map(\.path))
         let refusals = Dictionary(
             catalog.failures.map { failure in (failure.path, failure.reason) },
             uniquingKeysWith: { first, _ in first }

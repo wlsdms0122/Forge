@@ -30,7 +30,7 @@ struct CreatePolicyGateTests {
         let authority = TokenAuthority()
         let method = ScheduleCreateMethod(
             store: ScheduleStore(configDir: nil, runtimeDirectory: directory, stateFile: FileManager.default.temporaryDirectory.appendingPathComponent("forge-sched-enabled-\(UUID().uuidString.prefix(6)).json")),
-            workflowStore: SpecCatalog(directory: nil),
+            workflowStore: WorkflowCatalog(directory: nil),
             policyStore: PolicyStore(seed: ["cli:response": ["<inline>"]]),
             tokenAuthority: authority)
         let token = authority.mint(TokenClaims(principal: "cli:response"))
@@ -51,7 +51,7 @@ struct CreatePolicyGateTests {
         let store = ScheduleStore(configDir: nil, runtimeDirectory: directory, stateFile: FileManager.default.temporaryDirectory.appendingPathComponent("forge-sched-enabled-\(UUID().uuidString.prefix(6)).json"))
         let method = ScheduleCreateMethod(
             store: store,
-            workflowStore: SpecCatalog(directory: nil),
+            workflowStore: WorkflowCatalog(directory: nil),
             policyStore: PolicyStore(seed: ["cli:response": ["worker"]]),
             tokenAuthority: authority)
         let token = authority.mint(TokenClaims(principal: "cli:<inline>"))
@@ -80,7 +80,7 @@ struct CreatePolicyGateTests {
         let store = ScheduleStore(configDir: nil, runtimeDirectory: directory, stateFile: FileManager.default.temporaryDirectory.appendingPathComponent("forge-sched-enabled-\(UUID().uuidString.prefix(6)).json"))
         let method = ScheduleCreateMethod(
             store: store,
-            workflowStore: SpecCatalog(directory: nil),
+            workflowStore: WorkflowCatalog(directory: nil),
             policyStore: PolicyStore(seed: ["system:*": ["*"]]),
             tokenAuthority: authority)
         let token = authority.mint(TokenClaims(principal: "cli:response"))
@@ -107,7 +107,7 @@ struct CreatePolicyGateTests {
         let authority = TokenAuthority()
         let method = ScheduleCreateMethod(
             store: ScheduleStore(configDir: nil, runtimeDirectory: directory, stateFile: FileManager.default.temporaryDirectory.appendingPathComponent("forge-sched-enabled-\(UUID().uuidString.prefix(6)).json")),
-            workflowStore: SpecCatalog(directory: nil),
+            workflowStore: WorkflowCatalog(directory: nil),
             policyStore: PolicyStore(seed: ["cli:*": ["<inline>"]]),
             tokenAuthority: authority)
         let token = authority.mint(TokenClaims(principal: "cli:response"))

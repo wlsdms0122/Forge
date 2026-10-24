@@ -82,7 +82,7 @@ struct StoreScanCompletenessTests {
         #expect(!scan.isComplete)
     }
     
-    // MARK: - SpecCatalog
+    // MARK: - WorkflowCatalog
     @Test("A partial scan neither wipes the cache nor claims absence")
     func partialScanNeitherWipesTheCacheNorClaimsAbsence() async throws {
         // Given
@@ -99,7 +99,7 @@ struct StoreScanCompletenessTests {
             try? FileManager.default.removeItem(at: directory)
         }
         
-        let store = SpecCatalog(directory: directory)
+        let store = WorkflowCatalog(directory: directory)
         guard case .found = await store.resolve("shadowed") else {
 
         // Then
@@ -152,7 +152,7 @@ struct StoreScanCompletenessTests {
             try? FileManager.default.removeItem(at: directory)
         }
         
-        let store = SpecCatalog(directory: directory)
+        let store = WorkflowCatalog(directory: directory)
         guard case .found = await store.resolve("deleted-later") else {
 
         // Then
@@ -192,7 +192,7 @@ struct StoreScanCompletenessTests {
             try? FileManager.default.removeItem(at: directory)
         }
         
-        let store = SpecCatalog(directory: directory)
+        let store = WorkflowCatalog(directory: directory)
         guard case .invalid = await store.resolve("dup") else {
 
         // Then
@@ -220,7 +220,7 @@ struct StoreScanCompletenessTests {
             try? FileManager.default.removeItem(at: directory)
         }
         
-        let store = SpecCatalog(directory: directory)
+        let store = WorkflowCatalog(directory: directory)
         guard case .found = await store.resolve("ghost") else {
 
         // Then
@@ -247,7 +247,7 @@ struct StoreScanCompletenessTests {
         let directory = try temporary.make("store-complete")
         defer { try? FileManager.default.removeItem(at: directory) }
         try writeWorkflow(named: "a", in: directory)
-        let store = SpecCatalog(directory: directory)
+        let store = WorkflowCatalog(directory: directory)
         guard case .missing = await store.resolve("nope") else {
 
         // Then

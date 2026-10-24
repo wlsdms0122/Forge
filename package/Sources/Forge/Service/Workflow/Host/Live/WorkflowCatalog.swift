@@ -1,5 +1,5 @@
 //
-//  SpecCatalog.swift
+//  WorkflowCatalog.swift
 //  Forge
 //
 //  Created by JSilver on 8/9/26.
@@ -16,7 +16,7 @@ import WarpYAML
 // built against what builds; a file that does not is a failure, and the
 // entries are the files that built. Identity is the file basename, and the
 // file declares one procedure under it.
-actor SpecCatalog {
+actor WorkflowCatalog {
     struct Catalog: Sendable {
         // MARK: - Property
         let entries: [(name: String, module: Warp.Module, source: String, documentation: Documentation)]
@@ -185,7 +185,7 @@ actor SpecCatalog {
         // The caller wrote an object and no text, so a refusal names its
         // place in the document and not a line of the text written here.
         do {
-            document = try (reading ?? ForgeSpec.frontend()).document(from: text)
+            document = try (reading ?? ForgeVocabulary.frontend()).document(from: text)
         } catch let refusal as AuthoringError {
             throw refusal.refusal
         }
@@ -213,7 +213,7 @@ actor SpecCatalog {
             .filter { file in files[file.name]?.module.procedures[entry] == nil }
             .map(\.compiled)
 
-        return try await ForgeSpec.linked(world + ForgeSpec.compiled([module], beside: world))
+        return try await ForgeVocabulary.linked(world + ForgeVocabulary.compiled([module], beside: world))
     }
 
     func resolve(_ name: String) async -> Lookup {
@@ -363,7 +363,7 @@ actor SpecCatalog {
             let leaning: (frontend: YAMLFrontend, refusals: [Int: any Error])
 
             do {
-                leaning = try ForgeSpec.frontend(leaningOn: texts.map(\.text))
+                leaning = try ForgeVocabulary.frontend(leaningOn: texts.map(\.text))
             } catch {
                 for (file, _) in texts {
                     record(file, refusal: "\(error)", in: &ledger)
@@ -457,7 +457,7 @@ actor SpecCatalog {
             )
         }
 
-        if let refusal = ForgeSpec.refusal(calling: name, declaredIn: text) {
+        if let refusal = ForgeVocabulary.refusal(calling: name, declaredIn: text) {
             return (
                 "a workflow is called by its name, and another workflow writing '\(base)' is refused: \(refusal)",
                 "workflow named like the vocabulary"
@@ -480,8 +480,8 @@ actor SpecCatalog {
         var pending = live.values.sorted { left, right in left.name < right.name }
 
         if
-            let together = try? await ForgeSpec.compiled(pending.map(\.module)),
-            let image = try? await ForgeSpec.linked(together)
+            let together = try? await ForgeVocabulary.compiled(pending.map(\.module)),
+            let image = try? await ForgeVocabulary.linked(together)
         {
             return (live, zip(pending, together).map { entry, object in (entry.name, object) }, image)
         }
@@ -497,9 +497,9 @@ actor SpecCatalog {
 
             for entry in pending {
                 do {
-                    let own = try await ForgeSpec.compiled([entry.module], beside: compiled.map(\.compiled))
+                    let own = try await ForgeVocabulary.compiled([entry.module], beside: compiled.map(\.compiled))
 
-                    image = try await ForgeSpec.linked(compiled.map(\.compiled) + own)
+                    image = try await ForgeVocabulary.linked(compiled.map(\.compiled) + own)
                     standing[entry.name] = entry
                     compiled += own.map { object in (entry.name, object) }
                     admitted = true
@@ -539,7 +539,7 @@ actor SpecCatalog {
 // and which one runs is the entry name. The corpus is read and built at a
 // reload rather than on demand, so a duplicate symbol is refused there and
 // not when someone happens to call it.
-extension SpecCatalog {
+extension WorkflowCatalog {
     func module(named name: String) async throws -> Warp.Module {
         switch await resolve(name) {
         case let .found(module):

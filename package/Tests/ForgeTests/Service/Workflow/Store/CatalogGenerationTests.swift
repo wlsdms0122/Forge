@@ -26,14 +26,14 @@ struct CatalogGenerationTests {
     
     // MARK: - Initializer
     // MARK: - Test
-    // MARK: - SpecCatalog
+    // MARK: - WorkflowCatalog
     @Test("A repaired definition cannot vanish from the catalog")
     func repairedDefinitionCannotVanishFromTheCatalog() async throws {
         // Given
         let directory = try temporary.make("wf-repair")
         defer { try? FileManager.default.removeItem(at: directory) }
         try writeWorkflow(brokenBody, named: "mender", in: directory)
-        let store = SpecCatalog(directory: directory)
+        let store = WorkflowCatalog(directory: directory)
 
         // When
         var catalog = await store.catalog()
@@ -57,7 +57,7 @@ struct CatalogGenerationTests {
         // When
         try writeWorkflow(validBody, named: "ok", in: directory)
         try writeWorkflow(brokenBody, named: "bad", in: directory)
-        let catalog = await SpecCatalog(directory: directory).catalog()
+        let catalog = await WorkflowCatalog(directory: directory).catalog()
         try assertAccountedForExactlyOnce(catalog, in: directory)
 
         // Then
@@ -74,7 +74,7 @@ struct CatalogGenerationTests {
         try writeWorkflow("""
         result: { call: { procedure: Nowhere.missing, arguments: [] } }
         """, named: "unbuilt", in: directory)
-        let sut = SpecCatalog(directory: directory)
+        let sut = WorkflowCatalog(directory: directory)
 
         // When
         let catalog = await sut.catalog()
@@ -90,7 +90,7 @@ struct CatalogGenerationTests {
             return
         }
 
-        _ = try await Builder().build(await sut.modules() + ForgeSpec.linkables())
+        _ = try await Builder().build(await sut.modules() + ForgeVocabulary.linkables())
     }
 
     @Test("Workflows lean on each other: one calls another by its short name and its arguments by name")
@@ -107,7 +107,7 @@ struct CatalogGenerationTests {
         returns: Int
         result: { of: { ref: base }, times: { ref: by } }
         """, named: "scaled", in: directory)
-        let sut = SpecCatalog(directory: directory)
+        let sut = WorkflowCatalog(directory: directory)
 
         // When
         let catalog = await sut.catalog()
@@ -116,7 +116,7 @@ struct CatalogGenerationTests {
         #expect(catalog.failures.isEmpty)
         #expect(catalog.entries.map(\.name) == ["caller", "scaled"])
 
-        let image = try await Builder().build(await sut.modules() + ForgeSpec.linkables())
+        let image = try await Builder().build(await sut.modules() + ForgeVocabulary.linkables())
         let answer = try await Warp.Executor().run(image, entry: try Name("caller"), arguments: [:])
 
         #expect(answer == .int(42))
@@ -143,7 +143,7 @@ struct CatalogGenerationTests {
         returns: Int
         result: { call: { procedure: count, arguments: [ [1, 2, 3] ] } }
         """, named: "sized", in: directory)
-        let sut = SpecCatalog(directory: directory)
+        let sut = WorkflowCatalog(directory: directory)
 
         // When
         let catalog = await sut.catalog()
@@ -173,7 +173,7 @@ struct CatalogGenerationTests {
         }
 
         // When
-        let catalog = await SpecCatalog(directory: directory).catalog()
+        let catalog = await WorkflowCatalog(directory: directory).catalog()
 
         // Then
         #expect(catalog.entries.map(\.name) == ["visible"])
@@ -230,7 +230,7 @@ struct CatalogGenerationTests {
     }
     
     private func assertAccountedForExactlyOnce(
-        _ catalog: SpecCatalog.Catalog, in directory: URL,
+        _ catalog: WorkflowCatalog.Catalog, in directory: URL,
         file: StaticString = #filePath, line: UInt = #line
     ) throws {
         let onDisk = Set(try FileManager.default.contentsOfDirectory(atPath: directory.path)
