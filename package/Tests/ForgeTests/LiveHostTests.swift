@@ -277,7 +277,7 @@ struct SpecWorkflowRunnerTests {
             failing: [nonzero_exit, timeout]
             body:
               - let: say
-                value: { call: { procedure: Forge.shell, arguments: [ ["/bin/echo", "ok"], null, null, null, null, null ] } }
+                value: { call: { procedure: Forge.shell, arguments: [ ["/bin/echo", "ok"], null, null, null, null ] } }
             result: { dictionary: [ [out, { ref: say }] ] }
             """
         ])
@@ -537,7 +537,7 @@ struct SpecWorkflowRunnerTests {
             "slow": """
             failing: [nonzero_exit, timeout]
             body:
-              - value: { call: { procedure: Forge.shell, arguments: [ ["/bin/sleep", "10"], null, null, null, null, null ] } }
+              - value: { call: { procedure: Forge.shell, arguments: [ ["/bin/sleep", "10"], null, null, null, null ] } }
             """
         ])
         let module = try await harness.store.module(named: "slow")
@@ -615,8 +615,8 @@ struct SpecWorkflowRunnerTests {
                         procedure: Standard.Concurrent.allKeyed
                         arguments:
                           - dictionary:
-                              - [a, { closure: { isolated: true, failing: [nonzero_exit, timeout], returns: Any, result: { call: { procedure: Forge.shell, arguments: [ ["/bin/sleep", "0.2"], null, null, null, null, null ] } } } }]
-                              - [b, { closure: { isolated: true, failing: [nonzero_exit, timeout], returns: Any, result: { call: { procedure: Forge.shell, arguments: [ ["/bin/sleep", "0.2"], null, null, null, null, null ] } } } }]
+                              - [a, { closure: { isolated: true, failing: [nonzero_exit, timeout], returns: Any, result: { call: { procedure: Forge.shell, arguments: [ ["/bin/sleep", "0.2"], null, null, null, null ] } } } }]
+                              - [b, { closure: { isolated: true, failing: [nonzero_exit, timeout], returns: Any, result: { call: { procedure: Forge.shell, arguments: [ ["/bin/sleep", "0.2"], null, null, null, null ] } } } }]
                 """
             ],
             pool: WorkflowPool(maximumConcurrentSteps: 1, maximumActiveRuns: Int.max)

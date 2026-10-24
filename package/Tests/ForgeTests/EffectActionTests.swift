@@ -227,7 +227,6 @@ struct EffectActionTests {
                   - null
                   - { ref: who }
                   - null
-                  - null
         result: { dictionary: [ [result, { ref: echo }] ] }
         """)
         let sut = harness.executor(
@@ -256,7 +255,7 @@ struct EffectActionTests {
             value:
               attempt:
                 body:
-                  - value: { call: { procedure: Forge.shell, arguments: [ [ "false" ], null, null, null, null, null ] } }
+                  - value: { call: { procedure: Forge.shell, arguments: [ [ "false" ], null, null, null, null ] } }
                 rescue:
                   - set: broken
                     value: recovered
@@ -273,28 +272,24 @@ struct EffectActionTests {
         #expect(outputs["result"] == .string("recovered"))
     }
 
-    @Test("when shell declares outputs, values are extracted from stdout")
-    func outputsExtractWhenShellDeclaresThem() async throws {
+    @Test("extract reads named values out of a shell step's text")
+    func extractReadsValuesOutOfShellText() async throws {
         // Given
         let harness = Harness()
         let spec = try harness.frontend.workflow("""
         returns: "Dictionary<String, Any>"
-        failing: [nonzero_exit, timeout, cast_refused]
+        failing: [nonzero_exit, timeout]
         body:
           - let: probe
+            value: { call: { procedure: Forge.shell, arguments: [ [ probe ], null, null, null, null ] } }
+          - let: fields
             value:
               call:
-                procedure: Forge.shell
+                procedure: Forge.extract
                 arguments:
-                  - [ probe ]
-                  - null
-                  - null
-                  - null
+                  - { ref: probe }
                   - { dictionary: [ [code, { dictionary: [ [regex, "code=(\\\\d+)"], [type, int] ] }] ] }
-                  - null
-          - let: fields
-            value: { as: { of: { ref: probe }, type: "Dictionary<String, Any>" } }
-        result: { dictionary: [ [result, { ref: 'fields["code"]' }] ] }
+        result: { dictionary: [ [result, { ref: 'fields["code"]' }], [raw, { ref: 'fields["_raw"]' }] ] }
         """)
         let sut = harness.executor(
             shell: MockShell(recorder: harness.recorder, stdout: "code=42")
@@ -305,6 +300,7 @@ struct EffectActionTests {
 
         // Then
         #expect(outputs["result"] == .int(42))
+        #expect(outputs["raw"] == .string("code=42"))
     }
 
     @Test("when shell exceeds its timeout, rescue recovers it")
@@ -321,7 +317,7 @@ struct EffectActionTests {
             value:
               attempt:
                 body:
-                  - value: { call: { procedure: Forge.shell, arguments: [ [ sleepy ], null, null, null, null, 0.05 ] } }
+                  - value: { call: { procedure: Forge.shell, arguments: [ [ sleepy ], null, null, null, 0.05 ] } }
                 rescue:
                   - set: slow
                     value: recovered
@@ -526,7 +522,7 @@ struct EffectActionTests {
             value:
               attempt:
                 body:
-                  - value: { call: { procedure: Forge.shell, arguments: [ [ fail-tool ], null, null, null, null, null ] } }
+                  - value: { call: { procedure: Forge.shell, arguments: [ [ fail-tool ], null, null, null, null ] } }
                 rescue:
                   - set: kind
                     value: { ref: risky.type }
@@ -612,7 +608,7 @@ struct EffectActionTests {
               attempt:
                 body:
                   - let: broken
-                    value: { call: { procedure: Forge.shell, arguments: [ [ broken ], null, null, null, null, null ] } }
+                    value: { call: { procedure: Forge.shell, arguments: [ [ broken ], null, null, null, null ] } }
                 rescue:
                   - set: recovered
                     value: recovered

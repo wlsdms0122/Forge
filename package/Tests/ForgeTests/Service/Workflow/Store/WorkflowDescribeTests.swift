@@ -26,7 +26,7 @@ struct WorkflowDescribeTests {
         failing: [nonzero_exit, timeout]
         body:
           - let: x
-            value: { call: { procedure: Forge.shell, arguments: [ ["/bin/echo", { ref: msg }], null, null, null, null, null ] } }
+            value: { call: { procedure: Forge.shell, arguments: [ ["/bin/echo", { ref: msg }], null, null, null, null ] } }
         returns: "Dictionary<String, Any>"
         result: { dictionary: [ [v, { ref: x }] ] }
         """#, named: "echo").write(to: directory.appendingPathComponent("echo.yaml"),
@@ -57,7 +57,7 @@ struct WorkflowDescribeTests {
         failing: [nonzero_exit, timeout]
         body:
           - let: x
-            value: { call: { procedure: Forge.shell, arguments: [ ["/bin/true"], null, null, null, null, null ] } }
+            value: { call: { procedure: Forge.shell, arguments: [ ["/bin/true"], null, null, null, null ] } }
         """#, named: "noop").write(to: directory.appendingPathComponent("noop.yaml"),
             atomically: true, encoding: .utf8)
         let token = authority.mint(TokenClaims(principal: "system:admin"))

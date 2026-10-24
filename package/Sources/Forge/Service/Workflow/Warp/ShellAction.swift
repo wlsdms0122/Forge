@@ -14,7 +14,6 @@ struct ShellAction: Warp.Effect {
         case cwd
         case env
         case stdin
-        case outputs
         case timeout
 
         // MARK: - Property
@@ -31,9 +30,6 @@ struct ShellAction: Warp.Effect {
 
             case .stdin:
                 Parameter(name: "stdin", type: .optional(.string))
-
-            case .outputs:
-                Parameter(name: "outputs", type: .optional(.dictionary(key: .string, value: .any)))
 
             case .timeout:
                 Parameter(name: "timeout", type: .optional(.double))
@@ -57,10 +53,6 @@ struct ShellAction: Warp.Effect {
 
         let arguments = command.map(ValueBridge.text)
         let env = try ValueBridge.strings(invocation[.env])
-        let declarations = try ValueBridge.decode(
-            [String: OutputSpec].self,
-            from: invocation[.outputs]
-        )
         let result = try await environment.withStepSlot {
             try await withDeadline(seconds: ValueBridge.number(invocation[.timeout])) {
                 try await environment.shell.run(
@@ -88,9 +80,7 @@ struct ShellAction: Warp.Effect {
             )
         }
 
-        return try ValueBridge.value(
-            try OutputExtractor.resolve(stdout: result.stdout, declarations: declarations)
-        )
+        return .string(result.stdout)
     }
 
     // MARK: - Private

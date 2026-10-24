@@ -18,7 +18,7 @@ struct WorkflowDispatchTests {
         [
             "failing": ["nonzero_exit", "timeout"],
             "body": [
-                ["let": "x", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/echo", "ok"], NSNull(), NSNull(), NSNull(), NSNull(), NSNull()]]]],
+                ["let": "x", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/echo", "ok"], NSNull(), NSNull(), NSNull(), NSNull()]]]],
             ],
             "returns": "Dictionary<String, Any>",
             "result": ["dictionary": [["v", ["ref": "x"]]]],
@@ -140,7 +140,7 @@ struct WorkflowDispatchTests {
         let badSpec: [String: Any] = [
             "failing": ["nonzero_exit", "timeout"],
             "body": [
-                ["let": "a", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/echo", ["ref": "nonexistent"]], NSNull(), NSNull(), NSNull(), NSNull(), NSNull()]]]],
+                ["let": "a", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/echo", ["ref": "nonexistent"]], NSNull(), NSNull(), NSNull(), NSNull()]]]],
             ],
         ]
         do {
@@ -268,7 +268,7 @@ struct WorkflowDispatchTests {
         failing: [nonzero_exit, timeout]
         body:
           - let: x
-            value: { call: { procedure: Forge.shell, arguments: [ ["/bin/echo", "ok"], null, null, null, null, null ] } }
+            value: { call: { procedure: Forge.shell, arguments: [ ["/bin/echo", "ok"], null, null, null, null ] } }
         returns: "Dictionary<String, Any>"
         result: { dictionary: [ [v, { ref: x }] ] }
         """, named: name)

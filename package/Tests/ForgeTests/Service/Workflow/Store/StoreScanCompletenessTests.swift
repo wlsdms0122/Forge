@@ -267,7 +267,7 @@ struct StoreScanCompletenessTests {
         failing: [nonzero_exit, timeout]
         body:
           - let: x
-            value: { call: { procedure: Forge.shell, arguments: [ ["/bin/echo", "ok"], null, null, null, null, null ] } }
+            value: { call: { procedure: Forge.shell, arguments: [ ["/bin/echo", "ok"], null, null, null, null ] } }
         """#, named: name).write(to: directory.appendingPathComponent("\(name).yaml"),
             
             atomically: true, encoding: .utf8)

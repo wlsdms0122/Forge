@@ -55,7 +55,7 @@ struct SchedulerFixture {
             failing: [nonzero_exit, timeout]
             body:
               - let: s
-                value: { call: { procedure: Forge.shell, arguments: [ ["/bin/sh", "-c", "\(script)"], null, null, null, null, null ] } }
+                value: { call: { procedure: Forge.shell, arguments: [ ["/bin/sh", "-c", "\(script)"], null, null, null, null ] } }
             """
         )
     }

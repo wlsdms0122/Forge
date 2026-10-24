@@ -52,15 +52,22 @@ optional one says nothing. Each one may run beside another in a fan-out.
 
 ### `Forge.shell`
 
-`Forge.shell(command: Array<String>, cwd: String?, env: Dictionary<String, String>?, stdin: String?, outputs: Dictionary<String, Any>?, timeout: Double?) -> Any`,
+`Forge.shell(command: Array<String>, cwd: String?, env: Dictionary<String, String>?, stdin: String?, timeout: Double?) -> String`,
 failing `nonzero_exit`, `timeout`.
 
 Runs `command[0]` with the rest as its arguments, holding one of the daemon's
-step slots for the whole run. It returns the standard output as a string, or,
-where `outputs` is handed, the map its extractors read out of it (see *Shell
-output extractors*). A nonzero exit fails with `nonzero_exit`, whose details
-are `exit_code`, `stderr` and `stdout`. A command still running after
-`timeout` seconds fails with `timeout`, whose details are `seconds`.
+step slots for the whole run, and returns its standard output. A nonzero exit
+fails with `nonzero_exit`, whose details are `exit_code`, `stderr` and
+`stdout`. A command still running after `timeout` seconds fails with
+`timeout`, whose details are `seconds`.
+
+### `Forge.extract`
+
+`Forge.extract(text: String, outputs: Dictionary<String, Any>) -> Dictionary<String, Any>`, const.
+
+Reads the values `outputs` names out of `text` (see *Output extractors*) and
+returns them by name, with the whole text under `_raw`. It reaches nothing
+outside the run.
 
 ### `Forge.invoke`
 
@@ -138,10 +145,11 @@ each piece an isolated closure:
             - [right, { closure: { isolated: true, returns: Int, result: 2 } }]
 ```
 
-## Shell output extractors
+## Output extractors
 
-Only `Forge.shell` decomposes its stdout; every other verb speaks structured values
-already. The `outputs` argument is a map from a name to an extractor. Shorthand (bare JSONPath):
+`Forge.extract` reads a text, usually what `Forge.shell` returned; every other
+verb speaks structured values already. The `outputs` argument is a map from a
+name to an extractor. Shorthand (bare JSONPath):
 
 ```yaml
 name: $.user.name
@@ -169,8 +177,8 @@ Modifiers:
 
 | Field | Notes |
 |-------|-------|
-| `type` | `string` (default) / `int` / `float` / `bool` / `json` — coerced |
-| `default` | fallback value when missing. No separate `required` field — a declared `default` (even `null`) means a missing path doesn't fail the statement; leaving `default` out makes the path mandatory (missing → `OutputResolutionError`) |
+| `type` | `string` (default) / `int` / `float` / `bool` / `json`, coerced to it |
+| `default` | fallback value when missing. A declared `default` (even `null`) means a missing path does not fail the call; leaving `default` out makes the path mandatory, and a missing one fails the call |
 | `hint` | human description |
 
 ## A complete workflow

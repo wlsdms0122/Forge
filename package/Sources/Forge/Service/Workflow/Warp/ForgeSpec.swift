@@ -31,11 +31,20 @@ enum ForgeSpec {
                 "Forge.shell": Procedure(
                     signature: Signature(
                         of: ShellAction.self,
-                        returns: .any,
+                        returns: .string,
                         failing: .these([BackendNonzeroExit.type, DeadlineExceeded.type]),
                         isolation: .isolated
                     ),
                     implementation: .effect(ShellAction())
+                ),
+                "Forge.extract": Procedure(
+                    signature: Signature(
+                        of: ExtractQuery.self,
+                        returns: .dictionary(key: .string, value: .any),
+                        constness: .const,
+                        isolation: .isolated
+                    ),
+                    implementation: .query(ExtractQuery())
                 ),
                 "Forge.agent": Procedure(
                     signature: Signature(of: AgentAction.self, returns: .string, isolation: .isolated),

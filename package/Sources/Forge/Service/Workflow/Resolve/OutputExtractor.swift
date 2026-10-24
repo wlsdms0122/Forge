@@ -11,26 +11,6 @@ enum OutputExtractor {
     // MARK: - Property
     // MARK: - Initializer
     // MARK: - Public
-    static func resolve(raw: JSONValue, declarations: [String: OutputSpec]?) throws -> JSONValue {
-        guard let declarations, !declarations.isEmpty else { return raw }
-        
-        if case .null = raw { return raw }
-        
-        guard case .string(let stdout) = raw else {
-            throw OutputResolutionError(
-                "step.outputs declares extraction but the step produced a non-string output"
-                    + " — extraction applies to raw text; drop the declarations or select a"
-                    + " string output"
-            )
-        }
-        
-        return try extract(stdout: stdout, declarations: declarations)
-    }
-    
-    static func resolve(stdout: String, declarations: [String: OutputSpec]?) throws -> JSONValue {
-        try resolve(raw: .string(stdout), declarations: declarations)
-    }
-    
     static func extract(
         stdout: String,
         declarations: [String: OutputSpec]
