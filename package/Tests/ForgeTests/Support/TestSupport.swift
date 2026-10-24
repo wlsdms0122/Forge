@@ -1,11 +1,25 @@
 //
-//  WorkflowFile.swift
+//  TestSupport.swift
 //  ForgeTests
 //
-//  Created by JSilver on 8/17/26.
+//  Created by JSilver on 10/25/26.
 //
 
 import Foundation
+import Testing
+@testable import Forge
+
+// A command pattern that tests write in as literals.
+//
+// Because the tokens are literals, a failure means an input typo, not a defect in the
+// subject. Instead of dying with `try!`, raise via `#require` so the report shows which
+// token was the problem.
+func commandPattern(
+    _ tokens: [String],
+    sourceLocation: SourceLocation = #_sourceLocation
+) throws -> CommandPattern {
+    try #require(try CommandPattern(tokens: tokens), sourceLocation: sourceLocation)
+}
 
 // A workflow file declaring one public procedure named after the file, with
 // the body's lines as that procedure's keys. Tests write a procedure body
