@@ -79,7 +79,7 @@ struct ServiceSendCommand: ParsableCommand {
         
         printResult(client.call("session.send", params), json: json)
         
-        ForgeCommand.exit()
+        Self.exit()
     }
     
     // MARK: - Private

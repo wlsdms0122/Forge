@@ -35,7 +35,7 @@ struct TokenIssueCommand: ParsableCommand {
             print(result["token"]?.stringValue ?? "")
         }
         
-        ForgeCommand.exit()
+        Self.exit()
     }
     
     // MARK: - Private

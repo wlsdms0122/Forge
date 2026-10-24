@@ -142,7 +142,7 @@ struct WorkflowDispatchCommand: ParsableCommand {
         
         printResult(client.call("workflow.dispatch", params), json: json)
         
-        ForgeCommand.exit()
+        Self.exit()
     }
     
     // MARK: - Private
@@ -183,7 +183,7 @@ struct WorkflowDispatchCommand: ParsableCommand {
             
             if let object = try? JSONDecoder().decode(JSONValue.self, from: frame),
                 object["kind"]?.stringValue == "workflow.result" {
-                ForgeCommand.exit()
+                Self.exit()
             }
         }
         

@@ -52,7 +52,7 @@ struct PolicyCheckCommand: ParsableCommand {
         
         print("\(principal) → \(workflow): \(allowed ? "allowed" : "denied")")
         
-        if !allowed { ForgeCommand.exit(withError: ExitCode(1)) }
+        if !allowed { Self.exit(withError: ExitCode(1)) }
     }
     
     // MARK: - Private
