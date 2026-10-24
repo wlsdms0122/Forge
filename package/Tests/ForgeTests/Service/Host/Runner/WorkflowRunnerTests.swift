@@ -135,7 +135,7 @@ struct WorkflowRunnerTests {
         // Then
         #expect(result.status == .failed)
         #expect(result.error?.kind == .work)
-        #expect(result.error?.message.contains("boom reason") == true)
+        #expect(result.error?.object.message.contains("boom reason") == true)
     }
 
     @Test("dispatch runs a child spec from the catalog as a new run and returns its outputs")
@@ -309,7 +309,7 @@ struct WorkflowRunnerTests {
 
         // Then — the fan-out severed the session, so the piece's agent turn has none
         #expect(result.status == .failed)
-        #expect(result.error?.message.contains("no active agent session") == true)
+        #expect(result.error?.object.message.contains("no active agent session") == true)
     }
 
     @Test("directly driven runs are also registered in the pool, so cancellation reaches them")
@@ -340,6 +340,7 @@ struct WorkflowRunnerTests {
         // Then
         #expect(result.status == .failed)
         #expect(result.error?.kind == .cancelled)
+        #expect(result.error?.object.type == "RunCancelled")
         #expect(ContinuousClock.now - started < .seconds(8))
     }
 
@@ -380,7 +381,7 @@ struct WorkflowRunnerTests {
         #expect(nullResult.status == .ok)
         #expect(recorder.invocations.elements.first?.agent.workingDirectory == nil)
         #expect(emptyResult.status == .failed)
-        #expect(emptyResult.error?.message.contains("empty string") == true)
+        #expect(emptyResult.error?.object.message.contains("empty string") == true)
     }
 
     @Test("the step slot cap serializes concurrent shell execution")

@@ -24,8 +24,7 @@ struct WorkflowRunResult: Sendable {
 
         // MARK: - Property
         let kind: Kind
-        let type: String
-        let message: String
+        let object: ErrorObject
 
         // MARK: - Initializer
         // MARK: - Public

@@ -12,11 +12,11 @@ import Foundation
 protocol ForgeError: Error, Sendable {
     var message: String { get }
     var wireType: String { get }
-    var wireDetails: [String: Any] { get }
+    var wireDetails: [String: any Sendable] { get }
 }
 
 extension ForgeError {
     var wireType: String { String(describing: type(of: self)) }
 
-    var wireDetails: [String: Any] { [:] }
+    var wireDetails: [String: any Sendable] { [:] }
 }

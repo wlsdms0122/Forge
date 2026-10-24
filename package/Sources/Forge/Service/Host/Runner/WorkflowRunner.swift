@@ -165,7 +165,7 @@ actor WorkflowRunner {
             await jobStore.closeRun(
                 run: claims.id,
                 failure: result.status == .failed
-                    ? (result.error.map { failure in "\(failure.type): \(failure.message)" }
+                    ? (result.error.map { failure in "\(failure.object.type): \(failure.object.message)" }
                         ?? "failed")
                     : nil
             )
@@ -253,15 +253,15 @@ actor WorkflowRunner {
             )
         } catch {
             let duration = (ContinuousClock.now - started).milliseconds
-            let (errorType, errorMessage) = Self.errorPair(error)
+            let failure = ErrorObject(error)
 
             await eventBus.publish(WorkflowEvent(
                 kind: .workflowFailed,
                 workflowID: runID,
                 workflowName: name,
                 origin: origin,
-                errorType: errorType,
-                errorMessage: errorMessage,
+                errorType: failure.type,
+                errorMessage: failure.message,
                 durationMs: duration
             ))
 
@@ -271,11 +271,7 @@ actor WorkflowRunner {
                 status: .failed,
                 outputs: [:],
                 durationMs: duration,
-                error: .init(
-                    kind: Self.failureKind(of: error),
-                    type: errorType,
-                    message: errorMessage
-                )
+                error: .init(kind: Self.failureKind(of: error), object: failure)
             )
         }
     }
@@ -291,7 +287,7 @@ actor WorkflowRunner {
             group.addTask {
                 await pool.awaitCancellation(workflowID: runID)
 
-                throw CancellationError()
+                throw RunCancelled("run '\(runID)' was cancelled")
             }
 
             defer { group.cancelAll() }
@@ -363,16 +359,8 @@ actor WorkflowRunner {
         return (preview, length)
     }
 
-    private static func errorPair(_ error: any Error) -> (String, String) {
-        if let forgeError = error as? ForgeError {
-            return (forgeError.wireType, forgeError.message)
-        }
-
-        return (String(describing: type(of: error)), String(describing: error))
-    }
-
     private static func failureKind(of error: any Error) -> WorkflowRunResult.RunFailure.Kind {
-        if error is CancellationError { return .cancelled }
+        if error is RunCancelled || error is CancellationError { return .cancelled }
         if error is any WorkFailure { return .work }
         if error is any Warp.RecoverableFailure { return .work }
 
@@ -409,7 +397,7 @@ extension WorkflowRunner: RunDispatching {
             return try ValueBridge.value(.object(result.outputs))
         }
 
-        let summary = "dispatch '\(name)' failed: \(failure.type) — \(failure.message)"
+        let summary = "dispatch '\(name)' failed: \(failure.object.type) — \(failure.object.message)"
 
         switch failure.kind {
         case .work:
@@ -420,7 +408,7 @@ extension WorkflowRunner: RunDispatching {
 
         case .cancelled:
             throw ChildRunCancelled(
-                "dispatch '\(name)' cancelled: \(failure.message)"
+                "dispatch '\(name)' cancelled: \(failure.object.message)"
             )
         }
     }

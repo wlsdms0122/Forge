@@ -10,7 +10,7 @@ import Foundation
 struct RPCResponse: @unchecked Sendable {
     enum Payload: @unchecked Sendable {
         case result([String: Any])
-        case error(wireType: String, message: String, extra: [String: Any])
+        case error(ErrorObject)
     }
 
     // MARK: - Property
@@ -30,20 +30,7 @@ struct RPCResponse: @unchecked Sendable {
 
     init(id: String, error: any Error) {
         self.id = id
-
-        if let forgeError = error as? ForgeError {
-            self.payload = .error(
-                wireType: forgeError.wireType,
-                message: forgeError.message,
-                extra: forgeError.wireDetails
-            )
-        } else {
-            self.payload = .error(
-                wireType: "InternalError",
-                message: String(describing: error),
-                extra: [:]
-            )
-        }
+        self.payload = .error(ErrorObject(error))
     }
 
     // MARK: - Public
@@ -54,12 +41,8 @@ struct RPCResponse: @unchecked Sendable {
         case .result(let result):
             object["result"] = result
 
-        case .error(let wireType, let message, let extra):
-            var error: [String: Any] = ["type": wireType, "message": message]
-
-            for (key, value) in extra { error[key] = value }
-
-            object["error"] = error
+        case let .error(error):
+            object["error"] = error.dict
         }
 
         let data = try JSONSerialization.data(

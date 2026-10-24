@@ -14,7 +14,7 @@ struct BackendNonzeroExit: BackendError, WorkFailure {
     let stderr: String
     let stdout: String
 
-    var wireDetails: [String: Any] {
+    var wireDetails: [String: any Sendable] {
         [
             "exit_code": Int(exitCode),
             "stderr": stderr,

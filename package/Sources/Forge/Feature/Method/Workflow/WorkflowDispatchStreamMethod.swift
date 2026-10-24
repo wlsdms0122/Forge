@@ -118,10 +118,7 @@ struct WorkflowDispatchStreamMethod: Sendable {
                 "workflow_id": prepared.workflowID,
                 "name":        prepared.workflow.name,
                 "status":      "failed",
-                "error":       [
-                    "type": (error as? any ForgeError)?.wireType ?? "InternalError",
-                    "message": (error as? any ForgeError)?.message ?? String(describing: error),
-                ],
+                "error":       ErrorObject(error).dict,
             ]
         }
 
