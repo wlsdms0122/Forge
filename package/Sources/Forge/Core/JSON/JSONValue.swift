@@ -16,6 +16,49 @@ indirect enum JSONValue: Sendable, Codable, Equatable {
     case array([JSONValue])
     case object([String: JSONValue])
     
+    // The value of each case, nil for any other case.
+    var objectValue: [String: JSONValue]? {
+        guard case let .object(object) = self else { return nil }
+        
+        return object
+    }
+    
+    var arrayValue: [JSONValue]? {
+        guard case let .array(array) = self else { return nil }
+        
+        return array
+    }
+    
+    var stringValue: String? {
+        guard case let .string(string) = self else { return nil }
+        
+        return string
+    }
+    
+    var intValue: Int? {
+        guard case let .int(number) = self else { return nil }
+        
+        return number
+    }
+    
+    var doubleValue: Double? {
+        guard case let .double(number) = self else { return nil }
+        
+        return number
+    }
+    
+    var boolValue: Bool? {
+        guard case let .bool(flag) = self else { return nil }
+        
+        return flag
+    }
+    
+    // The member under a key of an object, nil for a missing key or any
+    // other case.
+    subscript(key: String) -> JSONValue? {
+        objectValue?[key]
+    }
+    
     init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         
