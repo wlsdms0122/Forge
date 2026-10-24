@@ -17,17 +17,17 @@ struct ResourceListMethod: Sendable {
     }
 
     // MARK: - Public
-    func handle(_ request: RPCRequest) async throws -> JSONObject {
+    func handle(_ request: RPCRequest) async throws -> JSONValue {
         let entries = await store.all()
-        let rows: [[String: Any]] = entries.map { entry in
+        let rows: [JSONValue] = entries.map { entry in
             [
-                "path": entry.path,
-                "size": entry.size,
-                "mtime": ISO8601.string(entry.mtime)
+                "path": .string(entry.path),
+                "size": .int(entry.size),
+                "mtime": .string(ISO8601.string(entry.mtime))
             ]
         }
-
-        return ["resources": rows]
+        
+        return ["resources": .array(rows)]
     }
 
     // MARK: - Private

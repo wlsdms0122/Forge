@@ -21,10 +21,10 @@ struct ResourceNamespace: Sendable {
 
         self.methods = [
             RPCMethod("resource.list", .unary(.token) { request, _ in
-                try await list.handle(request)
+                JSONObject(try await list.handle(request))
             }),
             RPCMethod("resource.read", .unary(.token) { request, _ in
-                try await read.handle(request)
+                JSONObject(try await read.handle(request))
             })
         ]
     }

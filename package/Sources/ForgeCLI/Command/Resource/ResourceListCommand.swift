@@ -24,7 +24,7 @@ struct ResourceListCommand: ParsableCommand {
     // MARK: - Public
     func run() throws {
         let client = Client(global, context: "resource list")
-        let result = client.rawCall("resource.list")
+        let result = client.call("resource.list")
         
         if json {
             printJSON(result)
@@ -32,7 +32,7 @@ struct ResourceListCommand: ParsableCommand {
             return
         }
         
-        let rows = (result["resources"] as? [[String: Any]]) ?? []
+        let rows = result["resources"]?.arrayValue ?? []
         
         if rows.isEmpty {
             print("(no resources)")
@@ -41,9 +41,9 @@ struct ResourceListCommand: ParsableCommand {
         }
         
         for row in rows {
-            let path = row["path"] as? String ?? "?"
-            let size = row["size"] as? Int ?? 0
-            let mtime = row["mtime"] as? String ?? "?"
+            let path = row["path"]?.stringValue ?? "?"
+            let size = row["size"]?.intValue ?? 0
+            let mtime = row["mtime"]?.stringValue ?? "?"
             
             print("\(path)\t\(size)\t\(mtime)")
         }

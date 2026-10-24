@@ -22,14 +22,14 @@ struct ResourceReadMethod: Sendable {
     }
 
     // MARK: - Public
-    func handle(_ request: RPCRequest) async throws -> JSONObject {
-        guard let path = request.rawParams["path"] as? String, !path.isEmpty else {
+    func handle(_ request: RPCRequest) async throws -> JSONValue {
+        guard let path = request.params["path"]?.stringValue, !path.isEmpty else {
             throw ProtocolError("resource.read: 'path' (string) required")
         }
 
         let cap: Int
 
-        if let maxBytes = request.rawParams["maximum_bytes"] as? Int, maxBytes > 0 {
+        if let maxBytes = request.params["maximum_bytes"]?.intValue, maxBytes > 0 {
             cap = maxBytes
         } else {
             cap = defaultMaxBytes
@@ -42,10 +42,10 @@ struct ResourceReadMethod: Sendable {
             : body
 
         return [
-            "path": path,
-            "body": payload,
-            "size": body.utf8.count,
-            "truncated": truncated
+            "path": .string(path),
+            "body": .string(payload),
+            "size": .int(body.utf8.count),
+            "truncated": .bool(truncated)
         ]
     }
 
