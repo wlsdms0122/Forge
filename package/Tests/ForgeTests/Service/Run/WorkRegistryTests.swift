@@ -135,7 +135,7 @@ struct WorkRegistryTests {
         #expect(live?.workflowID == "r-test")
         await registry.release(workflowID: "r-test")
         do {
-            _ = try await registry.requireLiveRecord(workflowID: "r-test", context: "session.send")
+            _ = try await registry.requireLiveRecord(workflowID: "r-test", context: "handler.send")
             Issue.record("A stale run-scoped token should be rejected")
         } catch let error as TokenRejected {
             #expect(error.message.contains("finished run"), Comment(rawValue: error.message))

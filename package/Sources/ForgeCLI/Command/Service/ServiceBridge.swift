@@ -50,7 +50,7 @@ final class ServiceBridge: @unchecked Sendable {
             if frame.isEmpty { continue }
             
             if let object = try? JSONDecoder().decode(JSONValue.self, from: frame),
-                object["kind"]?.stringValue == "session.message" {
+                object["kind"]?.stringValue == "handler.message" {
                 emitStdoutLine(String(decoding: frame, as: UTF8.self))
             }
         }
@@ -72,7 +72,7 @@ final class ServiceBridge: @unchecked Sendable {
         if let schema { params["schema"] = schema }
         
         guard let data = RPC.requestLine(
-            method: "session.handler.register",
+            method: "handler.register",
             params: params,
             idPrefix: "reg"
         ), socket.writeLine(data) else {
@@ -123,7 +123,7 @@ final class ServiceBridge: @unchecked Sendable {
             if let error = object["error"] { params["error"] = error }
             
             guard let requestData = RPC.requestLine(
-                method: "session.handler.ack",
+                method: "handler.ack",
                 params: params,
                 idPrefix: "ack"
             ) else {

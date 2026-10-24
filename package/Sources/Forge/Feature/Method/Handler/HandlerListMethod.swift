@@ -1,5 +1,5 @@
 //
-//  SessionListMethod.swift
+//  HandlerListMethod.swift
 //  Forge
 //
 //  Created by JSilver on 8/9/26.
@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct SessionListMethod: Sendable {
+struct HandlerListMethod: Sendable {
     // MARK: - Property
     let handlerBus: WorkflowHandlerBus
 

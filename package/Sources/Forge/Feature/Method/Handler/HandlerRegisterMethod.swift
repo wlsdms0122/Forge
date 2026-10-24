@@ -1,5 +1,5 @@
 //
-//  SessionHandlerRegisterMethod.swift
+//  HandlerRegisterMethod.swift
 //  Forge
 //
 //  Created by JSilver on 8/9/26.
@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct SessionHandlerRegisterMethod: Sendable {
+struct HandlerRegisterMethod: Sendable {
     // MARK: - Property
     let handlerBus: WorkflowHandlerBus
 
@@ -23,13 +23,13 @@ struct SessionHandlerRegisterMethod: Sendable {
         sink: any EventSink
     ) async throws {
         guard let service = request.params["service"]?.stringValue, !service.isEmpty else {
-            throw ProtocolError("session.handler.register: 'service' (string) required")
+            throw ProtocolError("handler.register: 'service' (string) required")
         }
 
         try ServiceAuthz.requireActingAs(
             service,
             claims: claims,
-            method: "session.handler.register"
+            method: "handler.register"
         )
 
         let schema = request.params["schema"]?.objectValue.map(JSONValue.object)

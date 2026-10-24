@@ -1,5 +1,5 @@
 //
-//  SessionHandlerAckMethod.swift
+//  HandlerAckMethod.swift
 //  Forge
 //
 //  Created by JSilver on 8/9/26.
@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct SessionHandlerAckMethod: Sendable {
+struct HandlerAckMethod: Sendable {
     // MARK: - Property
     let handlerBus: WorkflowHandlerBus
 
@@ -19,17 +19,17 @@ struct SessionHandlerAckMethod: Sendable {
     // MARK: - Public
     func handle(_ request: RPCRequest, claims: TokenClaims) async throws -> JSONValue {
         guard let service = request.params["service"]?.stringValue, !service.isEmpty else {
-            throw ProtocolError("session.handler.ack: 'service' required")
+            throw ProtocolError("handler.ack: 'service' required")
         }
 
         try ServiceAuthz.requireActingAs(
             service,
             claims: claims,
-            method: "session.handler.ack"
+            method: "handler.ack"
         )
 
         guard let messageID = request.params["message_id"]?.stringValue, !messageID.isEmpty else {
-            throw ProtocolError("session.handler.ack: 'message_id' required")
+            throw ProtocolError("handler.ack: 'message_id' required")
         }
 
         if let errorObject = request.params["error"]?.objectValue {

@@ -41,7 +41,7 @@ actor ServiceHandle {
         if let correlator = envelope.correlator { envelopeObject["correlator"] = .string(correlator) }
         
         let frame: JSONValue = [
-            "kind": "session.message",
+            "kind": "handler.message",
             "service": .string(service),
             "message_id": .string(messageID),
             "envelope": .object(envelopeObject),

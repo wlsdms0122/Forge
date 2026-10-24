@@ -48,7 +48,7 @@ struct DispatchServiceTests {
     func operatorRefusesRunToken() async throws {
         // Given
         let authority = TokenAuthority()
-        let sut = Self.session(authority)
+        let sut = Self.handler(authority)
         let run = authority.mint(TokenClaims(principal: "cli:response", workflowID: "wf-1"))
 
         // When
@@ -64,7 +64,7 @@ struct DispatchServiceTests {
     func operatorAcceptsOperatorToken() async throws {
         // Given
         let authority = TokenAuthority()
-        let sut = Self.session(authority)
+        let sut = Self.handler(authority)
 
         for principal in ["system:admin", "system:runner", "admin:jineun"] {
             let token = authority.mint(TokenClaims(principal: principal))
@@ -94,9 +94,9 @@ struct DispatchServiceTests {
 
     // MARK: - Public
     // MARK: - Private
-    private static func session(_ authority: TokenAuthority) -> DispatchService {
+    private static func handler(_ authority: TokenAuthority) -> DispatchService {
         DispatchService(
-            methods: SessionNamespace(
+            methods: HandlerNamespace(
                 handlerBus: WorkflowHandlerBus(),
                 workRegistry: WorkRegistry()
             ).methods,
@@ -105,7 +105,7 @@ struct DispatchServiceTests {
     }
 
     private static func ack(token: String) -> RPCRequest {
-        request("session.handler.ack", [
+        request("handler.ack", [
             "token": .string(token),
             "service": "slack",
             "message_id": "m1",

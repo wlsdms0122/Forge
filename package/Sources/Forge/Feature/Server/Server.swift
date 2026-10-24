@@ -184,7 +184,7 @@ package actor Server {
         let policy = PolicyNamespace(store: policyStoreLocal)
         let token = TokenNamespace(authority: tokenAuthorityLocal)
         let daemon = DaemonNamespace(status: daemonStatusMethod)
-        let sessionMessaging = SessionNamespace(
+        let handler = HandlerNamespace(
             handlerBus: handlerBus,
             workRegistry: workRegistryLocal
         )
@@ -203,7 +203,7 @@ package actor Server {
                 + policy.methods
                 + token.methods
                 + daemon.methods
-                + sessionMessaging.methods
+                + handler.methods
                 + service.methods,
             authority: tokenAuthorityLocal
         )

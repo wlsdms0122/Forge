@@ -404,7 +404,7 @@ capability forge itself does not.
 
 #### `forge service list`
 
-List registered service handlers. RPC: `session.list`.
+List registered service handlers. RPC: `handler.list`.
 
 ```
 forge service list [--json]
@@ -414,7 +414,7 @@ forge service list [--json]
 
 Show one handler's call schema — its description and the actions/ops it
 accepts, with params and returns. The contract to consult before `forge
-service send`. RPC: `session.list` (filtered to one).
+service send`. RPC: `handler.list` (filtered to one).
 
 ```
 forge service describe <name> [--json]
@@ -423,9 +423,9 @@ forge service describe <name> [--json]
 #### `forge service register`
 
 Run the current process as a service handler — a long-lived **co-process**.
-forge owns the socket, the `session.handler.register` handshake, and
+forge owns the socket, the `handler.register` handshake, and
 reconnect/backoff; the parent process speaks JSON over stdio and never touches
-the socket. RPC: `session.handler.register` + `session.handler.ack`.
+the socket. RPC: `handler.register` + `handler.ack`.
 
 ```
 forge service register <name> [--schema <json>]
@@ -444,7 +444,7 @@ principals (`system:*`, `admin:*`) may register any name.
 
 | Stream | Content |
 |--------|---------|
-| stdout | one JSON line per incoming `session.message` frame |
+| stdout | one JSON line per incoming `handler.message` frame |
 | stdin | one JSON line per ack: `{"message_id":"...","result":{...}}` or `{"message_id":"...","error":{...}}` |
 
 The daemon dropping the connection is invisible to the parent — forge
@@ -454,7 +454,7 @@ exits **6** so the parent can respawn it with a freshly issued token.
 
 #### `forge service send`
 
-Hand a JSON payload to a registered handler. RPC: `session.send`. To run a
+Hand a JSON payload to a registered handler. RPC: `handler.send`. To run a
 workflow use `forge workflow dispatch` — `send` is for external handlers only.
 
 ```
@@ -542,7 +542,7 @@ Clients speak **line-delimited JSON-RPC over a Unix domain socket**
 {"id": "<client-id>", "error": {"type": "<ErrorType>", "message": "<text>"}}
 ```
 
-**Streaming methods** (`session.handler.register`, `workflow.dispatch_stream`)
+**Streaming methods** (`handler.register`, `workflow.dispatch_stream`)
 keep the connection open and emit multiple lines: first an ack envelope, then a
 stream of frames.
 
@@ -583,10 +583,10 @@ attenuation from the presenter's principal — §5.
 | `policy.check` | token | no | `policy check` |
 | `token.issue` | token | no | `token issue` |
 | `daemon.status` | none | no | `status` |
-| `session.send` | token | no | `service send` |
-| `session.list` | token | no | `service list` / `service describe` |
-| `session.handler.register` | token | **yes** | `service register` |
-| `session.handler.ack` | token | no | (internal to `service register`) |
+| `handler.send` | token | no | `service send` |
+| `handler.list` | token | no | `service list` / `service describe` |
+| `handler.register` | token | **yes** | `service register` |
+| `handler.ack` | token | no | (internal to `service register`) |
 | `service.run` | token | no | `service run` |
 | `service.shutdown` | token | no | `service shutdown` |
 | `service.restart` | token | no | `service restart` |
@@ -940,7 +940,7 @@ Requires a presented token and mints under attenuation — only `system:admin` /
 `admin:*` presenters may delegate (§5). Issuable principals: `system:runner`,
 `system:admin`, `admin:*`.
 
-### `session.send`
+### `handler.send`
 
 Send a payload to a registered external handler.
 
@@ -949,13 +949,13 @@ Send a payload to a registered external handler.
 **result** — `async=false`: the handler's ack result (handler-defined).
 `async=true`: `{"service","message_id","status":"dispatched"}`.
 
-### `session.list`
+### `handler.list`
 
 **params** `{"token"}`. **result** `{"services":[{"service","schema"?}]}` —
 registered external handlers only, sorted by name; `schema` is present only
 when the handler advertised one.
 
-### `session.handler.register` (streaming)
+### `handler.register` (streaming)
 
 Register an external service handler on a long-lived connection.
 
@@ -967,20 +967,20 @@ cannot register a handler), operator principals may register any name.
 **flow**
 
 ```
-client → daemon : {"method":"session.handler.register","params":{...}}
+client → daemon : {"method":"handler.register","params":{...}}
 daemon → client : {"id":<req.id>,"result":{"registered":true,"service":"..."}}   ← ack
-daemon → client : {"kind":"session.message","service","message_id",
+daemon → client : {"kind":"handler.message","service","message_id",
                    "envelope":{...},"payload":{...}}                            ← repeats
-client → daemon : {"method":"session.handler.ack","params":{...}}               ← same connection
+client → daemon : {"method":"handler.ack","params":{...}}                       ← same connection
 ```
 
 The `envelope` carries forge's server-side coordinates:
 `{workflow_id, origin, root_id?, id?, correlator?}`. The `payload` is
 caller-sent and opaque to forge. Closing the connection unregisters the service.
 
-### `session.handler.ack`
+### `handler.ack`
 
-Acknowledge a processed `session.message`.
+Acknowledge a processed `handler.message`.
 
 **params** `{"token","service","message_id","result":object?}` — or `"error"`
 instead of `"result"`. **result** `{"ok":true}`. Same principal↔service
@@ -1001,7 +1001,7 @@ Start / stop / restart a managed service (a `[service.<name>]` entry in
 **params** `{"token"}` (any authenticated token). **result**
 `{"services":[{...status record...,"registered":bool}]}` — one row per
 managed service; `registered` is whether a live handler of that name is
-currently registered on the session bus.
+currently registered on the handler bus.
 
 ### `service.reload`
 
@@ -1137,7 +1137,7 @@ The error envelope is `{"type": "<ErrorType>", "message": "<text>"}` and the fie
 | `AgentValidationError` | an `invoke`'s agent cannot be built: its model, tools or `permission_mode`, or a combination its provider cannot run — fix the workflow |
 | `AgentSessionMissing` | an `agent` step ran outside an `invoke`, where no agent session is open — fix the workflow |
 | `ResourceError` | a resource cannot be given: no `resource_directory`, a path outside it or hidden, a missing or unreadable file |
-| `HandlerFailed` | the service handling a `session.send` answered with an error; the message is the handler's |
+| `HandlerFailed` | the service handling a `handler.send` answered with an error; the message is the handler's |
 | `TokenRejected` | token failed verification — re-issue and retry once |
 | `UnknownMethod` | the daemon does not know the method name |
 | `PolicyDenied` | the principal may not dispatch/control that workflow (policy/*.yaml) — retry is pointless |

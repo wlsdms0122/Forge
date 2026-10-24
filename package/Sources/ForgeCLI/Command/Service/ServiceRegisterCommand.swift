@@ -25,14 +25,14 @@ struct ServiceRegisterCommand: ParsableCommand {
             The bearer token comes from FORGE_ACCESS_TOKEN / --token (a
             supervisor-minted, spawn-scoped token).
 
-            STDOUT  one JSON line per incoming `session.message` frame
+            STDOUT  one JSON line per incoming `handler.message` frame
                     (kind / message_id / payload / envelope). Other RPC
                     envelopes (register ack, ack responses) are not emitted.
 
             STDIN   one JSON line per ack:
                         { "message_id": "...", "result": { ... } }
                         { "message_id": "...", "error": { ... } }
-                    forge wraps it into a `session.handler.ack` RPC on the
+                    forge wraps it into a `handler.ack` RPC on the
                     same connection.
 
             Exits 0 on stdin EOF (parent-initiated shutdown), 1 on any
