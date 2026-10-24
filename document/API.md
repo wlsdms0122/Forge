@@ -1123,7 +1123,7 @@ Inspect with `forge policy list` / `forge policy check`.
 
 ## 7. Error types
 
-The error envelope is `{"type": "<ErrorType>", "message": "<text>"}` and the fields a type carries beside them. A failed run's `error`, in a `workflow.dispatch` result and in a stream's `workflow.result`, is the same object, and a `workflow.event` names a failure by the same type. A run or a step that fails with a failure of the language (such as `aborted`, `cast_refused`, `concurrent_failed`, `timeout`) is typed by the name the language gives it, the name a workflow's `catch` reads. Any other failure that is none of the types below is `InternalError` with its text.
+The error envelope is `{"type": "<ErrorType>", "message": "<text>"}` and the fields a type carries beside them. A failed run's `error`, in a `workflow.dispatch` result and in a stream's `workflow.result`, is the same object, and a `workflow.event` names a failure by the same type. A run or a step that fails with a failure of the language (such as `aborted`, `cast_refused`, `concurrent_failed`, `timeout`) is typed by the name the language gives it, the name a workflow's `catch` reads. Any other failure that is none of the types below is `InternalError` with its text. A failure that a run can meet as well keeps its type when a request meets it: `resource.read` answers `ResourceError` as a `resource` step does, and `workflow.dispatch` answers `WorkflowNotFound` as a `dispatch` step does. A request whose payload is malformed, or whose id is invalid, taken or missing in a store only requests reach, is refused with `ProtocolError`.
 
 | Type | Meaning |
 |------|---------|
@@ -1134,7 +1134,7 @@ The error envelope is `{"type": "<ErrorType>", "message": "<text>"}` and the fie
 | `BackendNotRegistered` | an `invoke` names a provider no backend is registered for, or names none while there is not exactly one backend |
 | `CatalogIncomplete` | the catalog directory was not fully read, so the catalog cannot answer for a workflow name — retry after resolving |
 | `WorkflowNotFound` | no workflow of that name in the catalog (`workflow.dispatch`, `workflow.describe`, `schedule.create`, a `dispatch` step) |
-| `ProtocolError` | request envelope / payload malformed |
+| `ProtocolError` | the request's envelope or payload is malformed, or an id it names is invalid, taken or missing |
 | `ScheduleDirectoryNotConfigured` | the daemon has no runtime schedule directory, so `schedule.create` is disabled |
 | `JobStoreError` | the job directory is not configured (`job.create` and job updates are disabled), or a job file is missing or unreadable |
 | `AgentValidationError` | an `invoke`'s agent cannot be built: its model, tools or `permission_mode`, or a combination its provider cannot run — fix the workflow |
