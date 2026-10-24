@@ -16,7 +16,7 @@ struct ScheduleControlGateTests {
 
     private let inlineSpec: [String: Any] = [
         "failing": ["nonzero_exit", "timeout"],
-            "body": [["let": "x", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/echo", "ok"], NSNull(), NSNull(), NSNull(), NSNull(), NSNull()]]]]],
+            "body": [["let": "x", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/echo", "ok"]]]]]],
     ]
     
     // MARK: - Initializer
@@ -93,7 +93,7 @@ struct ScheduleControlGateTests {
             stateFile: FileManager.default.temporaryDirectory
             .appendingPathComponent("forge-sched-enabled-\(UUID().uuidString.prefix(6)).json"))
         let create = ScheduleCreateMethod(
-            store: store, workflowStore: SpecCatalog(directory: nil, frontend: try ForgeSpec.frontend()),
+            store: store, workflowStore: WorkflowCatalog(directory: nil),
             policyStore: PolicyStore(seed: ["cli:owner": ["<inline>"]]), tokenAuthority: authority)
         let ownerToken = authority.mint(TokenClaims(principal: "cli:owner"))
         _ = try await create.handle(RPCRequest(

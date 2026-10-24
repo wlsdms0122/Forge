@@ -25,7 +25,7 @@ struct WorkflowSchedulerOnceTests {
         let rtDir = try fixture.temporary.make("once-den-rt")
         let marker = try fixture.temporary.make("once-den-m").appendingPathComponent("m")
         let badID = ScheduleIDSpace.stamp("bad")
-        let (scheduler, ledger, onceFile) = try fixture.onceScheduler(
+        let (scheduler, ledger, onceFile) = try await fixture.onceScheduler(
             onceYAML: "id: \(badID)\nworkflow: nope\nonce: \"2020-01-01 00:00:00\"\ntimezone: Asia/Seoul\n",
             onceFileName: "\(badID).yaml",
             configDir: directory, runtimeDirectory: rtDir, marker: marker, runtimeOwned: true)
@@ -55,7 +55,7 @@ struct WorkflowSchedulerOnceTests {
         let rtDir = try fixture.temporary.make("once-rt-dir")
         let marker = try fixture.temporary.make("once-rt-m").appendingPathComponent("m")
         let rtID = ScheduleIDSpace.stamp("one")
-        let (scheduler, ledger, onceFile) = try fixture.onceScheduler(
+        let (scheduler, ledger, onceFile) = try await fixture.onceScheduler(
             onceYAML: "id: \(rtID)\nworkflow: wfonce\nonce: \"2020-01-01 00:00:00\"\ntimezone: Asia/Seoul\n",
             onceFileName: "\(rtID).yaml",
             configDir: directory, runtimeDirectory: rtDir, marker: marker, runtimeOwned: true)
@@ -83,7 +83,7 @@ struct WorkflowSchedulerOnceTests {
         let configDir = try fixture.temporary.make("once-cfg")
         let runtimeDirectory = try fixture.temporary.make("once-cfg-rt")
         let marker = try fixture.temporary.make("once-cfg-m").appendingPathComponent("m")
-        let (scheduler, ledger, onceFile) = try fixture.onceScheduler(
+        let (scheduler, ledger, onceFile) = try await fixture.onceScheduler(
             onceYAML: "id: cfg\nworkflow: wfonce\nonce: \"2020-01-01 00:00:00\"\ntimezone: Asia/Seoul\n",
             onceFileName: "cfg.yaml",
             configDir: configDir, runtimeDirectory: runtimeDirectory, marker: marker)
@@ -104,7 +104,7 @@ struct WorkflowSchedulerOnceTests {
     @Test("A recurring schedule's resolution failure is observed as a denied event")
     func recurringResolveFailureEmitsDeniedEvent() async throws {
         // Given
-        let scheduler = try fixture.scheduler(
+        let scheduler = try await fixture.scheduler(
             workflows: [],
             scheduleYAML: ["ghost": "id: ghost\nworkflow: nope\nevery: 1s\n"])
         let records = try await LogSinkCapture.capture("sched-denied") { capture in

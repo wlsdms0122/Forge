@@ -85,13 +85,13 @@ struct WorkflowHealthTests {
         failing: [nonzero_exit, timeout]
         body:
           - let: x
-            value: { call: { procedure: Forge.shell, arguments: [ ["/bin/echo", "ok"], null, null, null, null, null ] } }
+            value: { call: { procedure: shell, arguments: { command: ["/bin/echo", "ok"] } } }
         """#, named: "echo3").write(
             to: directory.appendingPathComponent("echo3.yaml"), atomically: true, encoding: .utf8)
         let pool = WorkflowPool(maximumConcurrentSteps: 1, maximumActiveRuns: 1)
 
-        let store = SpecCatalog(directory: directory, frontend: try ForgeSpec.frontend())
-        let runner = SpecWorkflowRunner(
+        let store = WorkflowCatalog(directory: directory)
+        let runner = WorkflowRunner(
             catalog: store,
             eventBus: WorkflowEventBus(),
             policyStore: PolicyStore(seed: ["*": ["*"]]),

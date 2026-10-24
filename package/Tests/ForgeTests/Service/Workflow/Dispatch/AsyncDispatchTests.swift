@@ -21,7 +21,7 @@ struct AsyncDispatchTests {
         let token = authority.mint(TokenClaims(principal: "system:rpc"))
         let specJSON: [String: Any] = [
             "failing": ["nonzero_exit", "timeout"],
-            "body": [["let": "x", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/echo", "nope"], NSNull(), NSNull(), NSNull(), NSNull(), NSNull()]]]]],
+            "body": [["let": "x", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/echo", "nope"]]]]]],
         ]
         do {
             _ = try await method.handle(RPCRequest(
@@ -45,7 +45,7 @@ struct AsyncDispatchTests {
         let specJSON: [String: Any] = [
             "failing": ["nonzero_exit", "timeout"],
             "body": [
-                ["let": "x", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/echo", "done"], NSNull(), NSNull(), NSNull(), NSNull(), NSNull()]]]],
+                ["let": "x", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/echo", "done"]]]]],
             ],
             "returns": "Dictionary<String, Any>",
             "result": ["dictionary": [["v", ["ref": "x"]]]],
@@ -70,9 +70,11 @@ struct AsyncDispatchTests {
         let specJSON: [String: Any] = [
             "failing": ["nonzero_exit", "timeout"],
             "body": [
-                ["let": "slow", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/sleep", "0.3"], NSNull(), NSNull(), NSNull(), NSNull(), NSNull()]]]],
+                ["let": "slow", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/sleep", "0.3"]]]]],
             ],
         ]
+        // The library is read once a process; what is timed is the dispatch.
+        _ = try ForgeVocabulary.frontend()
         let startedAt = ContinuousClock.now
         let result = try await method.handle(RPCRequest(
                 id: "r-async",
@@ -100,10 +102,10 @@ struct AsyncDispatchTests {
     }
 
     private func makeMethod(policy: [String: [String]]) throws -> (WorkflowDispatchMethod, TokenAuthority) {
-        let store = SpecCatalog(directory: nil, frontend: try ForgeSpec.frontend())
+        let store = WorkflowCatalog(directory: nil)
         let bus = WorkflowEventBus()
         let authority = TokenAuthority()
-        let runner = SpecWorkflowRunner(catalog: store,
+        let runner = WorkflowRunner(catalog: store,
             eventBus: bus,
             policyStore: PolicyStore(seed: policy),
             pool: WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: Int.max),

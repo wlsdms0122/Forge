@@ -9,7 +9,7 @@ import Foundation
 import Warp
 
 // A single prompt turn against the agent session `invoke` opened.
-struct AgentAction: Warp.Effect {
+struct AgentAction: ForgeAction {
     enum Parameters: Int, ParameterSet {
         case prompt
 
@@ -24,9 +24,8 @@ struct AgentAction: Warp.Effect {
     // MARK: - Property
     // MARK: - Initializer
     // MARK: - Public
-    func run(_ invocation: Warp.Invocation<Self>) async throws -> Warp.Value {
-        let environment = try ForgeEnvironment.from(invocation)
-        let prompt = invocation.string(.prompt) ?? ""
+    func act(_ invocation: Warp.Invocation<Self>, in environment: ForgeEnvironment) async throws -> Warp.Value {
+        let prompt = ValueBridge.text(invocation[.prompt])
 
         return try await environment.withStepSlot {
             .string(try await environment.agent.send(prompt: prompt))

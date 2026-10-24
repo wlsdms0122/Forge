@@ -1,4 +1,4 @@
-# Policy gate: a dispatch outside the allow list must fail, and rescue must not
+# Policy gate: a dispatch outside the allow list must fail, and catch must not
 # swallow it.
 procedures:
   forbidden:
@@ -10,11 +10,11 @@ procedures:
         value: null
       - let: attempted
         value:
-          attempt:
+          try:
             body:
               - set: blocked
-                value: { call: { procedure: Forge.dispatch, arguments: [ kernel, null, 60 ] } }
-            rescue:
+                value: { call: { procedure: dispatch, arguments: { name: kernel, timeout: 60 } } }
+            catch:
               - set: blocked
                 value: should-not-swallow
     result: { dictionary: [ [result, { ref: blocked }] ] }

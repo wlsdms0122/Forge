@@ -9,7 +9,7 @@ import Foundation
 import Warp
 
 // A resource file rendered as a template over the inputs handed with it.
-struct ResourceAction: Warp.Effect {
+struct ResourceAction: ForgeAction {
     enum Parameters: Int, ParameterSet {
         case content
         case inputs
@@ -21,7 +21,7 @@ struct ResourceAction: Warp.Effect {
                 Parameter(name: "content", type: .string)
 
             case .inputs:
-                Parameter(name: "inputs", type: .nullable(.dictionary(key: .string, value: .any)))
+                Parameter(name: "inputs", type: .dictionary(key: .string, value: .any))
             }
         }
 
@@ -33,9 +33,8 @@ struct ResourceAction: Warp.Effect {
     // MARK: - Property
     // MARK: - Initializer
     // MARK: - Public
-    func run(_ invocation: Warp.Invocation<Self>) async throws -> Warp.Value {
-        let environment = try ForgeEnvironment.from(invocation)
-        let body = try await environment.resources.read(invocation.string(.content) ?? "")
+    func act(_ invocation: Warp.Invocation<Self>, in environment: ForgeEnvironment) async throws -> Warp.Value {
+        let body = try await environment.resources.read(ValueBridge.text(invocation[.content]))
 
         return .string(
             try ResourceTemplate(body).rendered(over: try ValueBridge.fields(invocation[.inputs]))

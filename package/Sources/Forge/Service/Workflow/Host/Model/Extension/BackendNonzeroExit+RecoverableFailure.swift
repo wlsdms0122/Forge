@@ -8,7 +8,7 @@
 import Foundation
 import Warp
 
-// A command that exited nonzero is a failure a workflow's rescue may take.
+// A command that exited nonzero is a failure a workflow's catch may take.
 extension BackendNonzeroExit: Warp.RecoverableFailure {
     static let type = "nonzero_exit"
 

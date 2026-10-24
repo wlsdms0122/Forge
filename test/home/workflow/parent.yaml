@@ -6,5 +6,5 @@ procedures:
     failing: [child_run_failed, timeout]
     body:
       - let: fan
-        value: { call: { procedure: Forge.dispatch, arguments: [ child, { dictionary: [ [tag, from-dispatch] ] }, 60 ] } }
+        value: { call: { procedure: dispatch, arguments: { name: child, inputs: { dictionary: [ [tag, from-dispatch] ] }, timeout: 60 } } }
     result: { dictionary: [ [child, { ref: fan }] ] }

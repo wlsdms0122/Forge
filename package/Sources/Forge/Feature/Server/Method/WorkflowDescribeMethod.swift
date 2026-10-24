@@ -7,16 +7,17 @@
 
 import Foundation
 import Warp
+import WarpYAML
 
 struct WorkflowDescribeMethod: Sendable {
     // MARK: - Property
-    let store: SpecCatalog
+    let store: WorkflowCatalog
     let tokenAuthority: TokenAuthority
 
     private let contract = WorkflowContract()
 
     // MARK: - Initializer
-    init(store: SpecCatalog, tokenAuthority: TokenAuthority) {
+    init(store: WorkflowCatalog, tokenAuthority: TokenAuthority) {
         self.store = store
         self.tokenAuthority = tokenAuthority
     }
@@ -37,7 +38,9 @@ struct WorkflowDescribeMethod: Sendable {
 
         // A workflow file declares one procedure named after the file — that is
         // Forge's convention, enforced at load, and what makes this lookup total.
-        guard let procedure = entry.module.procedures[try Name(entry.name)] else {
+        let declared = try Name(entry.name)
+
+        guard let procedure = entry.module.procedures[declared] else {
             throw ResolutionError("workflow '\(name)' declares no procedure of that name")
         }
 
@@ -46,7 +49,12 @@ struct WorkflowDescribeMethod: Sendable {
             "source":      entry.source,
         ]
 
-        result["inputs"] = contract.inputs(of: procedure.signature)
+        result["description"] = entry.documentation.descriptions[declared]
+        result["inputs"] = contract.inputs(
+            of: procedure.signature,
+            hints: entry.documentation.hints[declared] ?? [:],
+            defaults: entry.documentation.defaults[declared] ?? [:]
+        )
         result["returns"] = contract.returns(of: procedure.signature)
 
         return JSONObject(result)

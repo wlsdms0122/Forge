@@ -45,7 +45,7 @@ struct ScheduleStoreEnabledTests {
         #expect(after.concurrency == .skip, "concurrency preserved (a field that would be lost under re-serialization drift)")
         #expect(after.inputs?["scope"] == .string("quick"))
         #expect(after.inputs?["limit"] == .int(5))
-        #expect(after.spec == .object(["body": .array([]), "name": .string("<inline>")]), "spec preserved + anonymous sigil")
+        #expect(after.spec == .object(["body": .array([])]), "spec preserved as written")
     }
 
     @Test("The definition file is never rewritten — even human-written comments stay intact")

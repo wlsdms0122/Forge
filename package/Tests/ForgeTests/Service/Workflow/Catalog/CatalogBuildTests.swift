@@ -8,83 +8,49 @@
 import Foundation
 import Testing
 import Warp
-import WarpSyntax
 @testable import Forge
 
-// Every workflow in the catalog directory `FORGE_CATALOG` loads through the
-// front end, and the catalog builds against the Forge module and the standard
-// vocabulary. Nothing runs. Without the variable the suite asks nothing.
+// Every workflow in the catalog directory `FORGE_CATALOG` is read and built
+// the way the daemon's catalog reads and builds it at a reload: leaning on
+// the library and on the other files, each built against the files that
+// build. Nothing runs. Without the variable the suite asks nothing.
 //
 //   FORGE_CATALOG=<dir> swift test --filter CatalogBuildTests
 //
-// Each file prints one line: `<path>: ok`, or `<path>: load: <refusal>` or
-// `<path>: build: <refusal>`. A file is built with every sibling that loads, so
-// one broken file does not hide another's refusal, and the catalog is then
-// built whole.
+// Each file prints one line: `<path>: ok`, or `<path>: <refusal>`, a build
+// refusal starting `build:`. The files that built are then built whole, and
+// the descriptions and hints the catalog hands back beside them are counted.
 @Suite("Catalog build")
 struct CatalogBuildTests {
     // MARK: - Property
     // MARK: - Initializer
     // MARK: - Test
-    @Test("every workflow in the catalog loads and the catalog builds")
+    @Test("every workflow in the catalog loads and builds, and the catalog builds whole")
     func catalogBuilds() async throws {
         guard let path = ProcessInfo.processInfo.environment["FORGE_CATALOG"] else { return }
 
-        let directory = URL(fileURLWithPath: path).standardizedFileURL
-        let frontend = try ForgeSpec.frontend()
-        let linkables = try ForgeSpec.linkables()
-        var loaded: [(path: String, module: Warp.Module)] = []
-        var refused: [String] = []
+        let sut = WorkflowCatalog(directory: URL(fileURLWithPath: path).standardizedFileURL)
+        let catalog = await sut.catalog()
 
-        for file in files(in: directory) {
-            let relative = String(file.path.dropFirst(directory.path.count + 1))
-
-            do {
-                let document = try frontend.document(from: try Data(contentsOf: file))
-
-                loaded.append((relative, try Loader().load(document, identity: try Identity.of(document))))
-            } catch {
-                refused.append("\(relative): load: \(error)")
-            }
+        for entry in catalog.entries {
+            print("\(entry.source): ok")
         }
 
-        for (index, entry) in loaded.enumerated() {
-            let siblings = loaded.enumerated()
-                .filter { other in other.offset != index }
-                .map { other in other.element.module }
-
-            do {
-                _ = try await Builder().build([entry.module] + siblings + linkables)
-                print("\(entry.path): ok")
-            } catch {
-                refused.append("\(entry.path): build: \(error)")
-            }
+        for failure in catalog.failures {
+            print("\(failure.path): \(failure.reason)")
         }
 
-        for line in refused {
-            print(line)
-        }
+        _ = try await Builder().build(await sut.modules() + ForgeVocabulary.linkables())
+        print("catalog: ok, \(catalog.entries.count) of \(catalog.entries.count + catalog.failures.count)")
 
-        do {
-            _ = try await Builder().build(loaded.map(\.module) + linkables)
-            print("catalog: ok")
-        } catch {
-            print("catalog: build: \(error)")
-            refused.append("catalog: build: \(error)")
-        }
+        let descriptions = catalog.entries.map(\.documentation.descriptions.count).reduce(0, +)
+        let hints = catalog.entries.flatMap(\.documentation.hints.values).map(\.count).reduce(0, +)
 
-        #expect(refused.isEmpty, "\(refused.count) refusal(s)")
+        print("prose: \(descriptions) descriptions, \(hints) hints")
+
+        #expect(catalog.failures.isEmpty, "\(catalog.failures.count) refusal(s)")
     }
 
     // MARK: - Public
     // MARK: - Private
-    private func files(in directory: URL) -> [URL] {
-        let enumerator = FileManager.default.enumerator(at: directory, includingPropertiesForKeys: nil)
-        let found = (enumerator?.allObjects as? [URL]) ?? []
-
-        return found
-            .filter { url in url.pathExtension == "yaml" }
-            .map(\.standardizedFileURL)
-            .sorted { one, other in one.path < other.path }
-    }
 }

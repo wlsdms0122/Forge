@@ -129,6 +129,7 @@ actor PolicyStore {
         cache = fresh
         ledger.recordLegacyJSONSpecs(in: directory, kind: "policy")
         failureCache = ledger.fresh
+        FileHandle.standardError.write(Data(ledger.announcement.utf8))
         
         var invalid: [LoadFailure] = []
         var accumulated: [String: Set<String>] = [:]

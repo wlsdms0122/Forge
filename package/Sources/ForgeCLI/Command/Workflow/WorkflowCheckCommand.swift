@@ -9,26 +9,26 @@ import ArgumentParser
 import Foundation
 import Forge
 
-struct WorkflowCheckCommand: ParsableCommand {
+struct WorkflowCheckCommand: AsyncParsableCommand {
     // MARK: - Property
     static let configuration = CommandConfiguration(
         commandName: "check",
-        abstract: "Lint workflow YAML file(s) — decode + validator. Runs without a daemon.",
+        abstract: "Check workflow YAML file(s) the way the daemon reads them. Runs without a daemon.",
         discussion: """
-            Decodes each file as a Workflow then runs the same WorkflowValidator
-            the daemon uses at load time. Designed for CI / pre-commit hooks.
+            Reads the files as the daemon's catalog reads its own at a reload:
+            together through the YAML front end, each leaning on Forge's library
+            and on the others, loaded, held to Forge's convention, and built
+            against the library, the natives, std and the files that build. A
+            file that calls another workflow by name is checked with that
+            workflow's file. Designed for CI / pre-commit hooks.
 
             Catches:
-              - malformed YAML / broken spec structure
-              - half-spelled expression forms ({ ref: }, { value: }, { format: })
-              - { ref: X } where X is not declared
-              - { ref: step.X } where step is not a visible id
-              - format templates naming a binding not declared in `with`
-
-            Does NOT catch (intentional limits):
-              - { ref: step.X.Y } — Y (output key) is not checked
-              - cross-workflow refs (dispatch child outputs)
-              - refs that depend on runtime JSON shape
+              - malformed YAML, a notation the front end cannot read
+              - a document the load refuses
+              - a file that does not declare one procedure named after it,
+                or takes a name the library, std or the notation gives
+              - a file the build refuses
+              - ${ in a plain string, which ships as text
 
             Exits with code 1 if any file fails. Multiple paths may be passed;
             the shell expands globs.
@@ -43,22 +43,22 @@ struct WorkflowCheckCommand: ParsableCommand {
     
     // MARK: - Initializer
     // MARK: - Public
-    func run() throws {
+    func run() async throws {
         guard !paths.isEmpty else {
             die("check: at least one file path is required (e.g. forge workflow check .forge/workflow/**/*.yaml)", code: 2)
         }
         
         var failed = 0
         
-        for path in paths {
-            let report = WorkflowLint.check(path: path)
+        for report in await WorkflowLint.check(paths: paths) {
+            let path = report.path
             
             if let readError = report.readError {
                 print("✗ \(path): cannot read — \(readError)")
                 failed += 1
-            } else if let decodeError = report.decodeError {
-                print("✗ \(path): decode failed")
-                print("    \(decodeError)")
+            } else if let refusal = report.refusal {
+                print("✗ \(path): refused")
+                print("    \(refusal)")
                 failed += 1
             } else if report.issues.isEmpty {
                 print("✓ \(path)")

@@ -11,8 +11,8 @@ forge <subcommand> ...             client subcommands → JSON-RPC over the sock
 ```
 
 This document covers the full CLI surface and the JSON-RPC methods underneath.
-For the workflow format (Statement / Construct / Condition / Expression
-syntax), see **[Spec.md](./Spec.md)**.
+For what a workflow file holds and the verbs Forge lends a run, see
+**[Spec.md](./Spec.md)**.
 
 - [1. Invocation & configuration](#1-invocation--configuration) — version, binary/socket discovery, config, env, global options, exit status
 - [2. CLI surface](#2-cli-surface) — [`serve`](#forge-serve) · [`workflow`](#forge-workflow) · [`schedule`](#forge-schedule) · [`job`](#forge-job) · [`resource`](#forge-resource) · [`service`](#forge-service) · [`status`](#forge-status) · [`policy`](#forge-policy) · [`token issue`](#forge-token-issue)
@@ -226,8 +226,10 @@ those flags apply.
 #### `forge workflow list`
 
 List registered workflows. Plain output shows one workflow per line; a
-trailing `FAILED (N):` block lists files that failed to load (YAML decode
-error or validator rejection). RPC: `workflow.list`.
+trailing `FAILED (N):` block lists the files the catalog left out, each with
+its refusal: one that could not be read or is a legacy JSON spec, one the
+front end, the load or the file convention refused, and one the build refused
+(`build: …`). RPC: `workflow.list`.
 
 ```
 forge workflow list [--json]
@@ -235,9 +237,9 @@ forge workflow list [--json]
 
 #### `forge workflow describe`
 
-Show one workflow's calling contract — description, source path, inputs
-(type / default / hint — a declared default, even `null`, marks it optional),
-and outputs mapping. Counterpart to `service describe`. RPC: `workflow.describe`.
+Show one workflow's calling contract: description, source path, inputs
+(type, the default the file writes and hint) and the return type. Counterpart to `service describe`. RPC:
+`workflow.describe`.
 
 ```
 forge workflow describe <name> [--json]
@@ -271,27 +273,27 @@ forge workflow cancel <workflow-id> [--json]
 
 #### `forge workflow check`
 
-Lint workflow YAML file(s) — runs the same decode + validator the daemon uses
-at load time. Local-only; does not contact the daemon. Intended for CI and
-pre-commit hooks. **No RPC counterpart.**
+Check workflow YAML file(s) the way the daemon reads them. Local-only; does
+not contact the daemon. Intended for CI and pre-commit hooks. **No RPC
+counterpart.**
 
 ```
 forge workflow check <path>...
 ```
 
-For each path: decodes the file as a `Workflow`, then runs
-`WorkflowValidator`. A line per file: `✓ <path>` or `✗ <path> — N issue(s)`
-followed by indented `<location>: <message>` lines. Exit code 1 if any file
-fails, 0 otherwise. Shell globs are expanded by the shell.
-
-Catches: malformed YAML, broken document structure, half-spelled expression
-forms (`{ ref: }` / `{ value: }` / `{ format: }`), `{ ref: X }` where X is
-neither a declared parameter nor a visible statement id, format templates naming
-a binding not declared in `with`, and the validator's other shallow rules.
-
-Does not catch (by design — see [Spec.md: Validation](./Spec.md#validation)):
-`{ ref: step.X.Y }` field-level refs, cross-workflow refs (dispatch child
-outputs), or any ref whose validity depends on runtime JSON shape.
+Reads the files through the daemon's own catalog, the way it reads its
+directory at a reload: together through the YAML front end, each leaning on
+Forge's library and on the others, so a file that calls another workflow by
+name is checked with that workflow's file; each loaded, held to one procedure
+named after the file by a name the library, std and the notation do not
+give, and built against the library, the natives, std and the files that
+build. What the catalog records for a file is what the check prints, so a
+file passes the check where the daemon admits it. Beside that, no plain
+string may hold `${` (a string is a literal; `format` interpolates). A line
+per file: `✓ <path>`, `✗ <path>: refused` followed by the refusal (a build
+refusal starts `build:`), or `✗ <path> — N issue(s)` followed by indented
+issue lines. Exit code 1 if any file fails, 0 otherwise. Shell globs are
+expanded by the shell.
 
 ### `forge schedule`
 
@@ -637,15 +639,19 @@ lifetime and relays its progress:
 ```json
 {"id":"<client-id>","result":{"workflow_id":"...","name":"...","status":"streaming"}}
 {"kind":"workflow.event","event":"workflow.started","workflow_id":"...","workflow_name":"...","root_id":"...","ts":...}
-{"kind":"workflow.event","event":"step.started","step":"...","action":"shell|invoke|...","node_id":"...","parent_node_id":"...", ...}
+{"kind":"workflow.event","event":"step.started","step":"...","action":"Forge.shell|Forge.agent|...","node_id":"...","parent_node_id":"...", ...}
 {"kind":"workflow.event","event":"step.completed","step":"...","duration_ms":..., "output_preview":"...","output_len":..., ...}
 {"kind":"workflow.result","result":{...same shape as blocking dispatch result...}}
 ```
 
 Event lines are `WorkflowEvent` objects (`workflow.started/completed/failed`,
-`step.started/completed/failed/skipped`) filtered to this run's **root** —
-child workflows dispatched by the run (a `dispatch` step) inherit the root and
-stream too; `root_id`/`node_id`/`parent_node_id` let the consumer rebuild the
+`step.started/completed/failed/skipped`) filtered to this run's **root**. A
+step is a call of a verb that reaches outside the program, from its
+native's start to its return or throw, named by the statement that called
+the verb, and its `action` is the verb's full name, or the native's
+(`Forge.Native.<verb>`) where a workflow calls one directly. Child workflows
+dispatched by the run (a `dispatch` step) inherit the root and stream
+too; `root_id`/`node_id`/`parent_node_id` let the consumer rebuild the
 tree. A policy denial is returned as a plain RPC error line (no stream). If
 the run fails to even start after the ack (e.g. run cap), the terminal
 `workflow.result` line carries the real error type in `error.type` — the same
@@ -658,37 +664,35 @@ mid-run the run continues (same semantics as `async=true`); interruption is
 **params** `{"token"}`. **result**
 
 ```json
-{"workflows":[{"name","description","source"}],
+{"workflows":[{"name","description"?,"source"}],
  "failures":[{"path","reason","mtime"}]}
 ```
 
-`failures` lists `*.yaml` files that couldn't be loaded — YAML decode
-error or validator rejection (e.g. a `{ ref: X }` naming nothing declared).
-Always present (may be empty); admin surfaces broken workflows without
-grep'ing stderr.
+`workflows` are the catalog's files that loaded and built; `description` is
+what the file writes under `description:`, where it writes one. `failures`
+lists the `*.yaml` files the catalog left out, each with its refusal: a file
+the front end or the load refuses, one that does not declare one procedure
+named after it, and one that does not build against the library and the
+files that build (its reason starts `build:`). Always present (may be
+empty); admin surfaces broken workflows without grep'ing stderr.
 
 ### `workflow.describe`
 
 **params** `{"token","name"}`. **result**
 
 ```json
-{"name","description","source",
- "inputs":{"<key>":{"type","default"?,"hint"?,"oneOf"?}},
- "outputs":{"<key>": <Expression>}}
+{"name","description"?,"source",
+ "inputs":{"<key>":{"type","default"?,"hint"?}},
+ "returns"}
 ```
 
-`inputs` is the declared signature — the workflow procedure's `parameters:`,
-minus the two names the daemon supplies itself (`origin`, `run`), which are
-declared on every procedure but are not a caller's to fill. `type` is the
-declared type as written (`string`, `array<string>`, a record, …), and a
-declared `default` (even `null`) marks the input optional.
-
-`outputs` reads back the fields of the workflow's `result:` when it is a record,
-which is how several named answers are written; a `result:` that is anything
-else (or absent) describes as `{}`. Each value round-trips in the expression
-grammar — a reference comes back as `{"ref": "<path>"}`, quotation as
-`{"value": ...}`, interpolation as `{"format": "...", "with": {...}}`, and
-records/arrays/literals as themselves. Empty `inputs`/`outputs` are returned as
+`inputs` is the workflow procedure's parameters. `type` is the declared type
+as the language spells it (`String`, `Array<String>`, `String?`, …); an input
+of an Optional type is one a caller may leave out, and the daemon hands it
+null. `default` is the value the file writes under the input's `default:`,
+as the file writes it in the notation, which is what the workflow settles an
+omitted or null argument to; an input whose file writes none has no
+`default`. `hint` is what the file writes under the input's `hint:`. `returns` is the declared return type. Empty `inputs` is returned as
 `{}` (not omitted) so the caller can iterate without null-checks. Unknown
 workflow → ResolutionError `workflow not found: <name>`.
 
@@ -788,10 +792,12 @@ target workflow (`policy/*.yaml`, checked against the resolved name —
 
 Fire target via `workflow` (registered name) or `spec` (anonymous inline) —
 same rules as `workflow.dispatch`: mutually exclusive, `spec` rejects a
-`name` key and is anonymized to the `<inline>` sigil. The spec is decoded
-and run through `WorkflowValidator` at create time so failures surface up
-front rather than at fire time. The spec is stored on the schedule record
-and re-decoded on every fire.
+`name` key and runs under the `<inline>` sigil. At create time the spec is
+read the way a catalog file is, through the YAML front end leaning on
+Forge's library and on the catalog's files, and loaded, so what the front
+end or the load refuses surfaces at create time. It is not built there: a
+refusal of the build surfaces when the schedule fires. The spec is stored on
+the schedule record as written and read again on every fire.
 
 **params**
 

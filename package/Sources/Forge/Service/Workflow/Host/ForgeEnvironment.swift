@@ -20,6 +20,9 @@ struct ForgeEnvironment: ConcurrentEnvironment {
     let rootID: String
     let origin: DispatchOrigin
 
+    // Where the run's native verbs announce their steps.
+    let bridge: EventBridge
+
     // MARK: - Initializer
     init(
         shell: any ShellExecuting,
@@ -29,7 +32,8 @@ struct ForgeEnvironment: ConcurrentEnvironment {
         pool: WorkflowPool,
         runID: String,
         rootID: String,
-        origin: DispatchOrigin
+        origin: DispatchOrigin,
+        bridge: EventBridge
     ) {
         self.shell = shell
         self.agent = agent
@@ -39,6 +43,7 @@ struct ForgeEnvironment: ConcurrentEnvironment {
         self.runID = runID
         self.rootID = rootID
         self.origin = origin
+        self.bridge = bridge
     }
 
     // MARK: - Lifecycle

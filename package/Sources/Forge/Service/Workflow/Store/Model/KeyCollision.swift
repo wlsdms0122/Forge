@@ -7,9 +7,13 @@
 
 import Foundation
 
+// The failures a key held by several sources makes, one per source; the
+// ledger records a collision the failures standing before did not hold.
 func collisionFailures(
     kind: String,
-    _ collided: [(key: String, sources: [String])]
+    _ collided: [(key: String, sources: [String])],
+    standing: [LoadFailure],
+    recording ledger: inout LoadFailureLedger
 ) -> [LoadFailure] {
     var failures: [LoadFailure] = []
     
@@ -19,7 +23,9 @@ func collisionFailures(
             LoadFailure(path: source, reason: reason, mtime: .distantPast)
         }
         
-        FileHandle.standardError.write(Data("forge: \(reason)\n".utf8))
+        if standing.contains(where: { failure in failure.reason == reason }) { continue }
+        
+        ledger.record(collision: reason)
     }
     
     return failures

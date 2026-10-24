@@ -18,7 +18,7 @@ struct WorkflowDispatchTests {
         [
             "failing": ["nonzero_exit", "timeout"],
             "body": [
-                ["let": "x", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/echo", "ok"], NSNull(), NSNull(), NSNull(), NSNull(), NSNull()]]]],
+                ["let": "x", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/echo", "ok"]]]]],
             ],
             "returns": "Dictionary<String, Any>",
             "result": ["dictionary": [["v", ["ref": "x"]]]],
@@ -140,7 +140,7 @@ struct WorkflowDispatchTests {
         let badSpec: [String: Any] = [
             "failing": ["nonzero_exit", "timeout"],
             "body": [
-                ["let": "a", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/echo", ["ref": "nonexistent"]], NSNull(), NSNull(), NSNull(), NSNull(), NSNull()]]]],
+                ["let": "a", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/echo", ["ref": "nonexistent"]]]]]],
             ],
         ]
         do {
@@ -234,10 +234,10 @@ struct WorkflowDispatchTests {
         defer { try? FileManager.default.removeItem(at: directory) }
         try echoWorkflowYAML(name: "echo2").write(
             to: directory.appendingPathComponent("echo2.yaml"), atomically: true, encoding: .utf8)
-        let store = SpecCatalog(directory: directory, frontend: try ForgeSpec.frontend())
+        let store = WorkflowCatalog(directory: directory)
         let authority = TokenAuthority()
         let registry = WorkRegistry()
-        let runner = SpecWorkflowRunner(
+        let runner = WorkflowRunner(
             catalog: store,
             eventBus: WorkflowEventBus(),
             policyStore: PolicyStore(seed: ["*": ["*"]]),
@@ -268,7 +268,7 @@ struct WorkflowDispatchTests {
         failing: [nonzero_exit, timeout]
         body:
           - let: x
-            value: { call: { procedure: Forge.shell, arguments: [ ["/bin/echo", "ok"], null, null, null, null, null ] } }
+            value: { call: { procedure: shell, arguments: { command: ["/bin/echo", "ok"] } } }
         returns: "Dictionary<String, Any>"
         result: { dictionary: [ [v, { ref: x }] ] }
         """, named: name)
@@ -279,10 +279,10 @@ struct WorkflowDispatchTests {
     -> (WorkflowDispatchMethod, TokenAuthority, WorkRegistry) {
         let directory = try temporary.make("wf")
         try echoWorkflowYAML(name: "echo").write(to: directory.appendingPathComponent("echo.yaml"), atomically: true, encoding: .utf8)
-        let store = SpecCatalog(directory: directory, frontend: try ForgeSpec.frontend())
+        let store = WorkflowCatalog(directory: directory)
         let authority = TokenAuthority()
         let registry = WorkRegistry()
-        let runner = SpecWorkflowRunner(
+        let runner = WorkflowRunner(
             catalog: store,
             eventBus: WorkflowEventBus(),
             policyStore: PolicyStore(seed: policy),

@@ -7,65 +7,50 @@
 
 import Foundation
 import Warp
-import WarpSyntax
 import WarpYAML
 
 package enum WorkflowLint {
     // MARK: - Property
     // MARK: - Initializer
     // MARK: - Public
-    package static func check(path: String) -> Report {
-        let url = URL(fileURLWithPath: path)
-        let data: Data
+    // The files admitted as the daemon admits its catalog's at a reload,
+    // read through the catalog itself, with what it records for each, and
+    // the authoring issues the catalog has no rule for. One report per path
+    // in the order given.
+    package static func check(paths: [String]) async -> [Report] {
+        var read: [(path: String, data: Data)] = []
+        var unread: [String: String] = [:]
 
-        do {
-            data = try Data(contentsOf: url)
-        } catch {
-            return Report(
-                path: path,
-                readError: error.localizedDescription,
-                decodeError: nil,
-                issues: []
-            )
+        for path in paths {
+            do {
+                read.append((path, try Data(contentsOf: URL(fileURLWithPath: path))))
+            } catch {
+                unread[path] = error.localizedDescription
+            }
         }
 
-        let module: Warp.Module
+        let catalog = await WorkflowCatalog(directory: nil).catalog(of: read.map(\.path))
+        let refusals = Dictionary(
+            catalog.failures.map { failure in (failure.path, failure.reason) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        let issues = Dictionary(
+            read.map { file in (file.path, staleTemplateIssues(data: file.data)) },
+            uniquingKeysWith: { first, _ in first }
+        )
 
-        do {
-            let document = try ForgeSpec.frontend().document(from: data)
-
-            module = try Loader().load(document, identity: try Identity.of(document))
-        } catch {
-            return Report(
-                path: path,
-                readError: nil,
-                decodeError: "\(error)",
-                issues: []
-            )
+        return paths.map { path in
+            Report(path: path, readError: unread[path], refusal: refusals[path], issues: issues[path] ?? [])
         }
-
-        let base = url.deletingPathExtension().lastPathComponent
-        var issues: [String] = []
-
-        if module.procedures.keys.map(\.spelling) != [base] {
-            issues.append(
-                "a workflow file declares exactly one procedure named after the file"
-                    + " — expected 'procedures: { \(base): ... }'"
-            )
-        }
-
-        issues += staleTemplateIssues(data: data)
-
-        return Report(path: path, readError: nil, decodeError: nil, issues: issues)
     }
 
     // MARK: - Private
-    // A string in a spec is a literal — an old-grammar `${...}` inside one is
-    // no longer a reference and would silently ship as text. The language stays
-    // inert on purpose (runtime-lowered data may legitimately carry `${`), so
-    // the authored-file gate is where the migration trap gets loud. Exempt:
-    // `format` templates (the dialect's home), metadata prose, and `{ value: }`
-    // quotations (the sanctioned escape for literal `${` text).
+    // A string in a workflow is a literal, so a `${...}` inside one ships as
+    // text. The language takes it as text on purpose (data may carry `${`),
+    // and the authored file is where an interpolation written as a plain
+    // string gets loud. Exempt: a `format` template, whose `$$` writes `$`,
+    // and the prose the front end takes beside the document (`description`,
+    // `hint`).
     private static func staleTemplateIssues(data: Data) -> [String] {
         guard let tree = try? YAMLParser().parse(data) else {
             return []
@@ -89,9 +74,8 @@ package enum WorkflowLint {
         case let .string(string):
             if string.contains("${") {
                 issues.append(
-                    "\(location): string contains '${' — strings are literals now;"
-                        + " use { format:, with: } to interpolate, or wrap in"
-                        + " { value: } if the text is meant verbatim"
+                    "\(location): string contains '${', and a string is a literal;"
+                        + " use { format:, with: } to interpolate, where '$$' writes '$'"
                 )
             }
 
@@ -108,17 +92,13 @@ package enum WorkflowLint {
         case let .dictionary(object):
             let entries = zip(object.keys, object.values).map { key, element in (ValueBridge.text(key), element) }
 
-            // A single-key { value: } map is the quotation form — its payload
-            // is data by declaration, not a stale template.
-            if entries.count == 1, entries.first?.0 == "value" { return }
-
             for (key, element) in entries.sorted(by: { one, other in one.0 < other.0 }) {
                 guard !Self.proseKeys.contains(key) else { continue }
 
                 walk(element, at: "\(location).\(key)", into: &issues)
             }
 
-        case .null, .bool, .int, .double, .bytes, .struct:
+        case .null, .bool, .int, .double, .bytes, .struct, .existential:
             break
         }
     }

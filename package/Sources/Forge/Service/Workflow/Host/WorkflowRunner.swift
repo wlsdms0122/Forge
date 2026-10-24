@@ -1,5 +1,5 @@
 //
-//  SpecWorkflowRunner.swift
+//  WorkflowRunner.swift
 //  Forge
 //
 //  Created by JSilver on 8/9/26.
@@ -15,9 +15,9 @@ import Warp
 // isolated run, and every entrance (RPC method, scheduler, child step) walks
 // through the same `dispatch(module:...)` door — authz, pool registration,
 // log adoption — before a run begins.
-actor SpecWorkflowRunner {
+actor WorkflowRunner {
     // MARK: - Property
-    let catalog: SpecCatalog
+    let catalog: WorkflowCatalog
     let eventBus: WorkflowEventBus
     let policyStore: PolicyStore
     let pool: WorkflowPool
@@ -30,7 +30,7 @@ actor SpecWorkflowRunner {
 
     // MARK: - Initializer
     init(
-        catalog: SpecCatalog,
+        catalog: WorkflowCatalog,
         eventBus: WorkflowEventBus,
         policyStore: PolicyStore,
         pool: WorkflowPool,
@@ -207,42 +207,32 @@ actor SpecWorkflowRunner {
         ))
 
         let eventBus = self.eventBus
-        let environment = ForgeEnvironment(
-            shell: shell,
-            agent: agent,
-            dispatcher: self,
-            resources: resources,
-            pool: pool,
-            runID: runID,
-            rootID: LogContext.rootID ?? runID,
-            origin: origin
-        )
-        let executor = Warp.Executor(
-            observer: EventBridge(
-                workflowID: runID,
-                workflowName: name,
-                publish: { event in await eventBus.publish(event) }
-            ),
-            environment: environment
-        )
 
         do {
             // Linking is inside the do-block on purpose: a workflow naming a
             // sibling that has left the catalog is a run that failed, and it
-            // reports through the same ledger a failed step does.
-            // Every workflow the daemon can see goes into the link, and the
-            // name this run was asked for is the entry.
-            //
-            // The module being dispatched leads, and any catalog copy declaring
-            // that same name is left out: normally it *is* that copy, and when
-            // it is not (an inline spec) the caller's is the one they meant.
-            // Two copies would be a duplicate symbol, which is right in general
-            // and wrong for exactly this case.
+            // reports through the same ledger a failed step does. The catalog
+            // links the module beside every workflow that built, and the name
+            // this run was asked for is the entry.
             let entry = try Name(name)
-            let world = await catalog.modules().filter { module in
-                module.procedures[entry] == nil
-            }
-            let image = try await Builder().build([module] + world + ForgeSpec.linkables())
+            let image = try await catalog.image(running: module, entry: entry)
+            let environment = ForgeEnvironment(
+                shell: shell,
+                agent: agent,
+                dispatcher: self,
+                resources: resources,
+                pool: pool,
+                runID: runID,
+                rootID: LogContext.rootID ?? runID,
+                origin: origin,
+                bridge: EventBridge(
+                    workflowID: runID,
+                    workflowName: name,
+                    verbs: try ForgeVocabulary.verbs(),
+                    publish: { event in await eventBus.publish(event) }
+                )
+            )
+            let executor = Warp.Executor(environment: environment)
             let arguments = try Self.arguments(
                 inputs,
                 for: module.procedures[entry]?.signature
@@ -250,9 +240,7 @@ actor SpecWorkflowRunner {
             let outputs = try await withCancelSignal(runID: runID) {
                 try await executor.run(image, entry: entry, arguments: arguments)
             }
-            // A run returns one value, and the fields of the struct or map a
-            // workflow returns are what it reports.
-            let jsonOutputs = try ValueBridge.fields(outputs).mapValues(ValueBridge.json)
+            let jsonOutputs = Self.outputs(of: outputs)
             let duration = (ContinuousClock.now - started).milliseconds
 
             await eventBus.publish(WorkflowEvent(
@@ -339,12 +327,28 @@ actor SpecWorkflowRunner {
         }
 
         for parameter in signature?.parameters ?? [] where arguments[parameter.name] == nil {
-            guard case .nullable = parameter.type else { continue }
+            guard case .optional = parameter.type else { continue }
 
             arguments[parameter.name] = .null
         }
 
         return arguments
+    }
+
+    // What a run reports for the value it returned: the fields of a struct or
+    // the entries of a map, nothing for null, and any other value under
+    // `result`, so every workflow the build accepts reports what it returns.
+    private static func outputs(of returned: Warp.Value) -> [String: JSONValue] {
+        switch ValueBridge.json(returned) {
+        case .null:
+            return [:]
+
+        case let .object(fields):
+            return fields
+
+        case let other:
+            return ["result": other]
+        }
     }
 
     static func valuePreview(_ value: JSONValue) -> (String?, Int?) {
@@ -388,7 +392,7 @@ actor SpecWorkflowRunner {
 // A `dispatch` step lands here — resolved against the daemon catalog (or
 // lowered from the inline body the loader admitted at load time), then walked
 // through the same dispatch door as any RPC caller.
-extension SpecWorkflowRunner: RunDispatching {
+extension WorkflowRunner: RunDispatching {
     func dispatch(name: String, inputs: [String: Warp.Value]) async throws -> Warp.Value {
         let module: Warp.Module
 

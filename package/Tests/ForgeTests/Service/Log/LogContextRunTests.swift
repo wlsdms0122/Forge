@@ -51,11 +51,11 @@ struct LogContextRunTests {
         failing: [nonzero_exit, timeout]
         body:
           - let: x
-            value: { call: { procedure: Forge.shell, arguments: [ ["/bin/echo", "ok"], null, null, null, null, null ] } }
+            value: { call: { procedure: shell, arguments: { command: ["/bin/echo", "ok"] } } }
         """#, named: "echo").write(to: directory.appendingPathComponent("echo.yaml"), atomically: true, encoding: .utf8)
-        let store = SpecCatalog(directory: directory, frontend: try ForgeSpec.frontend())
+        let store = WorkflowCatalog(directory: directory)
         let bus = WorkflowEventBus()
-        let runner = SpecWorkflowRunner(
+        let runner = WorkflowRunner(
             catalog: store,
             eventBus: bus,
             policyStore: PolicyStore(seed: ["cli:test": ["echo"]]),

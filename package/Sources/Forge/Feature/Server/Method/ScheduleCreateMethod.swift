@@ -11,14 +11,14 @@ import Warp
 struct ScheduleCreateMethod: Sendable {
     // MARK: - Property
     let store: ScheduleStore
-    let workflowStore: SpecCatalog
+    let workflowStore: WorkflowCatalog
     let policyStore: PolicyStore
     let tokenAuthority: TokenAuthority
 
     // MARK: - Initializer
     init(
         store: ScheduleStore,
-        workflowStore: SpecCatalog,
+        workflowStore: WorkflowCatalog,
         policyStore: PolicyStore,
         tokenAuthority: TokenAuthority
     ) {
@@ -229,7 +229,7 @@ struct ScheduleCreateMethod: Sendable {
 func resolveDispatchTarget(
     params: [String: Any],
     context: String,
-    workflowStore: SpecCatalog
+    workflowStore: WorkflowCatalog
 ) async throws -> (name: String, spec: JSONValue?) {
     let nameParam = (params["workflow"] as? String)
         .flatMap { value in value.isEmpty ? nil : value }
@@ -269,7 +269,7 @@ func resolveDispatchTarget(
             // An inline spec is one procedure, the same shape workflow.dispatch
             // admits — checked here so a schedule cannot be stored carrying
             // something that will not load when it fires.
-            _ = try workflowStore.inline(try ValueBridge.value(specValue))
+            _ = try await workflowStore.inline(specValue)
         } catch {
             throw ProtocolError("\(context): malformed 'spec' — \(error)")
         }

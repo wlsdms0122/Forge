@@ -22,7 +22,7 @@ extension Warp.Executor {
         inputs: [String: Warp.Value] = [:]
     ) async throws -> [String: Warp.Value] {
         let name = try Name(entry)
-        let image = try await Builder().build([module] + others + ForgeSpec.linkables())
+        let image = try await Builder().build([module] + others + ForgeVocabulary.linkables())
         var arguments: [Name: Warp.Value] = [:]
 
         for (key, value) in inputs {
@@ -30,7 +30,7 @@ extension Warp.Executor {
         }
 
         for parameter in module.procedures[name]?.signature.parameters ?? [] where arguments[parameter.name] == nil {
-            guard case .nullable = parameter.type else { continue }
+            guard case .optional = parameter.type else { continue }
 
             arguments[parameter.name] = .null
         }

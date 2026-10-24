@@ -12,7 +12,7 @@ import Warp
 // settings (model, permissions, cwd, ...) at its boundary, opens the ambient
 // session through the environment, and runs its steps inside; `agent` steps only make
 // sense in here.
-struct InvokeAction: Warp.Effect {
+struct InvokeAction: ForgeAction {
     enum Parameters: Int, ParameterSet {
         case model
         case allowed
@@ -27,25 +27,25 @@ struct InvokeAction: Warp.Effect {
         var declared: Parameter {
             switch self {
             case .model:
-                Parameter(name: "model", type: .nullable(.string))
+                Parameter(name: "model", type: .optional(.string))
 
             case .allowed:
-                Parameter(name: "allowed", type: .any)
+                Parameter(name: "allowed", type: .optional(.array(.any)))
 
             case .envExtra:
-                Parameter(name: "env_extra", type: .nullable(.dictionary(key: .string, value: .string)))
+                Parameter(name: "env_extra", type: .dictionary(key: .string, value: .string))
 
             case .cwd:
-                Parameter(name: "cwd", type: .nullable(.string))
+                Parameter(name: "cwd", type: .optional(.string))
 
             case .permissionMode:
-                Parameter(name: "permission_mode", type: .nullable(.string))
+                Parameter(name: "permission_mode", type: .optional(.string))
 
             case .shareSession:
-                Parameter(name: "share_session", type: .nullable(.bool))
+                Parameter(name: "share_session", type: .bool)
 
             case .timeout:
-                Parameter(name: "timeout", type: .nullable(.double))
+                Parameter(name: "timeout", type: .optional(.double))
 
             case .body:
                 Parameter(
@@ -66,9 +66,7 @@ struct InvokeAction: Warp.Effect {
 
     // MARK: - Initializer
     // MARK: - Public
-    func run(_ invocation: Warp.Invocation<Self>) async throws -> Warp.Value {
-        let environment = try ForgeEnvironment.from(invocation)
-
+    func act(_ invocation: Warp.Invocation<Self>, in environment: ForgeEnvironment) async throws -> Warp.Value {
         // The body is a closure so that nothing in it runs before the session
         // is open.
         guard case let .procedure(body) = invocation[.body] else {
@@ -78,13 +76,10 @@ struct InvokeAction: Warp.Effect {
         let settings = AgentSessionSettings(
             model: invocation.string(.model),
             allowed: invocation[.allowed],
-            cwd: try Self.optionalNonEmptyString(invocation[.cwd], field: "cwd"),
-            permissionMode: try Self.optionalNonEmptyString(
-                invocation[.permissionMode],
-                field: "permission_mode"
-            ),
+            cwd: try Self.nonEmpty(invocation.string(.cwd), field: "cwd"),
+            permissionMode: try Self.nonEmpty(invocation.string(.permissionMode), field: "permission_mode"),
             envExtra: try ValueBridge.strings(invocation[.envExtra]),
-            shareSession: try Self.share(invocation[.shareSession])
+            shareSession: invocation[.shareSession] == .bool(true)
         )
 
         return try await withDeadline(seconds: ValueBridge.number(invocation[.timeout])) {
@@ -95,46 +90,16 @@ struct InvokeAction: Warp.Effect {
     }
 
     // MARK: - Private
-    private static func share(_ value: Warp.Value) throws -> Bool {
-        switch value {
-        case .null:
-            return false
-
-        case let .bool(share):
-            return share
-
-        case let other:
-            throw ExecutionError(
-                "invoke.share_session must resolve to a bool or null,"
-                    + " got \(other.nominal)"
-            )
-        }
-    }
-
     // null means "unset" and stays nil; an empty string is an author mistake, not
     // a quiet fallback into the daemon's own working directory.
-    private static func optionalNonEmptyString(
-        _ value: Warp.Value,
-        field: String
-    ) throws -> String? {
-        switch value {
-        case .null:
-            return nil
-
-        case let .string(string):
-            guard !string.isEmpty else {
-                throw ExecutionError(
-                    "invoke: \(field) must be a non-empty string, or omitted/null to"
-                        + " mean \"unset\" — got an empty string"
-                )
-            }
-
-            return string
-
-        case let other:
+    private static func nonEmpty(_ string: String?, field: String) throws -> String? {
+        guard string != "" else {
             throw ExecutionError(
-                "invoke: \(field) must resolve to a string or null, got \(other.nominal)"
+                "invoke: \(field) must be a non-empty string, or omitted/null to"
+                    + " mean \"unset\" — got an empty string"
             )
         }
+
+        return string
     }
 }

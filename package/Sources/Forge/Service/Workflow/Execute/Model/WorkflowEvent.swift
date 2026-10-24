@@ -33,7 +33,6 @@ struct WorkflowEvent: Sendable {
     let parentNodeID: String?
     let parentRunID: String?
     let asyncDispatch: Bool
-    let absorbed: Bool
 
     // MARK: - Initializer
     init(
@@ -60,8 +59,7 @@ struct WorkflowEvent: Sendable {
         nodeID: String? = nil,
         parentNodeID: String? = nil,
         parentRunID: String? = nil,
-        asyncDispatch: Bool? = nil,
-        absorbed: Bool = false
+        asyncDispatch: Bool? = nil
     ) {
         self.kind = kind
         self.workflowID = workflowID
@@ -87,7 +85,6 @@ struct WorkflowEvent: Sendable {
         self.parentNodeID = parentNodeID ?? LogContext.parentNodeID
         self.parentRunID = parentRunID ?? LogContext.parentRunID
         self.asyncDispatch = asyncDispatch ?? LogContext.asyncDispatch ?? false
-        self.absorbed = absorbed
     }
 
     // MARK: - Public
@@ -119,7 +116,6 @@ struct WorkflowEvent: Sendable {
         if let parentNodeID { object["parent_node_id"] = parentNodeID }
         if let parentRunID { object["parent_run_id"] = parentRunID }
         if asyncDispatch { object["async"] = true }
-        if absorbed { object["absorbed"] = true }
 
         return object
     }

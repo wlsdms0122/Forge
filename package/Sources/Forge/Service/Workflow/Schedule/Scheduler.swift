@@ -22,10 +22,10 @@ actor WorkflowScheduler {
     // MARK: - Property
     static let pendingCloseGraceSeconds: TimeInterval = 60
     
-    let workflowStore: SpecCatalog
+    let workflowStore: WorkflowCatalog
     let store: ScheduleStore
     let ledger: FireLedger
-    let runner: SpecWorkflowRunner
+    let runner: WorkflowRunner
     let tickIntervalSeconds: Int
     
     private var nextFire: [String: Date] = [:]
@@ -36,10 +36,10 @@ actor WorkflowScheduler {
     
     // MARK: - Initializer
     init(
-        workflowStore: SpecCatalog,
+        workflowStore: WorkflowCatalog,
         store: ScheduleStore,
         ledger: FireLedger,
-        runner: SpecWorkflowRunner,
+        runner: WorkflowRunner,
         tickIntervalSeconds: Int = 5
     ) {
         self.workflowStore = workflowStore
@@ -320,11 +320,11 @@ private enum FireResolution {
 private func resolveFireTarget(
     name: String,
     spec: JSONValue?,
-    store: SpecCatalog
+    store: WorkflowCatalog
 ) async -> FireResolution {
     if let spec {
         do {
-            let module = try store.inline(try ValueBridge.value(spec))
+            let module = try await store.inline(spec)
             
             return .resolved(FireTarget(name: name, module: module))
         } catch {
@@ -373,10 +373,10 @@ private func dispatchScheduled(
     target: FireTarget,
     inputs: [String: JSONValue],
     id: String,
-    runner: SpecWorkflowRunner
+    runner: WorkflowRunner
 ) async {
     let principal = "system:schedule:\(id)"
-    let runID = SpecWorkflowRunner.newRunID()
+    let runID = WorkflowRunner.newRunID()
     
     await Log.shared.append(
         "schedule.fired",

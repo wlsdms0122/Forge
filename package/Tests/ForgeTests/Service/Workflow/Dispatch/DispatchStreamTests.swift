@@ -29,8 +29,8 @@ struct DispatchStreamTests {
         let specJSON: [String: Any] = [
             "failing": ["nonzero_exit", "timeout"],
             "body": [
-                ["let": "one", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/echo", "a"], NSNull(), NSNull(), NSNull(), NSNull(), NSNull()]]]],
-                ["let": "two", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/echo", "b"], NSNull(), NSNull(), NSNull(), NSNull(), NSNull()]]]],
+                ["let": "one", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/echo", "a"]]]]],
+                ["let": "two", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/echo", "b"]]]]],
             ],
             "returns": "Dictionary<String, Any>",
             "result": ["dictionary": [["v", ["ref": "two"]]]],
@@ -62,7 +62,6 @@ struct DispatchStreamTests {
         #expect(eventKinds.contains("workflow.completed"))
         let stepStarts = events.filter { event in (event["event"] as? String) == "step.started" }
         .compactMap { line in line["step"] as? String }
-        .filter { step in !step.hasPrefix("[") }
         #expect(stepStarts == ["one", "two"], "\(stepStarts)")
         let terminal = try #require(lines.last)
         #expect(terminal["kind"] as? String == "workflow.result")
@@ -80,7 +79,7 @@ struct DispatchStreamTests {
         let sink = CollectingSink()
         let specJSON: [String: Any] = [
             "failing": ["nonzero_exit", "timeout"],
-            "body": [["let": "x", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/echo", "nope"], NSNull(), NSNull(), NSNull(), NSNull(), NSNull()]]]]],
+            "body": [["let": "x", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/echo", "nope"]]]]]],
         ]
         do {
             try await method.handle(RPCRequest(
@@ -107,7 +106,7 @@ struct DispatchStreamTests {
         let sink = CollectingSink()
         let specJSON: [String: Any] = [
             "failing": ["nonzero_exit", "timeout"],
-            "body": [["let": "slow", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/sleep", "0.3"], NSNull(), NSNull(), NSNull(), NSNull(), NSNull()]]]]],
+            "body": [["let": "slow", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/sleep", "0.3"]]]]]],
         ]
         let handleTask = Task {
             try await method.handle(RPCRequest(
@@ -155,7 +154,7 @@ struct DispatchStreamTests {
         let sink = CollectingSink()
         let specJSON: [String: Any] = [
             "failing": ["nonzero_exit", "timeout"],
-            "body": [["let": "slow", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/sleep", "0.3"], NSNull(), NSNull(), NSNull(), NSNull(), NSNull()]]]]],
+            "body": [["let": "slow", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/sleep", "0.3"]]]]]],
         ]
         let handleTask = Task {
             try await method.handle(RPCRequest(
@@ -199,11 +198,11 @@ struct DispatchStreamTests {
     @Test("Async dispatch marks the run as async")
     func asyncDispatchMarksRunAsync() async throws {
         // Given
-        let store = SpecCatalog(directory: nil, frontend: try ForgeSpec.frontend())
+        let store = WorkflowCatalog(directory: nil)
         let bus = WorkflowEventBus()
         let authority = TokenAuthority()
         let registry = WorkRegistry()
-        let runner = SpecWorkflowRunner(
+        let runner = WorkflowRunner(
             catalog: store,
             eventBus: bus,
             policyStore: PolicyStore(seed: ["*": ["*"]]),
@@ -220,7 +219,7 @@ struct DispatchStreamTests {
         let token = authority.mint(TokenClaims(principal: "system:rpc"))
         let specJSON: [String: Any] = [
             "failing": ["nonzero_exit", "timeout"],
-            "body": [["let": "one", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/echo", "a"], NSNull(), NSNull(), NSNull(), NSNull(), NSNull()]]]]],
+            "body": [["let": "one", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/echo", "a"]]]]]],
         ]
         let ack = try await dispatchMethod.handle(RPCRequest(
                 id: "r-async", method: "workflow.dispatch",
@@ -245,7 +244,7 @@ struct DispatchStreamTests {
         let sink = CollectingSink()
         let specJSON: [String: Any] = [
             "failing": ["nonzero_exit", "timeout"],
-            "body": [["let": "boom", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/usr/bin/false"], NSNull(), NSNull(), NSNull(), NSNull(), NSNull()]]]]],
+            "body": [["let": "boom", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/usr/bin/false"]]]]]],
         ]
         try await method.handle(RPCRequest(
                 id: "r-fail",
@@ -267,14 +266,14 @@ struct DispatchStreamTests {
     @Test("The terminal event preserves the failure type instead of flattening it")
     func streamTerminalPreservesFailureType() async throws {
         // Given
-        let store = SpecCatalog(directory: nil, frontend: try ForgeSpec.frontend())
+        let store = WorkflowCatalog(directory: nil)
         let bus = WorkflowEventBus()
         let pool = WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: 1)
         try await pool.register(workflowID: "occupier", workflowName: "other", rootID: "occupier",
             origin: .manual, principal: "t")
         let authority = TokenAuthority()
         let registry = WorkRegistry()
-        let runner = SpecWorkflowRunner(
+        let runner = WorkflowRunner(
             catalog: store,
             eventBus: bus,
             policyStore: PolicyStore(seed: ["*": ["*"]]),
@@ -295,7 +294,7 @@ struct DispatchStreamTests {
                 method: "workflow.dispatch_stream",
                 params: ["token": token,
                     "spec": ["failing": ["nonzero_exit", "timeout"],
-            "body": [["let": "x", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/echo", "hi"], NSNull(), NSNull(), NSNull(), NSNull(), NSNull()]]]]]]]
+            "body": [["let": "x", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/echo", "hi"]]]]]]]]
             ), sink: sink)
         let lines = (await sink.snapshot()).map { line in line.dict }
 
@@ -313,11 +312,11 @@ struct DispatchStreamTests {
     -> (WorkflowDispatchStreamMethod, TokenAuthority, WorkflowEventBus)
 
     {
-        let store = SpecCatalog(directory: nil, frontend: try ForgeSpec.frontend())
+        let store = WorkflowCatalog(directory: nil)
         let bus = WorkflowEventBus()
         let authority = TokenAuthority()
         let registry = WorkRegistry()
-        let runner = SpecWorkflowRunner(
+        let runner = WorkflowRunner(
             catalog: store,
             eventBus: bus,
             policyStore: PolicyStore(seed: policySeed),

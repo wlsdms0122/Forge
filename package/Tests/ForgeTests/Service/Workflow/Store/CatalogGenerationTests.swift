@@ -7,6 +7,7 @@
 
 import Foundation
 import Testing
+import Warp
 @testable import Forge
 
 @Suite("CatalogGeneration Tests")
@@ -18,21 +19,21 @@ struct CatalogGenerationTests {
     failing: [nonzero_exit, timeout]
     body:
       - let: x
-        value: { call: { procedure: Forge.shell, arguments: [ ["/bin/echo", "ok"], null, null, null, null, null ] } }
+        value: { call: { procedure: shell, arguments: { command: ["/bin/echo", "ok"] } } }
     """#
     
     private let brokenBody = "steps: notalist\n"
     
     // MARK: - Initializer
     // MARK: - Test
-    // MARK: - SpecCatalog
+    // MARK: - WorkflowCatalog
     @Test("A repaired definition cannot vanish from the catalog")
     func repairedDefinitionCannotVanishFromTheCatalog() async throws {
         // Given
         let directory = try temporary.make("wf-repair")
         defer { try? FileManager.default.removeItem(at: directory) }
         try writeWorkflow(brokenBody, named: "mender", in: directory)
-        let store = SpecCatalog(directory: directory, frontend: try ForgeSpec.frontend())
+        let store = WorkflowCatalog(directory: directory)
 
         // When
         var catalog = await store.catalog()
@@ -56,7 +57,7 @@ struct CatalogGenerationTests {
         // When
         try writeWorkflow(validBody, named: "ok", in: directory)
         try writeWorkflow(brokenBody, named: "bad", in: directory)
-        let catalog = await SpecCatalog(directory: directory, frontend: try ForgeSpec.frontend()).catalog()
+        let catalog = await WorkflowCatalog(directory: directory).catalog()
         try assertAccountedForExactlyOnce(catalog, in: directory)
 
         // Then
@@ -64,6 +65,126 @@ struct CatalogGenerationTests {
         #expect(catalog.failures.compactMap(\.name) == ["bad"])
     }
     
+    @Test("A workflow that loads and does not build is a failure, and the others still build and run")
+    func aWorkflowThatDoesNotBuildIsLeftOut() async throws {
+        // Given
+        let directory = try temporary.make("wf-unbuilt")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try writeWorkflow(validBody, named: "ok", in: directory)
+        try writeWorkflow("""
+        result: { call: { procedure: Nowhere.missing, arguments: [] } }
+        """, named: "unbuilt", in: directory)
+        let sut = WorkflowCatalog(directory: directory)
+
+        // When
+        let catalog = await sut.catalog()
+
+        // Then
+        try assertAccountedForExactlyOnce(catalog, in: directory)
+        #expect(catalog.entries.map(\.name) == ["ok"])
+        #expect(catalog.failures.compactMap(\.name) == ["unbuilt"])
+        #expect(catalog.failures.first?.reason.hasPrefix("build: ") == true)
+
+        guard case .invalid = await sut.resolve("unbuilt") else {
+            Issue.record("a workflow that does not build resolves as broken")
+            return
+        }
+
+        _ = try await Builder().build(await sut.modules() + ForgeVocabulary.linkables())
+    }
+
+    @Test("Workflows lean on each other: one calls another by its short name and its arguments by name")
+    func workflowsLeanOnEachOther() async throws {
+        // Given
+        let directory = try temporary.make("wf-leaning")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try writeWorkflow("""
+        returns: Int
+        result: { call: { procedure: scaled, arguments: { base: 21 } } }
+        """, named: "caller", in: directory)
+        try writeWorkflow("""
+        parameters: [ base: Int, by: { type: Int, default: 2 } ]
+        returns: Int
+        result: { of: { ref: base }, times: { ref: by } }
+        """, named: "scaled", in: directory)
+        let sut = WorkflowCatalog(directory: directory)
+
+        // When
+        let catalog = await sut.catalog()
+
+        // Then
+        #expect(catalog.failures.isEmpty)
+        #expect(catalog.entries.map(\.name) == ["caller", "scaled"])
+
+        let image = try await Builder().build(await sut.modules() + ForgeVocabulary.linkables())
+        let answer = try await Warp.Executor().run(image, entry: try Name("caller"), arguments: [:])
+
+        #expect(answer == .int(42))
+    }
+
+    @Test("A workflow named by a short name the library or std gives is refused at its own file, and the files writing that name build")
+    func aWorkflowNamedLikeTheVocabularyIsRefusedAlone() async throws {
+        // Given
+        let directory = try temporary.make("wf-named")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try writeWorkflow("""
+        returns: String
+        result: hello
+        """, named: "run", in: directory)
+        try writeWorkflow("""
+        returns: Int
+        result: 0
+        """, named: "count", in: directory)
+        try writeWorkflow("""
+        returns: Forge.Run
+        result: { call: { procedure: run } }
+        """, named: "who", in: directory)
+        try writeWorkflow("""
+        returns: Int
+        result: { call: { procedure: count, arguments: [ [1, 2, 3] ] } }
+        """, named: "sized", in: directory)
+        let sut = WorkflowCatalog(directory: directory)
+
+        // When
+        let catalog = await sut.catalog()
+
+        // Then
+        try assertAccountedForExactlyOnce(catalog, in: directory)
+        #expect(catalog.entries.map(\.name) == ["sized", "who"])
+        #expect(catalog.failures.compactMap(\.name) == ["count", "run"])
+        #expect(catalog.failures.allSatisfy { failure in failure.reason.hasPrefix("a workflow is called by its name") })
+        #expect(catalog.failures.last?.reason.contains("'run' is the short name of Forge.run") == true)
+    }
+
+    @Test("A workflow named by a key the notation spells is refused at its own file, and the files writing that key read it as the notation does")
+    func aWorkflowNamedLikeAnOperatorIsRefusedAlone() async throws {
+        // Given
+        let directory = try temporary.make("wf-operator")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try writeWorkflow("""
+        parameters: [ of: Int, to: Int ]
+        returns: Bool
+        result: true
+        """, named: "is", in: directory)
+        try writeWorkflow("""
+        returns: Bool
+        result: { of: 1, is: 2 }
+        """, named: "same", in: directory)
+        let sut = WorkflowCatalog(directory: directory)
+
+        // When
+        let catalog = await sut.catalog()
+
+        // Then
+        #expect(catalog.entries.map(\.name) == ["same"])
+        #expect(catalog.failures.compactMap(\.name) == ["is"])
+
+        let image = try await Builder().build(await sut.modules() + ForgeVocabulary.linkables())
+        let answer = try await Warp.Executor().run(image, entry: try Name("same"), arguments: [:])
+
+        #expect(answer == .bool(false))
+    }
+
     @Test("A scan obstruction rides in the same observation")
     func scanObstructionRidesTheSameObservation() async throws {
         // Given
@@ -81,7 +202,7 @@ struct CatalogGenerationTests {
         }
 
         // When
-        let catalog = await SpecCatalog(directory: directory, frontend: try ForgeSpec.frontend()).catalog()
+        let catalog = await WorkflowCatalog(directory: directory).catalog()
 
         // Then
         #expect(catalog.entries.map(\.name) == ["visible"])
@@ -138,7 +259,7 @@ struct CatalogGenerationTests {
     }
     
     private func assertAccountedForExactlyOnce(
-        _ catalog: SpecCatalog.Catalog, in directory: URL,
+        _ catalog: WorkflowCatalog.Catalog, in directory: URL,
         file: StaticString = #filePath, line: UInt = #line
     ) throws {
         let onDisk = Set(try FileManager.default.contentsOfDirectory(atPath: directory.path)

@@ -2,37 +2,30 @@
 procedures:
   host:
     access: public
-    parameters: [ name: String? ]
+    parameters: [ name: { type: String, default: e2e } ]
     returns: "Dictionary<String, Any>"
-    failing: [cast_refused, nonzero_exit, timeout]
+    failing: [nonzero_exit, timeout]
     body:
-      - var: who
-        type: String
-        value: e2e
-      - value:
-          conditional:
-            when: { present: { ref: name } }
-            then: [ { set: who, value: { as: { of: { ref: name }, type: String } } } ]
       - let: shout
         value:
           call:
-            procedure: Forge.shell
-            arguments: [ [ /bin/sh, -c, "printf 'shell:%s' \"$1\"", _, { ref: who } ], null, null, null, null, 30 ]
+            procedure: shell
+            arguments: { command: [ /bin/sh, -c, "printf 'shell:%s' \"$1\"", _, { ref: name } ], timeout: 30 }
       - let: letter
-        value: { call: { procedure: Forge.resource, arguments: [ greeting.txt, { dictionary: [ [name, { ref: who }] ] } ] } }
+        value: { call: { procedure: resource, arguments: { content: greeting.txt, inputs: { dictionary: [ [name, { ref: name }] ] } } } }
       - let: script
-        value: { call: { procedure: Forge.locate, arguments: [ script/stamp.sh ] } }
+        value: { locate: script/stamp.sh }
       - let: stamped
-        value: { call: { procedure: Forge.shell, arguments: [ [ /bin/sh, { ref: script }, { ref: who } ], null, null, null, null, null ] } }
+        value: { call: { procedure: shell, arguments: { command: [ /bin/sh, { ref: script }, { ref: name } ] } } }
       - var: rescued
         type: String
         value: ""
       - let: fragile
         value:
-          attempt:
+          try:
             body:
-              - value: { call: { procedure: Forge.shell, arguments: [ [ /bin/sh, -c, "echo warned >&2; exit 7" ], null, null, null, null, null ] } }
-            rescue:
+              - value: { call: { procedure: shell, arguments: { command: [ /bin/sh, -c, "echo warned >&2; exit 7" ] } } }
+            catch:
               - set: rescued
                 value:
                   format: "rescued(${code}): ${said}"

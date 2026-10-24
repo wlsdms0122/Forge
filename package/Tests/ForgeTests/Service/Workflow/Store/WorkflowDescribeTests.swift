@@ -26,7 +26,7 @@ struct WorkflowDescribeTests {
         failing: [nonzero_exit, timeout]
         body:
           - let: x
-            value: { call: { procedure: Forge.shell, arguments: [ ["/bin/echo", { ref: msg }], null, null, null, null, null ] } }
+            value: { call: { procedure: shell, arguments: { command: ["/bin/echo", { ref: msg }] } } }
         returns: "Dictionary<String, Any>"
         result: { dictionary: [ [v, { ref: x }] ] }
         """#, named: "echo").write(to: directory.appendingPathComponent("echo.yaml"),
@@ -44,10 +44,40 @@ struct WorkflowDescribeTests {
         #expect(message["type"] as? String == "String")
         #expect(!message.keys.contains("default"))
         let tag = inputs["tag"] as? [String: Any] ?? [:]
-        #expect(tag.keys.contains("default"), "an optional parameter is one a caller may leave out")
+        #expect(tag["type"] as? String == "String?")
+        #expect(!tag.keys.contains("default"), "an input whose file writes no default reports none")
         #expect(result.dict["returns"] as? String == "Dictionary<String, Any>")
     }
     
+    @Test("Describe and list answer the description and each input's hint the file writes beside them")
+    func answersTheProseBesideTheDeclaration() async throws {
+        // Given
+        let (method, authority, directory) = try await makeMethod("prose")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try workflowFile(#"""
+        description: Says hello.
+        parameters: [ who: { type: String, hint: whom to greet }, loud: { type: Bool, default: false } ]
+        returns: String
+        result: { format: "hello, ${who}", with: { who: { ref: who } } }
+        """#, named: "greet").write(to: directory.appendingPathComponent("greet.yaml"),
+            atomically: true, encoding: .utf8)
+        let token = authority.mint(TokenClaims(principal: "system:admin"))
+        let list = WorkflowListMethod(store: method.store, tokenAuthority: authority)
+
+        // When
+        let described = try await method.handle(request(["token": token, "name": "greet"]))
+        let listed = try await list.handle(RPCRequest(id: "r-list", method: "workflow.list", params: ["token": token]))
+
+        // Then
+        #expect(described.dict["description"] as? String == "Says hello.")
+        let inputs = described.dict["inputs"] as? [String: Any] ?? [:]
+        #expect((inputs["who"] as? [String: Any])?["hint"] as? String == "whom to greet")
+        #expect((inputs["loud"] as? [String: Any])?["hint"] == nil)
+        #expect((inputs["loud"] as? [String: Any])?["default"] as? Bool == false, "the default the file writes")
+        let workflows = listed.dict["workflows"] as? [[String: Any]] ?? []
+        #expect(workflows.first?["description"] as? String == "Says hello.")
+    }
+
     @Test("A workflow with no parameters answers empty inputs and returns Null")
     func emptyInputsAndOutputsAreEmptyObjects() async throws {
         // Given
@@ -57,7 +87,7 @@ struct WorkflowDescribeTests {
         failing: [nonzero_exit, timeout]
         body:
           - let: x
-            value: { call: { procedure: Forge.shell, arguments: [ ["/bin/true"], null, null, null, null, null ] } }
+            value: { call: { procedure: shell, arguments: { command: ["/bin/true"] } } }
         """#, named: "noop").write(to: directory.appendingPathComponent("noop.yaml"),
             atomically: true, encoding: .utf8)
         let token = authority.mint(TokenClaims(principal: "system:admin"))
@@ -112,7 +142,7 @@ struct WorkflowDescribeTests {
     
     -> (WorkflowDescribeMethod, TokenAuthority, URL) {
         let directory = try temporary.make(test)
-        let store = SpecCatalog(directory: directory, frontend: try ForgeSpec.frontend())
+        let store = WorkflowCatalog(directory: directory)
         let authority = TokenAuthority()
         
         return (WorkflowDescribeMethod(store: store, tokenAuthority: authority), authority, directory)
