@@ -1127,6 +1127,10 @@ The error envelope is `{"type": "<ErrorType>", "message": "<text>"}`.
 | `ResolutionError` | provider spec invalid, or a workflow name the catalog cannot answer for while its directory is not fully read |
 | `WorkflowNotFound` | no workflow of that name in the catalog (`workflow.dispatch`, `workflow.describe`, `schedule.create`, a `dispatch` step) |
 | `ProtocolError` | request envelope / payload malformed |
+| `AgentValidationError` | an `invoke`'s agent cannot be built: its model, tools or `permission_mode`, or a combination its provider cannot run — fix the workflow |
+| `AgentSessionMissing` | an `agent` step ran outside an `invoke`, where no agent session is open — fix the workflow |
+| `ResourceError` | a resource cannot be given: no `resource_directory`, a path outside it or hidden, a missing or unreadable file |
+| `HandlerFailed` | the service handling a `session.send` answered with an error; the message is the handler's |
 | `TokenRejected` | token failed verification — re-issue and retry once |
 | `UnknownMethod` | the daemon does not know the method name |
 | `PolicyDenied` | the principal may not dispatch/control that workflow (policy/*.yaml) — retry is pointless |

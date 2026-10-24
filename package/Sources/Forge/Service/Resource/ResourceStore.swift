@@ -30,7 +30,7 @@ actor ResourceStore {
     // MARK: - Public
     func resolve(_ relativePath: String) throws -> URL {
         guard let base = directory else {
-            throw ProtocolError(
+            throw ResourceError(
                 "resource '@\(relativePath)' requested but resource_directory not configured"
             )
         }
@@ -44,7 +44,7 @@ actor ResourceStore {
         do {
             return try String(contentsOf: url, encoding: .utf8)
         } catch {
-            throw ProtocolError("resource read failed (\(relativePath)): \(error)")
+            throw ResourceError("resource read failed (\(relativePath)): \(error)")
         }
     }
     
@@ -115,7 +115,7 @@ actor ResourceStore {
                 component.hasPrefix(".") && component != "." && component != ".."
             })
         else {
-            throw ProtocolError(
+            throw ResourceError(
                 "resource path '\(relativePath)' has a hidden component"
                     + " — hidden files are not resources"
             )
@@ -125,11 +125,11 @@ actor ResourceStore {
         let basePath = base.path
         
         guard target.path == basePath || target.path.hasPrefix(basePath + "/") else {
-            throw ProtocolError("resource path '\(relativePath)' escapes resource_directory")
+            throw ResourceError("resource path '\(relativePath)' escapes resource_directory")
         }
         
         guard FileManager.default.fileExists(atPath: target.path) else {
-            throw ProtocolError("resource not found: \(relativePath)")
+            throw ResourceError("resource not found: \(relativePath)")
         }
         
         let real = target.resolvingSymlinksInPath()
@@ -137,7 +137,7 @@ actor ResourceStore {
         let realBasePath = realBase.path
         
         guard real.path == realBasePath || real.path.hasPrefix(realBasePath + "/") else {
-            throw ProtocolError(
+            throw ResourceError(
                 "resource path '\(relativePath)' resolves outside resource_directory via symlink"
             )
         }

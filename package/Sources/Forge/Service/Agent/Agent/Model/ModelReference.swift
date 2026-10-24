@@ -21,14 +21,14 @@ struct ModelReference: Sendable, Equatable {
     // MARK: - Initializer
     init(provider: String, model: String) throws {
         guard !provider.isEmpty, !provider.contains(":") else {
-            throw ProtocolError(
+            throw AgentValidationError(
                 "invoke: model provider must be non-empty and cannot contain ':',"
                     + " got '\(provider)'"
             )
         }
 
         guard model != "auto" else {
-            throw ProtocolError(
+            throw AgentValidationError(
                 "invoke: omit the model and colon to use the backend default;"
                     + " ':auto' is not a model"
             )
@@ -43,7 +43,7 @@ struct ModelReference: Sendable, Equatable {
         let provider = separator.map { index in String(reference[..<index]) } ?? reference
 
         if let separator, reference.index(after: separator) == reference.endIndex {
-            throw ProtocolError(
+            throw AgentValidationError(
                 "invoke: model must specify a model after the colon or omit the colon to use"
                     + " the backend default, got '\(reference)'"
             )

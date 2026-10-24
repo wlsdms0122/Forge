@@ -85,7 +85,7 @@ actor ServiceHandle {
     func deliverError(messageID: String, message: String) {
         guard let continuation = pending.removeValue(forKey: messageID) else { return }
         
-        continuation.resume(throwing: ProtocolError(message))
+        continuation.resume(throwing: HandlerFailed(message))
     }
     
     func cancelAll() {

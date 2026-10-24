@@ -217,7 +217,7 @@ package actor Server {
         try Session.checkSocketLength(socketPath)
         
         if UnixSocketServer.isLive(path: socketPath) {
-            throw ProtocolError("daemon already listening at \(socketPath) — "
+            throw SocketError("daemon already listening at \(socketPath) — "
                 + "stop it, or use a different --session")
         }
         

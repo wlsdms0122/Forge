@@ -38,7 +38,7 @@ struct LiveAgentTests {
         let sut = LiveAgent(executor: Executor(backend: StubBackend()))
 
         // When / Then
-        await #expect(throws: ProtocolError.self) {
+        await #expect(throws: AgentSessionMissing.self) {
             _ = try await sut.send(prompt: "hello")
         }
     }
@@ -87,7 +87,7 @@ struct LiveAgentTests {
         let settings = AgentSessionSettings(model: "claude", permissionMode: "yolo")
 
         // When / Then
-        await #expect(throws: ProtocolError.self) {
+        await #expect(throws: AgentValidationError.self) {
             _ = try await sut.withSession(settings) { .null }
         }
     }

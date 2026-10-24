@@ -103,7 +103,7 @@ struct AgentToolTests {
     
     @Test("declaring bypass together with allowed is rejected")
     func openAIRejectsBypassDeclaredWithAllowed() {
-        #expect(throws: ProtocolError.self) {
+        #expect(throws: AgentValidationError.self) {
             let agent = try Agent(
                 model: "local:m", allowed: [.filesRead], permissionMode: .bypass)
             _ = try OpenAICompatibleTranslator().translate(agent)

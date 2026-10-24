@@ -30,7 +30,7 @@ struct LiveResources: ResourceReading {
         let url = try await store.resolve(relative)
 
         guard FileManager.default.fileExists(atPath: url.path) else {
-            throw Warp.ExecutionError("resource '\(relative)' does not exist")
+            throw ResourceError("resource '\(relative)' does not exist")
         }
 
         return url.path

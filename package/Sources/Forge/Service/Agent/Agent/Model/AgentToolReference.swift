@@ -30,7 +30,7 @@ enum AgentToolReference {
         
         case .object(let object):
             guard object.count == 1, let (key, payload) = object.first else {
-                throw ProtocolError("invoke: tool object must contain exactly one key")
+                throw AgentValidationError("invoke: tool object must contain exactly one key")
             }
             
             switch (key, payload) {
@@ -38,12 +38,12 @@ enum AgentToolReference {
                 do {
                     return .command(try CommandPattern(pattern))
                 } catch let error as CommandPattern.ValidationError {
-                    throw ProtocolError("invoke: \(error.message)")
+                    throw AgentValidationError("invoke: \(error.message)")
                 }
             
             case ("mcp", .string(let pattern)) where !pattern.isEmpty:
                 guard pattern == "*" || pattern.contains(".") else {
-                    throw ProtocolError(
+                    throw AgentValidationError(
                         "invoke: mcp pattern must be '*', '<server>.*', or '<server>.<tool>'"
                             + " — a bare server name matches nothing (did you mean '\(pattern).*'?)"
                     )
@@ -52,14 +52,14 @@ enum AgentToolReference {
                 return .modelContextProtocol(pattern)
             
             default:
-                throw ProtocolError("invoke: unsupported tool object '\(key)'")
+                throw AgentValidationError("invoke: unsupported tool object '\(key)'")
             }
         
         case .string(let name):
-            throw ProtocolError("invoke: unknown tool '\(name)'")
+            throw AgentValidationError("invoke: unknown tool '\(name)'")
         
         default:
-            throw ProtocolError("invoke: tool must be a domain string or a single-key object")
+            throw AgentValidationError("invoke: tool must be a domain string or a single-key object")
         }
     }
     

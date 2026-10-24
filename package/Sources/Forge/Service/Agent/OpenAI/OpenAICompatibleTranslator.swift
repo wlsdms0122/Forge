@@ -19,7 +19,7 @@ struct OpenAICompatibleTranslator: AgentTranslator {
     // MARK: - Public
     func translate(_ agent: Agent) throws -> AgentTranslation<OpenAICompatibleAgentConfiguration> {
         guard let model = agent.model.specifiedModel else {
-            throw ProtocolError(
+            throw AgentValidationError(
                 "openai-compatible provider '\(agent.provider)' requires an explicit model"
             )
         }
@@ -28,7 +28,7 @@ struct OpenAICompatibleTranslator: AgentTranslator {
 
         if agent.permissionMode == .bypass {
             guard agent.allowed == nil else {
-                throw ProtocolError(
+                throw AgentValidationError(
                     "openai-compatible loop: 'allowed' is the execution boundary here, so"
                         + " declaring it together with bypass is contradictory (drop 'allowed'"
                         + " or drop bypass)"

@@ -45,7 +45,7 @@ struct LiveAgent: AgentServing {
 
     func send(prompt: String) async throws -> String {
         guard let session = AgentSession.current else {
-            throw ProtocolError(
+            throw AgentSessionMissing(
                 "agent step has no active agent session — run it inside an `invoke`'s"
                     + " steps (directly, or via dispatch from within one)"
             )
@@ -69,7 +69,7 @@ struct LiveAgent: AgentServing {
 
         if let raw = settings.permissionMode {
             guard let mode = PermissionMode(rawValue: raw) else {
-                throw ProtocolError(
+                throw AgentValidationError(
                     "invoke: permission_mode must be one of bypass/safe/restrict, got \(raw)"
                 )
             }
@@ -104,7 +104,7 @@ struct LiveAgent: AgentServing {
             return try items.map { item in try AgentToolReference.decode(ValueBridge.json(item)) }
 
         case let other:
-            throw ProtocolError("invoke: tool list must resolve to an array, got \(other)")
+            throw AgentValidationError("invoke: tool list must resolve to an array, got \(other)")
         }
     }
 }

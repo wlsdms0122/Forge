@@ -405,29 +405,23 @@ extension WorkflowRunner: RunDispatching {
             mode: .awaited
         )
 
-        switch result.status {
-        case .ok:
+        guard let failure = result.error else {
             return try ValueBridge.value(.object(result.outputs))
+        }
 
-        case .failed:
-            guard let failure = result.error else {
-                throw ProtocolError("dispatch '\(name)' failed (no error detail)")
-            }
+        let summary = "dispatch '\(name)' failed: \(failure.type) — \(failure.message)"
 
-            let summary = "dispatch '\(name)' failed: \(failure.type) — \(failure.message)"
+        switch failure.kind {
+        case .work:
+            throw ChildRunFailed(summary)
 
-            switch failure.kind {
-            case .work:
-                throw ChildRunFailed(summary)
+        case .fault:
+            throw ChildRunFaulted(summary)
 
-            case .fault:
-                throw ChildRunFaulted(summary)
-
-            case .cancelled:
-                throw ChildRunCancelled(
-                    "dispatch '\(name)' cancelled: \(failure.message)"
-                )
-            }
+        case .cancelled:
+            throw ChildRunCancelled(
+                "dispatch '\(name)' cancelled: \(failure.message)"
+            )
         }
     }
 }

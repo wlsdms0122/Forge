@@ -208,7 +208,7 @@ struct AgentLoopBackendTests {
 
         // Then
             Issue.record("provider-only OpenAI-compatible model must fail")
-        } catch is ProtocolError {}
+        } catch is AgentValidationError {}
         let callCount = await transport.callCount
         #expect(callCount == 0)
     }
