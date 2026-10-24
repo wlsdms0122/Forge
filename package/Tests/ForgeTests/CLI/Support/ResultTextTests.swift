@@ -24,7 +24,7 @@ struct ResultTextTests {
             "duration_ms": 9,
             "outputs": ["result": "hello from jineun-bot test\n"],
         ]
-        let output = renderResultPlain(dict)
+        let output = JSONValue.object(dict).resultText
 
         // Then
         #expect(output.contains("status: ok"), Comment(rawValue: output))
@@ -38,7 +38,7 @@ struct ResultTextTests {
     func statusIsFirstLine() {
         // Given
         let dict: [String: JSONValue] = ["duration_ms": 5, "status": "ok", "name": "x"]
-        let first = renderResultPlain(dict).split(separator: "\n").first.map(String.init) ?? ""
+        let first = JSONValue.object(dict).resultText.split(separator: "\n").first.map(String.init) ?? ""
 
         // Then
         #expect(first == "status: ok")
@@ -52,7 +52,7 @@ struct ResultTextTests {
             "run_id": "wf-x",
             "error": ["type": "ShellError", "message": "exit 1"],
         ]
-        let output = renderResultPlain(dict)
+        let output = JSONValue.object(dict).resultText
 
         // Then
         #expect(output.contains("status: failed"), Comment(rawValue: output))
@@ -65,7 +65,7 @@ struct ResultTextTests {
     func boolAndScalars() {
         // Given
         let dict: [String: JSONValue] = ["ok": true, "channel": "C09U6LM639R", "ts": "1779.79"]
-        let output = renderResultPlain(dict)
+        let output = JSONValue.object(dict).resultText
 
         // Then
         #expect(output.contains("ok: true"), "Bool must render as true, not 1:\n\(output)")
@@ -77,7 +77,7 @@ struct ResultTextTests {
     func multilineValueRendersAsBlock() {
         // Given
         let dict: [String: JSONValue] = ["result": ["log": "line one\nline two"]]
-        let output = renderResultPlain(dict)
+        let output = JSONValue.object(dict).resultText
 
         // Then
         #expect(output.contains("    line one"), "multi-line block indentation:\n\(output)")
@@ -86,7 +86,7 @@ struct ResultTextTests {
     
     @Test("with no outputs, only the status remains")
     func emptyResult() {
-        #expect(renderResultPlain([:]) == "(empty result)")
+        #expect(JSONValue.object([:]).resultText == "(empty result)")
     }
     
     // MARK: - Private
