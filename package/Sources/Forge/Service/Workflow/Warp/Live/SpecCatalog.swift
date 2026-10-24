@@ -84,8 +84,10 @@ actor SpecCatalog {
     private var reading: YAMLFrontend?
 
     // The files that built, each compiled once a reload, in the order they
-    // were compiled.
+    // were compiled, and the image the reload linked them into, which a run
+    // of one of them runs.
     private var compiled: [(name: String, compiled: Compiled)] = []
+    private var image: Image?
 
     private var currentCatalog: Catalog {
         let scanFailures = scanObstructions.map { obstruction in
@@ -123,6 +125,7 @@ actor SpecCatalog {
             generation = nil
             reading = nil
             compiled.removeAll()
+            image = nil
 
             return currentCatalog
         }
@@ -190,11 +193,11 @@ actor SpecCatalog {
         return try Loader().load(document, identity: try Identity.of(document))
     }
 
-    // The image a run of this module links: the module beside every other
-    // file that built, as each was compiled at the reload, and the
-    // vocabulary compiled once a process. A file of the catalog is linked as
-    // it was compiled; another module, an inline spec, is compiled against
-    // them, and a file declaring the name it runs by is left out, since the
+    // The image a run of this module runs: for a file of the catalog, the
+    // one the reload linked; for another module, an inline spec, the module
+    // compiled against every file that built, as each was compiled at the
+    // reload, and the vocabulary compiled once a process, and linked beside
+    // them, a file declaring the name it runs by left out, since the
     // caller's is the one meant.
     func image(running module: Warp.Module, entry: Name) async throws -> Image {
         await catalog()
@@ -202,8 +205,8 @@ actor SpecCatalog {
         let standing = compiled
         let files = cache
 
-        if let file = files[entry.spelling], file.module.identity == module.identity {
-            return try await ForgeSpec.linked(standing.map(\.compiled))
+        if let file = files[entry.spelling], file.module.identity == module.identity, let image {
+            return image
         }
 
         let world = standing
@@ -325,6 +328,7 @@ actor SpecCatalog {
 
         cache = standing.entries
         compiled = standing.compiled
+        image = standing.image
         failureCache = ledger.fresh
         collisions = freshCollisions
         scanObstructions = scan.obstructions
@@ -467,22 +471,24 @@ actor SpecCatalog {
     // is compiled once a process: all of them where they build together,
     // and otherwise each against the entries compiled before it, until a
     // round admits none. An entry left is recorded with its build refusal,
-    // and no run links it.
+    // and no run links it. The image is the last link that admitted, which
+    // holds every entry admitted.
     private func built(
         _ live: [String: Entry],
         recording ledger: inout LoadFailureLedger
-    ) async -> (entries: [String: Entry], compiled: [(name: String, compiled: Compiled)]) {
+    ) async -> (entries: [String: Entry], compiled: [(name: String, compiled: Compiled)], image: Image?) {
         var pending = live.values.sorted { left, right in left.name < right.name }
 
         if
             let together = try? await ForgeSpec.compiled(pending.map(\.module)),
-            (try? await ForgeSpec.linked(together)) != nil
+            let image = try? await ForgeSpec.linked(together)
         {
-            return (live, zip(pending, together).map { entry, object in (entry.name, object) })
+            return (live, zip(pending, together).map { entry, object in (entry.name, object) }, image)
         }
 
         var standing: [String: Entry] = [:]
         var compiled: [(name: String, compiled: Compiled)] = []
+        var image: Image?
         var refusals: [String: String] = [:]
         var admitted = true
 
@@ -493,7 +499,7 @@ actor SpecCatalog {
                 do {
                     let own = try await ForgeSpec.compiled([entry.module], beside: compiled.map(\.compiled))
 
-                    _ = try await ForgeSpec.linked(compiled.map(\.compiled) + own)
+                    image = try await ForgeSpec.linked(compiled.map(\.compiled) + own)
                     standing[entry.name] = entry
                     compiled += own.map { object in (entry.name, object) }
                     admitted = true
@@ -515,7 +521,7 @@ actor SpecCatalog {
             )
         }
 
-        return (standing, compiled)
+        return (standing, compiled, image)
     }
 
     private func record(_ file: Observed, refusal: String, in ledger: inout LoadFailureLedger) {
