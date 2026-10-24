@@ -1,8 +1,7 @@
 # Agent seams: invoke turns, in-session continuity, and share_session
-# inheritance. The workflow's own name is agent, so the verb is written in
-# full.
+# inheritance.
 procedures:
-  agent:
+  converse:
     access: public
     returns: "Dictionary<String, Any>"
     failing: anything
@@ -18,9 +17,9 @@ procedures:
                   returns: "Dictionary<String, Any>"
                   body:
                     - let: first
-                      value: { call: { procedure: Forge.agent, arguments: { prompt: ping one } } }
+                      value: { call: { procedure: agent, arguments: { prompt: ping one } } }
                     - let: second
-                      value: { call: { procedure: Forge.agent, arguments: { prompt: ping two } } }
+                      value: { call: { procedure: agent, arguments: { prompt: ping two } } }
                     - let: nested
                       value:
                         call:
@@ -28,7 +27,7 @@ procedures:
                           arguments:
                             model: claude
                             share_session: true
-                            body: { closure: { returns: String, result: { call: { procedure: Forge.agent, arguments: { prompt: ping three } } } } }
+                            body: { closure: { returns: String, result: { call: { procedure: agent, arguments: { prompt: ping three } } } } }
                   result:
                     dictionary:
                       - [first, { ref: first }]

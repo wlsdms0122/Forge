@@ -126,7 +126,7 @@ def main():
 
         # The catalog loaded whole.
         listed = harness.forge("workflow", "list")
-        for name in ["kernel", "child", "host", "agent", "parent", "forbidden"]:
+        for name in ["kernel", "child", "host", "converse", "parent", "forbidden"]:
             check(name in listed, f"workflow list carries '{name}'", listed)
         check("Kernel language tour" in listed, "workflow list carries a description", listed)
 
@@ -159,7 +159,7 @@ def main():
 
         # Agent seams — the stub reports turn mode and session id, so continuity
         # and share_session inheritance are visible from the outside.
-        agent = harness.forge("workflow", "dispatch", "agent")
+        agent = harness.forge("workflow", "dispatch", "converse")
         sessions = stub_sessions(agent)
         check("stub[new:" in agent, "first agent turn opens a session", agent)
         check(len(sessions) == 3, "three agent turns answered", agent)
