@@ -324,7 +324,7 @@ private func resolveFireTarget(
 ) async -> FireResolution {
     if let spec {
         do {
-            let module = try store.inline(try ValueBridge.value(spec))
+            let module = try await store.inline(spec)
             
             return .resolved(FireTarget(name: name, module: module))
         } catch {

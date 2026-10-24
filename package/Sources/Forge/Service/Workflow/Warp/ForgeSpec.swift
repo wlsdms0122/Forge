@@ -35,6 +35,11 @@ enum ForgeSpec {
         return try Loader().load(document, identity: try Identity.of(document))
     }
 
+    // The front end leaning on the library.
+    private static let leaning = Result {
+        YAMLFrontend(symbols: try SymbolTable(documents: [try shipped.get()]))
+    }
+
     // MARK: - Initializer
     // MARK: - Public
     // The native verbs the library is written over. Each one runs outside
@@ -126,7 +131,7 @@ enum ForgeSpec {
 
     // The one front end forge reads a workflow with, leaning on the library.
     static func frontend() throws -> YAMLFrontend {
-        YAMLFrontend(symbols: try SymbolTable(documents: [try library()]))
+        try leaning.get()
     }
 
     // The front end leaning on the library and on these texts, which lean on

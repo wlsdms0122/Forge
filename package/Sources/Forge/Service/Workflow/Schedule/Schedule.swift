@@ -65,7 +65,7 @@ struct Schedule: Sendable, Codable {
         self.inputs = try container.decodeIfPresent([String: JSONValue].self, forKey: .inputs)
         
         if let rawSpec = try container.decodeIfPresent(JSONValue.self, forKey: .spec) {
-            guard case .object(var object) = rawSpec else {
+            guard case let .object(object) = rawSpec else {
                 throw DecodingError.dataCorrupted(
                     .init(
                         codingPath: container.codingPath + [CodingKeys.spec],
@@ -74,7 +74,7 @@ struct Schedule: Sendable, Codable {
                 )
             }
             
-            if let existing = object["name"], existing != .string(WorkflowDispatchMethod.inlineSigil) {
+            guard object["name"] == nil else {
                 throw DecodingError.dataCorrupted(
                     .init(
                         codingPath: container.codingPath + [CodingKeys.spec],
@@ -84,7 +84,6 @@ struct Schedule: Sendable, Codable {
                 )
             }
             
-            object["name"] = .string(WorkflowDispatchMethod.inlineSigil)
             self.spec = .object(object)
         } else {
             self.spec = nil

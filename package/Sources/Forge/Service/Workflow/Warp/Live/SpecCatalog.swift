@@ -76,6 +76,10 @@ actor SpecCatalog {
     // The reload in progress, which a caller arriving during it waits for.
     private var reloading: Task<Void, Never>?
 
+    // The front end the files of this observation were read with, leaning on
+    // the library and on them.
+    private var reading: YAMLFrontend?
+
     private var currentCatalog: Catalog {
         let scanFailures = scanObstructions.map { obstruction in
             LoadFailure(
@@ -110,6 +114,7 @@ actor SpecCatalog {
             collidedNames.removeAll()
             scanObstructions.removeAll()
             generation = nil
+            reading = nil
 
             return currentCatalog
         }
@@ -181,14 +186,34 @@ actor SpecCatalog {
         await catalog()
     }
 
-    // An inline spec: one procedure written in the YAML notation, run under the
-    // sigil the dispatch door fixes, which a run starts from.
-    nonisolated func inline(_ spec: Warp.Value) throws -> Warp.Module {
-        let procedure = try Loader(registry: .yaml).procedure(from: spec, in: .yaml)
+    // An inline spec: one procedure written in the YAML notation, read the
+    // way a catalog file is, leaning on the library and on the catalog's
+    // files, and declared public under the sigil the dispatch door fixes,
+    // which a run starts from.
+    func inline(_ spec: JSONValue) async throws -> Warp.Module {
+        guard case var .object(procedure) = spec else {
+            throw WorkflowValidationError("an inline spec is one procedure, written as an object")
+        }
 
-        return try Warp.Module(
-            procedures: [try Name(WorkflowDispatchMethod.inlineSigil): procedure.with(access: .public)]
+        procedure["access"] = .string("public")
+
+        let text = try JSONEncoder().encode(
+            JSONValue.object(["procedures": .object([WorkflowDispatchMethod.inlineSigil: .object(procedure)])])
         )
+
+        await catalog()
+
+        let document: Value
+
+        // The caller wrote an object and no text, so a refusal names its
+        // place in the document and not a line of the text written here.
+        do {
+            document = try (reading ?? ForgeSpec.frontend()).document(from: text)
+        } catch let refusal as AuthoringError {
+            throw refusal.refusal
+        }
+
+        return try Loader().load(document, identity: try Identity.of(document))
     }
 
     func resolve(_ name: String) async -> Lookup {
@@ -223,7 +248,8 @@ actor SpecCatalog {
     // failures of this observation put in place.
     private func reload(_ observed: [Observed], scan: StoreScan, observation: [String]) async {
         var ledger = LoadFailureLedger(prior: failureCache)
-        var candidates = spent(observed, recording: &ledger)
+        let spending = spent(observed, recording: &ledger)
+        var candidates = spending.candidates
         let observedSources = Set(observed.map(\.file.source))
 
         func isUnobserved(_ source: String) -> Bool {
@@ -259,6 +285,7 @@ actor SpecCatalog {
             uniqueKeysWithValues: collided.map { entry in (entry.key, entry.sources) }
         )
         generation = observation
+        reading = spending.frontend
     }
 
     // The observed files read leaning on each other and on the library,
@@ -268,7 +295,7 @@ actor SpecCatalog {
     private func spent(
         _ observed: [Observed],
         recording ledger: inout LoadFailureLedger
-    ) -> [(key: String, source: String, value: Entry)] {
+    ) -> (candidates: [(key: String, source: String, value: Entry)], frontend: YAMLFrontend?) {
         var texts: [(observed: Observed, text: String)] = []
 
         for file in observed {
@@ -295,7 +322,7 @@ actor SpecCatalog {
                 record(file, refusal: "\(error)", in: &ledger)
             }
 
-            return []
+            return ([], nil)
         }
 
         var candidates: [(key: String, source: String, value: Entry)] = []
@@ -337,13 +364,14 @@ actor SpecCatalog {
             }
         }
 
-        return candidates
+        return (candidates, frontend)
     }
 
-    // The entries that build: each against the library, the natives, the
-    // standard vocabulary and the entries that built before it, until a
-    // round admits none. An entry left is recorded with its build refusal,
-    // and no run links it.
+    // The entries that build: all of them where they build together, and
+    // otherwise each against the library, the natives, the standard
+    // vocabulary and the entries that built before it, until a round admits
+    // none. An entry left is recorded with its build refusal, and no run
+    // links it.
     private func built(
         _ live: [String: Entry],
         recording ledger: inout LoadFailureLedger
@@ -354,6 +382,11 @@ actor SpecCatalog {
 
         do {
             let linkables = try ForgeSpec.linkables()
+
+            if (try? await Builder().build(pending.map(\.module) + linkables)) != nil {
+                return live
+            }
+
             var admitted = true
 
             while admitted, !pending.isEmpty {

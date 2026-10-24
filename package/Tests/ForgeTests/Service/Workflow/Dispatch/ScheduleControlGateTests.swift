@@ -16,7 +16,7 @@ struct ScheduleControlGateTests {
 
     private let inlineSpec: [String: Any] = [
         "failing": ["nonzero_exit", "timeout"],
-            "body": [["let": "x", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/echo", "ok"], NSNull(), NSNull(), NSNull(), NSNull()]]]]],
+            "body": [["let": "x", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/echo", "ok"]]]]]],
     ]
     
     // MARK: - Initializer

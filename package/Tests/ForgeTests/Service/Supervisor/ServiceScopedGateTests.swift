@@ -217,7 +217,7 @@ struct ServiceScopedGateTests {
         let token = authority.mint(TokenClaims(principal: "system:rpc"))
         let spec: [String: Any] = [
             "failing": ["nonzero_exit", "timeout"],
-            "body": [["let": "x", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/echo", "n"], NSNull(), NSNull(), NSNull(), NSNull()]]]]]
+            "body": [["let": "x", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/echo", "n"]]]]]]
         ]
         var messages: [String] = []
         do {

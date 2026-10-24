@@ -24,6 +24,11 @@ and left out of every run. A run is built from the dispatched workflow and
 every file that built. A workflow calls another one in the same run with
 `call`, by its name, and starts another run with `dispatch`.
 
+An inline spec, handed to `workflow.dispatch` or `schedule.create` in place
+of a name, is one procedure written as an object in the same notation, with
+no name. It is read the way a file is, leaning on the library and on the
+catalog's files, and runs under the name `<inline>`.
+
 - **Inputs** are the procedure's parameters. A caller hands them by name. An
   input of an optional type (`String?`) may be left out, and the daemon hands
   it null; any other input must be handed.

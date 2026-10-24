@@ -352,8 +352,8 @@ struct ScheduleStoreRuntimeTests {
         #expect(loaded == nil, "a hand-edited schedule whose spec carries a self-claimed name must be rejected at the load boundary")
     }
 
-    @Test("A hand-written anonymous spec receives a sigil")
-    func handEditedAnonymousSpecGetsSigil() async throws {
+    @Test("A hand-written anonymous spec is kept as written, the procedure the dispatch door names")
+    func handEditedAnonymousSpecIsKeptAsWritten() async throws {
         // Given
         let directory = try temporary.make("cfg-anon"); defer { try? FileManager.default.removeItem(at: directory) }
         let runtimeDirectoryectory = try temporary.make("rt-anon"); defer { try? FileManager.default.removeItem(at: runtimeDirectoryectory) }
@@ -377,7 +377,8 @@ struct ScheduleStoreRuntimeTests {
             return
         }
         
-        #expect(object["name"] == .string("<inline>"), "sigil must be injected into the anonymous spec")
+        #expect(object == ["body": .array([])], "an inline spec is one procedure, which the notation names nowhere")
+        _ = try await SpecCatalog(directory: nil).inline(.object(object))
     }
 
     @Test("A broken file and an id collision both surface as failures, and the collided id is excluded on both sides")

@@ -269,7 +269,7 @@ func resolveDispatchTarget(
             // An inline spec is one procedure, the same shape workflow.dispatch
             // admits — checked here so a schedule cannot be stored carrying
             // something that will not load when it fires.
-            _ = try workflowStore.inline(try ValueBridge.value(specValue))
+            _ = try await workflowStore.inline(specValue)
         } catch {
             throw ProtocolError("\(context): malformed 'spec' — \(error)")
         }

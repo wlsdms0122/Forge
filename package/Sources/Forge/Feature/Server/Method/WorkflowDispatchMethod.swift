@@ -212,9 +212,7 @@ struct WorkflowDispatchMethod: Sendable {
             let module: Warp.Module
 
             do {
-                let value = try ValueBridge.value(.object(try decodeJSONValueDict(specObject)))
-
-                module = try store.inline(value)
+                module = try await store.inline(.object(try decodeJSONValueDict(specObject)))
             } catch {
                 throw ProtocolError("workflow.dispatch: malformed 'spec' — \(error)")
             }

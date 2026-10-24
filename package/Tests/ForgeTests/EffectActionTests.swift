@@ -408,19 +408,52 @@ struct EffectActionTests {
     }
 
     @Test("an invalid inline spec is refused when it is read, before it runs")
-    func inlineRejectsWhenSpecIsMalformed() throws {
+    func inlineRejectsWhenSpecIsMalformed() async throws {
         // Given — the inline door reads one procedure in the YAML notation
         let store = SpecCatalog(directory: nil)
-        let spec = try YAMLParser().parse("""
-        returns: String
-        result: ok
-        fallbck: typo
-        """)
+        let spec = JSONValue.object(["returns": .string("String"), "result": .string("ok"), "fallbck": .string("typo")])
 
         // When / Then
-        #expect(throws: (any Error).self) {
-            try store.inline(spec)
+        await #expect(throws: (any Error).self) {
+            try await store.inline(spec)
         }
+    }
+
+    @Test("an inline spec is read as a catalog file is: a verb and a catalog workflow by short name, their arguments by name")
+    func inlineLeansOnTheLibraryAndTheCatalog() async throws {
+        // Given
+        let harness = Harness()
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "inline-leaning-\(UUID().uuidString)",
+            isDirectory: true
+        )
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try workflowFile("""
+        parameters: [ word: String ]
+        returns: String
+        result: { format: "said ${word}", with: { word: { ref: word } } }
+        """, named: "said").write(to: directory.appendingPathComponent("said.yaml"), atomically: true, encoding: .utf8)
+        let store = SpecCatalog(directory: directory)
+        let spec = ValueBridge.json(try YAMLParser().parse("""
+        returns: "Dictionary<String, Any>"
+        failing: [nonzero_exit, timeout]
+        body:
+          - let: echoed
+            value: { call: { procedure: shell, arguments: { command: [ echo ] } } }
+          - let: spoken
+            value: { call: { procedure: said, arguments: { word: hi } } }
+        result: { dictionary: [ [result, { ref: spoken }] ] }
+        """))
+        let sut = harness.executor()
+
+        // When
+        let module = try await store.inline(spec)
+        let outputs = try await sut.run(module, entry: WorkflowDispatchMethod.inlineSigil, beside: await store.modules())
+
+        // Then
+        #expect(outputs["result"] == .string("said hi"))
+        #expect(await harness.recorder.shellRuns == [["echo"]])
     }
 
     @Test("resource renders with values from the scope as inputs")

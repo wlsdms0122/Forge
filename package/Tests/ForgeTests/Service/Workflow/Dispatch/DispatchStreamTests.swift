@@ -29,8 +29,8 @@ struct DispatchStreamTests {
         let specJSON: [String: Any] = [
             "failing": ["nonzero_exit", "timeout"],
             "body": [
-                ["let": "one", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/echo", "a"], NSNull(), NSNull(), NSNull(), NSNull()]]]],
-                ["let": "two", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/echo", "b"], NSNull(), NSNull(), NSNull(), NSNull()]]]],
+                ["let": "one", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/echo", "a"]]]]],
+                ["let": "two", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/echo", "b"]]]]],
             ],
             "returns": "Dictionary<String, Any>",
             "result": ["dictionary": [["v", ["ref": "two"]]]],
@@ -79,7 +79,7 @@ struct DispatchStreamTests {
         let sink = CollectingSink()
         let specJSON: [String: Any] = [
             "failing": ["nonzero_exit", "timeout"],
-            "body": [["let": "x", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/echo", "nope"], NSNull(), NSNull(), NSNull(), NSNull()]]]]],
+            "body": [["let": "x", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/echo", "nope"]]]]]],
         ]
         do {
             try await method.handle(RPCRequest(
@@ -106,7 +106,7 @@ struct DispatchStreamTests {
         let sink = CollectingSink()
         let specJSON: [String: Any] = [
             "failing": ["nonzero_exit", "timeout"],
-            "body": [["let": "slow", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/sleep", "0.3"], NSNull(), NSNull(), NSNull(), NSNull()]]]]],
+            "body": [["let": "slow", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/sleep", "0.3"]]]]]],
         ]
         let handleTask = Task {
             try await method.handle(RPCRequest(
@@ -154,7 +154,7 @@ struct DispatchStreamTests {
         let sink = CollectingSink()
         let specJSON: [String: Any] = [
             "failing": ["nonzero_exit", "timeout"],
-            "body": [["let": "slow", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/sleep", "0.3"], NSNull(), NSNull(), NSNull(), NSNull()]]]]],
+            "body": [["let": "slow", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/sleep", "0.3"]]]]]],
         ]
         let handleTask = Task {
             try await method.handle(RPCRequest(
@@ -219,7 +219,7 @@ struct DispatchStreamTests {
         let token = authority.mint(TokenClaims(principal: "system:rpc"))
         let specJSON: [String: Any] = [
             "failing": ["nonzero_exit", "timeout"],
-            "body": [["let": "one", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/echo", "a"], NSNull(), NSNull(), NSNull(), NSNull()]]]]],
+            "body": [["let": "one", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/echo", "a"]]]]]],
         ]
         let ack = try await dispatchMethod.handle(RPCRequest(
                 id: "r-async", method: "workflow.dispatch",
@@ -244,7 +244,7 @@ struct DispatchStreamTests {
         let sink = CollectingSink()
         let specJSON: [String: Any] = [
             "failing": ["nonzero_exit", "timeout"],
-            "body": [["let": "boom", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/usr/bin/false"], NSNull(), NSNull(), NSNull(), NSNull()]]]]],
+            "body": [["let": "boom", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/usr/bin/false"]]]]]],
         ]
         try await method.handle(RPCRequest(
                 id: "r-fail",
@@ -294,7 +294,7 @@ struct DispatchStreamTests {
                 method: "workflow.dispatch_stream",
                 params: ["token": token,
                     "spec": ["failing": ["nonzero_exit", "timeout"],
-            "body": [["let": "x", "value": ["call": ["procedure": "Forge.shell", "arguments": [["/bin/echo", "hi"], NSNull(), NSNull(), NSNull(), NSNull()]]]]]]]
+            "body": [["let": "x", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/bin/echo", "hi"]]]]]]]]
             ), sink: sink)
         let lines = (await sink.snapshot()).map { line in line.dict }
 
