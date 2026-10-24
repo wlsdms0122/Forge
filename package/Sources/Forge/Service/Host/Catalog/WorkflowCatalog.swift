@@ -246,16 +246,8 @@ actor WorkflowCatalog {
     // the reload announces, nothing where this call ran none.
     private func observing(_ scan: StoreScan) async -> (catalog: Catalog, announcement: String) {
         var scan = scan
-        let observation = scan.observed()
-        let observed = observation.files
+        let observed = scan.observe()
 
-        scan.obstructions += observation.unreadable.map { file in
-            .init(
-                scope: file.source,
-                reason: "file metadata could not be read"
-                    + " — existence observed, content unknown"
-            )
-        }
 
         // The files lean on each other, so a change to one is a reload of
         // all of them.

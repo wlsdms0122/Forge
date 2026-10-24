@@ -673,8 +673,10 @@ what the file writes under `description:`, where it writes one. `failures`
 lists the `*.yaml` files the catalog left out, each with its refusal: a file
 the front end or the load refuses, one that does not declare one procedure
 named after it, and one that does not build against the library and the
-files that build (its reason starts `build:`). Always present (may be
-empty); admin surfaces broken workflows without grep'ing stderr.
+files that build (its reason starts `build:`). A part of the directory the
+scan could not see, a directory it could not enter or a file whose metadata
+it could not read, is an entry at path `<scan>` naming it. Always present
+(may be empty); admin surfaces broken workflows without grep'ing stderr.
 
 ### `workflow.describe`
 

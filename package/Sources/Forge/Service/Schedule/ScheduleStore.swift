@@ -118,14 +118,7 @@ actor ScheduleStore {
             
             if runtime { runtimeFiles = files } else { configFiles = files }
             
-            for file in reading.unreadable {
-                ledger.record(
-                    source: file.source,
-                    reason: "file attributes unavailable — declaration unreadable this reload",
-                    mtime: .distantPast,
-                    stderrLine: "schedule file attributes unavailable (\(file.source))"
-                )
-            }
+
             
             candidates += reading.loaded.map { loaded in (loaded.value.schedule.id, loaded.file.file.source, loaded.value) }
             incomplete = incomplete || !reading.obstructions.isEmpty

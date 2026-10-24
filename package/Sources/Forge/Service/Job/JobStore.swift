@@ -50,20 +50,13 @@ actor JobStore {
         let decoder = JSONDecoder()
         var ledger = LoadFailureLedger(prior: [:])
         let reading = files.read(recording: &ledger) { _, data in try decoder.decode(Job.self, from: data) }
-        let isComplete = reading.obstructions.isEmpty && reading.unreadable.isEmpty
+        let isComplete = reading.obstructions.isEmpty
         let observedPaths = Set(reading.observed.map(\.file.url))
         var fresh: [String: Entry] = [:]
         
         self.files = files
         
-        for file in reading.unreadable {
-            FileHandle.standardError.write(
-                Data(
-                    ("forge: job metadata unreadable (\(file.source))"
-                        + " — treating as unobserved\n").utf8
-                )
-            )
-        }
+
         
         for loaded in reading.loaded {
             fresh[loaded.value.id] = Entry(

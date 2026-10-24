@@ -65,14 +65,7 @@ actor PolicyStore {
                 mtime: .distantPast
             )
         }
-        scanFailures += reading.unreadable.map { file in
-            LoadFailure(
-                path: file.source,
-                reason: "policy file metadata could not be read — grants from this file"
-                    + " are not merged this reload",
-                mtime: .distantPast
-            )
-        }
+
         failureCache = ledger.fresh
         FileHandle.standardError.write(Data(ledger.announcement.utf8))
         

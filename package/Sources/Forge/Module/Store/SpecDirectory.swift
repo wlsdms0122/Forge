@@ -28,7 +28,8 @@ struct SpecDirectory<Value> {
         // Every file whose metadata was read, decoded or not.
         let observed: [ObservedFile]
         let loaded: [Loaded]
-        let unreadable: [ScannedFile]
+        // What the scan could not see, a file whose metadata could not be
+        // read among them.
         let obstructions: [StoreScan.Obstruction]
         
         // MARK: - Initializer
@@ -62,20 +63,21 @@ struct SpecDirectory<Value> {
         guard FileManager.default.fileExists(atPath: directory.path) else {
             decoded = [:]
             
-            return Reading(observed: [], loaded: [], unreadable: [], obstructions: [])
+            return Reading(observed: [], loaded: [], obstructions: [])
         }
         
         let nestedPath = nested?.standardizedFileURL.path
-        let scan = StoreScan(directory: directory, pathExtension: pathExtension)
-        let files = scan.files.filter { file in
+        let found = StoreScan(directory: directory, pathExtension: pathExtension)
+        let files = found.files.filter { file in
             guard let nestedPath else { return true }
             
             return !file.url.standardizedFileURL.path.hasPrefix(nestedPath + "/")
         }
-        let observation = StoreScan(files: files).observed()
+        var scan = StoreScan(files: files, obstructions: found.obstructions)
+        let observed = scan.observe()
         var fresh: [URL: Loaded] = [:]
         
-        for file in observation.files {
+        for file in observed {
             let url = file.file.url
             
             if let existing = decoded[url], existing.file.mtime == file.mtime {
@@ -108,9 +110,8 @@ struct SpecDirectory<Value> {
         decoded = fresh
         
         return Reading(
-            observed: observation.files,
-            loaded: observation.files.compactMap { file in fresh[file.file.url] },
-            unreadable: observation.unreadable,
+            observed: observed,
+            loaded: observed.compactMap { file in fresh[file.file.url] },
             obstructions: scan.obstructions
         )
     }

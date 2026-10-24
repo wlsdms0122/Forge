@@ -93,18 +93,23 @@ struct StoreScan {
         obstructions.contains { obstruction in obstruction.covers(source: source) }
     }
     
-    // Each file with when it last changed, and the files whose metadata
-    // could not be read.
-    func observed() -> (files: [ObservedFile], unreadable: [ScannedFile]) {
+    // Each file with when it last changed. A file whose metadata cannot be
+    // read obstructs the scan at that file.
+    mutating func observe() -> [ObservedFile] {
         var observed: [ObservedFile] = []
-        var unreadable: [ScannedFile] = []
         
         for file in files {
             guard
                 let attributes = try? FileManager.default.attributesOfItem(atPath: file.url.path),
                 let mtime = attributes[.modificationDate] as? Date
             else {
-                unreadable.append(file)
+                obstructions.append(
+                    .init(
+                        scope: file.source,
+                        reason: "file metadata could not be read"
+                            + " — existence observed, content unknown"
+                    )
+                )
                 
                 continue
             }
@@ -112,7 +117,7 @@ struct StoreScan {
             observed.append(ObservedFile(file: file, mtime: mtime))
         }
         
-        return (observed, unreadable)
+        return observed
     }
     
     // MARK: - Private
