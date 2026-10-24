@@ -19,7 +19,7 @@ import WarpYAML
 actor SpecCatalog {
     struct Catalog: Sendable {
         // MARK: - Property
-        let entries: [(name: String, module: Warp.Module, source: String)]
+        let entries: [(name: String, module: Warp.Module, source: String, documentation: Documentation)]
         let failures: [LoadFailure]
 
         // MARK: - Initializer
@@ -40,6 +40,9 @@ actor SpecCatalog {
         let module: Warp.Module
         let mtime: Date
         let source: String
+
+        // The prose the file writes beside its procedure.
+        let documentation: Documentation
 
         // MARK: - Initializer
         // MARK: - Public
@@ -91,7 +94,7 @@ actor SpecCatalog {
 
         return Catalog(
             entries: cache.values
-                .map { entry in (entry.name, entry.module, entry.source) }
+                .map { entry in (entry.name, entry.module, entry.source, entry.documentation) }
                 .sorted { left, right in left.name < right.name },
             failures: (Array(failureCache.values) + Array(legacyFailures.values) + collisions + scanFailures)
                 .sorted { left, right in left.path < right.path }
@@ -333,6 +336,7 @@ actor SpecCatalog {
             do {
                 let document = try frontend.document(from: text)
                 let module = try Loader().load(document, identity: try Identity.of(document))
+                let documentation = try frontend.documentation(from: text)
 
                 // Forge's convention on top of the language: a workflow file
                 // declares one procedure and names it after the file. The
@@ -356,7 +360,13 @@ actor SpecCatalog {
                     (
                         base,
                         file.file.source,
-                        Entry(name: base, module: module, mtime: file.mtime, source: file.file.source)
+                        Entry(
+                            name: base,
+                            module: module,
+                            mtime: file.mtime,
+                            source: file.file.source,
+                            documentation: documentation
+                        )
                     )
                 )
             } catch {

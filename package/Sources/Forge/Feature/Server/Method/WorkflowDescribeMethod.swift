@@ -7,6 +7,7 @@
 
 import Foundation
 import Warp
+import WarpYAML
 
 struct WorkflowDescribeMethod: Sendable {
     // MARK: - Property
@@ -37,7 +38,9 @@ struct WorkflowDescribeMethod: Sendable {
 
         // A workflow file declares one procedure named after the file — that is
         // Forge's convention, enforced at load, and what makes this lookup total.
-        guard let procedure = entry.module.procedures[try Name(entry.name)] else {
+        let declared = try Name(entry.name)
+
+        guard let procedure = entry.module.procedures[declared] else {
             throw ResolutionError("workflow '\(name)' declares no procedure of that name")
         }
 
@@ -46,7 +49,8 @@ struct WorkflowDescribeMethod: Sendable {
             "source":      entry.source,
         ]
 
-        result["inputs"] = contract.inputs(of: procedure.signature)
+        result["description"] = entry.documentation.descriptions[declared]
+        result["inputs"] = contract.inputs(of: procedure.signature, hints: entry.documentation.hints[declared] ?? [:])
         result["returns"] = contract.returns(of: procedure.signature)
 
         return JSONObject(result)

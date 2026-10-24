@@ -128,6 +128,7 @@ def main():
         listed = harness.forge("workflow", "list")
         for name in ["kernel", "child", "host", "agent", "parent", "forbidden"]:
             check(name in listed, f"workflow list carries '{name}'", listed)
+        check("Kernel language tour" in listed, "workflow list carries a description", listed)
 
         # The authoring gate reads files straight from the kit, together, as
         # the kernel fixture calls the child by name.
@@ -140,6 +141,7 @@ def main():
 
         described = harness.forge("workflow", "describe", "kernel")
         check("who" in described, "workflow describe shows the signature", described)
+        check("whom the tour greets" in described, "workflow describe shows an input's hint", described)
 
         # Kernel tour — every control-flow feature in one dispatch.
         kernel = harness.forge("workflow", "dispatch", "kernel")

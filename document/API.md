@@ -235,9 +235,10 @@ forge workflow list [--json]
 
 #### `forge workflow describe`
 
-Show one workflow's calling contract — description, source path, inputs
-(type / default / hint — a declared default, even `null`, marks it optional),
-and outputs mapping. Counterpart to `service describe`. RPC: `workflow.describe`.
+Show one workflow's calling contract: description, source path, inputs
+(type, default and hint; an optional input is marked with a null default)
+and the return type. Counterpart to `service describe`. RPC:
+`workflow.describe`.
 
 ```
 forge workflow describe <name> [--json]
@@ -662,37 +663,34 @@ mid-run the run continues (same semantics as `async=true`); interruption is
 **params** `{"token"}`. **result**
 
 ```json
-{"workflows":[{"name","description","source"}],
+{"workflows":[{"name","description"?,"source"}],
  "failures":[{"path","reason","mtime"}]}
 ```
 
-`failures` lists `*.yaml` files that couldn't be loaded — YAML decode
-error or validator rejection (e.g. a `{ ref: X }` naming nothing declared).
-Always present (may be empty); admin surfaces broken workflows without
-grep'ing stderr.
+`workflows` are the catalog's files that loaded and built; `description` is
+what the file writes under `description:`, where it writes one. `failures`
+lists the `*.yaml` files the catalog left out, each with its refusal: a file
+the front end or the load refuses, one that does not declare one procedure
+named after it, and one that does not build against the library and the
+files that build (its reason starts `build:`). Always present (may be
+empty); admin surfaces broken workflows without grep'ing stderr.
 
 ### `workflow.describe`
 
 **params** `{"token","name"}`. **result**
 
 ```json
-{"name","description","source",
- "inputs":{"<key>":{"type","default"?,"hint"?,"oneOf"?}},
- "outputs":{"<key>": <Expression>}}
+{"name","description"?,"source",
+ "inputs":{"<key>":{"type","default"?,"hint"?}},
+ "returns"}
 ```
 
-`inputs` is the declared signature — the workflow procedure's `parameters:`,
-minus the two names the daemon supplies itself (`origin`, `run`), which are
-declared on every procedure but are not a caller's to fill. `type` is the
-declared type as written (`string`, `array<string>`, a record, …), and a
-declared `default` (even `null`) marks the input optional.
-
-`outputs` reads back the fields of the workflow's `result:` when it is a record,
-which is how several named answers are written; a `result:` that is anything
-else (or absent) describes as `{}`. Each value round-trips in the expression
-grammar — a reference comes back as `{"ref": "<path>"}`, quotation as
-`{"value": ...}`, interpolation as `{"format": "...", "with": {...}}`, and
-records/arrays/literals as themselves. Empty `inputs`/`outputs` are returned as
+`inputs` is the workflow procedure's parameters. `type` is the declared type
+as the language spells it (`String`, `Array<String>`, `String?`, …); an input
+of an Optional type is one a caller may leave out, and `default: null` marks
+it, a `default:` the file writes included (the daemon hands null and the
+workflow settles it). `hint` is what the file writes under the input's
+`hint:`. `returns` is the declared return type. Empty `inputs` is returned as
 `{}` (not omitted) so the caller can iterate without null-checks. Unknown
 workflow → ResolutionError `workflow not found: <name>`.
 

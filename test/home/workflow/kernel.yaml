@@ -1,9 +1,9 @@
-# Kernel language tour: every control-flow feature in one shallow pass.
 procedures:
   kernel:
+    description: Kernel language tour, every control-flow feature in one shallow pass.
     access: public
     parameters:
-      - who: { type: String, default: world }
+      - who: { type: String, default: world, hint: whom the tour greets }
       - mode: { type: String, default: a }
       - items: { type: "Array<String>", default: [ one, two ] }
     returns: "Dictionary<String, Any>"

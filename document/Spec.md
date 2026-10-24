@@ -46,6 +46,20 @@ hands it null when left out, and the body starts by settling the default.
 parameters: [ who: { type: String, default: world } ]
 ```
 
+A workflow's `description:` and each input's `hint:` are prose the front end
+hands back beside the document: `workflow list` prints the description, and
+`workflow describe` prints it and each input's hint.
+
+```yaml
+procedures:
+  greet:
+    description: Says hello.
+    access: public
+    parameters: [ who: { type: String, hint: whom to greet } ]
+    returns: String
+    result: { format: "hello, ${who}", with: { who: { ref: who } } }
+```
+
 ## The `Forge` library
 
 The verbs are the procedures of Forge's library, a document in the front

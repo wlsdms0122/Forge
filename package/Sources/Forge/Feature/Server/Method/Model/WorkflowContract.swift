@@ -15,14 +15,17 @@ struct WorkflowContract {
     }
 
     // MARK: - Public
-    // What a caller fills in. An optional parameter is one a caller may leave
-    // out, and the wire marks it with a null default.
-    func inputs(of signature: Signature) -> [String: Any] {
+    // What a caller fills in, each with the hint the file writes beside it.
+    // An optional parameter is one a caller may leave out, and the wire marks
+    // it with a null default.
+    func inputs(of signature: Signature, hints: [Name: String]) -> [String: Any] {
         Dictionary(
             signature.parameters.map { parameter in
                 var described: [String: Any] = ["type": parameter.type.rendered]
 
                 if case .optional = parameter.type { described["default"] = NSNull() }
+
+                if let hint = hints[parameter.name] { described["hint"] = hint }
 
                 return (parameter.name.spelling, described)
             },

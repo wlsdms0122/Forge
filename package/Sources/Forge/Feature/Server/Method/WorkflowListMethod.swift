@@ -7,6 +7,7 @@
 
 import Foundation
 import Warp
+import WarpYAML
 
 struct WorkflowListMethod: Sendable {
     // MARK: - Property
@@ -24,11 +25,17 @@ struct WorkflowListMethod: Sendable {
         _ = try tokenAuthority.requireClaims(request.params)
 
         let catalog = await store.catalog()
-        let summary: [[String: Any]] = catalog.entries.map { entry in
-            [
+        let summary: [[String: Any]] = try catalog.entries.map { entry in
+            var listed: [String: Any] = [
                 "name":        entry.name,
                 "source":      entry.source,
             ]
+
+            if let description = entry.documentation.descriptions[try Name(entry.name)] {
+                listed["description"] = description
+            }
+
+            return listed
         }
         let failureSummary: [[String: Any]] = catalog.failures.map { failure in
             [

@@ -48,6 +48,34 @@ struct WorkflowDescribeTests {
         #expect(result.dict["returns"] as? String == "Dictionary<String, Any>")
     }
     
+    @Test("Describe and list answer the description and each input's hint the file writes beside them")
+    func answersTheProseBesideTheDeclaration() async throws {
+        // Given
+        let (method, authority, directory) = try await makeMethod("prose")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try workflowFile(#"""
+        description: Says hello.
+        parameters: [ who: { type: String, hint: whom to greet }, loud: { type: Bool, default: false } ]
+        returns: String
+        result: { format: "hello, ${who}", with: { who: { ref: who } } }
+        """#, named: "greet").write(to: directory.appendingPathComponent("greet.yaml"),
+            atomically: true, encoding: .utf8)
+        let token = authority.mint(TokenClaims(principal: "system:admin"))
+        let list = WorkflowListMethod(store: method.store, tokenAuthority: authority)
+
+        // When
+        let described = try await method.handle(request(["token": token, "name": "greet"]))
+        let listed = try await list.handle(RPCRequest(id: "r-list", method: "workflow.list", params: ["token": token]))
+
+        // Then
+        #expect(described.dict["description"] as? String == "Says hello.")
+        let inputs = described.dict["inputs"] as? [String: Any] ?? [:]
+        #expect((inputs["who"] as? [String: Any])?["hint"] as? String == "whom to greet")
+        #expect((inputs["loud"] as? [String: Any])?["hint"] == nil)
+        let workflows = listed.dict["workflows"] as? [[String: Any]] ?? []
+        #expect(workflows.first?["description"] as? String == "Says hello.")
+    }
+
     @Test("A workflow with no parameters answers empty inputs and returns Null")
     func emptyInputsAndOutputsAreEmptyObjects() async throws {
         // Given
