@@ -14,7 +14,7 @@ actor WorkflowPool {
         case cancelling
     }
     
-    struct WorkflowInfo: Sendable {
+    struct RunInfo: Sendable {
         // MARK: - Property
         let runID: String
         let workflowName: String
@@ -132,7 +132,7 @@ actor WorkflowPool {
     private var recentDispatches: [ContinuousClock.Instant] = []
     private var waiters: [Waiter] = []
     private var stepWaiterSeq: UInt64 = 0
-    private var workflows: [String: WorkflowInfo] = [:]
+    private var workflows: [String: RunInfo] = [:]
     private var cancelled: Set<String> = []
     private var cancelWaiters: [String: [CancelWaiter]] = [:]
     private var cancelWaiterSeq: UInt64 = 0
@@ -165,7 +165,7 @@ actor WorkflowPool {
     
     func drain(
         graceSeconds: Double = Subprocess.terminationGraceSeconds + 1
-    ) async -> [WorkflowInfo] {
+    ) async -> [RunInfo] {
         for info in snapshot() { cancel(runID: info.runID) }
         
         let deadline = ContinuousClock.now + .seconds(graceSeconds)
@@ -214,7 +214,7 @@ actor WorkflowPool {
             )
         }
         
-        workflows[runID] = WorkflowInfo(
+        workflows[runID] = RunInfo(
             runID: runID,
             workflowName: workflowName,
             rootID: rootID,
@@ -458,7 +458,7 @@ actor WorkflowPool {
         )
     }
     
-    func snapshot() -> [WorkflowInfo] {
+    func snapshot() -> [RunInfo] {
         workflows.values.sorted { left, right in left.enqueuedAt < right.enqueuedAt }
     }
     
