@@ -426,6 +426,32 @@ struct WorkflowRunnerTests {
         #expect(seen.contains("child:workflowCompleted"))
     }
 
+    @Test(
+        "workflow.completed carries the value the run returned in its output, null included",
+        arguments: [
+            ("returns: \"Dictionary<String, Int>\"\nresult: { dictionary: [ [a, 1] ] }", ["a": 1]),
+            ("returns: \"String?\"\nresult: null", .null)
+        ] as [(String, JSONValue)]
+    )
+    func completedEventCarriesTheOutput(source: String, expected: JSONValue) async throws {
+        // Given
+        let harness = try makeRunner(catalog: ["plain": source])
+        let (_, stream) = await harness.eventBus.subscribe()
+        let workflow = try await harness.catalog.workflow(named: "plain")
+
+        // When
+        _ = try await harness.dispatch(workflow)
+
+        // Then
+        var completed: WorkflowEvent?
+        for await event in stream where event.kind == .workflowCompleted {
+            completed = event
+            break
+        }
+        let sut = try #require(completed)
+        #expect(sut.fields["output"] == expected)
+    }
+
     @Test("parallel pieces do not inherit the outer agent session")
     func parallelChildrenDoNotInheritAgentSession() async throws {
         // Given
