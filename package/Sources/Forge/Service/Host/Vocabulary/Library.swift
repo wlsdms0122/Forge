@@ -81,7 +81,7 @@ enum Library {
                 arguments: [ { ref: prompt } ]
         
           dispatch:
-            description: Runs a catalog workflow as a run of its own, with its own policy check, slot and ledger, and returns the value it returns.
+            description: Runs a catalog workflow as a run of its own, with its own policy check, slot and ledger, and returns the value the workflow returns.
             access: public
             isolated: true
             parameters:
