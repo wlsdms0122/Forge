@@ -17,7 +17,7 @@ struct WorkflowEvent: Sendable {
     let parameters: [String: JSONValue]?
     let inputs: [String: JSONValue]?
     let output: JSONValue?
-    let outputs: [String: JSONValue]?
+    let outputs: JSONValue?
     let errorType: String?
     let errorMessage: String?
     let durationMs: Int?
@@ -48,7 +48,7 @@ struct WorkflowEvent: Sendable {
         if let parameters { object["parameters"] = .object(parameters) }
         if let inputs { object["inputs"] = .object(inputs) }
         if let output { object["output"] = output }
-        if let outputs { object["outputs"] = .object(outputs) }
+        if let outputs { object["outputs"] = outputs }
         if let errorType { object["error_type"] = .string(errorType) }
         if let errorMessage { object["error_message"] = .string(errorMessage) }
         if let durationMs { object["duration_ms"] = .int(durationMs) }
@@ -77,7 +77,7 @@ struct WorkflowEvent: Sendable {
         parameters: [String: JSONValue]? = nil,
         inputs: [String: JSONValue]? = nil,
         output: JSONValue? = nil,
-        outputs: [String: JSONValue]? = nil,
+        outputs: JSONValue? = nil,
         errorType: String? = nil,
         errorMessage: String? = nil,
         durationMs: Int? = nil,

@@ -3,7 +3,7 @@
 procedures:
   forbidden:
     access: public
-    returns: "Dictionary<String, Any>"
+    returns: Any
     body:
       - var: blocked
         type: Any
@@ -17,4 +17,4 @@ procedures:
             catch:
               - set: blocked
                 value: should-not-swallow
-    result: { dictionary: [ [result, { ref: blocked }] ] }
+    result: { ref: blocked }

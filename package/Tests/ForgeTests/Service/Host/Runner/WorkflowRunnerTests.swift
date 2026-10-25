@@ -17,8 +17,8 @@ struct WorkflowRunnerTests {
 
     // MARK: - Initializer
     // MARK: - Test
-    @Test("runs a procedure and returns a result fulfilling the outputs contract")
-    func runReturnsOutputs() async throws {
+    @Test("runs a procedure and returns a result with the value it returns")
+    func runReturnsItsValue() async throws {
         // Given
         let harness = try makeRunner(catalog: [
             "hello": """
@@ -38,30 +38,33 @@ struct WorkflowRunnerTests {
         // Then
         #expect(result.status == .ok)
         #expect(result.workflowName == "hello")
-        #expect(result.outputs["text"] == .string("hi there"))
+        #expect(result.outputs == ["text": "hi there"])
     }
 
-    @Test("a run returning neither a struct nor a dictionary reports its value under result")
-    func runReportsAPlainValueUnderResult() async throws {
+    @Test(
+        "a run's result is the value it returns as JSON, whatever its kind",
+        arguments: [
+            (
+                "returns: Forge.Origin\nresult: { call: { procedure: origin, arguments: {} } }",
+                ["kind": "manual", "id": .null]
+            ),
+            ("returns: \"Dictionary<String, Int>\"\nresult: { dictionary: [ [a, 1] ] }", ["a": 1]),
+            ("returns: \"Array<Int>\"\nresult: [ 1, 2 ]", [1, 2]),
+            ("returns: String\nresult: hi", "hi"),
+            ("returns: \"String?\"\nresult: null", .null)
+        ] as [(String, JSONValue)]
+    )
+    func runResultIsTheReturnedValue(source: String, expected: JSONValue) async throws {
         // Given
-        let harness = try makeRunner(catalog: [
-            "plain": """
-            parameters: [ msg: String ]
-            returns: String
-            result: { format: "hi ${msg}", with: { msg: { ref: msg } } }
-            """
-        ])
+        let harness = try makeRunner(catalog: ["plain": source])
         let workflow = try await harness.catalog.workflow(named: "plain")
 
         // When
-        let result = try await harness.dispatch(
-            workflow,
-            inputs: ["msg": .string("there")]
-        )
+        let result = try await harness.dispatch(workflow)
 
         // Then
         #expect(result.status == .ok)
-        #expect(result.outputs == ["result": .string("hi there")])
+        #expect(result.outputs == expected)
     }
 
     @Test("a shell step runs over the live seam")
@@ -84,8 +87,8 @@ struct WorkflowRunnerTests {
 
         // Then
         #expect(result.status == .ok)
-        guard case let .string(out)? = result.outputs["out"] else {
-            Issue.record("must be a string output: \(String(describing: result.outputs["out"]))")
+        guard case let .string(out)? = result.outputs.objectValue?["out"] else {
+            Issue.record("must be a string: \(result.outputs)")
             return
         }
         #expect(out.contains("ok"))
@@ -114,7 +117,7 @@ struct WorkflowRunnerTests {
 
         // Then
         #expect(result.status == .ok)
-        #expect(result.outputs["reply"] == .string("echo:hello"))
+        #expect(result.outputs == ["reply": "echo:hello"])
     }
 
     @Test("a run ending in abort is reported as a work failure")
@@ -157,23 +160,23 @@ struct WorkflowRunnerTests {
         #expect(sut.error?.object.type == "aborted")
     }
 
-    @Test("dispatch runs a child spec from the catalog as a new run and returns its outputs")
+    @Test("dispatch runs a child spec from the catalog as a new run and returns the value it returns")
     func dispatchRunsChildSpec() async throws {
         // Given
         let harness = try makeRunner(
             catalog: [
                 "parent": """
-                returns: "Dictionary<String, Any>"
+                returns: Any
                 failing: [child_run_failed, timeout]
                 body:
                   - let: call
                     value: { call: { procedure: dispatch, arguments: { name: child, inputs: { dictionary: [ [msg, hello] ] } } } }
-                result: { dictionary: [ [got, { ref: 'call["echo"]' }] ] }
+                result: { ref: call }
                 """,
                 "child": """
                 parameters: [ msg: String ]
-                returns: "Dictionary<String, Any>"
-                result: { dictionary: [ [echo, { format: "child got ${msg}", with: { msg: { ref: msg } } }] ] }
+                returns: String
+                result: { format: "child got ${msg}", with: { msg: { ref: msg } } }
                 """
             ],
             policy: ["cli:parent": ["parent", "child"]]
@@ -185,7 +188,39 @@ struct WorkflowRunnerTests {
 
         // Then
         #expect(result.status == .ok)
-        #expect(result.outputs["got"] == .string("child got hello"))
+        #expect(result.outputs == "child got hello")
+    }
+
+    @Test("a dictionary a child returns reaches the parent as one, which a cast reads")
+    func dispatchHandsAChildDictionaryToACast() async throws {
+        // Given
+        let harness = try makeRunner(
+            catalog: [
+                "parent": """
+                returns: String
+                failing: [child_run_failed, timeout, cast_refused]
+                body:
+                  - let: call
+                    value: { call: { procedure: dispatch, arguments: { name: child } } }
+                  - let: echoed
+                    value: { as: { of: { ref: call }, type: "Dictionary<String, String>" } }
+                result: { ref: 'echoed["echo"]' }
+                """,
+                "child": """
+                returns: "Dictionary<String, String>"
+                result: { dictionary: [ [echo, child said] ] }
+                """
+            ],
+            policy: ["cli:parent": ["parent", "child"]]
+        )
+        let workflow = try await harness.catalog.workflow(named: "parent")
+
+        // When
+        let result = try await harness.dispatch(workflow)
+
+        // Then
+        #expect(result.status == .ok)
+        #expect(result.outputs == "child said")
     }
 
     @Test("when policy blocks it, dispatch fails and is not swallowed even by catch")
@@ -260,7 +295,7 @@ struct WorkflowRunnerTests {
 
         // Then
         #expect(result.status == .ok)
-        #expect(result.outputs["got"] == .string("rescued"))
+        #expect(result.outputs == ["got": "rescued"])
     }
 
     @Test("run framing events are published — started/completed for parent and child alike")

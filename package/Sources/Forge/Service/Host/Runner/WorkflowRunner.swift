@@ -228,10 +228,10 @@ actor WorkflowRunner {
                 inputs,
                 for: workflow.module.procedures[entry]?.signature
             )
-            let outputs = try await withCancelSignal(runID: runID) {
+            let returned = try await withCancelSignal(runID: runID) {
                 try await executor.run(image, entry: entry, arguments: arguments)
             }
-            let jsonOutputs = Self.outputs(of: outputs)
+            let outputs = ValueBridge.json(returned)
             let duration = (ContinuousClock.now - started).milliseconds
 
             await eventBus.publish(WorkflowEvent(
@@ -239,7 +239,7 @@ actor WorkflowRunner {
                 runID: runID,
                 workflowName: name,
                 origin: origin,
-                outputs: jsonOutputs,
+                outputs: outputs,
                 durationMs: duration
             ))
 
@@ -247,7 +247,7 @@ actor WorkflowRunner {
                 runID: runID,
                 workflowName: name,
                 status: .ok,
-                outputs: jsonOutputs,
+                outputs: outputs,
                 durationMs: duration,
                 error: nil
             )
@@ -275,7 +275,7 @@ actor WorkflowRunner {
                 runID: runID,
                 workflowName: name,
                 status: .failed,
-                outputs: [:],
+                outputs: .null,
                 durationMs: duration,
                 error: .init(kind: Self.failureKind(of: error), object: failure)
             )
@@ -326,22 +326,6 @@ actor WorkflowRunner {
         }
 
         return arguments
-    }
-
-    // What a run reports for the value it returned: the fields of a struct or
-    // the entries of a dictionary, nothing for null, and any other value under
-    // `result`, so every workflow the build accepts reports what it returns.
-    private static func outputs(of returned: Warp.Value) -> [String: JSONValue] {
-        switch ValueBridge.json(returned) {
-        case .null:
-            return [:]
-
-        case let .object(fields):
-            return fields
-
-        case let other:
-            return ["result": other]
-        }
     }
 
     static func valuePreview(_ value: JSONValue) -> (String?, Int?) {
@@ -399,7 +383,7 @@ extension WorkflowRunner: RunDispatching {
         )
 
         guard let failure = result.error else {
-            return try ValueBridge.value(.object(result.outputs))
+            return try ValueBridge.value(result.outputs)
         }
 
         let summary = "dispatch '\(name)' failed: \(failure.object.type) — \(failure.object.message)"

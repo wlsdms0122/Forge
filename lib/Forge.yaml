@@ -69,14 +69,14 @@ procedures:
         arguments: [ { ref: prompt } ]
 
   dispatch:
-    description: Runs a catalog workflow as a run of its own, with its own policy check, slot and ledger, and returns its outputs.
+    description: Runs a catalog workflow as a run of its own, with its own policy check, slot and ledger, and returns the value it returns.
     access: public
     isolated: true
     parameters:
       - name: { type: String, hint: "the catalog workflow to run" }
       - inputs: { type: "Dictionary<String, Any>", default: { dictionary: [] }, hint: "its inputs by name" }
       - timeout: { type: Double?, hint: "seconds before the child fails with timeout" }
-    returns: "Dictionary<String, Any>"
+    returns: Any
     failing: [child_run_failed, timeout]
     result:
       call:

@@ -39,7 +39,7 @@ struct DispatchAction: ForgeAction {
     // MARK: - Property
     static let signature = Signature(
         of: Self.self,
-        returns: .dictionary(key: .string, value: .any),
+        returns: .any,
         failing: .these([ChildRunFailed.type, DeadlineExceeded.type]),
         isolation: .isolated
     )

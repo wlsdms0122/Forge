@@ -518,12 +518,12 @@ struct EffectActionTests {
         let harness = Harness()
         let spec = try harness.frontend.workflow("""
         parameters: [ job: String ]
-        returns: "Dictionary<String, Any>"
+        returns: Any
         failing: [child_run_failed, timeout]
         body:
           - let: child
             value: { call: { procedure: dispatch, arguments: { name: worker, inputs: { dictionary: [ [job_id, { ref: job }] ] } } } }
-        result: { dictionary: [ [result, { ref: 'child["ok"]' }] ] }
+        result: { ref: child }
         """)
         let sut = try harness.executor()
 
@@ -531,7 +531,7 @@ struct EffectActionTests {
         let outputs = try await sut.run(spec, inputs: ["job": .string("j-1")])
 
         // Then
-        #expect(outputs["result"] == .bool(true))
+        #expect(outputs["ok"] == .bool(true))
         let dispatched = await harness.recorder.dispatches
         #expect(dispatched.count == 1)
         #expect(dispatched.first?.name == "worker")

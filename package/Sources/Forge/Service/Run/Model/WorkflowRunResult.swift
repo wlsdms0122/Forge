@@ -7,7 +7,8 @@
 
 import Foundation
 
-// What a finished run answers: its status, outputs, duration and failure.
+// What a finished run answers: its status, the value it returned (null for a
+// run that failed), its duration and its failure.
 struct WorkflowRunResult: Sendable {
     enum Status: String, Sendable {
         case ok
@@ -34,7 +35,7 @@ struct WorkflowRunResult: Sendable {
     let runID: String
     let workflowName: String
     let status: Status
-    let outputs: [String: JSONValue]
+    let outputs: JSONValue
     let durationMs: Int
     let error: RunFailure?
 

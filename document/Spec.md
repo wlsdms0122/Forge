@@ -35,9 +35,9 @@ catalog's files, and runs under the name `<inline>`.
 - **Inputs** are the procedure's parameters. A caller hands them by name. An
   input of an optional type (`String?`) may be left out, and the daemon hands
   it null; any other input must be handed.
-- **The result** is what the procedure returns. The fields of a struct or the
-  entries of a dictionary are the run's outputs, any other value is the one output
-  `result`, and null is none.
+- **The result** is what the procedure returns, and the run answers that value
+  as it is. A workflow that answers with named parts returns a struct or a
+  dictionary.
 - **Failures** the body lets out are declared under `failing`, as the language
   asks of any procedure.
 
@@ -152,14 +152,16 @@ are `exit_code`, `stderr` and `stdout`.
 
 ### `Forge.dispatch`
 
-`dispatch(name: String, inputs: Dictionary<String, Any>, timeout: Double?) -> Dictionary<String, Any>`,
+`dispatch(name: String, inputs: Dictionary<String, Any>, timeout: Double?) -> Any`,
 failing `child_run_failed`, `timeout`. `inputs` defaults to an empty dictionary.
 
 Runs the catalog workflow `name` as a run of its own, with its own policy
-check, slot and ledger, and returns its outputs. A child that fails at its
-work fails with `child_run_failed`, which a catch may take. A child the
-policy refuses, or one that faults or is cancelled, fails the parent past any
-catch.
+check, slot and ledger, and returns the value the child returns, as its run
+answers it: a struct the child returns arrives as a dictionary of its
+fields. The value reads as `Any`, so a parent reads a part of it through a
+cast. A child that fails at its work fails with `child_run_failed`, which a
+catch may take. A child the policy refuses, or one that faults or is
+cancelled, fails the parent past any catch.
 
 ### `Forge.resource`
 
