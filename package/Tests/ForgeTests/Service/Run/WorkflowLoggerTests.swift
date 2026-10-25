@@ -77,8 +77,7 @@ struct WorkflowLoggerTests {
             await bus.publish(WorkflowEvent(
                     kind: .workflowStarted,
                     runID: "wf-in", workflowName: "router",
-                    inputs: ["prompt": .string("hello")],
-                    inputPreview: #"{"prompt":"hello"}"#, inputLen: 18))
+                    inputs: ["prompt": .string("hello")]))
             let records = try await capture.records(runID: "wf-in", awaiting: 1)
             await logger.stop()
 
@@ -90,6 +89,7 @@ struct WorkflowLoggerTests {
         #expect(record.kind == "workflow.started")
         #expect(record.payload["input_preview"] == .string(#"{"prompt":"hello"}"#))
         #expect(record.payload["input_len"] == .int(18))
+        #expect(record.payload["inputs"] == nil)
     }
 
     @Test("Events published after stop() no longer flow into the log")

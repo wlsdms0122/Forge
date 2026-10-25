@@ -22,10 +22,6 @@ struct WorkflowEvent: Sendable {
     let durationMs: Int?
     let action: String?
     let exitCode: Int?
-    let outputPreview: String?
-    let outputLen: Int?
-    let inputPreview: String?
-    let inputLen: Int?
     let timestamp: Date
     let rootID: String?
     let nodeID: String?
@@ -33,7 +29,8 @@ struct WorkflowEvent: Sendable {
     let parentRunID: String?
     let asyncDispatch: Bool
 
-    // The event's fields as the stream and the log write them.
+    // The event's fields as the stream and the log write them. A value the
+    // event carries is written with its preview.
     var fields: [String: JSONValue] {
         var object: [String: JSONValue] = [
             "event": .string(kind.rawValue),
@@ -45,17 +42,30 @@ struct WorkflowEvent: Sendable {
         if let stepID { object["step"] = .string(stepID) }
         if let origin { object["origin"] = origin.jsonValue }
         if let parameters { object["parameters"] = .object(parameters) }
-        if let inputs { object["inputs"] = .object(inputs) }
-        if let output { object["output"] = output }
+
+        if let inputs {
+            object["inputs"] = .object(inputs)
+
+            if let preview = ValuePreview(.object(inputs)) {
+                object["input_preview"] = .string(preview.text)
+                object["input_len"] = .int(preview.length)
+            }
+        }
+
+        if let output {
+            object["output"] = output
+
+            if let preview = ValuePreview(output) {
+                object["output_preview"] = .string(preview.text)
+                object["output_len"] = .int(preview.length)
+            }
+        }
+
         if let errorType { object["error_type"] = .string(errorType) }
         if let errorMessage { object["error_message"] = .string(errorMessage) }
         if let durationMs { object["duration_ms"] = .int(durationMs) }
         if let action { object["action"] = .string(action) }
         if let exitCode { object["exit_code"] = .int(exitCode) }
-        if let outputPreview { object["output_preview"] = .string(outputPreview) }
-        if let outputLen { object["output_len"] = .int(outputLen) }
-        if let inputPreview { object["input_preview"] = .string(inputPreview) }
-        if let inputLen { object["input_len"] = .int(inputLen) }
         if let rootID { object["root_id"] = .string(rootID) }
         if let nodeID { object["node_id"] = .string(nodeID) }
         if let parentNodeID { object["parent_node_id"] = .string(parentNodeID) }
@@ -80,10 +90,6 @@ struct WorkflowEvent: Sendable {
         durationMs: Int? = nil,
         action: String? = nil,
         exitCode: Int? = nil,
-        outputPreview: String? = nil,
-        outputLen: Int? = nil,
-        inputPreview: String? = nil,
-        inputLen: Int? = nil,
         timestamp: Date = Date(),
         rootID: String? = nil,
         nodeID: String? = nil,
@@ -104,10 +110,6 @@ struct WorkflowEvent: Sendable {
         self.durationMs = durationMs
         self.action = action
         self.exitCode = exitCode
-        self.outputPreview = outputPreview
-        self.outputLen = outputLen
-        self.inputPreview = inputPreview
-        self.inputLen = inputLen
         self.timestamp = timestamp
         self.rootID = rootID ?? LogContext.rootID
         self.nodeID = nodeID ?? LogContext.nodeID

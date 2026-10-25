@@ -186,9 +186,6 @@ actor WorkflowRunner {
     ) async -> WorkflowRunResult {
         let name = workflow.name
         let started = ContinuousClock.now
-        let (inputPreview, inputLength) = inputs.isEmpty
-            ? (nil, nil)
-            : Self.valuePreview(.object(inputs))
 
         await eventBus.publish(WorkflowEvent(
             kind: .workflowStarted,
@@ -196,9 +193,7 @@ actor WorkflowRunner {
             workflowName: name,
             origin: origin,
             parameters: LogContext.parameters,
-            inputs: inputs.isEmpty ? nil : inputs,
-            inputPreview: inputPreview,
-            inputLen: inputLength
+            inputs: inputs.isEmpty ? nil : inputs
         ))
 
         let eventBus = self.eventBus
@@ -234,7 +229,6 @@ actor WorkflowRunner {
                 try await executor.run(image, entry: entry, arguments: arguments)
             }
             let output = try ValueBridge.json(returned)
-            let (outputPreview, outputLength) = Self.valuePreview(output)
             let duration = (ContinuousClock.now - started).milliseconds
 
             await eventBus.publish(WorkflowEvent(
@@ -243,9 +237,7 @@ actor WorkflowRunner {
                 workflowName: name,
                 origin: origin,
                 output: output,
-                durationMs: duration,
-                outputPreview: outputPreview,
-                outputLen: outputLength
+                durationMs: duration
             ))
 
             return WorkflowRunResult(
@@ -327,27 +319,6 @@ actor WorkflowRunner {
         }
 
         return arguments
-    }
-
-    static func valuePreview(_ value: JSONValue) -> (String?, Int?) {
-        let previewLimit = 2000
-
-        if case .null = value { return (nil, nil) }
-
-        let text: String
-
-        if case .string(let string) = value {
-            text = string
-        } else {
-            let data = (try? JSONEncoder().encode(value)) ?? Data()
-
-            text = String(decoding: data, as: UTF8.self)
-        }
-
-        let length = text.count
-        let preview = length > previewLimit ? String(text.prefix(previewLimit)) : text
-
-        return (preview, length)
     }
 
     private static func failureKind(of error: any Error) -> WorkflowRunResult.RunFailure.Kind {
