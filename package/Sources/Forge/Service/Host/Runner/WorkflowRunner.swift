@@ -162,13 +162,15 @@ actor WorkflowRunner {
         await workRegistry.beginClose(runID: runID)
 
         if let jobStore {
-            await jobStore.closeRun(
-                run: claims.id,
-                failure: result.status == .failed
-                    ? (result.error.map { failure in "\(failure.object.type): \(failure.object.message)" }
-                        ?? "failed")
-                    : nil
-            )
+            let failure: String? = switch result.outcome {
+            case .returned:
+                nil
+
+            case let .failed(failure):
+                "\(failure.object.type): \(failure.object.message)"
+            }
+
+            await jobStore.closeRun(run: claims.id, failure: failure)
         }
 
         await workRegistry.release(runID: runID)
@@ -378,29 +380,25 @@ extension WorkflowRunner: RunDispatching {
             mode: .awaited
         )
 
-        let failure: WorkflowRunResult.RunFailure
-
         switch result.outcome {
         case let .returned(value):
             return try ValueBridge.value(value)
 
-        case let .failed(ended):
-            failure = ended
-        }
+        case let .failed(failure):
+            let summary = "dispatch '\(name)' failed: \(failure.object.type) — \(failure.object.message)"
 
-        let summary = "dispatch '\(name)' failed: \(failure.object.type) — \(failure.object.message)"
+            switch failure.kind {
+            case .work:
+                throw ChildRunFailed(summary)
 
-        switch failure.kind {
-        case .work:
-            throw ChildRunFailed(summary)
+            case .fault:
+                throw ChildRunFaulted(summary)
 
-        case .fault:
-            throw ChildRunFaulted(summary)
-
-        case .cancelled:
-            throw ChildRunCancelled(
-                "dispatch '\(name)' cancelled: \(failure.object.message)"
-            )
+            case .cancelled:
+                throw ChildRunCancelled(
+                    "dispatch '\(name)' cancelled: \(failure.object.message)"
+                )
+            }
         }
     }
 }

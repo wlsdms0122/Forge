@@ -36,7 +36,7 @@ struct WorkflowRunnerTests {
         )
 
         // Then
-        #expect(result.status == .ok)
+        #expect(result.failure == nil)
         #expect(result.workflowName == "hello")
         #expect(result.output == ["text": "hi there"])
     }
@@ -63,7 +63,7 @@ struct WorkflowRunnerTests {
         let result = try await harness.dispatch(workflow)
 
         // Then
-        #expect(result.status == .ok)
+        #expect(result.failure == nil)
         #expect(result.output == expected)
     }
 
@@ -89,10 +89,9 @@ struct WorkflowRunnerTests {
         let result = try await harness.dispatch(workflow)
 
         // Then
-        #expect(result.status == .failed)
-        #expect(result.error?.kind == .fault)
-        #expect(result.error?.object.type == "UnwritableValue")
-        #expect(result.error?.object.message == message)
+        #expect(result.failure?.kind == .fault)
+        #expect(result.failure?.object.type == "UnwritableValue")
+        #expect(result.failure?.object.message == message)
     }
 
     @Test("a shell step runs over the live seam")
@@ -114,7 +113,7 @@ struct WorkflowRunnerTests {
         let result = try await harness.dispatch(workflow)
 
         // Then
-        #expect(result.status == .ok)
+        #expect(result.failure == nil)
         guard case let .string(out)? = result.output?.objectValue?["out"] else {
             Issue.record("must be a string: \(String(describing: result.output))")
             return
@@ -144,7 +143,7 @@ struct WorkflowRunnerTests {
         let result = try await harness.dispatch(workflow)
 
         // Then
-        #expect(result.status == .ok)
+        #expect(result.failure == nil)
         #expect(result.output == ["reply": "echo:hello"])
     }
 
@@ -164,9 +163,8 @@ struct WorkflowRunnerTests {
         let result = try await harness.dispatch(workflow)
 
         // Then
-        #expect(result.status == .failed)
-        #expect(result.error?.kind == .work)
-        #expect(result.error?.object.message.contains("boom reason") == true)
+        #expect(result.failure?.kind == .work)
+        #expect(result.failure?.object.message.contains("boom reason") == true)
         #expect(result.output == nil)
     }
 
@@ -186,7 +184,7 @@ struct WorkflowRunnerTests {
         let sut = try await harness.dispatch(workflow)
 
         // Then
-        #expect(sut.error?.object.type == "aborted")
+        #expect(sut.failure?.object.type == "aborted")
     }
 
     @Test("dispatch runs a child spec from the catalog as a new run and returns the value it returns")
@@ -216,7 +214,7 @@ struct WorkflowRunnerTests {
         let result = try await harness.dispatch(workflow)
 
         // Then
-        #expect(result.status == .ok)
+        #expect(result.failure == nil)
         #expect(result.output == "child got hello")
     }
 
@@ -248,7 +246,7 @@ struct WorkflowRunnerTests {
         let result = try await harness.dispatch(workflow)
 
         // Then
-        #expect(result.status == .ok)
+        #expect(result.failure == nil)
         #expect(result.output == "child said")
     }
 
@@ -278,9 +276,9 @@ struct WorkflowRunnerTests {
         let result = try await harness.dispatch(workflow)
 
         // Then
-        #expect(result.error?.kind == .fault)
-        #expect(result.error?.object.type == "ChildRunFaulted")
-        #expect(result.error?.object.message.contains("UnwritableValue") == true)
+        #expect(result.failure?.kind == .fault)
+        #expect(result.failure?.object.type == "ChildRunFaulted")
+        #expect(result.failure?.object.message.contains("UnwritableValue") == true)
     }
 
     @Test("when policy blocks it, dispatch fails and is not swallowed even by catch")
@@ -315,8 +313,7 @@ struct WorkflowRunnerTests {
         let result = try await harness.dispatch(workflow)
 
         // Then
-        #expect(result.status == .failed)
-        #expect(result.error?.kind == .fault)
+        #expect(result.failure?.kind == .fault)
     }
 
     @Test("a child's work failure can be swallowed by the parent's catch")
@@ -354,7 +351,7 @@ struct WorkflowRunnerTests {
         let result = try await harness.dispatch(workflow)
 
         // Then
-        #expect(result.status == .ok)
+        #expect(result.failure == nil)
         #expect(result.output == ["got": "rescued"])
     }
 
@@ -382,7 +379,7 @@ struct WorkflowRunnerTests {
         let result = try await harness.dispatch(workflow)
 
         // Then
-        #expect(result.status == .ok)
+        #expect(result.failure == nil)
         var seen: [String] = []
         for await event in stream {
             seen.append("\(event.workflowName):\(event.kind)")
@@ -422,8 +419,7 @@ struct WorkflowRunnerTests {
         let result = try await harness.dispatch(workflow)
 
         // Then — the fan-out severed the session, so the piece's agent turn has none
-        #expect(result.status == .failed)
-        #expect(result.error?.object.message.contains("no active agent session") == true)
+        #expect(result.failure?.object.message.contains("no active agent session") == true)
     }
 
     @Test("directly driven runs are also registered in the pool, so cancellation reaches them")
@@ -452,9 +448,8 @@ struct WorkflowRunnerTests {
         let result = try await task.value
 
         // Then
-        #expect(result.status == .failed)
-        #expect(result.error?.kind == .cancelled)
-        #expect(result.error?.object.type == "RunCancelled")
+        #expect(result.failure?.kind == .cancelled)
+        #expect(result.failure?.object.type == "RunCancelled")
         #expect(ContinuousClock.now - started < .seconds(8))
     }
 
@@ -493,9 +488,8 @@ struct WorkflowRunnerTests {
         let result = try await task.value
 
         // Then
-        #expect(result.status == .failed)
-        #expect(result.error?.kind == .cancelled)
-        #expect(result.error?.object.type == "RunCancelled")
+        #expect(result.failure?.kind == .cancelled)
+        #expect(result.failure?.object.type == "RunCancelled")
         #expect(ContinuousClock.now - started < .seconds(8))
     }
 
@@ -524,9 +518,8 @@ struct WorkflowRunnerTests {
         let result = try await harness.dispatch(workflow)
 
         // Then
-        #expect(result.status == .failed)
-        #expect(result.error?.kind == .cancelled)
-        #expect(result.error?.object.type == "RunCancelled")
+        #expect(result.failure?.kind == .cancelled)
+        #expect(result.failure?.object.type == "RunCancelled")
     }
 
     @Test("for invoke, cwd null means unset, and an empty permission_mode is an author error")
@@ -563,10 +556,9 @@ struct WorkflowRunnerTests {
         let emptyResult = try await harness.dispatch(emptymode)
 
         // Then — null stays "unset" as-is, while an empty string is an explicit rejection
-        #expect(nullResult.status == .ok)
+        #expect(nullResult.failure == nil)
         #expect(recorder.invocations.elements.first?.agent.workingDirectory == nil)
-        #expect(emptyResult.status == .failed)
-        #expect(emptyResult.error?.object.message.contains("empty string") == true)
+        #expect(emptyResult.failure?.object.message.contains("empty string") == true)
     }
 
     @Test("the step slot cap serializes concurrent shell execution")
@@ -595,7 +587,7 @@ struct WorkflowRunnerTests {
         let result = try await harness.dispatch(workflow)
 
         // Then
-        #expect(result.status == .ok)
+        #expect(result.failure == nil)
         #expect(
             ContinuousClock.now - started >= .milliseconds(350),
             "with one slot, the two shells must run serially"
