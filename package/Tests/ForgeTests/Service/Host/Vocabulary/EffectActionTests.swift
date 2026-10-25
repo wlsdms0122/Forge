@@ -262,10 +262,10 @@ struct EffectActionTests {
         )
 
         // When
-        let outputs = try await sut.run(spec, inputs: ["who": .string("spec")])
+        let fields = try await sut.run(spec, inputs: ["who": .string("spec")])
 
         // Then
-        #expect(outputs["result"] == .string("done\n"))
+        #expect(fields["result"] == .string("done\n"))
         #expect(await harness.recorder.shellRuns == [["echo", "hi spec", "<spec"]])
     }
 
@@ -294,10 +294,10 @@ struct EffectActionTests {
         )
 
         // When
-        let outputs = try await sut.run(spec)
+        let fields = try await sut.run(spec)
 
         // Then
-        #expect(outputs["result"] == .string("recovered"))
+        #expect(fields["result"] == .string("recovered"))
     }
 
     @Test("extract reads named values out of a shell step's text")
@@ -324,11 +324,11 @@ struct EffectActionTests {
         )
 
         // When
-        let outputs = try await sut.run(spec)
+        let fields = try await sut.run(spec)
 
         // Then
-        #expect(outputs["result"] == .int(42))
-        #expect(outputs["raw"] == .string("code=42"))
+        #expect(fields["result"] == .int(42))
+        #expect(fields["raw"] == .string("code=42"))
     }
 
     @Test("a text that does not hold what an extraction asks fails with extract_refused, which a catch takes")
@@ -354,10 +354,10 @@ struct EffectActionTests {
         let sut = try harness.executor()
 
         // When
-        let outputs = try await sut.run(spec)
+        let fields = try await sut.run(spec)
 
         // Then
-        #expect(outputs["refused"] == .string("extract_refused"))
+        #expect(fields["refused"] == .string("extract_refused"))
     }
 
     @Test("an outputs dictionary that does not parse is the workflow's defect, which no catch takes")
@@ -416,10 +416,10 @@ struct EffectActionTests {
         )
 
         // When
-        let outputs = try await sut.run(spec)
+        let fields = try await sut.run(spec)
 
         // Then — running late is the world's failure
-        #expect(outputs["result"] == .string("recovered"))
+        #expect(fields["result"] == .string("recovered"))
     }
 
     @Test("when invoke opens a session, agent steps converse over it")
@@ -446,10 +446,10 @@ struct EffectActionTests {
         let sut = try harness.executor(agentReply: "sure!")
 
         // When
-        let outputs = try await sut.run(spec, inputs: ["topic": .string("specs")])
+        let fields = try await sut.run(spec, inputs: ["topic": .string("specs")])
 
         // Then
-        #expect(outputs["result"] == .string("sure!"))
+        #expect(fields["result"] == .string("sure!"))
         #expect(await harness.recorder.prompts == ["tell me about specs"])
         #expect(await harness.recorder.sessions.first?.model == "claude:opus")
     }
@@ -489,10 +489,10 @@ struct EffectActionTests {
         let sut = try harness.executor(agentExit: 3)
 
         // When
-        let outputs = try await sut.run(spec)
+        let fields = try await sut.run(spec)
 
         // Then
-        #expect(outputs["said"] == .string("nonzero_exit"))
+        #expect(fields["said"] == .string("nonzero_exit"))
     }
 
     @Test("with no open session, an agent step fails")
@@ -528,10 +528,10 @@ struct EffectActionTests {
         let sut = try harness.executor()
 
         // When
-        let outputs = try await sut.run(spec, inputs: ["job": .string("j-1")])
+        let fields = try await sut.run(spec, inputs: ["job": .string("j-1")])
 
         // Then
-        #expect(outputs["ok"] == .bool(true))
+        #expect(fields["ok"] == .bool(true))
         let dispatched = await harness.recorder.dispatches
         #expect(dispatched.count == 1)
         #expect(dispatched.first?.name == "worker")
@@ -580,10 +580,10 @@ struct EffectActionTests {
 
         // When
         let module = try await catalog.inline(spec).module
-        let outputs = try await sut.run(module, entry: WorkflowCatalog.inlineSigil, beside: await catalog.modules())
+        let fields = try await sut.run(module, entry: WorkflowCatalog.inlineSigil, beside: await catalog.modules())
 
         // Then
-        #expect(outputs["result"] == .string("said hi"))
+        #expect(fields["result"] == .string("said hi"))
         #expect(await harness.recorder.shellRuns == [["echo"]])
     }
 
@@ -606,10 +606,10 @@ struct EffectActionTests {
         ])
 
         // When
-        let outputs = try await sut.run(spec)
+        let fields = try await sut.run(spec)
 
         // Then
-        #expect(outputs["result"] == .string("# enrich\naxes: tech, persona"))
+        #expect(fields["result"] == .string("# enrich\naxes: tech, persona"))
     }
 
     @Test("resource writes a null input as null, as format does")
@@ -628,10 +628,10 @@ struct EffectActionTests {
         ])
 
         // When
-        let outputs = try await sut.run(spec)
+        let fields = try await sut.run(spec)
 
         // Then
-        #expect(outputs["result"] == .string("axes: null"))
+        #expect(fields["result"] == .string("axes: null"))
     }
 
     @Test("locate finds a resource file without rendering it")
@@ -651,10 +651,10 @@ struct EffectActionTests {
         ])
 
         // When
-        let outputs = try await sut.run(spec)
+        let fields = try await sut.run(spec)
 
         // Then
-        #expect(outputs["where"] == .string("/resource-root/script/run.sh"))
+        #expect(fields["where"] == .string("/resource-root/script/run.sh"))
     }
 
     @Test("a catch reads the shell failure as a value")
@@ -694,12 +694,12 @@ struct EffectActionTests {
         ))
 
         // When
-        let outputs = try await sut.run(spec)
+        let fields = try await sut.run(spec)
 
         // Then
-        #expect(outputs["kind"] == .string("nonzero_exit"))
-        #expect(outputs["code"] == .int(3))
-        #expect(outputs["said"] == .string("boom"))
+        #expect(fields["kind"] == .string("nonzero_exit"))
+        #expect(fields["code"] == .int(3))
+        #expect(fields["said"] == .string("boom"))
     }
 
     @Test("a call resolves against the modules the catalog hands to the link")
@@ -737,10 +737,10 @@ struct EffectActionTests {
 
         // When — the caller leads and the catalog is the rest of the world,
         // which is what the daemon hands to every link
-        let outputs = try await sut.run(caller, beside: await catalog.modules())
+        let fields = try await sut.run(caller, beside: await catalog.modules())
 
         // Then
-        #expect(outputs["result"] == .int(21))
+        #expect(fields["result"] == .int(21))
     }
 
     @Test("a call of a verb that acts, or of its native directly, is a step, named by its calling statement and acting as the verb, and the native under a verb runs for the verb's step")
@@ -837,12 +837,12 @@ struct EffectActionTests {
         }
 
         // When
-        let outputs = try await sut.run(spec)
+        let fields = try await sut.run(spec)
 
         // Then
         let failed = await collected.events.filter { event in event.kind == .stepFailed }
 
-        #expect(outputs["recovered"] == .int(2))
+        #expect(fields["recovered"] == .int(2))
         #expect(failed.map(\.stepID) == ["broken", "broken"])
         #expect(failed.map(\.errorMessage) == [
             "[1].rounds[0].attempted.broken.Forge.shell.[1]: shell exit 1: refused",
@@ -879,12 +879,12 @@ struct EffectActionTests {
         }
 
         // When
-        let outputs = try await sut.run(spec)
+        let fields = try await sut.run(spec)
 
         // Then
         let failed = await collected.events.filter { event in event.kind == .stepFailed }
 
-        #expect(outputs["slow"] == .string("recovered"))
+        #expect(fields["slow"] == .string("recovered"))
         #expect(failed.map(\.stepID) == ["late"])
         #expect(failed.map(\.errorMessage) == ["attempted.late.Forge.shell.[1]: step timed out after 0.05s"])
     }
@@ -918,14 +918,14 @@ struct EffectActionTests {
         }
 
         // When
-        let outputs = try await sut.run(spec)
+        let fields = try await sut.run(spec)
 
         // Then
         let steps = await collected.events.map { event in
             "\(event.stepID ?? "?"):\(event.kind.rawValue):\(event.action ?? "")"
         }
 
-        #expect(outputs["said"] == .string("hello forge"))
+        #expect(fields["said"] == .string("hello forge"))
         #expect(steps == [
             "said:step.started:Forge.resource",
             "said:step.completed:"
