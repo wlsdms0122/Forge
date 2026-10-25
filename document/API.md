@@ -655,7 +655,7 @@ lifetime and relays its progress:
 ```
 
 Event lines are `WorkflowEvent` objects (`workflow.started/completed/failed`,
-`step.started/completed/failed/skipped`) filtered to this run's **root**. A
+`step.started/completed/failed`) filtered to this run's **root**. A
 step is a call of a verb that reaches outside the program, from its
 native's start to its return or throw, named by the statement that called
 the verb, and its `action` is the verb's full name, or the native's
