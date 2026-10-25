@@ -802,6 +802,42 @@ struct EffectActionTests {
         #expect(await harness.recorder.shellSteps == ["broken"])
     }
 
+    @Test(
+        "a completed step previews the JSON its output holds, and has no preview where JSON cannot hold the value",
+        arguments: [
+            ([(key: Value.string("ok"), value: Value.bool(true))], #"{"ok":true}"#, 11),
+            ([(key: Value.int(1), value: Value.int(1)), (key: Value.string("1"), value: Value.int(2))], nil, nil)
+        ] as [([(key: Value, value: Value)], String?, Int?)]
+    )
+    func aCompletedStepPreviewsItsOutput(
+        entries: [(key: Value, value: Value)],
+        preview: String?,
+        length: Int?
+    ) async throws {
+        // Given
+        let harness = Harness()
+        let collected = Collected()
+        let spec = try harness.frontend.workflow("""
+        returns: String
+        failing: [child_run_failed, timeout]
+        body:
+          - let: child
+            value: { call: { procedure: dispatch, arguments: { name: worker, inputs: { dictionary: [] } } } }
+        result: done
+        """)
+        let sut = try harness.executor(dispatchResult: .dictionary(try Value.Dictionary(entries))) { event in
+            await collected.append(event)
+        }
+
+        // When
+        _ = try await sut.run(spec)
+
+        // Then
+        let completed = try #require(await collected.events.first { event in event.kind == .stepCompleted })
+        #expect(completed.fields["output_preview"] == preview.map(JSONValue.string))
+        #expect(completed.fields["output_len"] == length.map(JSONValue.int))
+    }
+
     @Test("a nonzero exit a catch takes fails its step with the trace, so the rounds of a loop sharing the step differ")
     func aNonzeroExitFailsItsStepWithTheTrace() async throws {
         // Given
