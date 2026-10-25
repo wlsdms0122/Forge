@@ -124,7 +124,7 @@ struct WorkflowDispatchMethod: Sendable {
         let runID = prepared.runID
 
         if !isAsync {
-            return encodeResult(try await runDispatch(prepared, mode: .awaited))
+            return try await runDispatch(prepared, mode: .awaited).jsonValue
         } else {
             try await DispatchAuthorization.requireDispatch(
                 principal: principal,
@@ -160,23 +160,6 @@ struct WorkflowDispatchMethod: Sendable {
                 "status":      "running"
             ]
         }
-    }
-
-    func encodeResult(_ result: WorkflowRunResult) -> JSONValue {
-        var object: [String: JSONValue] = [
-            "run_id": .string(result.runID),
-            "name":        .string(result.workflowName),
-            "status":      "ok",
-            "duration_ms": .int(result.durationMs),
-            "outputs":     .object(result.outputs)
-        ]
-
-        if let failure = result.error {
-            object["status"] = "failed"
-            object["error"] = failure.object.jsonValue
-        }
-
-        return .object(object)
     }
 
     // MARK: - Private

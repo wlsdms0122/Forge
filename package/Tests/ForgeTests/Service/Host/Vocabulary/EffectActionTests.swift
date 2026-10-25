@@ -245,7 +245,7 @@ struct EffectActionTests {
         let harness = Harness()
         let spec = try harness.frontend.workflow("""
         parameters: [ who: String ]
-        returns: "Dictionary<String, Any>"
+        returns: String
         failing: [nonzero_exit, timeout]
         body:
           - let: echo
@@ -255,17 +255,17 @@ struct EffectActionTests {
                 arguments:
                   command: [ echo, { format: "hi ${who}", with: { who: { ref: who } } } ]
                   stdin: { ref: who }
-        result: { dictionary: [ [result, { ref: echo }] ] }
+        result: { ref: echo }
         """)
         let sut = try harness.executor(
             shell: MockShell(recorder: harness.recorder, stdout: "done\n")
         )
 
         // When
-        let outputs = try await sut.run(spec, inputs: ["who": .string("spec")])
+        let returned = try await sut.run(spec, inputs: ["who": .string("spec")])
 
         // Then
-        #expect(outputs["result"] == .string("done\n"))
+        #expect(returned == .string("done\n"))
         #expect(await harness.recorder.shellRuns == [["echo", "hi spec", "<spec"]])
     }
 
@@ -274,7 +274,7 @@ struct EffectActionTests {
         // Given — a nonzero exit is the world's failure, so catch absorbs it
         let harness = Harness()
         let spec = try harness.frontend.workflow("""
-        returns: "Dictionary<String, Any>"
+        returns: String
         body:
           - var: broken
             type: String
@@ -287,17 +287,17 @@ struct EffectActionTests {
                 catch:
                   - set: broken
                     value: recovered
-        result: { dictionary: [ [result, { ref: broken }] ] }
+        result: { ref: broken }
         """)
         let sut = try harness.executor(
             shell: MockShell(recorder: harness.recorder, exitCode: 1)
         )
 
         // When
-        let outputs = try await sut.run(spec)
+        let returned = try await sut.run(spec)
 
         // Then
-        #expect(outputs["result"] == .string("recovered"))
+        #expect(returned == .string("recovered"))
     }
 
     @Test("extract reads named values out of a shell step's text")
@@ -317,18 +317,18 @@ struct EffectActionTests {
                 arguments:
                   text: { ref: probe }
                   outputs: { dictionary: [ [code, { dictionary: [ [regex, "code=(\\\\d+)"], [type, int] ] }] ] }
-        result: { dictionary: [ [result, { ref: 'fields["code"]' }], [raw, { ref: 'fields["_raw"]' }] ] }
+        result: { dictionary: [ [code, { ref: 'fields["code"]' }], [raw, { ref: 'fields["_raw"]' }] ] }
         """)
         let sut = try harness.executor(
             shell: MockShell(recorder: harness.recorder, stdout: "code=42")
         )
 
         // When
-        let outputs = try await sut.run(spec)
+        let fields = try ValueBridge.fields(try await sut.run(spec))
 
         // Then
-        #expect(outputs["result"] == .int(42))
-        #expect(outputs["raw"] == .string("code=42"))
+        #expect(fields["code"] == .int(42))
+        #expect(fields["raw"] == .string("code=42"))
     }
 
     @Test("a text that does not hold what an extraction asks fails with extract_refused, which a catch takes")
@@ -354,13 +354,13 @@ struct EffectActionTests {
         let sut = try harness.executor()
 
         // When
-        let outputs = try await sut.run(spec)
+        let fields = try ValueBridge.fields(try await sut.run(spec))
 
         // Then
-        #expect(outputs["refused"] == .string("extract_refused"))
+        #expect(fields["refused"] == .string("extract_refused"))
     }
 
-    @Test("an outputs map that does not parse is the workflow's defect, which no catch takes")
+    @Test("an outputs dictionary that does not parse is the workflow's defect, which no catch takes")
     func extractDefectIsNotCaught() async throws {
         // Given
         let harness = Harness()
@@ -396,7 +396,7 @@ struct EffectActionTests {
         // Given
         let harness = Harness()
         let spec = try harness.frontend.workflow("""
-        returns: "Dictionary<String, Any>"
+        returns: String
         body:
           - var: slow
             type: String
@@ -409,17 +409,17 @@ struct EffectActionTests {
                 catch:
                   - set: slow
                     value: recovered
-        result: { dictionary: [ [result, { ref: slow }] ] }
+        result: { ref: slow }
         """)
         let sut = try harness.executor(
             shell: MockShell(recorder: harness.recorder, delaySeconds: 5)
         )
 
         // When
-        let outputs = try await sut.run(spec)
+        let returned = try await sut.run(spec)
 
         // Then — running late is the world's failure
-        #expect(outputs["result"] == .string("recovered"))
+        #expect(returned == .string("recovered"))
     }
 
     @Test("when invoke opens a session, agent steps converse over it")
@@ -428,7 +428,7 @@ struct EffectActionTests {
         let harness = Harness()
         let spec = try harness.frontend.workflow("""
         parameters: [ topic: String ]
-        returns: "Dictionary<String, Any>"
+        returns: String
         failing: anything
         body:
           - let: session
@@ -441,15 +441,15 @@ struct EffectActionTests {
                     closure:
                       returns: String
                       result: { agent: { format: "tell me about ${topic}", with: { topic: { ref: topic } } } }
-        result: { dictionary: [ [result, { ref: session }] ] }
+        result: { ref: session }
         """)
         let sut = try harness.executor(agentReply: "sure!")
 
         // When
-        let outputs = try await sut.run(spec, inputs: ["topic": .string("specs")])
+        let returned = try await sut.run(spec, inputs: ["topic": .string("specs")])
 
         // Then
-        #expect(outputs["result"] == .string("sure!"))
+        #expect(returned == .string("sure!"))
         #expect(await harness.recorder.prompts == ["tell me about specs"])
         #expect(await harness.recorder.sessions.first?.model == "claude:opus")
     }
@@ -489,10 +489,10 @@ struct EffectActionTests {
         let sut = try harness.executor(agentExit: 3)
 
         // When
-        let outputs = try await sut.run(spec)
+        let fields = try ValueBridge.fields(try await sut.run(spec))
 
         // Then
-        #expect(outputs["said"] == .string("nonzero_exit"))
+        #expect(fields["said"] == .string("nonzero_exit"))
     }
 
     @Test("with no open session, an agent step fails")
@@ -518,20 +518,20 @@ struct EffectActionTests {
         let harness = Harness()
         let spec = try harness.frontend.workflow("""
         parameters: [ job: String ]
-        returns: "Dictionary<String, Any>"
+        returns: Any
         failing: [child_run_failed, timeout]
         body:
           - let: child
             value: { call: { procedure: dispatch, arguments: { name: worker, inputs: { dictionary: [ [job_id, { ref: job }] ] } } } }
-        result: { dictionary: [ [result, { ref: 'child["ok"]' }] ] }
+        result: { ref: child }
         """)
         let sut = try harness.executor()
 
         // When
-        let outputs = try await sut.run(spec, inputs: ["job": .string("j-1")])
+        let fields = try ValueBridge.fields(try await sut.run(spec, inputs: ["job": .string("j-1")]))
 
         // Then
-        #expect(outputs["result"] == .bool(true))
+        #expect(fields["ok"] == .bool(true))
         let dispatched = await harness.recorder.dispatches
         #expect(dispatched.count == 1)
         #expect(dispatched.first?.name == "worker")
@@ -566,24 +566,24 @@ struct EffectActionTests {
         result: { format: "said ${word}", with: { word: { ref: word } } }
         """, named: "said").write(to: directory.appendingPathComponent("said.yaml"), atomically: true, encoding: .utf8)
         let catalog = try WorkflowCatalog(directory: directory)
-        let spec = ValueBridge.json(try YAMLParser().parse("""
-        returns: "Dictionary<String, Any>"
+        let spec = try ValueBridge.json(try YAMLParser().parse("""
+        returns: String
         failing: [nonzero_exit, timeout]
         body:
           - let: echoed
             value: { call: { procedure: shell, arguments: { command: [ echo ] } } }
           - let: spoken
             value: { call: { procedure: said, arguments: { word: hi } } }
-        result: { dictionary: [ [result, { ref: spoken }] ] }
+        result: { ref: spoken }
         """))
         let sut = try harness.executor()
 
         // When
         let module = try await catalog.inline(spec).module
-        let outputs = try await sut.run(module, entry: WorkflowCatalog.inlineSigil, beside: await catalog.modules())
+        let returned = try await sut.run(module, entry: WorkflowCatalog.inlineSigil, beside: await catalog.modules())
 
         // Then
-        #expect(outputs["result"] == .string("said hi"))
+        #expect(returned == .string("said hi"))
         #expect(await harness.recorder.shellRuns == [["echo"]])
     }
 
@@ -593,23 +593,23 @@ struct EffectActionTests {
         // step outputs
         let harness = Harness()
         let spec = try harness.frontend.workflow("""
-        returns: "Dictionary<String, Any>"
+        returns: String
         body:
           - let: axes
             value: "tech, persona"
           - let: prompt
             value: { call: { procedure: resource, arguments: { content: prompt/enrich.md, inputs: { dictionary: [ [axes, { ref: axes }] ] } } } }
-        result: { dictionary: [ [result, { ref: prompt }] ] }
+        result: { ref: prompt }
         """)
         let sut = try harness.executor(files: [
             "prompt/enrich.md": "# enrich\naxes: ${axes}"
         ])
 
         // When
-        let outputs = try await sut.run(spec)
+        let returned = try await sut.run(spec)
 
         // Then
-        #expect(outputs["result"] == .string("# enrich\naxes: tech, persona"))
+        #expect(returned == .string("# enrich\naxes: tech, persona"))
     }
 
     @Test("resource writes a null input as null, as format does")
@@ -617,21 +617,21 @@ struct EffectActionTests {
         // Given
         let harness = Harness()
         let spec = try harness.frontend.workflow("""
-        returns: "Dictionary<String, Any>"
+        returns: String
         body:
           - let: prompt
             value: { call: { procedure: resource, arguments: { content: prompt/enrich.md, inputs: { dictionary: [ [axes, null] ] } } } }
-        result: { dictionary: [ [result, { ref: prompt }] ] }
+        result: { ref: prompt }
         """)
         let sut = try harness.executor(files: [
             "prompt/enrich.md": "axes: ${axes}"
         ])
 
         // When
-        let outputs = try await sut.run(spec)
+        let returned = try await sut.run(spec)
 
         // Then
-        #expect(outputs["result"] == .string("axes: null"))
+        #expect(returned == .string("axes: null"))
     }
 
     @Test("locate finds a resource file without rendering it")
@@ -651,10 +651,10 @@ struct EffectActionTests {
         ])
 
         // When
-        let outputs = try await sut.run(spec)
+        let fields = try ValueBridge.fields(try await sut.run(spec))
 
         // Then
-        #expect(outputs["where"] == .string("/resource-root/script/run.sh"))
+        #expect(fields["where"] == .string("/resource-root/script/run.sh"))
     }
 
     @Test("a catch reads the shell failure as a value")
@@ -694,12 +694,12 @@ struct EffectActionTests {
         ))
 
         // When
-        let outputs = try await sut.run(spec)
+        let fields = try ValueBridge.fields(try await sut.run(spec))
 
         // Then
-        #expect(outputs["kind"] == .string("nonzero_exit"))
-        #expect(outputs["code"] == .int(3))
-        #expect(outputs["said"] == .string("boom"))
+        #expect(fields["kind"] == .string("nonzero_exit"))
+        #expect(fields["code"] == .int(3))
+        #expect(fields["said"] == .string("boom"))
     }
 
     @Test("a call resolves against the modules the catalog hands to the link")
@@ -727,20 +727,20 @@ struct EffectActionTests {
 
         let catalog = try WorkflowCatalog(directory: directory)
         let caller = try harness.frontend.workflow("""
-        returns: "Dictionary<String, Any>"
+        returns: Any
         body:
           - let: called
             value: { call: { procedure: callee, arguments: [ 21 ] } }
-        result: { dictionary: [ [result, { ref: 'called["doubled"]' }] ] }
+        result: { ref: 'called["doubled"]' }
         """)
         let sut = try harness.executor()
 
         // When — the caller leads and the catalog is the rest of the world,
         // which is what the daemon hands to every link
-        let outputs = try await sut.run(caller, beside: await catalog.modules())
+        let returned = try await sut.run(caller, beside: await catalog.modules())
 
         // Then
-        #expect(outputs["result"] == .int(21))
+        #expect(returned == .int(21))
     }
 
     @Test("a call of a verb that acts, or of its native directly, is a step, named by its calling statement and acting as the verb, and the native under a verb runs for the verb's step")
@@ -802,6 +802,93 @@ struct EffectActionTests {
         #expect(await harness.recorder.shellSteps == ["broken"])
     }
 
+    @Test("a nonzero exit a catch takes fails its step with the trace, so the rounds of a loop sharing the step differ")
+    func aNonzeroExitFailsItsStepWithTheTrace() async throws {
+        // Given
+        let harness = Harness()
+        let collected = Collected()
+        let spec = try harness.frontend.workflow("""
+        returns: "Dictionary<String, Any>"
+        body:
+          - var: recovered
+            type: Int
+            value: 0
+          - let: rounds
+            value:
+              each:
+                of: [ a, b ]
+                as: name
+                body:
+                  - let: attempted
+                    value:
+                      try:
+                        body:
+                          - let: broken
+                            value: { call: { procedure: shell, arguments: { command: [ "false", { ref: name } ] } } }
+                        catch:
+                          - set: recovered
+                            value: { of: { ref: recovered }, plus: 1 }
+        result: { dictionary: [ [recovered, { ref: recovered }] ] }
+        """)
+        let sut = try harness.executor(
+            shell: MockShell(recorder: harness.recorder, exitCode: 1, stderr: "refused")
+        ) { event in
+            await collected.append(event)
+        }
+
+        // When
+        let fields = try ValueBridge.fields(try await sut.run(spec))
+
+        // Then
+        let failed = await collected.events.filter { event in event.kind == .stepFailed }
+
+        #expect(fields["recovered"] == .int(2))
+        #expect(failed.map(\.stepID) == ["broken", "broken"])
+        #expect(failed.map(\.errorMessage) == [
+            "[1].rounds[0].attempted.broken.Forge.shell.[1]: shell exit 1: refused",
+            "[1].rounds[1].attempted.broken.Forge.shell.[1]: shell exit 1: refused"
+        ])
+    }
+
+    @Test("a timeout a catch takes fails its step with the trace")
+    func aTimeoutFailsItsStepWithTheTrace() async throws {
+        // Given
+        let harness = Harness()
+        let collected = Collected()
+        let spec = try harness.frontend.workflow("""
+        returns: "Dictionary<String, Any>"
+        body:
+          - var: slow
+            type: String
+            value: ""
+          - let: attempted
+            value:
+              try:
+                body:
+                  - let: late
+                    value: { call: { procedure: shell, arguments: { command: [ sleepy ], timeout: 0.05 } } }
+                catch:
+                  - set: slow
+                    value: recovered
+        result: { dictionary: [ [slow, { ref: slow }] ] }
+        """)
+        let sut = try harness.executor(
+            shell: MockShell(recorder: harness.recorder, delaySeconds: 5)
+        ) { event in
+            await collected.append(event)
+        }
+
+        // When
+        let fields = try ValueBridge.fields(try await sut.run(spec))
+
+        // Then
+        let failed = await collected.events.filter { event in event.kind == .stepFailed }
+
+        #expect(fields["slow"] == .string("recovered"))
+        #expect(failed.map(\.stepID) == ["late"])
+        #expect(failed.map(\.errorMessage) == ["attempted.late.Forge.shell.[1]: step timed out after 0.05s"])
+    }
+
     @Test("a verb called in another verb's arguments is const and computes, so the statement's one step is the outer call")
     func aNestedVerbCallIsNoStep() async throws {
         // Given. An operand is read rather than run, so only a const verb
@@ -831,14 +918,14 @@ struct EffectActionTests {
         }
 
         // When
-        let outputs = try await sut.run(spec)
+        let fields = try ValueBridge.fields(try await sut.run(spec))
 
         // Then
         let steps = await collected.events.map { event in
             "\(event.stepID ?? "?"):\(event.kind.rawValue):\(event.action ?? "")"
         }
 
-        #expect(outputs["said"] == .string("hello forge"))
+        #expect(fields["said"] == .string("hello forge"))
         #expect(steps == [
             "said:step.started:Forge.resource",
             "said:step.completed:"

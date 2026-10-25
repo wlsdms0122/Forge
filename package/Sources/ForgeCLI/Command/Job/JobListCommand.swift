@@ -18,7 +18,7 @@ struct JobListCommand: ParsableCommand {
     
     @OptionGroup var global: GlobalOptions
     
-    @Option(name: .customLong("origin-key"), help: "Filter by an origin-map key (e.g. thread_ts).")
+    @Option(name: .customLong("origin-key"), help: "Filter by an origin-object key (e.g. thread_ts).")
     var originKey: String?
     
     @Option(name: .customLong("origin-value"), help: "Value the origin key must equal.")

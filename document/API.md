@@ -356,7 +356,7 @@ the agents. Every mutation is stamped with the caller token's identity.
 
 | Command | RPC | Notes |
 |---------|-----|-------|
-| `forge job create --title <t> [--brief --refs --origin --plan --parent-job --status --id] [--json]` | `job.create` | `--refs`/`--plan` take JSON arrays; `--origin` an opaque JSON map |
+| `forge job create --title <t> [--brief --refs --origin --plan --parent-job --status --id] [--json]` | `job.create` | `--refs`/`--plan` take JSON arrays; `--origin` an opaque JSON object |
 | `forge job show <id> [--json]` | `job.show` | full ticket: brief, refs, plan, comments, events, children |
 | `forge job list [--status <s>] [--origin-key <k> --origin-value <v>] [--json]` | `job.list` | summary rows, newest-updated first |
 | `forge job update <id> [--note --brief --ref --ref-note --item --item-desc --item-status --status] [--json]` | `job.update` | field-level ops, append-safe |
@@ -615,11 +615,20 @@ calls and nested calls from inside a workflow are distinguished by the **token**
 **result** — `async=false`:
 
 ```json
-{"run_id":"...","name":"...","status":"ok"|"failed",
- "duration_ms":1234,"outputs":{...},"error":{"type":"...","message":"..."}}
+{"run_id":"...","name":"...","status":"ok","duration_ms":1234,"output":<value>}
+{"run_id":"...","name":"...","status":"failed","duration_ms":1234,"error":{"type":"...","message":"..."}}
 ```
 
-`error` is present only when `status` is `failed`. **result** — `async=true`:
+`output` is the value the workflow returned, as itself: a struct as an
+object of its fields, a dictionary as an object of its entries with each key
+spelled as text, an array as an array, a string, a number or a bool as
+itself, and null as null. Bytes are an array of their numbers. A value JSON
+cannot hold, a procedure or a dictionary two of whose keys are spelled as
+one text, fails the run with `UnwritableValue`. A run that failed returned
+nothing and has no `output`: its `status` and `error` say why. A
+`workflow.completed` event carries the same value in its `output` field.
+
+**result** — `async=true`:
 
 ```json
 {"run_id":"...","name":"...","status":"running"}
@@ -640,7 +649,7 @@ lifetime and relays its progress:
 {"id":"<client-id>","result":{"run_id":"...","name":"...","status":"streaming"}}
 {"kind":"workflow.event","event":"workflow.started","run_id":"...","workflow_name":"...","root_id":"...","ts":...}
 {"kind":"workflow.event","event":"step.started","step":"...","action":"Forge.shell|Forge.agent|...","node_id":"...","parent_node_id":"...", ...}
-{"kind":"workflow.event","event":"step.completed","step":"...","duration_ms":..., "output_preview":"...","output_len":..., ...}
+{"kind":"workflow.event","event":"step.completed","step":"...","output":<value>, ...}
 {"kind":"workflow.result","result":{...same shape as blocking dispatch result...}}
 ```
 
@@ -649,7 +658,14 @@ Event lines are `WorkflowEvent` objects (`workflow.started/completed/failed`,
 step is a call of a verb that reaches outside the program, from its
 native's start to its return or throw, named by the statement that called
 the verb, and its `action` is the verb's full name, or the native's
-(`Forge.Native.<verb>`) where a workflow calls one directly. Child workflows
+(`Forge.Native.<verb>`) where a workflow calls one directly. A
+`step.completed` event's `output` is the value the verb returned, in the
+JSON form a run's `output` takes, and is left out where JSON cannot hold
+it. A `step.failed` event's `error_message` is the trace of the call, a
+colon, and the failure's sentence, whatever the failure and whether or not
+a catch takes it, and a refusal that carries a trace of its own keeps that
+deeper trace, so the rounds of a loop and the pieces of a fan-out, which
+share one `step`, differ there. Child workflows
 dispatched by the run (a `dispatch` step) inherit the root and stream
 too; `root_id`/`node_id`/`parent_node_id` let the consumer rebuild the
 tree. A policy denial is returned as a plain RPC error line (no stream). If
@@ -845,7 +861,7 @@ Create a work ticket.
 | `title` | ✅ | human-readable title |
 | `brief` | — | self-contained brief (default `""`) |
 | `refs` | — | array of `{"ref","note"?}` objects or plain strings |
-| `origin` | — | opaque JSON map (forge-agnostic; e.g. slack `{channel, thread_ts}`) |
+| `origin` | — | opaque JSON object (forge-agnostic; e.g. slack `{channel, thread_ts}`) |
 | `plan` | — | array of `{"id"?:int,"desc","status"?}` objects or plain strings; omit `id` to auto-number |
 | `parent_job` | — | parent ticket id — must exist; the child is linked into its `children` |
 | `status` | — | free string, default `"open"` |
@@ -867,7 +883,7 @@ ProtocolError `job not found: <id>`.
 
 **params** `{"token","status"?,"origin_key"?,"origin_value"?}` — `status`
 filters on the exact status string; `origin_key`+`origin_value` filter on an
-origin-map entry. **result**
+origin-object entry. **result**
 
 ```json
 {"jobs":[{"id","title","status","updated_at","open",
@@ -1145,7 +1161,7 @@ The error envelope is `{"type": "<ErrorType>", "message": "<text>"}` and the fie
 | `UnknownMethod` | the daemon does not know the method name |
 | `PolicyDenied` | the principal may not dispatch/control that workflow (policy/*.yaml) — retry is pointless |
 | `WorkflowValidationError` | the workflow definition failed validation (inline spec or broken catalog file) — fix the spec |
-| `OutputDeclarationError` | an `extract` step's `outputs` is no extractor declaration (a map that is no extractor, the key `_raw`, a path or a regex that does not parse) — fix the spec |
+| `OutputDeclarationError` | an `extract` step's `outputs` is no extractor declaration (a dictionary that is no extractor, the key `_raw`, a path or a regex that does not parse) — fix the spec |
 | `DaemonShuttingDown` | the daemon is draining for shutdown: it starts no new run (`workflow.dispatch`, a schedule's fire) and no service (`service.run`, `service.restart`) |
 | `RunCapExceeded` | run cap saturation (backpressure) — retry later is meaningful |
 | `RunCancelled` | the run was cancelled (`workflow.cancel`, or the daemon shutting down) |

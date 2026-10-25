@@ -162,13 +162,15 @@ actor WorkflowRunner {
         await workRegistry.beginClose(runID: runID)
 
         if let jobStore {
-            await jobStore.closeRun(
-                run: claims.id,
-                failure: result.status == .failed
-                    ? (result.error.map { failure in "\(failure.object.type): \(failure.object.message)" }
-                        ?? "failed")
-                    : nil
-            )
+            let failure: String? = switch result.outcome {
+            case .returned:
+                nil
+
+            case let .failed(failure):
+                "\(failure.object.type): \(failure.object.message)"
+            }
+
+            await jobStore.closeRun(run: claims.id, failure: failure)
         }
 
         await workRegistry.release(runID: runID)
@@ -228,10 +230,10 @@ actor WorkflowRunner {
                 inputs,
                 for: workflow.module.procedures[entry]?.signature
             )
-            let outputs = try await withCancelSignal(runID: runID) {
+            let returned = try await withCancelSignal(runID: runID) {
                 try await executor.run(image, entry: entry, arguments: arguments)
             }
-            let jsonOutputs = Self.outputs(of: outputs)
+            let output = try ValueBridge.json(returned)
             let duration = (ContinuousClock.now - started).milliseconds
 
             await eventBus.publish(WorkflowEvent(
@@ -239,17 +241,15 @@ actor WorkflowRunner {
                 runID: runID,
                 workflowName: name,
                 origin: origin,
-                outputs: jsonOutputs,
+                output: output,
                 durationMs: duration
             ))
 
             return WorkflowRunResult(
                 runID: runID,
                 workflowName: name,
-                status: .ok,
-                outputs: jsonOutputs,
-                durationMs: duration,
-                error: nil
+                outcome: .returned(returned),
+                durationMs: duration
             )
         } catch {
             // A run's task cancelled (a schedule dropped, the daemon stopping,
@@ -274,10 +274,8 @@ actor WorkflowRunner {
             return WorkflowRunResult(
                 runID: runID,
                 workflowName: name,
-                status: .failed,
-                outputs: [:],
-                durationMs: duration,
-                error: .init(kind: Self.failureKind(of: error), object: failure)
+                outcome: .failed(.init(kind: Self.failureKind(of: error), object: failure)),
+                durationMs: duration
             )
         }
     }
@@ -328,22 +326,6 @@ actor WorkflowRunner {
         return arguments
     }
 
-    // What a run reports for the value it returned: the fields of a struct or
-    // the entries of a map, nothing for null, and any other value under
-    // `result`, so every workflow the build accepts reports what it returns.
-    private static func outputs(of returned: Warp.Value) -> [String: JSONValue] {
-        switch ValueBridge.json(returned) {
-        case .null:
-            return [:]
-
-        case let .object(fields):
-            return fields
-
-        case let other:
-            return ["result": other]
-        }
-    }
-
     static func valuePreview(_ value: JSONValue) -> (String?, Int?) {
         let previewLimit = 2000
 
@@ -388,7 +370,7 @@ extension WorkflowRunner: RunDispatching {
 
         let result = try await dispatch(
             workflow,
-            inputs: inputs.mapValues { value in ValueBridge.json(value) },
+            inputs: try inputs.mapValues { value in try ValueBridge.json(value) },
             principal: "cli:\(parentName)",
             origin: .manual,
             rootID: LogContext.rootID,
@@ -398,23 +380,25 @@ extension WorkflowRunner: RunDispatching {
             mode: .awaited
         )
 
-        guard let failure = result.error else {
-            return try ValueBridge.value(.object(result.outputs))
-        }
+        switch result.outcome {
+        case let .returned(value):
+            return value
 
-        let summary = "dispatch '\(name)' failed: \(failure.object.type) — \(failure.object.message)"
+        case let .failed(failure):
+            let summary = "dispatch '\(name)' failed: \(failure.object.type) — \(failure.object.message)"
 
-        switch failure.kind {
-        case .work:
-            throw ChildRunFailed(summary)
+            switch failure.kind {
+            case .work:
+                throw ChildRunFailed(summary)
 
-        case .fault:
-            throw ChildRunFaulted(summary)
+            case .fault:
+                throw ChildRunFaulted(summary)
 
-        case .cancelled:
-            throw ChildRunCancelled(
-                "dispatch '\(name)' cancelled: \(failure.object.message)"
-            )
+            case .cancelled:
+                throw ChildRunCancelled(
+                    "dispatch '\(name)' cancelled: \(failure.object.message)"
+                )
+            }
         }
     }
 }

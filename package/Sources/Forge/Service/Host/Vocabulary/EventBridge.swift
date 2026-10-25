@@ -54,12 +54,14 @@ struct EventBridge: Sendable {
         do {
             let result = try await body()
 
+            // The step's value goes on to the program whatever JSON can hold,
+            // so its event carries the value where JSON holds it.
             await publish(WorkflowEvent(
                 kind: .stepCompleted,
                 runID: runID,
                 workflowName: workflowName,
                 stepID: step,
-                output: ValueBridge.json(result)
+                output: try? ValueBridge.json(result)
             ))
 
             return result
@@ -70,7 +72,7 @@ struct EventBridge: Sendable {
                 workflowName: workflowName,
                 stepID: step,
                 errorType: ErrorObject(failure: error).type,
-                errorMessage: "\(Self.traced(error, at: invocation.trace))"
+                errorMessage: Self.message(of: error, at: invocation.trace)
             ))
 
             throw error
@@ -78,12 +80,14 @@ struct EventBridge: Sendable {
     }
 
     // MARK: - Private
-    // The failure with the trace of the statement that called the native,
-    // where it is a refusal that carries no trace of its own: the rounds of
-    // a loop and the pieces of a fan-out share one step and differ there.
-    private static func traced(_ error: any Error, at trace: Trace) -> any Error {
-        guard let refused = error as? any WarpError, refused.trace == nil else { return error }
+    // The failure's words after the trace of the statement that called the
+    // native, whatever the failure, unless it carries a trace of its own: the
+    // rounds of a loop and the pieces of a fan-out share one step and differ
+    // there.
+    private static func message(of error: any Error, at trace: Trace) -> String {
+        guard let refused = error as? any WarpError else { return "\(trace.rendered): \(error)" }
+        guard refused.trace == nil else { return refused.description }
 
-        return refused.tracing(trace)
+        return "\(trace.rendered): \(refused.message)"
     }
 }

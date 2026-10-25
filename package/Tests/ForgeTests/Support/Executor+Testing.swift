@@ -13,14 +13,14 @@ let entryName = "entry"
 
 extension Executor {
     // Builds the module beside the others, the Forge module and the standard
-    // vocabulary, runs the entry, and returns the fields of the struct or map
-    // it returns. An optional parameter the inputs leave out is handed null.
+    // vocabulary, runs the entry, and returns the value it returns. An optional
+    // parameter the inputs leave out is handed null.
     func run(
         _ module: Warp.Module,
         entry: String = entryName,
         beside others: [Warp.Module] = [],
         inputs: [String: Warp.Value] = [:]
-    ) async throws -> [String: Warp.Value] {
+    ) async throws -> Warp.Value {
         let name = try Name(entry)
         let image = try await Builder().build([module] + others + ForgeVocabulary.shipped.get().linkables)
         var arguments: [Name: Warp.Value] = [:]
@@ -35,6 +35,6 @@ extension Executor {
             arguments[parameter.name] = .null
         }
 
-        return try ValueBridge.fields(try await run(image, entry: name, arguments: arguments))
+        return try await run(image, entry: name, arguments: arguments)
     }
 }

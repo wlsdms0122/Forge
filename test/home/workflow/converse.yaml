@@ -33,4 +33,4 @@ procedures:
                       - [first, { ref: first }]
                       - [second, { ref: second }]
                       - [inherited, { ref: nested }]
-    result: { dictionary: [ [result, { ref: outer }] ] }
+    result: { ref: outer }

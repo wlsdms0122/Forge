@@ -84,7 +84,7 @@ implements, `Forge.Native.<verb>`, which takes its arguments by position.
 Everything else is the language's: `let` and `var`, `set`, conditionals,
 `cases`, loops, `each`, fan-out through `Standard.Concurrent.allKeyed`,
 calls to another workflow, and expressions (`{ ref: x }`, operator mappings
-such as `{ of: x, plus: 1 }`, `format` templates, map literals). A bare
+such as `{ of: x, plus: 1 }`, `format` templates, dictionary literals). A bare
 string is always literal text, and `format` is closed over the bindings it
 declares under `with`. The front end's README documents the notation.
 

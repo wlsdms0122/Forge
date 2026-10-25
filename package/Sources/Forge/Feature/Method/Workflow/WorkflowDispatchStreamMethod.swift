@@ -49,12 +49,12 @@ struct WorkflowDispatchStreamMethod: Sendable {
 
         let dispatchMethodLocal = dispatchMethod
         let eventBusLocal = eventBus
-        let runTask = Task<Result<WorkflowRunResult, Error>, Never> {
-            let result: Result<WorkflowRunResult, Error>
+        let runTask = Task<Result<JSONValue, Error>, Never> {
+            let result: Result<JSONValue, Error>
 
             do {
                 result = .success(
-                    try await dispatchMethodLocal.runDispatch(prepared, mode: .awaited)
+                    try await dispatchMethodLocal.runDispatch(prepared, mode: .awaited).jsonValue
                 )
             } catch {
                 result = .failure(error)
@@ -113,7 +113,7 @@ struct WorkflowDispatchStreamMethod: Sendable {
 
         switch await runTask.value {
         case .success(let result):
-            resultValue = dispatchMethod.encodeResult(result)
+            resultValue = result
 
         case .failure(let error):
             resultValue = [
