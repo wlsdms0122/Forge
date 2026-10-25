@@ -14,5 +14,4 @@ enum WorkflowEventKind: String, Sendable, Codable {
     case stepStarted = "step.started"
     case stepCompleted = "step.completed"
     case stepFailed = "step.failed"
-    case stepSkipped = "step.skipped"
 }
