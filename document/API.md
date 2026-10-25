@@ -647,9 +647,10 @@ lifetime and relays its progress:
 
 ```json
 {"id":"<client-id>","result":{"run_id":"...","name":"...","status":"streaming"}}
-{"kind":"workflow.event","event":"workflow.started","run_id":"...","workflow_name":"...","root_id":"...","ts":...}
+{"kind":"workflow.event","event":"workflow.started","run_id":"...","workflow_name":"...","inputs":{...},"input_preview":"...","input_len":...,"root_id":"...","ts":..., ...}
 {"kind":"workflow.event","event":"step.started","step":"...","action":"Forge.shell|Forge.agent|...","node_id":"...","parent_node_id":"...", ...}
-{"kind":"workflow.event","event":"step.completed","step":"...","output":<value>, ...}
+{"kind":"workflow.event","event":"step.completed","step":"...","output":<value>,"output_preview":"...","output_len":..., ...}
+{"kind":"workflow.event","event":"workflow.completed","output":<value>,"output_preview":"...","output_len":...,"duration_ms":..., ...}
 {"kind":"workflow.result","result":{...same shape as blocking dispatch result...}}
 ```
 
@@ -661,7 +662,14 @@ the verb, and its `action` is the verb's full name, or the native's
 (`Forge.Native.<verb>`) where a workflow calls one directly. A
 `step.completed` event's `output` is the value the verb returned, in the
 JSON form a run's `output` takes, and is left out where JSON cannot hold
-it. A `step.failed` event's `error_message` is the trace of the call, a
+it. `step.completed` and `workflow.completed` carry `output_preview` and
+`output_len` beside `output`, and `workflow.started` carries
+`input_preview` and `input_len` beside `inputs`: the preview is the
+value's JSON text, or a string's own text, cut to its first 2000
+characters, and the length counts the characters of the whole text. Both
+are left out where the value they preview is left out, and for a null
+output. The forge log writes the previews and leaves out `output` and
+`inputs`. A `step.failed` event's `error_message` is the trace of the call, a
 colon, and the failure's sentence, whatever the failure and whether or not
 a catch takes it, and a refusal that carries a trace of its own keeps that
 deeper trace, so the rounds of a loop and the pieces of a fan-out, which
