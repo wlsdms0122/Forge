@@ -97,22 +97,12 @@ enum ValueBridge {
         }
     }
 
-    // The fields of a struct or the entries of a dictionary, under their names; null
-    // holds none.
+    // The entries of a dictionary, under their names.
     static func fields(_ value: Warp.Value) throws -> [String: Warp.Value] {
         switch value {
-        case .null:
-            return [:]
-
         case let .dictionary(dictionary):
             return Dictionary(
                 zip(dictionary.keys, dictionary.values).map { key, field in (text(key), field) },
-                uniquingKeysWith: { first, _ in first }
-            )
-
-        case let .struct(instance):
-            return Dictionary(
-                zip(instance.names, instance.values).map { name, field in (name.spelling, field) },
                 uniquingKeysWith: { first, _ in first }
             )
 
