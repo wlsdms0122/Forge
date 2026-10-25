@@ -248,7 +248,7 @@ actor WorkflowRunner {
             return WorkflowRunResult(
                 runID: runID,
                 workflowName: name,
-                outcome: .returned(output),
+                outcome: .returned(returned),
                 durationMs: duration
             )
         } catch {
@@ -382,7 +382,7 @@ extension WorkflowRunner: RunDispatching {
 
         switch result.outcome {
         case let .returned(value):
-            return try ValueBridge.value(value)
+            return value
 
         case let .failed(failure):
             let summary = "dispatch '\(name)' failed: \(failure.object.type) — \(failure.object.message)"

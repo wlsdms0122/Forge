@@ -9,11 +9,12 @@ import Foundation
 @testable import Forge
 
 extension WorkflowRunResult {
-    // The value the run returned, which a run that failed has none of.
+    // The value the run returned as the wire writes it, which a run that
+    // failed has none of.
     var output: JSONValue? {
         guard case let .returned(value) = outcome else { return nil }
 
-        return value
+        return try? ValueBridge.json(value)
     }
 
     var failure: RunFailure? {

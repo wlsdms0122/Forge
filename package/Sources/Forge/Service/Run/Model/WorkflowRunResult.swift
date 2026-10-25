@@ -6,12 +6,13 @@
 //
 
 import Foundation
+import Warp
 
 // What a finished run answers: the value it returned or the failure it ended
 // in, and its duration.
 struct WorkflowRunResult: Sendable {
     enum Outcome: Sendable {
-        case returned(JSONValue)
+        case returned(Warp.Value)
         case failed(RunFailure)
     }
 

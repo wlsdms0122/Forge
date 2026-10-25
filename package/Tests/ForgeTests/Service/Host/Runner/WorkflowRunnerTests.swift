@@ -218,7 +218,7 @@ struct WorkflowRunnerTests {
         #expect(result.output == "child got hello")
     }
 
-    @Test("a dictionary a child returns reaches the parent as one, which a cast reads")
+    @Test("a dictionary a child returns reaches the parent with its keys as they are, which a cast reads")
     func dispatchHandsAChildDictionaryToACast() async throws {
         // Given
         let harness = try makeRunner(
@@ -230,12 +230,12 @@ struct WorkflowRunnerTests {
                   - let: call
                     value: { call: { procedure: dispatch, arguments: { name: child } } }
                   - let: echoed
-                    value: { as: { of: { ref: call }, type: "Dictionary<String, String>" } }
-                result: { ref: 'echoed["echo"]' }
+                    value: { as: { of: { ref: call }, type: "Dictionary<Int, String>" } }
+                result: { ref: 'echoed[1]' }
                 """,
                 "child": """
-                returns: "Dictionary<String, String>"
-                result: { dictionary: [ [echo, child said] ] }
+                returns: "Dictionary<Int, String>"
+                result: { dictionary: [ [1, child said] ] }
                 """
             ],
             policy: ["cli:parent": ["parent", "child"]]
@@ -248,6 +248,42 @@ struct WorkflowRunnerTests {
         // Then
         #expect(result.failure == nil)
         #expect(result.output == "child said")
+    }
+
+    @Test("a struct a child returns reaches the parent as that struct, which a cast reads")
+    func dispatchHandsAChildStructAsItself() async throws {
+        // Given
+        let harness = try makeRunner(
+            catalog: [
+                "parent": """
+                returns: Int
+                failing: [child_run_failed, timeout, cast_refused]
+                body:
+                  - let: call
+                    value: { call: { procedure: dispatch, arguments: { name: child } } }
+                  - let: point
+                    value: { as: { of: { ref: call }, type: Point } }
+                result: { ref: point.x }
+                """,
+                "child": """
+                types:
+                  Point: { struct: { x: Int } }
+                procedures:
+                  child:
+                    access: public
+                    returns: Point
+                    result: { struct: { x: 1 } }
+                """
+            ],
+            policy: ["cli:parent": ["parent", "child"]]
+        )
+        let workflow = try await harness.catalog.workflow(named: "parent")
+
+        // When
+        let result = try await harness.dispatch(workflow)
+
+        // Then
+        #expect(result.output == 1)
     }
 
     @Test("a child returning a value JSON cannot hold fails, and its parent faults")
@@ -659,7 +695,8 @@ struct WorkflowRunnerTests {
         let directory = try temporary.make("catalog")
 
         for (name, yaml) in sources {
-            try workflowFile(yaml, named: name).write(
+            // A source declaring types beside its procedure is a whole file.
+            try (yaml.hasPrefix("types:") ? yaml : workflowFile(yaml, named: name)).write(
                 to: directory.appendingPathComponent("\(name).yaml"),
                 atomically: true,
                 encoding: .utf8
