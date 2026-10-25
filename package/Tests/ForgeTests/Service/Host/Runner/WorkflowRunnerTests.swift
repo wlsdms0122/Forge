@@ -38,7 +38,7 @@ struct WorkflowRunnerTests {
         // Then
         #expect(result.status == .ok)
         #expect(result.workflowName == "hello")
-        #expect(result.outputs == ["text": "hi there"])
+        #expect(result.output == ["text": "hi there"])
     }
 
     @Test(
@@ -64,7 +64,7 @@ struct WorkflowRunnerTests {
 
         // Then
         #expect(result.status == .ok)
-        #expect(result.outputs == expected)
+        #expect(result.output == expected)
     }
 
     @Test("a shell step runs over the live seam")
@@ -87,8 +87,8 @@ struct WorkflowRunnerTests {
 
         // Then
         #expect(result.status == .ok)
-        guard case let .string(out)? = result.outputs.objectValue?["out"] else {
-            Issue.record("must be a string: \(result.outputs)")
+        guard case let .string(out)? = result.output.objectValue?["out"] else {
+            Issue.record("must be a string: \(result.output)")
             return
         }
         #expect(out.contains("ok"))
@@ -117,7 +117,7 @@ struct WorkflowRunnerTests {
 
         // Then
         #expect(result.status == .ok)
-        #expect(result.outputs == ["reply": "echo:hello"])
+        #expect(result.output == ["reply": "echo:hello"])
     }
 
     @Test("a run ending in abort is reported as a work failure")
@@ -188,7 +188,7 @@ struct WorkflowRunnerTests {
 
         // Then
         #expect(result.status == .ok)
-        #expect(result.outputs == "child got hello")
+        #expect(result.output == "child got hello")
     }
 
     @Test("a dictionary a child returns reaches the parent as one, which a cast reads")
@@ -220,7 +220,7 @@ struct WorkflowRunnerTests {
 
         // Then
         #expect(result.status == .ok)
-        #expect(result.outputs == "child said")
+        #expect(result.output == "child said")
     }
 
     @Test("when policy blocks it, dispatch fails and is not swallowed even by catch")
@@ -295,7 +295,7 @@ struct WorkflowRunnerTests {
 
         // Then
         #expect(result.status == .ok)
-        #expect(result.outputs == ["got": "rescued"])
+        #expect(result.output == ["got": "rescued"])
     }
 
     @Test("run framing events are published — started/completed for parent and child alike")

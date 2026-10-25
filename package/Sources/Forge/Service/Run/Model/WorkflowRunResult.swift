@@ -35,7 +35,7 @@ struct WorkflowRunResult: Sendable {
     let runID: String
     let workflowName: String
     let status: Status
-    let outputs: JSONValue
+    let output: JSONValue
     let durationMs: Int
     let error: RunFailure?
 

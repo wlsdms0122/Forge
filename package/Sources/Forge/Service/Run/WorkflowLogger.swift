@@ -50,7 +50,7 @@ actor WorkflowLogger {
             payload.removeValue(forKey: envelopeOwned)
         }
         
-        for fullValue in ["output", "outputs", "inputs"] {
+        for fullValue in ["output", "inputs"] {
             payload.removeValue(forKey: fullValue)
         }
         

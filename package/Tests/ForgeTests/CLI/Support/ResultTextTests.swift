@@ -14,22 +14,21 @@ struct ResultTextTests {
     // MARK: - Property
     // MARK: - Initializer
     // MARK: - Test
-    @Test("a workflow result shows the declared outputs")
-    func workflowResultShowsOutputs() {
+    @Test("a workflow result shows the value the run returned")
+    func workflowResultShowsOutput() {
         // Given
         let dict: [String: JSONValue] = [
             "run_id": "wf-A4057576",
             "name": "<inline>",
             "status": "ok",
             "duration_ms": 9,
-            "outputs": ["result": "hello from jineun-bot test\n"],
+            "output": "hello from jineun-bot test\n",
         ]
         let output = JSONValue.object(dict).resultText
 
         // Then
         #expect(output.contains("status: ok"), Comment(rawValue: output))
-        #expect(output.contains("outputs:"), Comment(rawValue: output))
-        #expect(output.contains("result: hello from jineun-bot test"), "outputs content must be visible:\n\(output)")
+        #expect(output.contains("output: hello from jineun-bot test"), "the value must be visible:\n\(output)")
         #expect(output.contains("wf-A4057576"), Comment(rawValue: output))
         #expect(!output.contains("test\n\n"), Comment(rawValue: output))
     }
@@ -84,7 +83,7 @@ struct ResultTextTests {
         #expect(output.contains("    line two"), Comment(rawValue: output))
     }
     
-    @Test("with no outputs, only the status remains")
+    @Test("an empty object prints as an empty result")
     func emptyResult() {
         #expect(JSONValue.object([:]).resultText == "(empty result)")
     }

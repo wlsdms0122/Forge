@@ -68,7 +68,7 @@ struct DispatchStreamTests {
         let result = try #require(terminal["result"]?.objectValue)
         #expect(result["status"]?.stringValue == "ok")
         #expect(result["run_id"]?.stringValue == runID)
-        #expect((result["outputs"]?.objectValue)?["v"] != nil)
+        #expect((result["output"]?.objectValue)?["v"] != nil)
     }
 
     @Test("Policy denial throws before the ack")

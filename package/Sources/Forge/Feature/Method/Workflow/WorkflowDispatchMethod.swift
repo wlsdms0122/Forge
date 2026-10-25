@@ -168,7 +168,7 @@ struct WorkflowDispatchMethod: Sendable {
             "name":        .string(result.workflowName),
             "status":      "ok",
             "duration_ms": .int(result.durationMs),
-            "outputs":     result.outputs
+            "output":      result.output
         ]
 
         if let failure = result.error {

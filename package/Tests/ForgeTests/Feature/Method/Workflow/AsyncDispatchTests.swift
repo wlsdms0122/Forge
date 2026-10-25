@@ -58,8 +58,8 @@ struct AsyncDispatchTests {
 
         // Then
         #expect(result["status"]?.stringValue == "ok")
-        let outputs = result["outputs"]?.objectValue
-        #expect(outputs?["v"] != nil)
+        let output = result["output"]?.objectValue
+        #expect(output?["v"] != nil)
     }
     
     @Test("Async dispatch returns immediately with running status")

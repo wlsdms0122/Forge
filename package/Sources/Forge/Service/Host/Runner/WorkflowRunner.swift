@@ -231,7 +231,7 @@ actor WorkflowRunner {
             let returned = try await withCancelSignal(runID: runID) {
                 try await executor.run(image, entry: entry, arguments: arguments)
             }
-            let outputs = ValueBridge.json(returned)
+            let output = ValueBridge.json(returned)
             let duration = (ContinuousClock.now - started).milliseconds
 
             await eventBus.publish(WorkflowEvent(
@@ -239,7 +239,7 @@ actor WorkflowRunner {
                 runID: runID,
                 workflowName: name,
                 origin: origin,
-                outputs: outputs,
+                output: output,
                 durationMs: duration
             ))
 
@@ -247,7 +247,7 @@ actor WorkflowRunner {
                 runID: runID,
                 workflowName: name,
                 status: .ok,
-                outputs: outputs,
+                output: output,
                 durationMs: duration,
                 error: nil
             )
@@ -275,7 +275,7 @@ actor WorkflowRunner {
                 runID: runID,
                 workflowName: name,
                 status: .failed,
-                outputs: .null,
+                output: .null,
                 durationMs: duration,
                 error: .init(kind: Self.failureKind(of: error), object: failure)
             )
@@ -383,7 +383,7 @@ extension WorkflowRunner: RunDispatching {
         )
 
         guard let failure = result.error else {
-            return try ValueBridge.value(result.outputs)
+            return try ValueBridge.value(result.output)
         }
 
         let summary = "dispatch '\(name)' failed: \(failure.object.type) — \(failure.object.message)"
