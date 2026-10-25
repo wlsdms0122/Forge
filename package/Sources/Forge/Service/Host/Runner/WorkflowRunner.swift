@@ -246,10 +246,8 @@ actor WorkflowRunner {
             return WorkflowRunResult(
                 runID: runID,
                 workflowName: name,
-                status: .ok,
-                output: output,
-                durationMs: duration,
-                error: nil
+                outcome: .returned(output),
+                durationMs: duration
             )
         } catch {
             // A run's task cancelled (a schedule dropped, the daemon stopping,
@@ -274,10 +272,8 @@ actor WorkflowRunner {
             return WorkflowRunResult(
                 runID: runID,
                 workflowName: name,
-                status: .failed,
-                output: .null,
-                durationMs: duration,
-                error: .init(kind: Self.failureKind(of: error), object: failure)
+                outcome: .failed(.init(kind: Self.failureKind(of: error), object: failure)),
+                durationMs: duration
             )
         }
     }
@@ -382,8 +378,14 @@ extension WorkflowRunner: RunDispatching {
             mode: .awaited
         )
 
-        guard let failure = result.error else {
-            return try ValueBridge.value(result.output)
+        let failure: WorkflowRunResult.RunFailure
+
+        switch result.outcome {
+        case let .returned(value):
+            return try ValueBridge.value(value)
+
+        case let .failed(ended):
+            failure = ended
         }
 
         let summary = "dispatch '\(name)' failed: \(failure.object.type) — \(failure.object.message)"

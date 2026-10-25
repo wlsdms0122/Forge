@@ -62,6 +62,48 @@ struct AsyncDispatchTests {
         #expect(output?["v"] != nil)
     }
     
+    @Test("A run that returned null answers an output of null")
+    func nullReturnAnswersNullOutput() async throws {
+        // Given
+        let (method, authority) = try makeMethod()
+        let token = authority.mint(TokenClaims(principal: "system:rpc"))
+        let specJSON: [String: JSONValue] = ["returns": "String?", "result": .null]
+
+        // When
+        let result = try await method.handle(RPCRequest(
+                id: "r-null",
+                method: "workflow.dispatch",
+                params: ["token": .string(token), "spec": .object(specJSON)]
+        ), claims: try #require(authority.verify(token)))
+
+        // Then
+        #expect(result["status"]?.stringValue == "ok")
+        #expect(result["output"] == .null)
+    }
+
+    @Test("A failed run answers its error and no output, since it returned nothing")
+    func failedRunAnswersNoOutput() async throws {
+        // Given
+        let (method, authority) = try makeMethod()
+        let token = authority.mint(TokenClaims(principal: "system:rpc"))
+        let specJSON: [String: JSONValue] = [
+            "failing": ["nonzero_exit", "timeout"],
+            "body": [["let": "boom", "value": ["call": ["procedure": "shell", "arguments": ["command": ["/usr/bin/false"]]]]]],
+        ]
+
+        // When
+        let result = try await method.handle(RPCRequest(
+                id: "r-failed",
+                method: "workflow.dispatch",
+                params: ["token": .string(token), "spec": .object(specJSON)]
+        ), claims: try #require(authority.verify(token)))
+
+        // Then
+        #expect(result["status"]?.stringValue == "failed")
+        #expect(result["error"] != nil)
+        #expect(result["output"] == nil)
+    }
+
     @Test("Async dispatch returns immediately with running status")
     func asyncReturnsImmediatelyWithRunningStatus() async throws {
         // Given

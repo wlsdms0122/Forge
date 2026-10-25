@@ -166,13 +166,15 @@ struct WorkflowDispatchMethod: Sendable {
         var object: [String: JSONValue] = [
             "run_id": .string(result.runID),
             "name":        .string(result.workflowName),
-            "status":      "ok",
-            "duration_ms": .int(result.durationMs),
-            "output":      result.output
+            "status":      .string(result.status.rawValue),
+            "duration_ms": .int(result.durationMs)
         ]
 
-        if let failure = result.error {
-            object["status"] = "failed"
+        switch result.outcome {
+        case let .returned(value):
+            object["output"] = value
+
+        case let .failed(failure):
             object["error"] = failure.object.jsonValue
         }
 

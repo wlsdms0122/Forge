@@ -37,7 +37,7 @@ catalog's files, and runs under the name `<inline>`.
   it null; any other input must be handed.
 - **The result** is what the procedure returns, and the run answers that value
   as it is. A workflow that answers with named parts returns a struct or a
-  dictionary.
+  dictionary. A run that fails returns nothing and answers its failure.
 - **Failures** the body lets out are declared under `failing`, as the language
   asks of any procedure.
 

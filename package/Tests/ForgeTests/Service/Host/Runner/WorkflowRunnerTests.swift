@@ -87,8 +87,8 @@ struct WorkflowRunnerTests {
 
         // Then
         #expect(result.status == .ok)
-        guard case let .string(out)? = result.output.objectValue?["out"] else {
-            Issue.record("must be a string: \(result.output)")
+        guard case let .string(out)? = result.output?.objectValue?["out"] else {
+            Issue.record("must be a string: \(String(describing: result.output))")
             return
         }
         #expect(out.contains("ok"))
@@ -139,6 +139,7 @@ struct WorkflowRunnerTests {
         #expect(result.status == .failed)
         #expect(result.error?.kind == .work)
         #expect(result.error?.object.message.contains("boom reason") == true)
+        #expect(result.output == nil)
     }
 
     @Test("a run ending in a failure of the language reports the language's name for it")

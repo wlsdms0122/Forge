@@ -623,9 +623,9 @@ calls and nested calls from inside a workflow are distinguished by the **token**
 object of its fields, a dictionary as an object of its entries with each key
 spelled as text, an array as an array, a string, a number or a bool as
 itself, and null as null. Bytes are an array of their numbers, and a
-procedure, which is code, is null. A failed run returned none, and its
-`output` is null. A `workflow.completed` event carries the same value in its
-`output` field.
+procedure, which is code, is null. A run that failed returned nothing and
+has no `output`: its `status` and `error` say why. A `workflow.completed`
+event carries the same value in its `output` field.
 `error` is present only when `status` is `failed`. **result** — `async=true`:
 
 ```json
