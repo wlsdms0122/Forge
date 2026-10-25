@@ -41,7 +41,7 @@ struct WorkflowRunnerTests {
         #expect(result.outputs["text"] == .string("hi there"))
     }
 
-    @Test("a run returning neither a struct nor a map reports its value under result")
+    @Test("a run returning neither a struct nor a dictionary reports its value under result")
     func runReportsAPlainValueUnderResult() async throws {
         // Given
         let harness = try makeRunner(catalog: [

@@ -40,7 +40,7 @@ enum Library {
             isolated: true
             parameters:
               - text: String
-              - outputs: { type: "Dictionary<String, Any>", hint: "a name and its extractor each: a JSONPath, or a mapping of path, regex or line with type and default" }
+              - outputs: { type: "Dictionary<String, Any>", hint: "a name and its extractor each: a JSONPath, or a dictionary of path, regex or line with type and default" }
             returns: "Dictionary<String, Any>"
             failing: [extract_refused]
             result:
@@ -54,7 +54,7 @@ enum Library {
             isolated: true
             parameters:
               - model: { type: String?, hint: "<provider>[:<model>], the backend's own where left out" }
-              - allowed: { type: "Array<Any>?", hint: "the tools the session may use, each a name or a mapping of command to a pattern; the backend's own setting where left out, and no tool for []" }
+              - allowed: { type: "Array<Any>?", hint: "the tools the session may use, each a name or a dictionary of command to a pattern; the backend's own setting where left out, and no tool for []" }
               - env_extra: { type: "Dictionary<String, String>", default: { dictionary: [] }, hint: "variables set over the agent's environment" }
               - cwd: { type: String?, hint: "the directory the session works in, the backend's own where left out" }
               - permission_mode: { type: String?, hint: "bypass, safe or restrict, the backend's own where left out" }

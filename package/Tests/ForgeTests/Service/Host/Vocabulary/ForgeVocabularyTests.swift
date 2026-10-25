@@ -96,7 +96,7 @@ struct ForgeVocabularyTests {
 
         // Then
         guard case let .dictionary(held) = document else {
-            Issue.record("a document is a map")
+            Issue.record("a document is a dictionary")
             return
         }
 

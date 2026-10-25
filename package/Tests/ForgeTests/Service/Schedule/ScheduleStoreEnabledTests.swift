@@ -209,7 +209,7 @@ struct ScheduleStoreEnabledTests {
         try await store.setEnabled(id: "cs", enabled: true, authorizedWorkflow: "wf")
         let recovered = await store.lookup("cs")?.enabled
         #expect(recovered == true)
-        #expect(readEnabled(state) == ["cs": "wf"], "the rewritten ledger must be a valid {id: workflow} map")
+        #expect(readEnabled(state) == ["cs": "wf"], "the rewritten ledger must be a valid {id: workflow} object")
         let cleared = await store.reload().failures
         #expect(!cleared.contains { failure in failure.reason.contains("enabled-ledger") }, "after a valid rewrite, the corruption marker must be cleared")
     }

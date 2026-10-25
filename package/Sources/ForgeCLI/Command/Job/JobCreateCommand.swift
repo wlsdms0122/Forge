@@ -41,7 +41,7 @@ struct JobCreateCommand: ParsableCommand {
     @Option(help: "Reference pointers JSON: [{\"ref\":\"brain-id|path|url\",\"note\":\"why\"}] or [\"ref\", ...]. Knowledge already consulted / worth consulting.")
     var refs: String?
     
-    @Option(help: "Origin as an opaque JSON map (forge-agnostic; e.g. slack: {channel, thread_ts}).")
+    @Option(help: "Origin as an opaque JSON object (forge-agnostic; e.g. slack: {channel, thread_ts}).")
     var origin: String?
     
     @Option(help: "Plan JSON array: [{\"id\"?:int,\"desc\":\"...\",\"status\"?:\"...\"}] or [\"desc\", ...]. id is an integer — omit to auto-number from 1.")

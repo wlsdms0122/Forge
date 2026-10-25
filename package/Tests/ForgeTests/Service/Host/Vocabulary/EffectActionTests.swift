@@ -360,7 +360,7 @@ struct EffectActionTests {
         #expect(outputs["refused"] == .string("extract_refused"))
     }
 
-    @Test("an outputs map that does not parse is the workflow's defect, which no catch takes")
+    @Test("an outputs dictionary that does not parse is the workflow's defect, which no catch takes")
     func extractDefectIsNotCaught() async throws {
         // Given
         let harness = Harness()
