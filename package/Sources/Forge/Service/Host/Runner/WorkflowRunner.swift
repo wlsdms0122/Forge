@@ -234,6 +234,7 @@ actor WorkflowRunner {
                 try await executor.run(image, entry: entry, arguments: arguments)
             }
             let output = try ValueBridge.json(returned)
+            let (outputPreview, outputLength) = Self.valuePreview(output)
             let duration = (ContinuousClock.now - started).milliseconds
 
             await eventBus.publish(WorkflowEvent(
@@ -242,7 +243,9 @@ actor WorkflowRunner {
                 workflowName: name,
                 origin: origin,
                 output: output,
-                durationMs: duration
+                durationMs: duration,
+                outputPreview: outputPreview,
+                outputLen: outputLength
             ))
 
             return WorkflowRunResult(

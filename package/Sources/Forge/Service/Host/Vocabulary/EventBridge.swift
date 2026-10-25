@@ -55,13 +55,18 @@ struct EventBridge: Sendable {
             let result = try await body()
 
             // The step's value goes on to the program whatever JSON can hold,
-            // so its event carries the value where JSON holds it.
+            // so its event carries the value and its preview where JSON holds it.
+            let output = try? ValueBridge.json(result)
+            let (outputPreview, outputLength) = output.map(WorkflowRunner.valuePreview) ?? (nil, nil)
+
             await publish(WorkflowEvent(
                 kind: .stepCompleted,
                 runID: runID,
                 workflowName: workflowName,
                 stepID: step,
-                output: try? ValueBridge.json(result)
+                output: output,
+                outputPreview: outputPreview,
+                outputLen: outputLength
             ))
 
             return result
