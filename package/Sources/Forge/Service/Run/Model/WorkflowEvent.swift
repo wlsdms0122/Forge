@@ -44,21 +44,19 @@ struct WorkflowEvent: Sendable {
         if let parameters { object["parameters"] = .object(parameters) }
 
         if let inputs {
-            object["inputs"] = .object(inputs)
+            let preview = ValuePreview(.object(inputs))
 
-            if let preview = ValuePreview(.object(inputs)) {
-                object["input_preview"] = .string(preview.text)
-                object["input_len"] = .int(preview.length)
-            }
+            object["inputs"] = .object(inputs)
+            object["input_preview"] = .string(preview.text)
+            object["input_len"] = .int(preview.length)
         }
 
         if let output {
-            object["output"] = output
+            let preview = ValuePreview(output)
 
-            if let preview = ValuePreview(output) {
-                object["output_preview"] = .string(preview.text)
-                object["output_len"] = .int(preview.length)
-            }
+            object["output"] = output
+            object["output_preview"] = .string(preview.text)
+            object["output_len"] = .int(preview.length)
         }
 
         if let errorType { object["error_type"] = .string(errorType) }

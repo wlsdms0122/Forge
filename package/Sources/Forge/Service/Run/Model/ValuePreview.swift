@@ -18,9 +18,7 @@ struct ValuePreview: Equatable, Sendable {
     let length: Int
 
     // MARK: - Initializer
-    init?(_ value: JSONValue) {
-        if case .null = value { return nil }
-
+    init(_ value: JSONValue) {
         let whole: String
 
         if case let .string(string) = value {

@@ -453,14 +453,14 @@ struct WorkflowRunnerTests {
     }
 
     @Test(
-        "workflow.completed previews the JSON its output holds, and a null output has no preview",
+        "workflow.completed previews the JSON its output holds, null included",
         arguments: [
             ("returns: String\nresult: hello", "hello", 5),
             ("returns: \"Dictionary<String, Int>\"\nresult: { dictionary: [ [a, 1] ] }", #"{"a":1}"#, 7),
-            ("returns: \"String?\"\nresult: null", nil, nil)
-        ] as [(String, String?, Int?)]
+            ("returns: \"String?\"\nresult: null", "null", 4)
+        ] as [(String, String, Int)]
     )
-    func completedEventPreviewsTheOutput(source: String, preview: String?, length: Int?) async throws {
+    func completedEventPreviewsTheOutput(source: String, preview: String, length: Int) async throws {
         // Given
         let harness = try makeRunner(catalog: ["plain": source])
         let (_, stream) = await harness.eventBus.subscribe()
@@ -476,8 +476,8 @@ struct WorkflowRunnerTests {
             break
         }
         let sut = try #require(completed)
-        #expect(sut.fields["output_preview"] == preview.map(JSONValue.string))
-        #expect(sut.fields["output_len"] == length.map(JSONValue.int))
+        #expect(sut.fields["output_preview"] == .string(preview))
+        #expect(sut.fields["output_len"] == .int(length))
     }
 
     @Test("parallel pieces do not inherit the outer agent session")
