@@ -54,9 +54,7 @@ struct WorkflowDispatchStreamMethod: Sendable {
 
             do {
                 result = .success(
-                    try dispatchMethodLocal.encodeResult(
-                        try await dispatchMethodLocal.runDispatch(prepared, mode: .awaited)
-                    )
+                    try await dispatchMethodLocal.runDispatch(prepared, mode: .awaited).jsonValue
                 )
             } catch {
                 result = .failure(error)

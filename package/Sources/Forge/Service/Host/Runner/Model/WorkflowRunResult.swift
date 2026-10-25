@@ -38,6 +38,29 @@ struct WorkflowRunResult: Sendable {
     let outcome: Outcome
     let durationMs: Int
 
+    // The result as the wire writes it, where the value leaves as JSON.
+    var jsonValue: JSONValue {
+        get throws {
+            var object: [String: JSONValue] = [
+                "run_id": .string(runID),
+                "name": .string(workflowName),
+                "duration_ms": .int(durationMs)
+            ]
+
+            switch outcome {
+            case let .returned(value):
+                object["status"] = "ok"
+                object["output"] = try ValueBridge.json(value)
+
+            case let .failed(failure):
+                object["status"] = "failed"
+                object["error"] = failure.object.jsonValue
+            }
+
+            return .object(object)
+        }
+    }
+
     // MARK: - Initializer
     // MARK: - Public
     // MARK: - Private
