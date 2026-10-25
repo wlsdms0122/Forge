@@ -616,9 +616,16 @@ calls and nested calls from inside a workflow are distinguished by the **token**
 
 ```json
 {"run_id":"...","name":"...","status":"ok"|"failed",
- "duration_ms":1234,"outputs":{...},"error":{"type":"...","message":"..."}}
+ "duration_ms":1234,"output":<value>,"error":{"type":"...","message":"..."}}
 ```
 
+`output` is the value the workflow returned, as itself: a struct as an
+object of its fields, a dictionary as an object of its entries with each key
+spelled as text, an array as an array, a string, a number or a bool as
+itself, and null as null. Bytes are an array of their numbers, and a
+procedure, which is code, is null. A failed run returned none, and its
+`output` is null. A `workflow.completed` event carries the same value in its
+`output` field.
 `error` is present only when `status` is `failed`. **result** — `async=true`:
 
 ```json
