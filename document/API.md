@@ -615,8 +615,8 @@ calls and nested calls from inside a workflow are distinguished by the **token**
 **result** — `async=false`:
 
 ```json
-{"run_id":"...","name":"...","status":"ok"|"failed",
- "duration_ms":1234,"output":<value>,"error":{"type":"...","message":"..."}}
+{"run_id":"...","name":"...","status":"ok","duration_ms":1234,"output":<value>}
+{"run_id":"...","name":"...","status":"failed","duration_ms":1234,"error":{"type":"...","message":"..."}}
 ```
 
 `output` is the value the workflow returned, as itself: a struct as an
@@ -627,7 +627,8 @@ cannot hold, a procedure or a dictionary two of whose keys are spelled as
 one text, fails the run with `UnwritableValue`. A run that failed returned
 nothing and has no `output`: its `status` and `error` say why. A
 `workflow.completed` event carries the same value in its `output` field.
-`error` is present only when `status` is `failed`. **result** — `async=true`:
+
+**result** — `async=true`:
 
 ```json
 {"run_id":"...","name":"...","status":"running"}
@@ -648,7 +649,7 @@ lifetime and relays its progress:
 {"id":"<client-id>","result":{"run_id":"...","name":"...","status":"streaming"}}
 {"kind":"workflow.event","event":"workflow.started","run_id":"...","workflow_name":"...","root_id":"...","ts":...}
 {"kind":"workflow.event","event":"step.started","step":"...","action":"Forge.shell|Forge.agent|...","node_id":"...","parent_node_id":"...", ...}
-{"kind":"workflow.event","event":"step.completed","step":"...","duration_ms":..., "output_preview":"...","output_len":..., ...}
+{"kind":"workflow.event","event":"step.completed","step":"...","output":<value>, ...}
 {"kind":"workflow.result","result":{...same shape as blocking dispatch result...}}
 ```
 
@@ -658,9 +659,12 @@ step is a call of a verb that reaches outside the program, from its
 native's start to its return or throw, named by the statement that called
 the verb, and its `action` is the verb's full name, or the native's
 (`Forge.Native.<verb>`) where a workflow calls one directly. A
-`step.failed` event's `error_message` is the trace of the call, a colon,
-and the failure's sentence, whatever the failure and whether or not a
-catch takes it, so the rounds of a loop and the pieces of a fan-out, which
+`step.completed` event's `output` is the value the verb returned, in the
+JSON form a run's `output` takes, and is left out where JSON cannot hold
+it. A `step.failed` event's `error_message` is the trace of the call, a
+colon, and the failure's sentence, whatever the failure and whether or not
+a catch takes it, and a refusal that carries a trace of its own keeps that
+deeper trace, so the rounds of a loop and the pieces of a fan-out, which
 share one `step`, differ there. Child workflows
 dispatched by the run (a `dispatch` step) inherit the root and stream
 too; `root_id`/`node_id`/`parent_node_id` let the consumer rebuild the
