@@ -13,7 +13,7 @@ let entryName = "entry"
 
 extension Executor {
     // Builds the module beside the others, the Forge module and the standard
-    // vocabulary, runs the entry, and returns the fields of the struct or map
+    // vocabulary, runs the entry, and returns the fields of the struct or dictionary
     // it returns. An optional parameter the inputs leave out is handed null.
     func run(
         _ module: Warp.Module,

@@ -329,7 +329,7 @@ actor WorkflowRunner {
     }
 
     // What a run reports for the value it returned: the fields of a struct or
-    // the entries of a map, nothing for null, and any other value under
+    // the entries of a dictionary, nothing for null, and any other value under
     // `result`, so every workflow the build accepts reports what it returns.
     private static func outputs(of returned: Warp.Value) -> [String: JSONValue] {
         switch ValueBridge.json(returned) {

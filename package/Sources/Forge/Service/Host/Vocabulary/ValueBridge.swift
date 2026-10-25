@@ -91,7 +91,7 @@ enum ValueBridge {
         }
     }
 
-    // The fields of a struct or the entries of a map, under their names; null
+    // The fields of a struct or the entries of a dictionary, under their names; null
     // holds none.
     static func fields(_ value: Warp.Value) throws -> [String: Warp.Value] {
         switch value {

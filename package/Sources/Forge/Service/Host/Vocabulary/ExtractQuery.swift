@@ -45,7 +45,7 @@ struct ExtractQuery: Warp.Query {
     func evaluate(_ question: Warp.Question<Self>) async throws -> Warp.Value {
         let declarations: [String: OutputSpec]
 
-        // A map that is no extractor is the workflow's defect, which no text
+        // A dictionary that is no extractor is the workflow's defect, which no text
         // makes right.
         do {
             declarations = try ValueBridge.decode([String: OutputSpec].self, from: question[.outputs])

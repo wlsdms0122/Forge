@@ -356,7 +356,7 @@ the agents. Every mutation is stamped with the caller token's identity.
 
 | Command | RPC | Notes |
 |---------|-----|-------|
-| `forge job create --title <t> [--brief --refs --origin --plan --parent-job --status --id] [--json]` | `job.create` | `--refs`/`--plan` take JSON arrays; `--origin` an opaque JSON map |
+| `forge job create --title <t> [--brief --refs --origin --plan --parent-job --status --id] [--json]` | `job.create` | `--refs`/`--plan` take JSON arrays; `--origin` an opaque JSON object |
 | `forge job show <id> [--json]` | `job.show` | full ticket: brief, refs, plan, comments, events, children |
 | `forge job list [--status <s>] [--origin-key <k> --origin-value <v>] [--json]` | `job.list` | summary rows, newest-updated first |
 | `forge job update <id> [--note --brief --ref --ref-note --item --item-desc --item-status --status] [--json]` | `job.update` | field-level ops, append-safe |
@@ -845,7 +845,7 @@ Create a work ticket.
 | `title` | ✅ | human-readable title |
 | `brief` | — | self-contained brief (default `""`) |
 | `refs` | — | array of `{"ref","note"?}` objects or plain strings |
-| `origin` | — | opaque JSON map (forge-agnostic; e.g. slack `{channel, thread_ts}`) |
+| `origin` | — | opaque JSON object (forge-agnostic; e.g. slack `{channel, thread_ts}`) |
 | `plan` | — | array of `{"id"?:int,"desc","status"?}` objects or plain strings; omit `id` to auto-number |
 | `parent_job` | — | parent ticket id — must exist; the child is linked into its `children` |
 | `status` | — | free string, default `"open"` |
@@ -867,7 +867,7 @@ ProtocolError `job not found: <id>`.
 
 **params** `{"token","status"?,"origin_key"?,"origin_value"?}` — `status`
 filters on the exact status string; `origin_key`+`origin_value` filter on an
-origin-map entry. **result**
+origin-object entry. **result**
 
 ```json
 {"jobs":[{"id","title","status","updated_at","open",
@@ -1145,7 +1145,7 @@ The error envelope is `{"type": "<ErrorType>", "message": "<text>"}` and the fie
 | `UnknownMethod` | the daemon does not know the method name |
 | `PolicyDenied` | the principal may not dispatch/control that workflow (policy/*.yaml) — retry is pointless |
 | `WorkflowValidationError` | the workflow definition failed validation (inline spec or broken catalog file) — fix the spec |
-| `OutputDeclarationError` | an `extract` step's `outputs` is no extractor declaration (a map that is no extractor, the key `_raw`, a path or a regex that does not parse) — fix the spec |
+| `OutputDeclarationError` | an `extract` step's `outputs` is no extractor declaration (a dictionary that is no extractor, the key `_raw`, a path or a regex that does not parse) — fix the spec |
 | `DaemonShuttingDown` | the daemon is draining for shutdown: it starts no new run (`workflow.dispatch`, a schedule's fire) and no service (`service.run`, `service.restart`) |
 | `RunCapExceeded` | run cap saturation (backpressure) — retry later is meaningful |
 | `RunCancelled` | the run was cancelled (`workflow.cancel`, or the daemon shutting down) |

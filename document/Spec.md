@@ -36,7 +36,7 @@ catalog's files, and runs under the name `<inline>`.
   input of an optional type (`String?`) may be left out, and the daemon hands
   it null; any other input must be handed.
 - **The result** is what the procedure returns. The fields of a struct or the
-  entries of a map are the run's outputs, any other value is the one output
+  entries of a dictionary are the run's outputs, any other value is the one output
   `result`, and null is none.
 - **Failures** the body lets out are declared under `failing`, as the language
   asks of any procedure.
@@ -92,7 +92,7 @@ A step is a call of a verb that reaches outside the program, from its native's s
 ### `Forge.shell`
 
 `shell(command: Array<String>, cwd: String?, env: Dictionary<String, String>, stdin: String?, timeout: Double?) -> String`,
-failing `nonzero_exit`, `timeout`. `env` defaults to an empty map.
+failing `nonzero_exit`, `timeout`. `env` defaults to an empty dictionary.
 
 Runs `command[0]` with the rest as its arguments, holding one of the daemon's
 step slots for the whole run, and returns its standard output. `cwd` left out
@@ -111,20 +111,20 @@ returns them by name, with the whole text under `_raw`. It reaches nothing
 outside the run. A text that does not hold what `outputs` asks (a path that
 is not there and has no `default`, a regex that does not match, a value that
 does not coerce to its type) fails with `extract_refused`, which a catch may
-take. What `outputs` itself gets wrong (a map that is no extractor, the key
+take. What `outputs` itself gets wrong (a dictionary that is no extractor, the key
 `_raw`, a path or a regex that does not parse) is the workflow's defect: it
 is refused before the text is read, and no catch takes it.
 
 ### `Forge.invoke`
 
 `invoke(model: String?, allowed: Array<Any>?, env_extra: Dictionary<String, String>, cwd: String?, permission_mode: String?, share_session: Bool, timeout: Double?, body: () throws -> some Result) -> some Result`,
-failing anything. `env_extra` defaults to an empty map and `share_session` to
+failing anything. `env_extra` defaults to an empty dictionary and `share_session` to
 `false`.
 
 Opens an agent session with these settings and calls `body` inside it; what
 the body returns is what `invoke` returns, so the body writes its `returns`.
 `model` is `<provider>[:<model>]`. `allowed` is the list of tools to expose,
-each a name or a map of `command` to a pattern; left out, the backend's own
+each a name or a dictionary of `command` to a pattern; left out, the backend's own
 setting stands, and `[]` exposes none. `cwd` and `permission_mode` left out are
 unset; an empty string is refused. `share_session: true` reuses the session of
 an enclosing `invoke` where there is one. A session still open after `timeout`
@@ -153,7 +153,7 @@ are `exit_code`, `stderr` and `stdout`.
 ### `Forge.dispatch`
 
 `dispatch(name: String, inputs: Dictionary<String, Any>, timeout: Double?) -> Dictionary<String, Any>`,
-failing `child_run_failed`, `timeout`. `inputs` defaults to an empty map.
+failing `child_run_failed`, `timeout`. `inputs` defaults to an empty dictionary.
 
 Runs the catalog workflow `name` as a run of its own, with its own policy
 check, slot and ledger, and returns its outputs. A child that fails at its
@@ -164,7 +164,7 @@ catch.
 ### `Forge.resource`
 
 `resource(content: String, inputs: Dictionary<String, Any>) -> String`.
-`inputs` defaults to an empty map.
+`inputs` defaults to an empty dictionary.
 
 Reads the resource file `content`, relative to the resource directory, and
 renders it as a template over `inputs`: `${name}` stands for the input of that
@@ -210,7 +210,7 @@ and the piece writes what it returns:
 ## Output extractors
 
 `extract` reads a text, usually what `shell` returned; every other
-verb speaks structured values already. The `outputs` argument is a map from a
+verb speaks structured values already. The `outputs` argument is a dictionary from a
 name to an extractor. Shorthand (bare JSONPath):
 
 ```yaml
