@@ -802,6 +802,93 @@ struct EffectActionTests {
         #expect(await harness.recorder.shellSteps == ["broken"])
     }
 
+    @Test("a nonzero exit a catch takes fails its step with the trace, so the rounds of a loop sharing the step differ")
+    func aNonzeroExitFailsItsStepWithTheTrace() async throws {
+        // Given
+        let harness = Harness()
+        let collected = Collected()
+        let spec = try harness.frontend.workflow("""
+        returns: "Dictionary<String, Any>"
+        body:
+          - var: recovered
+            type: Int
+            value: 0
+          - let: rounds
+            value:
+              each:
+                of: [ a, b ]
+                as: name
+                body:
+                  - let: attempted
+                    value:
+                      try:
+                        body:
+                          - let: broken
+                            value: { call: { procedure: shell, arguments: { command: [ "false", { ref: name } ] } } }
+                        catch:
+                          - set: recovered
+                            value: { of: { ref: recovered }, plus: 1 }
+        result: { dictionary: [ [recovered, { ref: recovered }] ] }
+        """)
+        let sut = try harness.executor(
+            shell: MockShell(recorder: harness.recorder, exitCode: 1, stderr: "refused")
+        ) { event in
+            await collected.append(event)
+        }
+
+        // When
+        let outputs = try await sut.run(spec)
+
+        // Then
+        let failed = await collected.events.filter { event in event.kind == .stepFailed }
+
+        #expect(outputs["recovered"] == .int(2))
+        #expect(failed.map(\.stepID) == ["broken", "broken"])
+        #expect(failed.map(\.errorMessage) == [
+            "[1].rounds[0].attempted.broken.Forge.shell.[1]: shell exit 1: refused",
+            "[1].rounds[1].attempted.broken.Forge.shell.[1]: shell exit 1: refused"
+        ])
+    }
+
+    @Test("a timeout a catch takes fails its step with the trace")
+    func aTimeoutFailsItsStepWithTheTrace() async throws {
+        // Given
+        let harness = Harness()
+        let collected = Collected()
+        let spec = try harness.frontend.workflow("""
+        returns: "Dictionary<String, Any>"
+        body:
+          - var: slow
+            type: String
+            value: ""
+          - let: attempted
+            value:
+              try:
+                body:
+                  - let: late
+                    value: { call: { procedure: shell, arguments: { command: [ sleepy ], timeout: 0.05 } } }
+                catch:
+                  - set: slow
+                    value: recovered
+        result: { dictionary: [ [slow, { ref: slow }] ] }
+        """)
+        let sut = try harness.executor(
+            shell: MockShell(recorder: harness.recorder, delaySeconds: 5)
+        ) { event in
+            await collected.append(event)
+        }
+
+        // When
+        let outputs = try await sut.run(spec)
+
+        // Then
+        let failed = await collected.events.filter { event in event.kind == .stepFailed }
+
+        #expect(outputs["slow"] == .string("recovered"))
+        #expect(failed.map(\.stepID) == ["late"])
+        #expect(failed.map(\.errorMessage) == ["attempted.late.Forge.shell.[1]: step timed out after 0.05s"])
+    }
+
     @Test("a verb called in another verb's arguments is const and computes, so the statement's one step is the outer call")
     func aNestedVerbCallIsNoStep() async throws {
         // Given. An operand is read rather than run, so only a const verb

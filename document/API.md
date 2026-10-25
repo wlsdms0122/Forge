@@ -649,7 +649,11 @@ Event lines are `WorkflowEvent` objects (`workflow.started/completed/failed`,
 step is a call of a verb that reaches outside the program, from its
 native's start to its return or throw, named by the statement that called
 the verb, and its `action` is the verb's full name, or the native's
-(`Forge.Native.<verb>`) where a workflow calls one directly. Child workflows
+(`Forge.Native.<verb>`) where a workflow calls one directly. A
+`step.failed` event's `error_message` is the trace of the call, a colon,
+and the failure's sentence, whatever the failure and whether or not a
+catch takes it, so the rounds of a loop and the pieces of a fan-out, which
+share one `step`, differ there. Child workflows
 dispatched by the run (a `dispatch` step) inherit the root and stream
 too; `root_id`/`node_id`/`parent_node_id` let the consumer rebuild the
 tree. A policy denial is returned as a plain RPC error line (no stream). If
