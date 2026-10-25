@@ -622,10 +622,11 @@ calls and nested calls from inside a workflow are distinguished by the **token**
 `output` is the value the workflow returned, as itself: a struct as an
 object of its fields, a dictionary as an object of its entries with each key
 spelled as text, an array as an array, a string, a number or a bool as
-itself, and null as null. Bytes are an array of their numbers, and a
-procedure, which is code, is null. A run that failed returned nothing and
-has no `output`: its `status` and `error` say why. A `workflow.completed`
-event carries the same value in its `output` field.
+itself, and null as null. Bytes are an array of their numbers. A value JSON
+cannot hold, a procedure or a dictionary two of whose keys are spelled as
+one text, fails the run with `UnwritableValue`. A run that failed returned
+nothing and has no `output`: its `status` and `error` say why. A
+`workflow.completed` event carries the same value in its `output` field.
 `error` is present only when `status` is `failed`. **result** — `async=true`:
 
 ```json

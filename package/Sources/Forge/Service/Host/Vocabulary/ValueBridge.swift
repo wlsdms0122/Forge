@@ -43,7 +43,7 @@ enum ValueBridge {
         }
     }
 
-    static func json(_ value: Warp.Value) -> JSONValue {
+    static func json(_ value: Warp.Value) throws -> JSONValue {
         switch value {
         case .null:
             return .null
@@ -63,31 +63,37 @@ enum ValueBridge {
         case let .bytes(bytes):
             return .array(bytes.map { byte in .int(Int(byte)) })
 
-        // A procedure is code, and the wire this bridges to carries data.
         case .procedure:
-            return .null
+            throw UnwritableValue("a procedure has no JSON form")
 
         case let .array(array):
-            return .array(array.map(json))
+            return .array(try array.map(json))
 
         case let .dictionary(dictionary):
-            return .object(
-                Dictionary(
-                    zip(dictionary.keys, dictionary.values).map { key, field in (text(key), json(field)) },
-                    uniquingKeysWith: { first, _ in first }
-                )
-            )
+            var object: [String: JSONValue] = [:]
+
+            for (key, field) in zip(dictionary.keys, dictionary.values) {
+                let name = text(key)
+
+                guard object[name] == nil else {
+                    throw UnwritableValue("two keys of a dictionary write the one JSON key '\(name)'")
+                }
+
+                object[name] = try json(field)
+            }
+
+            return .object(object)
 
         case let .struct(instance):
             return .object(
                 Dictionary(
-                    zip(instance.names, instance.values).map { name, field in (name.spelling, json(field)) },
+                    try zip(instance.names, instance.values).map { name, field in (name.spelling, try json(field)) },
                     uniquingKeysWith: { first, _ in first }
                 )
             )
 
         case let .existential(existential):
-            return json(existential.value)
+            return try json(existential.value)
         }
     }
 

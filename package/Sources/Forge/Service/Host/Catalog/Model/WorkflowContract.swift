@@ -36,7 +36,7 @@ struct WorkflowContract: Sendable {
             Input(
                 name: parameter.name.spelling,
                 type: parameter.type.rendered,
-                defaultValue: defaults[parameter.name].map(ValueBridge.json),
+                defaultValue: defaults[parameter.name].flatMap { value in try? ValueBridge.json(value) },
                 hint: hints[parameter.name]
             )
         }

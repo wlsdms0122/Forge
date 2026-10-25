@@ -231,7 +231,7 @@ actor WorkflowRunner {
             let returned = try await withCancelSignal(runID: runID) {
                 try await executor.run(image, entry: entry, arguments: arguments)
             }
-            let output = ValueBridge.json(returned)
+            let output = try ValueBridge.json(returned)
             let duration = (ContinuousClock.now - started).milliseconds
 
             await eventBus.publish(WorkflowEvent(
@@ -368,7 +368,7 @@ extension WorkflowRunner: RunDispatching {
 
         let result = try await dispatch(
             workflow,
-            inputs: inputs.mapValues { value in ValueBridge.json(value) },
+            inputs: try inputs.mapValues { value in try ValueBridge.json(value) },
             principal: "cli:\(parentName)",
             origin: .manual,
             rootID: LogContext.rootID,

@@ -566,7 +566,7 @@ struct EffectActionTests {
         result: { format: "said ${word}", with: { word: { ref: word } } }
         """, named: "said").write(to: directory.appendingPathComponent("said.yaml"), atomically: true, encoding: .utf8)
         let catalog = try WorkflowCatalog(directory: directory)
-        let spec = ValueBridge.json(try YAMLParser().parse("""
+        let spec = try ValueBridge.json(try YAMLParser().parse("""
         returns: "Dictionary<String, Any>"
         failing: [nonzero_exit, timeout]
         body:

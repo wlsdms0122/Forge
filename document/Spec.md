@@ -37,7 +37,10 @@ catalog's files, and runs under the name `<inline>`.
   it null; any other input must be handed.
 - **The result** is what the procedure returns, and the run answers that value
   as it is. A workflow that answers with named parts returns a struct or a
-  dictionary. A run that fails returns nothing and answers its failure.
+  dictionary. A run that fails returns nothing and answers its failure. The
+  value leaves the daemon as JSON, so a value JSON cannot hold, a procedure
+  or a dictionary two of whose keys are spelled as one text, fails the run
+  with `UnwritableValue`.
 - **Failures** the body lets out are declared under `failing`, as the language
   asks of any procedure.
 

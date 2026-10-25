@@ -67,6 +67,34 @@ struct WorkflowRunnerTests {
         #expect(result.output == expected)
     }
 
+    @Test(
+        "a run returning a value JSON cannot hold fails, naming what could not be written",
+        arguments: [
+            (
+                "returns: \"() -> String\"\nresult: { closure: { returns: String, result: hi } }",
+                "a procedure has no JSON form"
+            ),
+            (
+                "returns: \"Dictionary<Hashable, Int>\"\nresult: { dictionary: [ [1, 1], [\"1\", 2] ] }",
+                "two keys of a dictionary write the one JSON key '1'"
+            )
+        ]
+    )
+    func unwritableReturnFailsTheRun(source: String, message: String) async throws {
+        // Given
+        let harness = try makeRunner(catalog: ["plain": source])
+        let workflow = try await harness.catalog.workflow(named: "plain")
+
+        // When
+        let result = try await harness.dispatch(workflow)
+
+        // Then
+        #expect(result.status == .failed)
+        #expect(result.error?.kind == .fault)
+        #expect(result.error?.object.type == "UnwritableValue")
+        #expect(result.error?.object.message == message)
+    }
+
     @Test("a shell step runs over the live seam")
     func shellStepRunsThroughLiveSeam() async throws {
         // Given
@@ -222,6 +250,37 @@ struct WorkflowRunnerTests {
         // Then
         #expect(result.status == .ok)
         #expect(result.output == "child said")
+    }
+
+    @Test("a child returning a value JSON cannot hold fails, and its parent faults")
+    func dispatchOfAnUnwritableChildFaults() async throws {
+        // Given
+        let harness = try makeRunner(
+            catalog: [
+                "parent": """
+                returns: Any
+                failing: [child_run_failed, timeout]
+                body:
+                  - let: call
+                    value: { call: { procedure: dispatch, arguments: { name: child } } }
+                result: { ref: call }
+                """,
+                "child": """
+                returns: "() -> String"
+                result: { closure: { returns: String, result: hi } }
+                """
+            ],
+            policy: ["cli:parent": ["parent", "child"]]
+        )
+        let workflow = try await harness.catalog.workflow(named: "parent")
+
+        // When
+        let result = try await harness.dispatch(workflow)
+
+        // Then
+        #expect(result.error?.kind == .fault)
+        #expect(result.error?.object.type == "ChildRunFaulted")
+        #expect(result.error?.object.message.contains("UnwritableValue") == true)
     }
 
     @Test("when policy blocks it, dispatch fails and is not swallowed even by catch")

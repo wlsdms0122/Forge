@@ -170,7 +170,7 @@ struct DocumentTests {
         #expect(result["branch"] == .string("took-a"))
         #expect(result["loop"] == .int(2))
         #expect(result["walk"] == .array([.string("0:one"), .string("1:two")]))
-        #expect(ValueBridge.json(result["parallel"] ?? .null) == .object(["left": .int(1), "right": .int(2)]))
+        #expect(try ValueBridge.json(result["parallel"] ?? .null) == .object(["left": .int(1), "right": .int(2)]))
         #expect(result["rescued"] == .string("rescued: bail out"))
     }
 
