@@ -666,13 +666,10 @@ struct EffectActionTests {
         body:
           - var: kind
             type: Any
-            value: null
           - var: code
             type: Any
-            value: null
           - var: said
             type: Any
-            value: null
           - let: risky
             value:
               try:
@@ -754,9 +751,9 @@ struct EffectActionTests {
           - let: fine
             value: ok
           - let: run
-            value: { call: { procedure: run, arguments: {} } }
+            value: { call: { procedure: run } }
           - let: origin
-            value: { call: { procedure: Forge.Native.origin, arguments: [] } }
+            value: { call: { procedure: Forge.Native.origin } }
           - var: recovered
             type: String
             value: ""

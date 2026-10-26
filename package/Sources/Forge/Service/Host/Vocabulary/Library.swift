@@ -125,13 +125,13 @@ enum Library {
             access: public
             isolated: true
             returns: Forge.Run
-            result: { call: { procedure: Forge.Native.run, arguments: [] } }
+            result: { call: { procedure: Forge.Native.run } }
         
           origin:
             description: What started this run, and the id of the schedule or caller where there is one.
             access: public
             isolated: true
             returns: Forge.Origin
-            result: { call: { procedure: Forge.Native.origin, arguments: [] } }
+            result: { call: { procedure: Forge.Native.origin } }
         """
 }

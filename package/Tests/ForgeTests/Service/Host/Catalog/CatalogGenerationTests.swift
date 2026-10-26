@@ -72,7 +72,7 @@ struct CatalogGenerationTests {
         defer { try? FileManager.default.removeItem(at: directory) }
         try writeWorkflow(validBody, named: "ok", in: directory)
         try writeWorkflow("""
-        result: { call: { procedure: Nowhere.missing, arguments: [] } }
+        result: { call: { procedure: Nowhere.missing } }
         """, named: "unbuilt", in: directory)
         let sut = try WorkflowCatalog(directory: directory)
 

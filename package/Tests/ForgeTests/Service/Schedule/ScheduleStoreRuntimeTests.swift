@@ -324,7 +324,6 @@ struct ScheduleStoreRuntimeTests {
         every: 1m
         spec:
           name: evil-identity
-          body: []
         """#.write(to: directory.appendingPathComponent("he.yaml"), atomically: true, encoding: .utf8)
         try #"""
         id: ok
@@ -351,8 +350,7 @@ struct ScheduleStoreRuntimeTests {
         id: ha
         workflow: "<inline>"
         every: 1m
-        spec:
-          body: []
+        spec: {}
         """#.write(to: directory.appendingPathComponent("ha.yaml"), atomically: true, encoding: .utf8)
         let store = ScheduleStore(configDir: directory, runtimeDirectory: runtimeDirectoryectory, stateFile: try temporary.file("schedule-enabled.json"))
 
@@ -367,7 +365,7 @@ struct ScheduleStoreRuntimeTests {
             return
         }
         
-        #expect(object == ["body": .array([])], "an inline spec is one procedure, which the notation names nowhere")
+        #expect(object == [:], "an inline spec is one procedure, which the notation names nowhere")
         _ = try await WorkflowCatalog(directory: nil).inline(.object(object))
     }
 

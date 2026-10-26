@@ -45,7 +45,7 @@ struct WorkflowRunnerTests {
         "a run's result is the value it returns as JSON, whatever its kind",
         arguments: [
             (
-                "returns: Forge.Origin\nresult: { call: { procedure: origin, arguments: {} } }",
+                "returns: Forge.Origin\nresult: { call: { procedure: origin } }",
                 ["kind": "manual", "id": .null]
             ),
             ("returns: \"Dictionary<String, Int>\"\nresult: { dictionary: [ [a, 1] ] }", ["a": 1]),
