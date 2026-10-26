@@ -7,7 +7,6 @@
 
 import Foundation
 import Warp
-import WarpSyntax
 import WarpYAML
 
 // How a catalog builds its workflows over a vocabulary. The vocabulary is
@@ -37,31 +36,25 @@ struct WorkflowBuilder: Sendable {
     // Workflows compiled against the vocabulary and the workflows already
     // compiled beside it, in the order they are handed: against the
     // vocabulary as it was laid down once, where nothing stands beside it.
-    // A refusal is placed in the keys its document writes.
     func compiled(_ modules: [Module], beside standing: [Compiled] = []) async throws -> [Compiled] {
-        try await Loader().reading {
-            let vocabulary = try await built.value
+        let vocabulary = try await built.value
 
-            guard !standing.isEmpty else {
-                return try await Builder().compile(modules, against: vocabulary.laid)
-            }
-
-            return try await Builder().compile(
-                modules,
-                against: vocabulary.compiled + standing,
-                supplying: vocabulary.supplying
-            )
+        guard !standing.isEmpty else {
+            return try await Builder().compile(modules, against: vocabulary.laid)
         }
+
+        return try await Builder().compile(
+            modules,
+            against: vocabulary.compiled + standing,
+            supplying: vocabulary.supplying
+        )
     }
 
-    // The image of compiled workflows linked beside the vocabulary, a
-    // refusal placed in the keys its document writes.
+    // The image of compiled workflows linked beside the vocabulary.
     func linked(_ compiled: [Compiled]) async throws -> Image {
-        try await Loader().reading {
-            let vocabulary = try await built.value
+        let vocabulary = try await built.value
 
-            return try Builder().link(vocabulary.compiled + compiled, supplying: vocabulary.supplying)
-        }
+        return try Builder().link(vocabulary.compiled + compiled, supplying: vocabulary.supplying)
     }
 
     // The front end leaning on the library and on these texts, which lean on
