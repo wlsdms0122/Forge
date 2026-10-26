@@ -107,26 +107,29 @@ struct ForgeVocabularyTests {
         _ = try await Builder().build([module] + ForgeVocabulary.shipped.get().linkables)
     }
 
-    @Test("a native takes the value the library settles, so null where the library holds a default is refused by the build at that argument")
+    @Test("a native takes the value the library settles, so null where the library holds a default is refused by the build at that argument's line")
     func aNativeTakesTheSettledDefault() async throws {
         // Given
-        let document = try ForgeVocabulary.shipped.get().frontend.decoded(from: workflowFile("""
+        let builder = try WorkflowBuilder.shipped.get()
+        let spent = try builder.vocabulary.frontend.document(from: workflowFile("""
         returns: String
         failing: [nonzero_exit, timeout]
         result: { call: { procedure: Forge.Native.shell, arguments: [ [ls], null, null, null, null ] } }
         """, named: "raw"))
-        let module = try Loader().load(document, identity: try Identity.of(document))
+        let document = try BinaryEncoding().value(from: spent.document)
+        let sut = DocumentOrigin(identity: try Identity.of(document), origin: spent.origin)
+        let module = try Loader().load(document, identity: sut.identity)
 
         // When
         let error = await #expect(throws: (any Error).self) {
-            _ = try await Builder().build([module] + ForgeVocabulary.shipped.get().linkables)
+            _ = try await builder.compiled([module])
         }
 
         // Then
-        let refusal = try #require(error as? any WarpError)
+        let described = sut.described(try #require(error))
 
-        #expect(refusal.place?.rendered?.hasSuffix("procedures.raw.body[0].leave.arguments[2]") == true, "\(refusal)")
-        #expect(refusal.message.contains("with env, which holds Null where Dictionary<String, String> is declared"), "\(refusal)")
+        #expect(described.hasPrefix("6:79: "), "\(described)")
+        #expect(described.contains("with env, which holds Null where Dictionary<String, String> is declared"), "\(described)")
     }
 
     // MARK: - Public

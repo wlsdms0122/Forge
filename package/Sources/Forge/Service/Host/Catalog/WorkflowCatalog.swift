@@ -40,6 +40,10 @@ actor WorkflowCatalog {
         let mtime: Date
         let source: String
 
+        // The document the file was loaded as, which a build refusal of the
+        // workflow is read back to the file's text through.
+        let origin: DocumentOrigin
+
         // MARK: - Initializer
         // MARK: - Public
         // MARK: - Private
@@ -365,10 +369,16 @@ actor WorkflowCatalog {
                 }
 
                 let base = file.file.url.deletingPathExtension().lastPathComponent
+                var origin: DocumentOrigin?
 
                 do {
-                    let document = try BinaryEncoding().value(from: try leaning.frontend.document(from: text).document)
-                    let module = try Loader().load(document, identity: try Identity.of(document))
+                    let spent = try leaning.frontend.document(from: text)
+                    let document = try BinaryEncoding().value(from: spent.document)
+                    let loading = DocumentOrigin(identity: try Identity.of(document), origin: spent.origin)
+
+                    origin = loading
+
+                    let module = try Loader().load(document, identity: loading.identity)
                     let documentation = try leaning.frontend.documentation(from: text)
 
                     if let breach = try convention(module, named: base) {
@@ -391,12 +401,13 @@ actor WorkflowCatalog {
                             Entry(
                                 workflow: try Workflow(name: base, module: module, documentation: documentation),
                                 mtime: file.mtime,
-                                source: file.file.source
+                                source: file.file.source,
+                                origin: loading
                             )
                         )
                     )
                 } catch {
-                    refusals.append((file, "\(error)"))
+                    refusals.append((file, origin.map { origin in origin.described(error) } ?? "\(error)"))
                 }
             }
 
@@ -505,7 +516,7 @@ actor WorkflowCatalog {
                     compiled += own.map { object in (entry.workflow.name, object) }
                     admitted = true
                 } catch {
-                    refusals[entry.workflow.name] = "\(error)"
+                    refusals[entry.workflow.name] = entry.origin.described(error)
                 }
             }
 

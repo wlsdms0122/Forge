@@ -83,7 +83,7 @@ struct CatalogGenerationTests {
         try assertAccountedForExactlyOnce(snapshot, in: directory)
         #expect(snapshot.entries.map(\.workflow.name) == ["ok"])
         #expect(snapshot.failures.compactMap(\.name) == ["unbuilt"])
-        #expect(snapshot.failures.first?.reason.hasPrefix("build: ") == true)
+        #expect(snapshot.failures.first?.reason.hasPrefix("build: 4:5: ") == true)
 
         guard case .invalid = await sut.resolve("unbuilt") else {
             Issue.record("a workflow that does not build resolves as broken")
