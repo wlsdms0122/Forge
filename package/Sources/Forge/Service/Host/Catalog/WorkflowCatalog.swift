@@ -163,15 +163,17 @@ actor WorkflowCatalog {
 
         await reload()
 
-        let document: Value
+        let spent: Data
 
         // The caller wrote an object and no text, so a refusal names its
         // place in the document and not a line of the text written here.
         do {
-            document = try (reading ?? vocabulary.frontend).document(from: text)
+            spent = try (reading ?? vocabulary.frontend).document(from: text).document
         } catch let refusal as AuthoringError {
-            throw refusal.refusal
+            throw WorkflowValidationError(refusal.message)
         }
+
+        let document = try BinaryEncoding().value(from: spent)
 
         return try Workflow(
             name: Self.inlineSigil,
@@ -186,7 +188,7 @@ actor WorkflowCatalog {
     // reload, and the vocabulary compiled once, and linked beside
     // them, a file declaring the name it runs by left out, since the
     // caller's is the one meant.
-    func image(running module: Warp.Module, entry: Name) async throws -> Image {
+    func image(running module: Warp.Module, entry: Warp.Name) async throws -> Image {
         await reload()
 
         let standing = compiled
@@ -365,11 +367,11 @@ actor WorkflowCatalog {
                 let base = file.file.url.deletingPathExtension().lastPathComponent
 
                 do {
-                    let document = try leaning.frontend.document(from: text)
+                    let document = try BinaryEncoding().value(from: try leaning.frontend.document(from: text).document)
                     let module = try Loader().load(document, identity: try Identity.of(document))
                     let documentation = try leaning.frontend.documentation(from: text)
 
-                    if let breach = convention(module, named: base) {
+                    if let breach = try convention(module, named: base) {
                         ledger.record(
                             source: file.file.source,
                             reason: breach.reason,
@@ -421,7 +423,7 @@ actor WorkflowCatalog {
     private func convention(
         _ module: Warp.Module,
         named base: String
-    ) -> (reason: String, line: String)? {
+    ) throws -> (reason: String, line: String)? {
         let declared = module.procedures.keys.map(\.spelling).sorted()
 
         guard declared == [base], let name = module.procedures.keys.first else {
@@ -433,7 +435,7 @@ actor WorkflowCatalog {
             )
         }
 
-        if let shadowed = vocabulary.frontend.shadowing(name, as: .procedure) {
+        if let shadowed = try shadowing(name) {
             return (
                 "a workflow is called by its name, and one named so shadows what the library, std or the notation"
                     + " give: \(shadowed)",
@@ -442,6 +444,28 @@ actor WorkflowCatalog {
         }
 
         return nil
+    }
+
+    // What a workflow of this name shadows for a text leaning on the
+    // vocabulary, said in a sentence, and nothing where it shadows nothing.
+    private func shadowing(_ name: Warp.Name) throws -> String? {
+        let shadowing = vocabulary.frontend.shadowing(try WarpYAML.Name(name.spelling), as: .procedure)
+        let declared = shadowing.declarations.map(\.spelling)
+        var shadowed: [String] = []
+
+        if let last = declared.last {
+            let listed = declared.count > 1 ? "\(declared.dropLast().joined(separator: ", ")) and \(last)" : last
+
+            shadowed.append("the short name of \(listed)")
+        }
+
+        if shadowing.isKeyword {
+            shadowed.append("a key this notation reads as its own")
+        }
+
+        guard !shadowed.isEmpty else { return nil }
+
+        return "'\(name)' is \(shadowed.joined(separator: ", and "))"
     }
 
     // The entries that build, each compiled against the vocabulary, which

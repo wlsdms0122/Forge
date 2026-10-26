@@ -23,18 +23,22 @@ struct Workflow: Sendable {
     // The procedure declared under the name is the workflow; an inline spec
     // has no documentation.
     init(name: String, module: Warp.Module, documentation: Documentation?) throws {
-        let entry = try Name(name)
-
-        guard let procedure = module.procedures[entry] else {
+        guard let procedure = module.procedures[try Warp.Name(name)] else {
             throw WorkflowValidationError("workflow '\(name)' declares no procedure of that name")
         }
+
+        let entry = try WarpYAML.Name(name)
+        let hints = documentation?.hints[entry] ?? [:]
+        let defaults = documentation?.defaults[entry] ?? [:]
 
         self.name = name
         self.description = documentation?.descriptions[entry]
         self.contract = WorkflowContract(
             of: procedure.signature,
-            hints: documentation?.hints[entry] ?? [:],
-            defaults: documentation?.defaults[entry] ?? [:]
+            hints: Dictionary(uniqueKeysWithValues: hints.map { parameter, hint in (parameter.spelling, hint) }),
+            defaults: Dictionary(
+                uniqueKeysWithValues: defaults.map { parameter, written in (parameter.spelling, JSONValue(written)) }
+            )
         )
         self.module = module
     }

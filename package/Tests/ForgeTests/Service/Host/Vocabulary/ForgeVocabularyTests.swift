@@ -59,7 +59,7 @@ struct ForgeVocabularyTests {
                     nil
                 }
             }
-            let handed = sent.first?.arguments.map { argument -> Name? in
+            let handed = sent.first?.arguments.map { argument -> Warp.Name? in
                 guard case let .reference(path) = argument else { return nil }
 
                 return path.head
@@ -88,7 +88,7 @@ struct ForgeVocabularyTests {
         let sut = try ForgeVocabulary.shipped.get().frontend
 
         // When
-        let document = try sut.document(from: workflowFile("""
+        let document = try sut.decoded(from: workflowFile("""
         returns: String
         failing: [nonzero_exit, timeout]
         result: { call: { procedure: shell, arguments: { timeout: 30, command: [ls] } } }
@@ -110,7 +110,7 @@ struct ForgeVocabularyTests {
     @Test("a native takes the value the library settles, so null where the library holds a default is refused by the build at that argument")
     func aNativeTakesTheSettledDefault() async throws {
         // Given
-        let document = try ForgeVocabulary.shipped.get().frontend.document(from: workflowFile("""
+        let document = try ForgeVocabulary.shipped.get().frontend.decoded(from: workflowFile("""
         returns: String
         failing: [nonzero_exit, timeout]
         result: { call: { procedure: Forge.Native.shell, arguments: [ [ls], null, null, null, null ] } }

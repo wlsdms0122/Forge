@@ -6,8 +6,6 @@
 //
 
 import Foundation
-import Warp
-import WarpYAML
 
 package struct WorkflowLint: Sendable {
     // MARK: - Property
@@ -64,7 +62,7 @@ package struct WorkflowLint: Sendable {
     // and the prose the front end takes beside the document (`description`,
     // `hint`).
     private static func staleTemplateIssues(data: Data) -> [String] {
-        guard let tree = try? YAMLParser().parse(data) else {
+        guard let tree = try? YAMLSpec.decode(JSONValue.self, from: data) else {
             return []
         }
 
@@ -78,7 +76,7 @@ package struct WorkflowLint: Sendable {
     private static let proseKeys: Set<String> = ["format", "description", "hint"]
 
     private static func walk(
-        _ value: Warp.Value,
+        _ value: JSONValue,
         at location: String,
         into issues: inout [String]
     ) {
@@ -91,26 +89,19 @@ package struct WorkflowLint: Sendable {
                 )
             }
 
-        // What a document parses to is never code, so there is nothing here to
-        // walk into.
-        case .procedure:
-            return
-
         case let .array(array):
             for (index, element) in array.enumerated() {
                 walk(element, at: "\(location)[\(index)]", into: &issues)
             }
 
-        case let .dictionary(object):
-            let entries = zip(object.keys, object.values).map { key, element in (ValueBridge.text(key), element) }
-
-            for (key, element) in entries.sorted(by: { one, other in one.0 < other.0 }) {
+        case let .object(object):
+            for (key, element) in object.sorted(by: { one, other in one.key < other.key }) {
                 guard !Self.proseKeys.contains(key) else { continue }
 
                 walk(element, at: "\(location).\(key)", into: &issues)
             }
 
-        case .null, .bool, .int, .double, .bytes, .struct, .existential:
+        case .null, .bool, .int, .double:
             break
         }
     }
