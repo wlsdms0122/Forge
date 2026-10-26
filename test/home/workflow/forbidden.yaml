@@ -7,7 +7,6 @@ procedures:
     body:
       - var: blocked
         type: Any
-        value: null
       - let: attempted
         value:
           try:

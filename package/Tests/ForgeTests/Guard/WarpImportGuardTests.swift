@@ -12,12 +12,12 @@ import Testing
 @Suite("WarpImportGuard Tests")
 struct WarpImportGuardTests {
     // MARK: - Property
-    private static let readers = ["Forge/Service/Host/", "Forge/Feature/Client/Lint/"]
+    private static let reader = "Forge/Service/Host/"
 
     // MARK: - Initializer
     // MARK: - Test
-    @Test("only the host and the lint import Warp or its front end")
-    func warpIsImportedOnlyByTheHostAndTheLint() throws {
+    @Test("only the host imports Warp or its front end")
+    func warpIsImportedOnlyByTheHost() throws {
         // Given
         let package = try PackageSource()
         let root = package.sources
@@ -37,7 +37,7 @@ struct WarpImportGuardTests {
 
             let relative = String(url.path.dropFirst(root.path.count + 1))
 
-            if Self.readers.contains(where: { reader in relative.hasPrefix(reader) }) {
+            if relative.hasPrefix(Self.reader) {
                 readerFound = true
             } else {
                 offenders.append(relative)
@@ -46,7 +46,7 @@ struct WarpImportGuardTests {
 
         // Then
         #expect(readerFound, "if no host file imports Warp, this guard is meaningless, not passing")
-        #expect(offenders == [], "Warp is the host's: no file outside Service/Host and Feature/Client/Lint imports it")
+        #expect(offenders == [], "Warp is the host's: no file outside Service/Host imports it")
     }
 
     // MARK: - Public

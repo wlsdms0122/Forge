@@ -132,6 +132,27 @@ struct WorkflowDispatchTests {
         }
     }
 
+    @Test("A refused inline spec gives the refusal's message as its reason")
+    func refusedSpecGivesTheRefusalMessage() async throws {
+        // Given
+        let (method, authority, _) = try await makeMethod(policy: ["*": ["*"]])
+        let token = authority.mint(TokenClaims(principal: "cli:test"))
+        let badSpec: [String: JSONValue] = [
+            "body": [["let": "x", "value": ["format": 5]]],
+        ]
+        let refusal = await #expect(throws: WorkflowValidationError.self) {
+            try await WorkflowCatalog(directory: nil).inline(.object(badSpec))
+        }
+
+        // When
+        let error = await #expect(throws: ProtocolError.self) {
+            try await method.handle(request(["token": .string(token), "spec": .object(badSpec)]), claims: try #require(authority.verify(token)))
+        }
+
+        // Then
+        #expect(error?.message == "workflow.dispatch: malformed 'spec' — \(try #require(refusal).message)")
+    }
+
     @Test("An inline spec containing an invalid reference is rejected")
     func inlineSpecWithInvalidRefRejected() async throws {
         // Given

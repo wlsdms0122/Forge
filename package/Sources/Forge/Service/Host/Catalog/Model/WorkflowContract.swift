@@ -31,13 +31,14 @@ struct WorkflowContract: Sendable {
     let returns: String
 
     // MARK: - Initializer
-    init(of signature: Signature, hints: [Name: String], defaults: [Name: Value]) {
+    // The hints and the defaults are keyed by the parameter's spelling.
+    init(of signature: Signature, hints: [String: String], defaults: [String: JSONValue]) {
         self.inputs = signature.parameters.map { parameter in
             Input(
                 name: parameter.name.spelling,
                 type: parameter.type.rendered,
-                defaultValue: defaults[parameter.name].flatMap { value in try? ValueBridge.json(value) },
-                hint: hints[parameter.name]
+                defaultValue: defaults[parameter.name.spelling],
+                hint: hints[parameter.name.spelling]
             )
         }
         self.returns = signature.returns.rendered

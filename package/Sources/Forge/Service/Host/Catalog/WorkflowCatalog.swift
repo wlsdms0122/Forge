@@ -40,6 +40,10 @@ actor WorkflowCatalog {
         let mtime: Date
         let source: String
 
+        // The document the file was loaded as, which a build refusal of the
+        // workflow is read back to the file's text through.
+        let origin: DocumentOrigin
+
         // MARK: - Initializer
         // MARK: - Public
         // MARK: - Private
@@ -157,21 +161,26 @@ actor WorkflowCatalog {
 
         procedure["access"] = .string("public")
 
-        let text = try JSONEncoder().encode(
-            JSONValue.object(["procedures": .object([Self.inlineSigil: .object(procedure)])])
-        )
+        let written = JSONValue.object(["procedures": .object([Self.inlineSigil: .object(procedure)])])
 
         await reload()
 
-        let document: Value
+        let frontend = reading ?? vocabulary.frontend
+        let spent: Data
 
         // The caller wrote an object and no text, so a refusal names its
-        // place in the document and not a line of the text written here.
+        // place in the document and not a line of the text written here. The
+        // text is written on the spending thread too: it nests as deep as the
+        // object.
         do {
-            document = try (reading ?? vocabulary.frontend).document(from: text)
+            spent = try SpendingThread().run {
+                try frontend.document(from: try JSONEncoder().encode(written)).document
+            }
         } catch let refusal as AuthoringError {
-            throw refusal.refusal
+            throw WorkflowValidationError(refusal.message)
         }
+
+        let document = try BinaryEncoding().value(from: spent)
 
         return try Workflow(
             name: Self.inlineSigil,
@@ -186,7 +195,7 @@ actor WorkflowCatalog {
     // reload, and the vocabulary compiled once, and linked beside
     // them, a file declaring the name it runs by left out, since the
     // caller's is the one meant.
-    func image(running module: Warp.Module, entry: Name) async throws -> Image {
+    func image(running module: Warp.Module, entry: Warp.Name) async throws -> Image {
         await reload()
 
         let standing = compiled
@@ -363,13 +372,20 @@ actor WorkflowCatalog {
                 }
 
                 let base = file.file.url.deletingPathExtension().lastPathComponent
+                var origin: DocumentOrigin?
 
                 do {
-                    let document = try leaning.frontend.document(from: text)
-                    let module = try Loader().load(document, identity: try Identity.of(document))
-                    let documentation = try leaning.frontend.documentation(from: text)
+                    let frontend = leaning.frontend
+                    let spent = try SpendingThread().run { try frontend.document(from: text) }
+                    let document = try BinaryEncoding().value(from: spent.document)
+                    let loading = DocumentOrigin(identity: try Identity.of(document), origin: spent.origin)
 
-                    if let breach = convention(module, named: base) {
+                    origin = loading
+
+                    let module = try Loader().load(document, identity: loading.identity)
+                    let documentation = try SpendingThread().run { try frontend.documentation(from: text) }
+
+                    if let breach = try convention(module, named: base) {
                         ledger.record(
                             source: file.file.source,
                             reason: breach.reason,
@@ -389,12 +405,13 @@ actor WorkflowCatalog {
                             Entry(
                                 workflow: try Workflow(name: base, module: module, documentation: documentation),
                                 mtime: file.mtime,
-                                source: file.file.source
+                                source: file.file.source,
+                                origin: loading
                             )
                         )
                     )
                 } catch {
-                    refusals.append((file, "\(error)"))
+                    refusals.append((file, origin.map { origin in origin.described(error) } ?? "\(error)"))
                 }
             }
 
@@ -421,7 +438,7 @@ actor WorkflowCatalog {
     private func convention(
         _ module: Warp.Module,
         named base: String
-    ) -> (reason: String, line: String)? {
+    ) throws -> (reason: String, line: String)? {
         let declared = module.procedures.keys.map(\.spelling).sorted()
 
         guard declared == [base], let name = module.procedures.keys.first else {
@@ -433,7 +450,7 @@ actor WorkflowCatalog {
             )
         }
 
-        if let shadowed = vocabulary.frontend.shadowing(name, as: .procedure) {
+        if let shadowed = try shadowing(name) {
             return (
                 "a workflow is called by its name, and one named so shadows what the library, std or the notation"
                     + " give: \(shadowed)",
@@ -442,6 +459,28 @@ actor WorkflowCatalog {
         }
 
         return nil
+    }
+
+    // What a workflow of this name shadows for a text leaning on the
+    // vocabulary, said in a sentence, and nothing where it shadows nothing.
+    private func shadowing(_ name: Warp.Name) throws -> String? {
+        let shadowing = vocabulary.frontend.shadowing(try WarpYAML.Name(name.spelling), as: .procedure)
+        let declared = shadowing.declarations.map(\.spelling)
+        var shadowed: [String] = []
+
+        if let last = declared.last {
+            let listed = declared.count > 1 ? "\(declared.dropLast().joined(separator: ", ")) and \(last)" : last
+
+            shadowed.append("the short name of \(listed)")
+        }
+
+        if shadowing.isKeyword {
+            shadowed.append("a key this notation reads as its own")
+        }
+
+        guard !shadowed.isEmpty else { return nil }
+
+        return "'\(name)' is \(shadowed.joined(separator: ", and "))"
     }
 
     // The entries that build, each compiled against the vocabulary, which
@@ -481,7 +520,7 @@ actor WorkflowCatalog {
                     compiled += own.map { object in (entry.workflow.name, object) }
                     admitted = true
                 } catch {
-                    refusals[entry.workflow.name] = "\(error)"
+                    refusals[entry.workflow.name] = entry.origin.described(error)
                 }
             }
 

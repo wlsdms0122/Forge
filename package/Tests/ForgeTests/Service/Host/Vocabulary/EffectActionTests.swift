@@ -566,7 +566,7 @@ struct EffectActionTests {
         result: { format: "said ${word}", with: { word: { ref: word } } }
         """, named: "said").write(to: directory.appendingPathComponent("said.yaml"), atomically: true, encoding: .utf8)
         let catalog = try WorkflowCatalog(directory: directory)
-        let spec = try ValueBridge.json(try YAMLParser().parse("""
+        let spec = try YAMLSpec.decode(JSONValue.self, from: Data("""
         returns: String
         failing: [nonzero_exit, timeout]
         body:
@@ -575,7 +575,7 @@ struct EffectActionTests {
           - let: spoken
             value: { call: { procedure: said, arguments: { word: hi } } }
         result: { ref: spoken }
-        """))
+        """.utf8))
         let sut = try harness.executor()
 
         // When
@@ -666,13 +666,10 @@ struct EffectActionTests {
         body:
           - var: kind
             type: Any
-            value: null
           - var: code
             type: Any
-            value: null
           - var: said
             type: Any
-            value: null
           - let: risky
             value:
               try:
@@ -754,9 +751,9 @@ struct EffectActionTests {
           - let: fine
             value: ok
           - let: run
-            value: { call: { procedure: run, arguments: {} } }
+            value: { call: { procedure: run } }
           - let: origin
-            value: { call: { procedure: Forge.Native.origin, arguments: [] } }
+            value: { call: { procedure: Forge.Native.origin } }
           - var: recovered
             type: String
             value: ""

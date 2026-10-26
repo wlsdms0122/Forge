@@ -118,7 +118,7 @@ struct DocumentTests {
     func everySignatureIsTheLibrarys() throws {
         // Given
         guard
-            case let .dictionary(library) = try YAMLParser().parse(Library.text),
+            case let .dictionary(library) = try ValueBridge.value(try YAMLSpec.decode(JSONValue.self, from: Data(Library.text.utf8))),
             case let .dictionary(procedures)? = library[key: .string("procedures")]
         else {
             Issue.record("lib/Forge.yaml declares its verbs under procedures")
@@ -179,8 +179,8 @@ struct DocumentTests {
     // Loaded and built the way the catalog does it, including Forge's own rule
     // on top of the language, one procedure per file, so an example the daemon
     // would refuse cannot pass here.
-    private static func image(of written: String) async throws -> (Image, Name) {
-        let document = try ForgeVocabulary.shipped.get().frontend.document(from: written)
+    private static func image(of written: String) async throws -> (Image, Warp.Name) {
+        let document = try ForgeVocabulary.shipped.get().frontend.decoded(from: written)
         let module = try Loader().load(document, identity: try Identity.of(document))
 
         guard module.procedures.count == 1, let name = module.procedures.keys.first else {

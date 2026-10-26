@@ -72,7 +72,7 @@ struct CatalogGenerationTests {
         defer { try? FileManager.default.removeItem(at: directory) }
         try writeWorkflow(validBody, named: "ok", in: directory)
         try writeWorkflow("""
-        result: { call: { procedure: Nowhere.missing, arguments: [] } }
+        result: { call: { procedure: Nowhere.missing } }
         """, named: "unbuilt", in: directory)
         let sut = try WorkflowCatalog(directory: directory)
 
@@ -83,7 +83,7 @@ struct CatalogGenerationTests {
         try assertAccountedForExactlyOnce(snapshot, in: directory)
         #expect(snapshot.entries.map(\.workflow.name) == ["ok"])
         #expect(snapshot.failures.compactMap(\.name) == ["unbuilt"])
-        #expect(snapshot.failures.first?.reason.hasPrefix("build: ") == true)
+        #expect(snapshot.failures.first?.reason.hasPrefix("build: 4:5: ") == true)
 
         guard case .invalid = await sut.resolve("unbuilt") else {
             Issue.record("a workflow that does not build resolves as broken")
@@ -183,6 +183,45 @@ struct CatalogGenerationTests {
         let answer = try await Executor().run(image, entry: try Name("same"), arguments: [:])
 
         #expect(answer == .bool(false))
+    }
+
+    @Test("A file nested deeper than the cooperative pool's stack holds is refused at its line")
+    func aDeeplyNestedFileIsRefused() async throws {
+        // Given
+        let directory = try temporary.make("wf-deep")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try writeWorkflow(validBody, named: "ok", in: directory)
+        try writeWorkflow("""
+        returns: Any
+        result: \(String(repeating: "[", count: 1_000))1\(String(repeating: "]", count: 1_000))
+        """, named: "deep", in: directory)
+        let sut = try WorkflowCatalog(directory: directory)
+
+        // When
+        let snapshot = await sut.reload()
+
+        // Then
+        #expect(snapshot.entries.map(\.workflow.name) == ["ok"])
+        #expect(snapshot.failures.compactMap(\.name) == ["deep"])
+        #expect(snapshot.failures.first?.reason.hasSuffix("the text nests deeper than 128 containers") == true)
+    }
+
+    @Test("An inline spec nested deeper than the cooperative pool's stack holds is refused")
+    func aDeeplyNestedInlineSpecIsRefused() async throws {
+        // Given
+        let sut = try WorkflowCatalog(directory: nil)
+        let result = (0..<400).reduce(JSONValue.int(1)) { nested, _ in .array([nested]) }
+
+        do {
+
+        // When
+            _ = try await sut.inline(.object(["returns": "Any", "result": result]))
+
+        // Then
+            Issue.record("an inline spec nested past the bound is refused")
+        } catch let refusal as WorkflowValidationError {
+            #expect(refusal.message == "the text nests deeper than 128 containers")
+        }
     }
 
     @Test("A scan obstruction rides in the same observation")

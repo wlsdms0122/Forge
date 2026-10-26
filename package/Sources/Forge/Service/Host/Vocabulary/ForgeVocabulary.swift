@@ -18,8 +18,8 @@ import WarpYAML
 struct ForgeVocabulary: Sendable {
     // MARK: - Property
     // The structs forge's verbs return.
-    static let runType: Name = "Forge.Run"
-    static let originType: Name = "Forge.Origin"
+    static let runType: Warp.Name = "Forge.Run"
+    static let originType: Warp.Name = "Forge.Origin"
 
     // The library's document, the one a workflow leans on.
     let library: Value
@@ -29,20 +29,23 @@ struct ForgeVocabulary: Sendable {
     let linkables: [Module]
 
     // The verbs a workflow writes, the library's procedures.
-    let verbs: Set<Name>
+    let verbs: Set<Warp.Name>
 
     // The one front end forge reads a workflow with, leaning on the library.
     let frontend: YAMLFrontend
 
     // MARK: - Initializer
     init() throws {
-        let library = try YAMLFrontend().document(from: Library.text)
+        let spending = SpendingThread()
+        let library = try BinaryEncoding().value(
+            from: try spending.run { try YAMLFrontend().document(from: Library.text).document }
+        )
         let loaded = try Loader().load(library, identity: try Identity.of(library))
 
         self.library = library
         self.linkables = [loaded, try Self.natives()] + Module.standard
         self.verbs = Set(loaded.procedures.keys)
-        self.frontend = try YAMLFrontend(symbols: try SymbolTable(documents: [library]))
+        self.frontend = try spending.run { try YAMLFrontend().leaning(on: [.text(Library.text)]) }
     }
 
     // MARK: - Public
