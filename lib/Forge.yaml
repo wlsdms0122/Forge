@@ -11,7 +11,7 @@ procedures:
     parameters:
       - command: { type: Array<String>, hint: "the executable and its arguments" }
       - cwd: { type: String?, hint: "the directory it runs in, the daemon's own where left out" }
-      - env: { type: "Dictionary<String, String>", default: { dictionary: [] }, hint: "variables set over the daemon's environment" }
+      - env: { type: "Dictionary<String, String>", default: {}, hint: "variables set over the daemon's environment" }
       - stdin: { type: String?, hint: "what the command reads on its standard input" }
       - timeout: { type: Double?, hint: "seconds before the command fails with timeout" }
     returns: String
@@ -43,7 +43,7 @@ procedures:
     parameters:
       - model: { type: String?, hint: "<provider>[:<model>], the backend's own where left out" }
       - allowed: { type: "Array<Any>?", hint: "the tools the session may use, each a name or a dictionary of command to a pattern; the backend's own setting where left out, and no tool for []" }
-      - env_extra: { type: "Dictionary<String, String>", default: { dictionary: [] }, hint: "variables set over the agent's environment" }
+      - env_extra: { type: "Dictionary<String, String>", default: {}, hint: "variables set over the agent's environment" }
       - cwd: { type: String?, hint: "the directory the session works in, the backend's own where left out" }
       - permission_mode: { type: String?, hint: "bypass, safe or restrict, the backend's own where left out" }
       - share_session: { type: Bool, default: false, hint: "reuse the session of an enclosing invoke where there is one" }
@@ -74,7 +74,7 @@ procedures:
     isolated: true
     parameters:
       - name: { type: String, hint: "the catalog workflow to run" }
-      - inputs: { type: "Dictionary<String, Any>", default: { dictionary: [] }, hint: "its inputs by name" }
+      - inputs: { type: "Dictionary<String, Any>", default: {}, hint: "its inputs by name" }
       - timeout: { type: Double?, hint: "seconds before the child fails with timeout" }
     returns: Any
     failing: [child_run_failed, timeout]
@@ -89,7 +89,7 @@ procedures:
     isolated: true
     parameters:
       - content: { type: String, hint: "the file, relative to the resource directory" }
-      - inputs: { type: "Dictionary<String, Any>", default: { dictionary: [] }, hint: "what ${name} in the file stands for" }
+      - inputs: { type: "Dictionary<String, Any>", default: {}, hint: "what ${name} in the file stands for" }
     returns: String
     result:
       call:
