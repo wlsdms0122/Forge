@@ -45,7 +45,7 @@ struct ForgeVocabularyTests {
     func everyVerbCallsItsNative() throws {
         // Given
         let document = try ForgeVocabulary.shipped.get().library
-        let library = try Loader().load(document, identity: try Identity.of(document))
+        let library = try Loader().load(document)
         let natives = Set(try ForgeVocabulary.natives().procedures.keys)
 
         for (name, sut) in library.procedures {
@@ -102,7 +102,7 @@ struct ForgeVocabularyTests {
 
         #expect(held[key: .string("imports")] == .array([.string("Forge.shell")]))
 
-        let module = try Loader().load(document, identity: try Identity.of(document))
+        let module = try Loader().load(document)
 
         _ = try await Builder().build([module] + ForgeVocabulary.shipped.get().linkables)
     }
@@ -118,7 +118,7 @@ struct ForgeVocabularyTests {
         """, named: "raw"))
         let document = try BinaryEncoding().value(from: spent.document)
         let sut = DocumentOrigin(identity: try Identity.of(document), origin: spent.origin)
-        let module = try Loader().load(document, identity: sut.identity)
+        let module = try Loader().load(document)
 
         // When
         let error = await #expect(throws: (any Error).self) {

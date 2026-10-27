@@ -181,7 +181,7 @@ struct DocumentTests {
     // would refuse cannot pass here.
     private static func image(of written: String) async throws -> (Image, Warp.Name) {
         let document = try ForgeVocabulary.shipped.get().frontend.decoded(from: written)
-        let module = try Loader().load(document, identity: try Identity.of(document))
+        let module = try Loader().load(document)
 
         guard module.procedures.count == 1, let name = module.procedures.keys.first else {
             throw ExecutionError("a complete workflow in Spec.md declares one procedure")
