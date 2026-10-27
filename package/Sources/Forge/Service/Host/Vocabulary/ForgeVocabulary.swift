@@ -40,7 +40,7 @@ struct ForgeVocabulary: Sendable {
         let library = try BinaryEncoding().value(
             from: try spending.run { try YAMLFrontend().document(from: Library.text).document }
         )
-        let loaded = try Loader().load(library, identity: try Identity.of(library))
+        let loaded = try Loader().load(library)
 
         self.library = library
         self.linkables = [loaded, try Self.natives()] + Module.standard

@@ -18,7 +18,7 @@ extension YAMLFrontend {
     func workflow(_ text: String, named name: String = entryName) throws -> Warp.Module {
         let document = try decoded(from: workflowFile(text, named: name))
 
-        return try Loader().load(document, identity: try Identity.of(document))
+        return try Loader().load(document)
     }
 
     // A text's document, decoded from the bytes the front end spends it to.

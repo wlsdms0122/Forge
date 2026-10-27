@@ -184,7 +184,7 @@ actor WorkflowCatalog {
 
         return try Workflow(
             name: Self.inlineSigil,
-            module: try Loader().load(document, identity: try Identity.of(document)),
+            module: try Loader().load(document),
             documentation: nil
         )
     }
@@ -382,7 +382,7 @@ actor WorkflowCatalog {
 
                     origin = loading
 
-                    let module = try Loader().load(document, identity: loading.identity)
+                    let module = try Loader().load(document)
                     let documentation = try SpendingThread().run { try frontend.documentation(from: text) }
 
                     if let breach = try convention(module, named: base) {

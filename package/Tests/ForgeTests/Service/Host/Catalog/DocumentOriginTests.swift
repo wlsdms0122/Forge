@@ -28,7 +28,7 @@ struct DocumentOriginTests {
 
         // When
         let error = #expect(throws: (any Error).self) {
-            _ = try Loader().load(document, identity: sut.identity)
+            _ = try Loader().load(document)
         }
 
         // Then
@@ -44,7 +44,7 @@ struct DocumentOriginTests {
         returns: Int
         result: hi
         """, named: "built"))
-        let module = try Loader().load(document, identity: sut.identity)
+        let module = try Loader().load(document)
 
         // When
         let error = await #expect(throws: (any Error).self) {
@@ -85,7 +85,7 @@ struct DocumentOriginTests {
 
         // When
         let error = #expect(throws: (any Error).self) {
-            _ = try Loader().load(document, identity: try Identity.of(document))
+            _ = try Loader().load(document)
         }
 
         // Then
