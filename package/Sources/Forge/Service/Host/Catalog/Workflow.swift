@@ -29,16 +29,12 @@ struct Workflow: Sendable {
 
         let entry = try WarpYAML.Name(name)
         let hints = documentation?.hints[entry] ?? [:]
-        let defaults = documentation?.defaults[entry] ?? [:]
 
         self.name = name
         self.description = documentation?.descriptions[entry]
         self.contract = WorkflowContract(
             of: procedure.signature,
-            hints: Dictionary(uniqueKeysWithValues: hints.map { parameter, hint in (parameter.spelling, hint) }),
-            defaults: Dictionary(
-                uniqueKeysWithValues: defaults.map { parameter, written in (parameter.spelling, JSONValue(written)) }
-            )
+            hints: Dictionary(uniqueKeysWithValues: hints.map { parameter, hint in (parameter.spelling, hint) })
         )
         self.module = module
     }

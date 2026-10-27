@@ -238,7 +238,7 @@ forge workflow list [--json]
 #### `forge workflow describe`
 
 Show one workflow's calling contract: description, source path, inputs
-(type, the default the file writes and hint) and the return type. Counterpart to `service describe`. RPC:
+(type and hint) and the return type. Counterpart to `service describe`. RPC:
 `workflow.describe`.
 
 ```
@@ -710,17 +710,15 @@ it could not read, is an entry at path `<scan>` naming it. Always present
 
 ```json
 {"name","description"?,"source",
- "inputs":{"<key>":{"type","default"?,"hint"?}},
+ "inputs":{"<key>":{"type","hint"?}},
  "returns"}
 ```
 
 `inputs` is the workflow procedure's parameters. `type` is the declared type
 as the language spells it (`String`, `Array<String>`, `String?`, …); an input
 of an Optional type is one a caller may leave out, and the daemon hands it
-null. `default` is the value the file writes under the input's `default:`,
-as the file writes it in the notation, which is what the workflow settles an
-omitted or null argument to; an input whose file writes none has no
-`default`. `hint` is what the file writes under the input's `hint:`. `returns` is the declared return type. Empty `inputs` is returned as
+null. An input the file gives a `default:` reads Optional too, and the
+workflow settles the null it is handed to that default. `hint` is what the file writes under the input's `hint:`. `returns` is the declared return type. Empty `inputs` is returned as
 `{}` (not omitted) so the caller can iterate without null-checks. Unknown
 workflow → WorkflowNotFound `workflow not found: <name>`.
 

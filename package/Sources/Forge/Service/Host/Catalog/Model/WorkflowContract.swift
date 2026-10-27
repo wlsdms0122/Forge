@@ -11,14 +11,11 @@ import Warp
 // What a caller fills in and what a run returns, each type as the language
 // renders it.
 struct WorkflowContract: Sendable {
-    // An input with the hint the file writes beside it and the default it
-    // writes, which an omitted argument becomes. An input whose file writes
-    // no default has none.
+    // An input with the hint the file writes beside it.
     struct Input: Sendable {
         // MARK: - Property
         let name: String
         let type: String
-        let defaultValue: JSONValue?
         let hint: String?
 
         // MARK: - Initializer
@@ -31,13 +28,12 @@ struct WorkflowContract: Sendable {
     let returns: String
 
     // MARK: - Initializer
-    // The hints and the defaults are keyed by the parameter's spelling.
-    init(of signature: Signature, hints: [String: String], defaults: [String: JSONValue]) {
+    // The hints are keyed by the parameter's spelling.
+    init(of signature: Signature, hints: [String: String]) {
         self.inputs = signature.parameters.map { parameter in
             Input(
                 name: parameter.name.spelling,
                 type: parameter.type.rendered,
-                defaultValue: defaults[parameter.name.spelling],
                 hint: hints[parameter.name.spelling]
             )
         }

@@ -42,10 +42,8 @@ struct WorkflowDescribeTests {
         let inputs = result["inputs"]?.objectValue ?? [:]
         let message = inputs["msg"]?.objectValue ?? [:]
         #expect(message["type"]?.stringValue == "String")
-        #expect(!message.keys.contains("default"))
         let tag = inputs["tag"]?.objectValue ?? [:]
         #expect(tag["type"]?.stringValue == "String?")
-        #expect(!tag.keys.contains("default"), "an input whose file writes no default reports none")
         #expect(result["returns"]?.stringValue == "Dictionary<String, Any>")
     }
     
@@ -73,7 +71,7 @@ struct WorkflowDescribeTests {
         let inputs = described["inputs"]?.objectValue ?? [:]
         #expect((inputs["who"]?.objectValue)?["hint"]?.stringValue == "whom to greet")
         #expect((inputs["loud"]?.objectValue)?["hint"] == nil)
-        #expect((inputs["loud"]?.objectValue)?["default"]?.boolValue == false, "the default the file writes")
+        #expect((inputs["loud"]?.objectValue)?["type"]?.stringValue == "Bool?", "a default makes an input one a caller may leave out")
         let workflows = listed["workflows"]?.arrayValue ?? []
         #expect(workflows.first?["description"]?.stringValue == "Says hello.")
     }
