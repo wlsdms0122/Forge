@@ -43,14 +43,11 @@ struct WorkflowDescribeMethod: Sendable {
     }
 
     // MARK: - Private
-    // Each input by name, with its type, and the default and the hint the
-    // file writes.
+    // Each input by name, with its type and the hint the file writes.
     private static func inputs(of contract: WorkflowContract) -> [String: JSONValue] {
         Dictionary(
             contract.inputs.map { input in
                 var described: [String: JSONValue] = ["type": .string(input.type)]
-
-                if let written = input.defaultValue { described["default"] = written }
 
                 if let hint = input.hint { described["hint"] = .string(hint) }
 

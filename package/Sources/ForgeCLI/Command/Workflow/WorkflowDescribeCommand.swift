@@ -65,8 +65,6 @@ struct WorkflowDescribeCommand: ParsableCommand {
                 
                 if let type = spec?["type"]?.stringValue { bits.append(type) }
                 
-                if let value = spec?["default"] { bits.append("default=\(value.stringValue ?? value.plainText)") }
-                
                 let header = bits.isEmpty
                     ? key
                     : "\(key) (\(bits.joined(separator: ", ")))"
