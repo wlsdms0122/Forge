@@ -135,7 +135,7 @@ struct WorkRegistryTests {
         #expect(live?.runID == "r-test")
         await registry.release(runID: "r-test")
         do {
-            _ = try await registry.requireLiveRecord(runID: "r-test", context: "handler.send")
+            _ = try await registry.requireLiveRecord(runID: "r-test", context: "service.send")
             Issue.record("A stale run-scoped token should be rejected")
         } catch let error as TokenRejected {
             #expect(error.message.contains("finished run"), Comment(rawValue: error.message))

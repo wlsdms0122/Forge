@@ -25,7 +25,7 @@ actor ServiceHandle {
     
     // MARK: - Public
     func send(
-        envelope: HandlerFrameEnvelope,
+        envelope: MessageEnvelope,
         payload: JSONValue,
         isAsync: Bool = false
     ) async throws -> JSONValue {
@@ -41,7 +41,7 @@ actor ServiceHandle {
         if let correlator = envelope.correlator { envelopeObject["correlator"] = .string(correlator) }
         
         let frame: JSONValue = [
-            "kind": "handler.message",
+            "kind": "service.message",
             "service": .string(service),
             "message_id": .string(messageID),
             "envelope": .object(envelopeObject),
@@ -85,7 +85,7 @@ actor ServiceHandle {
     func deliverError(messageID: String, message: String) {
         guard let continuation = pending.removeValue(forKey: messageID) else { return }
         
-        continuation.resume(throwing: HandlerFailed(message))
+        continuation.resume(throwing: ServiceFailed(message))
     }
     
     func cancelAll() {

@@ -72,7 +72,7 @@ struct WorkflowDispatchCommand: ParsableCommand {
     @Option(help: "Caller passthrough as a JSON object — rides the log envelope only.")
     var parameters: String?
     
-    @Option(help: "Opaque correlator string — ridden through to handler frames.")
+    @Option(help: "Opaque correlator string, ridden through to `service.message` frames.")
     var correlator: String?
     
     @Option(help: "Trigger as JSON, e.g. {\"kind\":\"manual\",\"id\":\"...\"}.")

@@ -13,9 +13,9 @@ struct ServiceSendCommand: ParsableCommand {
     // MARK: - Property
     static let configuration = CommandConfiguration(
         commandName: "send",
-        abstract: "Send a JSON payload to a service handler.",
+        abstract: "Send a JSON payload to a registered service.",
         discussion: """
-            Hands a payload to a registered external service handler
+            Hands a payload to a registered service
             (e.g. `slack`). The payload schema is service-specific — see
             `forge service describe <name>`.
 
@@ -26,7 +26,7 @@ struct ServiceSendCommand: ParsableCommand {
                 spoofable.
 
             BLOCKING vs --async
-                `send` blocks until the handler acks and returns its result.
+                `send` blocks until the service acks and returns its result.
                 Pass --async to return as soon as the work is dispatched
                 ({ message_id, status: "dispatched" }) without waiting.
                 Whether to wait is the caller's business — a `wait` key in
@@ -40,7 +40,7 @@ struct ServiceSendCommand: ParsableCommand {
     
     @OptionGroup var global: GlobalOptions
     
-    @Argument(help: "Service handler name (e.g. `slack`).")
+    @Argument(help: "Service name (e.g. `slack`).")
     var name: String
     
     @Option(help: "JSON object payload. Service-specific schema.")
@@ -77,7 +77,7 @@ struct ServiceSendCommand: ParsableCommand {
             "async": .bool(isAsync)
         ]
         
-        client.call("handler.send", params).printResult(json: json)
+        client.call("service.send", params).printResult(json: json)
         
         Self.exit()
     }

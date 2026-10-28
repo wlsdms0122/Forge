@@ -18,7 +18,7 @@ struct DaemonStatusMethod: Sendable {
     let scheduleStore: ScheduleStore
     let jobStore: JobStore
     let supervisor: ServiceSupervisor
-    let handlerBus: WorkflowHandlerBus
+    let serviceBus: ServiceBus
     
     // MARK: - Initializer
     // MARK: - Public
@@ -33,7 +33,7 @@ struct DaemonStatusMethod: Sendable {
         
         let schedules = await scheduleStore.all()
         let services = await supervisor.statuses()
-        let registered = Set(await handlerBus.listing().map(\.0))
+        let registered = Set(await serviceBus.listing().map(\.0))
         let workflowCount = await catalog.reload().entries.count
         let jobCount = await jobStore.all().count
         

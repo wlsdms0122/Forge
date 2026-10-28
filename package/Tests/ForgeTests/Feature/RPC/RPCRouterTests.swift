@@ -53,7 +53,7 @@ struct RPCRouterTests {
 
         // When
         let error = await #expect(throws: ProtocolError.self) {
-            _ = try await sut.dispatch(Self.ack(token: run))
+            _ = try await sut.dispatch(Self.operatorCall(token: run))
         }
 
         // Then
@@ -70,7 +70,7 @@ struct RPCRouterTests {
             let token = authority.mint(TokenClaims(principal: principal))
 
             // When
-            let result = try await sut.dispatch(Self.ack(token: token))
+            let result = try await sut.dispatch(Self.operatorCall(token: token))
 
             // Then
             #expect(result["ok"]?.boolValue == true, "\(principal) should pass the gate")
@@ -96,21 +96,13 @@ struct RPCRouterTests {
     // MARK: - Private
     private static func router(_ authority: TokenAuthority) -> RPCRouter {
         RPCRouter(
-            methods: HandlerNamespace(
-                handlerBus: WorkflowHandlerBus(),
-                workRegistry: WorkRegistry()
-            ).methods,
+            methods: [RPCMethod("test.operator", .unary(.operator) { _, _ in ["ok": true] })],
             authority: authority
         )
     }
 
-    private static func ack(token: String) -> RPCRequest {
-        request("handler.ack", [
-            "token": .string(token),
-            "service": "slack",
-            "message_id": "m1",
-            "result": [:]
-        ])
+    private static func operatorCall(token: String) -> RPCRequest {
+        request("test.operator", ["token": .string(token)])
     }
 
     private static func request(_ method: String, _ params: [String: JSONValue]) -> RPCRequest {

@@ -175,7 +175,7 @@ forge workflow dispatch [<name>] [--spec <spec>] [--inputs <json>]
 | `--spec` | inline **anonymous** workflow JSON — use instead of the name argument. A `name` key is rejected — the run is named `<inline>` and gated by that sigil |
 | `--inputs` | workflow inputs, JSON object (default `{}`) |
 | `--parameters` | caller passthrough, JSON object — rides the log envelope only |
-| `--correlator` | opaque string — ridden through to handler frames |
+| `--correlator` | opaque string, ridden through to `service.message` frames |
 | `--origin` | `{"kind":"...","id":"..."}` — what dispatched the run |
 | `--root-id` / `--parent-id` | parent node-tree context to inherit (tree root id + parent node) — normally omitted; each run self-roots at its own run_id |
 | `--async` | return as soon as dispatched (fire-and-forget) |
@@ -397,14 +397,14 @@ Plain output: body. JSON: `{ "path", "body", "size", "truncated" }`.
 
 ### `forge service`
 
-Inspect, register, and call external service handlers, and control the
-managed child processes the daemon supervises. An external service handler
-(e.g. `slack`) is a process that registers with the daemon and implements a
-capability forge itself does not.
+Inspect, register, and call external services, and control the managed
+child processes the daemon supervises. An external service (e.g. `slack`) is a
+process that registers with the daemon and implements a capability forge
+itself does not.
 
 #### `forge service list`
 
-List registered service handlers. RPC: `handler.list`.
+List registered services. RPC: `service.list`.
 
 ```
 forge service list [--json]
@@ -412,9 +412,9 @@ forge service list [--json]
 
 #### `forge service describe`
 
-Show one handler's call schema — its description and the actions/ops it
+Show one service's call schema: its description and the actions/ops it
 accepts, with params and returns. The contract to consult before `forge
-service send`. RPC: `handler.list` (filtered to one).
+service send`. RPC: `service.list` (filtered to one).
 
 ```
 forge service describe <name> [--json]
@@ -422,10 +422,10 @@ forge service describe <name> [--json]
 
 #### `forge service register`
 
-Run the current process as a service handler — a long-lived **co-process**.
-forge owns the socket, the `handler.register` handshake, and
+Run the current process as a service, a long-lived **co-process**.
+forge owns the socket, the `service.register` handshake, and
 reconnect/backoff; the parent process speaks JSON over stdio and never touches
-the socket. RPC: `handler.register` + `handler.ack`.
+the socket. RPC: `service.register` + `service.ack`.
 
 ```
 forge service register <name> [--schema <json>]
@@ -434,17 +434,17 @@ forge service register <name> [--schema <json>]
 | Option | Meaning |
 |--------|---------|
 | `<name>` | service name to register (e.g. `slack`) |
-| `--schema` | handler schema, JSON object (advertised via `forge service list`) |
+| `--schema` | call schema, JSON object (advertised via `forge service list`) |
 
 The bearer token (`FORGE_ACCESS_TOKEN` / `--token`) is read once at startup.
-The daemon binds the handler name to the token's principal: a `service:<name>`
+The daemon binds the service name to the token's principal: a `service:<name>`
 token may only register/ack as that service (a mismatching `<name>` fails
 loud), a `cli:*` workflow subprocess is rejected outright, and operator
 principals (`system:*`, `admin:*`) may register any name.
 
 | Stream | Content |
 |--------|---------|
-| stdout | one JSON line per incoming `handler.message` frame |
+| stdout | one JSON line per incoming `service.message` frame |
 | stdin | one JSON line per ack: `{"message_id":"...","result":{...}}` or `{"message_id":"...","error":{...}}` |
 
 The daemon dropping the connection is invisible to the parent — forge
@@ -454,15 +454,15 @@ exits **6** so the parent can respawn it with a freshly issued token.
 
 #### `forge service send`
 
-Hand a JSON payload to a registered handler. RPC: `handler.send`. To run a
-workflow use `forge workflow dispatch` — `send` is for external handlers only.
+Hand a JSON payload to a registered service. RPC: `service.send`. To run a
+workflow use `forge workflow dispatch`: `send` is for external services only.
 
 ```
 forge service send <name> --payload <json> [--async] [--json]
 ```
 
 `--async` returns as soon as the work is dispatched (`{message_id,
-status:"dispatched"}`) instead of blocking for the handler's result. A `wait`
+status:"dispatched"}`) instead of blocking for the service's result. A `wait`
 key in the payload is rejected — async-ness is a call-level flag, not payload.
 
 #### Managed-service control
@@ -542,7 +542,7 @@ Clients speak **line-delimited JSON-RPC over a Unix domain socket**
 {"id": "<client-id>", "error": {"type": "<ErrorType>", "message": "<text>"}}
 ```
 
-**Streaming methods** (`handler.register`, `workflow.dispatch_stream`)
+**Streaming methods** (`service.register`, `workflow.dispatch_stream`)
 keep the connection open and emit multiple lines: first an ack envelope, then a
 stream of frames.
 
@@ -583,10 +583,10 @@ attenuation from the presenter's principal — §5.
 | `policy.check` | token | no | `policy check` |
 | `token.issue` | token | no | `token issue` |
 | `daemon.status` | none | no | `status` |
-| `handler.send` | token | no | `service send` |
-| `handler.list` | token | no | `service list` / `service describe` |
-| `handler.register` | token | **yes** | `service register` |
-| `handler.ack` | token | no | (internal to `service register`) |
+| `service.send` | token | no | `service send` |
+| `service.list` | token | no | `service list` / `service describe` |
+| `service.register` | token | **yes** | `service register` |
+| `service.ack` | token | no | (internal to `service register`) |
 | `service.run` | token | no | `service run` |
 | `service.shutdown` | token | no | `service shutdown` |
 | `service.restart` | token | no | `service restart` |
@@ -964,47 +964,47 @@ Requires a presented token and mints under attenuation — only `system:admin` /
 `admin:*` presenters may delegate (§5). Issuable principals: `system:runner`,
 `system:admin`, `admin:*`.
 
-### `handler.send`
+### `service.send`
 
-Send a payload to a registered external handler.
+Send a payload to a registered external service.
 
 **params** `{"token","service","payload","async":bool?}`.
 
-**result** — `async=false`: the handler's ack result (handler-defined).
+**result**: `async=false` gives the service's ack result (service-defined).
 `async=true`: `{"service","message_id","status":"dispatched"}`.
 
-### `handler.list`
+### `service.list`
 
-**params** `{"token"}`. **result** `{"services":[{"service","schema"?}]}` —
-registered external handlers only, sorted by name; `schema` is present only
-when the handler advertised one.
+**params** `{"token"}`. **result** `{"services":[{"service","schema"?}]}`:
+registered external services only, sorted by name; `schema` is present only
+when the service advertised one.
 
-### `handler.register` (streaming)
+### `service.register` (streaming)
 
-Register an external service handler on a long-lived connection.
+Register an external service on a long-lived connection.
 
-**params** `{"token","service","schema":object?}`. The handler name is bound
+**params** `{"token","service","schema":object?}`. The service name is bound
 to the verified principal: a `service:<name>` token may only register as that
 service (mismatch fails loud), `cli:*` is rejected (a workflow subprocess
-cannot register a handler), operator principals may register any name.
+cannot register a service), operator principals may register any name.
 
 **flow**
 
 ```
-client → daemon : {"method":"handler.register","params":{...}}
+client → daemon : {"method":"service.register","params":{...}}
 daemon → client : {"id":<req.id>,"result":{"registered":true,"service":"..."}}   ← ack
-daemon → client : {"kind":"handler.message","service","message_id",
+daemon → client : {"kind":"service.message","service","message_id",
                    "envelope":{...},"payload":{...}}                            ← repeats
-client → daemon : {"method":"handler.ack","params":{...}}                       ← same connection
+client → daemon : {"method":"service.ack","params":{...}}                       ← same connection
 ```
 
 The `envelope` carries forge's server-side coordinates:
 `{run_id, origin, root_id?, id?, correlator?}`. The `payload` is
 caller-sent and opaque to forge. Closing the connection unregisters the service.
 
-### `handler.ack`
+### `service.ack`
 
-Acknowledge a processed `handler.message`.
+Acknowledge a processed `service.message`.
 
 **params** `{"token","service","message_id","result":object?}` — or `"error"`
 instead of `"result"`. **result** `{"ok":true}`. Same principal↔service
@@ -1024,8 +1024,8 @@ Start / stop / restart a managed service (a `[service.<name>]` entry in
 
 **params** `{"token"}` (any authenticated token). **result**
 `{"services":[{...status record...,"registered":bool}]}` — one row per
-managed service; `registered` is whether a live handler of that name is
-currently registered on the handler bus.
+managed service; `registered` is whether a live service of that name is
+currently registered on the service bus.
 
 ### `service.reload`
 
@@ -1100,7 +1100,7 @@ internally at workflow-subprocess spawn, never over RPC.
 | Principal | Origin |
 |-----------|--------|
 | `cli:<workflow>` | workflow subprocess (daemon mints at spawn) |
-| `service:<name>` | managed service subprocess (supervisor mints at spawn; never issuable over RPC). Bound to its own name on named service surfaces (handler register/ack, service.run/shutdown/restart) and rejected on global service control (service.reload) |
+| `service:<name>` | managed service subprocess (supervisor mints at spawn; never issuable over RPC). Bound to its own name on named service surfaces (service.register/ack/run/shutdown/restart) and rejected on global service control (service.reload) |
 | `system:rpc` | unauthenticated external RPC |
 | `system:runner` | slack / runner pipeline |
 | `system:admin` | admin route (manual triggers) |
@@ -1164,7 +1164,7 @@ The error envelope is `{"type": "<ErrorType>", "message": "<text>"}` and the fie
 | `AgentValidationError` | an `invoke`'s agent cannot be built: its model, tools or `permission_mode`, or a combination its provider cannot run — fix the workflow |
 | `AgentSessionMissing` | an `agent` step ran outside an `invoke`, where no agent session is open — fix the workflow |
 | `ResourceError` | a resource cannot be given: no `resource_directory`, a path outside it or hidden, a missing or unreadable file |
-| `HandlerFailed` | the service handling a `handler.send` answered with an error; the message is the handler's |
+| `ServiceFailed` | the service handling a `service.send` answered with an error; the message is the service's |
 | `TokenRejected` | token failed verification — re-issue and retry once |
 | `UnknownMethod` | the daemon does not know the method name |
 | `PolicyDenied` | the principal may not dispatch/control that workflow (policy/*.yaml) — retry is pointless |
