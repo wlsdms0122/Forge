@@ -454,6 +454,41 @@ struct EffectActionTests {
         #expect(await harness.recorder.sessions.first?.model == "claude:opus")
     }
 
+    @Test("invoke's arguments written by name in another order reach the session in the verb's order, and those left out are its defaults or null")
+    func invokeSettlesItsArgumentsByName() async throws {
+        // Given
+        let harness = Harness()
+        let spec = try harness.frontend.workflow("""
+        returns: String
+        failing: anything
+        result:
+          call:
+            procedure: invoke
+            arguments:
+              body:
+                closure:
+                  returns: String
+                  result: { agent: hi }
+              permission_mode: safe
+              model: claude:opus
+        """)
+        let sut = try harness.executor(agentReply: "sure!")
+
+        // When
+        let returned = try await sut.run(spec)
+
+        // Then
+        let session = try #require(await harness.recorder.sessions.first)
+
+        #expect(returned == .string("sure!"))
+        #expect(session.model == "claude:opus")
+        #expect(session.permissionMode == "safe")
+        #expect(session.allowed == .null)
+        #expect(session.cwd == nil)
+        #expect(session.envExtra == [:])
+        #expect(session.shareSession == false)
+    }
+
     @Test("a turn the backend ends nonzero fails with nonzero_exit, as agent declares, and a catch around agent takes it")
     func agentFailureIsCaught() async throws {
         // Given
