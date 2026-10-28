@@ -6,7 +6,9 @@
 # Usage, from the repository root:
 #   swift build -c release --package-path package
 #   test/run package/.build/release/ForgeCLI
+import json
 import os
+import select
 import shutil
 import signal
 import subprocess
@@ -216,6 +218,46 @@ def main():
         # Managed service — the supervisor spawned the heartbeat stub.
         check("heartbeat=running" in harness.forge("status"),
               "the supervisor runs the heartbeat service")
+
+        # External service: a registered co-process answers what is sent to it.
+        echo = subprocess.Popen(
+            [harness.executable, "service", "register", "e2e-echo"],
+            env=harness.environment(),
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            text=True,
+        )
+        try:
+            services = ""
+            for _ in range(50):
+                services = harness.forge("service", "list")
+                if "e2e-echo" in services:
+                    break
+                time.sleep(0.1)
+            check("e2e-echo" in services, "service list carries a registered service", services)
+            sent = subprocess.Popen(
+                [harness.executable, "service", "send", "e2e-echo", "--payload", '{"text":"hi"}'],
+                env=harness.environment(),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+            readable, _, _ = select.select([echo.stdout], [], [], 10)
+            frame = json.loads(echo.stdout.readline()) if readable else {}
+            if frame:
+                echo.stdin.write(json.dumps({
+                    "message_id": frame["message_id"],
+                    "result": {"echo": frame["payload"]["text"]},
+                }) + "\n")
+                echo.stdin.flush()
+            answer = sent.communicate(timeout=10)[0]
+            check(frame.get("kind") == "service.message", "a registered service receives a message",
+                  json.dumps(frame))
+            check("echo" in answer and "hi" in answer, "service send answers the service's ack",
+                  answer)
+        finally:
+            echo.stdin.close()
+            echo.wait(timeout=10)
 
         # Health and quiescence.
         health = harness.forge("workflow", "health")
