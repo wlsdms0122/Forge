@@ -169,13 +169,9 @@ actor WorkflowCatalog {
         let spent: Data
 
         // The caller wrote an object and no text, so a refusal names its
-        // place in the document and not a line of the text written here. The
-        // text is written on the spending thread too: it nests as deep as the
-        // object.
+        // place in the document and not a line of the text written here.
         do {
-            spent = try SpendingThread().run {
-                try frontend.document(from: try JSONEncoder().encode(written)).document
-            }
+            spent = try frontend.document(from: try JSONEncoder().encode(written)).document
         } catch let refusal as AuthoringError {
             throw WorkflowValidationError(refusal.message)
         }
@@ -375,15 +371,14 @@ actor WorkflowCatalog {
                 var origin: DocumentOrigin?
 
                 do {
-                    let frontend = leaning.frontend
-                    let spent = try SpendingThread().run { try frontend.document(from: text) }
+                    let spent = try leaning.frontend.document(from: text)
                     let document = try BinaryEncoding().value(from: spent.document)
                     let loading = DocumentOrigin(identity: try Identity.of(document), origin: spent.origin)
 
                     origin = loading
 
                     let module = try Loader().load(document)
-                    let documentation = try SpendingThread().run { try frontend.documentation(from: text) }
+                    let documentation = try leaning.frontend.documentation(from: text)
 
                     if let breach = try convention(module, named: base) {
                         ledger.record(

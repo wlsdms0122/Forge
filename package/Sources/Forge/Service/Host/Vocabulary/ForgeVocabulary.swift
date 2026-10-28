@@ -36,16 +36,13 @@ struct ForgeVocabulary: Sendable {
 
     // MARK: - Initializer
     init() throws {
-        let spending = SpendingThread()
-        let library = try BinaryEncoding().value(
-            from: try spending.run { try YAMLFrontend().document(from: Library.text).document }
-        )
+        let library = try BinaryEncoding().value(from: try YAMLFrontend().document(from: Library.text).document)
         let loaded = try Loader().load(library)
 
         self.library = library
         self.linkables = [loaded, try Self.natives()] + Module.standard
         self.verbs = Set(loaded.procedures.keys)
-        self.frontend = try spending.run { try YAMLFrontend().leaning(on: [.text(Library.text)]) }
+        self.frontend = try YAMLFrontend().leaning(on: [.text(Library.text)])
     }
 
     // MARK: - Public
