@@ -483,7 +483,7 @@ struct EffectActionTests {
         #expect(returned == .string("sure!"))
         #expect(session.model == "claude:opus")
         #expect(session.permissionMode == "safe")
-        #expect(session.allowed == .null)
+        #expect(session.allowed == nil)
         #expect(session.cwd == nil)
         #expect(session.envExtra == [:])
         #expect(session.shareSession == false)

@@ -86,25 +86,10 @@ struct LiveAgent: AgentServing {
 
         return try Agent(
             model: settings.model ?? "",
-            allowed: try Self.tools(from: settings.allowed),
+            allowed: try settings.allowed?.map { item in try AgentToolReference.decode(ValueBridge.json(item)) },
             workingDirectory: settings.cwd,
             environment: environment,
             permissionMode: permissionMode
         )
-    }
-
-    private static func tools(from allowed: Warp.Value?) throws -> [AgentTool]? {
-        guard let allowed else { return nil }
-
-        switch allowed {
-        case .null:
-            return nil
-
-        case .array(let items):
-            return try items.map { item in try AgentToolReference.decode(ValueBridge.json(item)) }
-
-        case let other:
-            throw AgentValidationError("invoke: tool list must resolve to an array, got \(other)")
-        }
     }
 }
