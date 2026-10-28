@@ -77,7 +77,7 @@ struct InvokeAction: ForgeAction {
 
         let settings = AgentSessionSettings(
             model: invocation.string(.model),
-            allowed: invocation[.allowed],
+            allowed: Self.items(invocation[.allowed]),
             cwd: try Self.nonEmpty(invocation.string(.cwd), field: "cwd"),
             permissionMode: try Self.nonEmpty(invocation.string(.permissionMode), field: "permission_mode"),
             envExtra: try ValueBridge.strings(invocation[.envExtra]),
@@ -92,6 +92,13 @@ struct InvokeAction: ForgeAction {
     }
 
     // MARK: - Private
+    // null means "unset" and stays nil, and the signature holds the rest to a list.
+    private static func items(_ value: Warp.Value) -> [Warp.Value]? {
+        guard case let .array(items) = value else { return nil }
+
+        return items
+    }
+
     // null means "unset" and stays nil; an empty string is an author mistake, not
     // a quiet fallback into the daemon's own working directory.
     private static func nonEmpty(_ string: String?, field: String) throws -> String? {

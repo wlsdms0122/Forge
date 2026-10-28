@@ -11,7 +11,7 @@ import Warp
 struct AgentSessionSettings: Sendable {
     // MARK: - Property
     let model: String?
-    let allowed: Warp.Value?
+    let allowed: [Warp.Value]?
     let cwd: String?
     let permissionMode: String?
     let envExtra: [String: String]
@@ -20,7 +20,7 @@ struct AgentSessionSettings: Sendable {
     // MARK: - Initializer
     init(
         model: String? = nil,
-        allowed: Warp.Value? = nil,
+        allowed: [Warp.Value]? = nil,
         cwd: String? = nil,
         permissionMode: String? = nil,
         envExtra: [String: String] = [:],
