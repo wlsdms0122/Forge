@@ -1,5 +1,5 @@
 //
-//  HandlerListMethod.swift
+//  ServiceListMethod.swift
 //  Forge
 //
 //  Created by JSilver on 8/9/26.
@@ -7,18 +7,18 @@
 
 import Foundation
 
-struct HandlerListMethod: Sendable {
+struct ServiceListMethod: Sendable {
     // MARK: - Property
-    let handlerBus: WorkflowHandlerBus
+    let serviceBus: ServiceBus
 
     // MARK: - Initializer
-    init(handlerBus: WorkflowHandlerBus) {
-        self.handlerBus = handlerBus
+    init(serviceBus: ServiceBus) {
+        self.serviceBus = serviceBus
     }
 
     // MARK: - Public
     func handle(_ request: RPCRequest) async throws -> JSONValue {
-        let entries = await handlerBus.listing()
+        let entries = await serviceBus.listing()
         let services: [JSONValue] = entries.map { name, schema in
             var row: [String: JSONValue] = ["service": .string(name)]
 

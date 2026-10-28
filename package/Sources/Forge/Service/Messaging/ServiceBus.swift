@@ -1,5 +1,5 @@
 //
-//  WorkflowHandlerBus.swift
+//  ServiceBus.swift
 //  Forge
 //
 //  Created by JSilver on 8/8/26.
@@ -7,7 +7,7 @@
 
 import Foundation
 
-actor WorkflowHandlerBus {
+actor ServiceBus {
     // MARK: - Property
     private var handles: [String: ServiceHandle] = [:]
     

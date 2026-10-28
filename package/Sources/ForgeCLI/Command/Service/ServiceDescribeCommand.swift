@@ -13,9 +13,9 @@ struct ServiceDescribeCommand: ParsableCommand {
     // MARK: - Property
     static let configuration = CommandConfiguration(
         commandName: "describe",
-        abstract: "Show a service handler's call schema.",
+        abstract: "Show a registered service's call schema.",
         discussion: """
-            Prints the call contract of one registered service handler — its
+            Prints the call contract of one registered service: its
             description and the actions/ops it accepts, with params and
             returns. This is the schema to consult before `forge service
             send <name>`.
@@ -24,7 +24,7 @@ struct ServiceDescribeCommand: ParsableCommand {
     
     @OptionGroup var global: GlobalOptions
     
-    @Argument(help: "Service handler name.")
+    @Argument(help: "Service name.")
     var name: String
     
     @Flag(help: "Emit JSON.")
@@ -34,7 +34,7 @@ struct ServiceDescribeCommand: ParsableCommand {
     // MARK: - Public
     func run() throws {
         let client = Client(global, context: "service describe")
-        let result = client.call("handler.list")
+        let result = client.call("service.list")
         
         let services = result["services"]?.arrayValue ?? []
         

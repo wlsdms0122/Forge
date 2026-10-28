@@ -79,7 +79,7 @@ struct DaemonStatusMethodTests {
                 stateFile: try temporary.file("enabled-\(UUID().uuidString.prefix(6)).json")),
             jobStore: JobStore(directory: nil),
             supervisor: ServiceSupervisor(services: [], runtimeDirectory: home, tokenAuthority: authority),
-            handlerBus: WorkflowHandlerBus())
+            serviceBus: ServiceBus())
 
         // When
         try "not [valid toml".write(to: configURL, atomically: true, encoding: .utf8)
@@ -106,7 +106,7 @@ struct DaemonStatusMethodTests {
             scheduleStore: ScheduleStore(configDir: nil, runtimeDirectory: nil, stateFile: FileManager.default.temporaryDirectory.appendingPathComponent("forge-sched-enabled-\(UUID().uuidString.prefix(6)).json")),
             jobStore: JobStore(directory: nil),
             supervisor: ServiceSupervisor(services: [], runtimeDirectory: home, tokenAuthority: authority),
-            handlerBus: WorkflowHandlerBus())
+            serviceBus: ServiceBus())
         
         return (method, authority)
     }

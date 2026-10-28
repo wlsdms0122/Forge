@@ -1,5 +1,5 @@
 //
-//  WorkflowHandlerBusTests.swift
+//  ServiceBusTests.swift
 //  ForgeTests
 //
 //  Created by JSilver on 8/8/26.
@@ -9,8 +9,8 @@ import Foundation
 import Testing
 @testable import Forge
 
-@Suite("WorkflowHandlerBus Tests")
-struct WorkflowHandlerBusTests {
+@Suite("ServiceBus Tests")
+struct ServiceBusTests {
     private final class AckDuringEmitSink: EventSink, @unchecked Sendable {
         var handle: ServiceHandle?
         func emit(_ frame: JSONValue) async {
@@ -30,10 +30,10 @@ struct WorkflowHandlerBusTests {
     func fastAckDuringEmitNotDropped() async {
         // Given
         let sink = AckDuringEmitSink()
-        let bus = WorkflowHandlerBus()
+        let bus = ServiceBus()
         let handle = await bus.register(service: "svc", schema: nil, sink: sink)
         sink.handle = handle
-        let env = HandlerFrameEnvelope(runID: "w", origin: .manual,
+        let env = MessageEnvelope(runID: "w", origin: .manual,
             rootID: nil, nodeID: nil, correlator: nil)
         let result: JSONValue? = await withTaskGroup(of: JSONValue?.self) { group in
             group.addTask { try? await handle.send(envelope: env, payload: [:]) }
@@ -52,7 +52,7 @@ struct WorkflowHandlerBusTests {
     @Test("A late unregister does not evict the new owner's handle")
     func lateUnregisterDoesNotEvictTakeoverHandle() async {
         // Given
-        let bus = WorkflowHandlerBus()
+        let bus = ServiceBus()
 
         // When
         let handleA = await bus.register(service: "svc", schema: nil, sink: NoopSink())
@@ -68,7 +68,7 @@ struct WorkflowHandlerBusTests {
     @Test("A registration is removed by its own unregister")
     func ownUnregisterRemoves() async {
         // Given
-        let bus = WorkflowHandlerBus()
+        let bus = ServiceBus()
 
         // When
         let handle = await bus.register(service: "svc", schema: nil, sink: NoopSink())

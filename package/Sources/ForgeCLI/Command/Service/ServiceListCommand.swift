@@ -13,7 +13,7 @@ struct ServiceListCommand: ParsableCommand {
     // MARK: - Property
     static let configuration = CommandConfiguration(
         commandName: "list",
-        abstract: "List registered service handlers."
+        abstract: "List registered services."
     )
     
     @OptionGroup var global: GlobalOptions
@@ -25,7 +25,7 @@ struct ServiceListCommand: ParsableCommand {
     // MARK: - Public
     func run() throws {
         let client = Client(global, context: "service list")
-        let result = client.call("handler.list")
+        let result = client.call("service.list")
         
         let services = result["services"]?.arrayValue ?? []
         

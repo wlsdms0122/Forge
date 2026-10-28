@@ -17,7 +17,7 @@ struct ServiceStatusCommand: ParsableCommand {
         discussion: """
             One line per `[service.<name>]` entry: process state
             (running / backoff / failed / stopped), pid, crash count, and
-            `registered` — whether the service's handler is currently
+            `registered`: whether the service is currently
             registered on the daemon (the actual readiness signal).
             """
     )

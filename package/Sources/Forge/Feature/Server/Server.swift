@@ -23,7 +23,7 @@ package actor Server {
     let workflowPool: WorkflowPool
     let workflowRunner: WorkflowRunner
     let workflowScheduler: WorkflowScheduler
-    let workflowHandlerBus: WorkflowHandlerBus
+    let serviceBus: ServiceBus
     let workRegistry: WorkRegistry
     let serviceSupervisor: ServiceSupervisor
     let tokenAuthority: TokenAuthority
@@ -100,7 +100,7 @@ package actor Server {
         let resourceStore = ResourceStore(directory: config.resourceDirectory)
         let policyStoreLocal = PolicyStore(directory: config.policyDirectory)
         let bus = WorkflowEventBus()
-        let handlerBus = WorkflowHandlerBus()
+        let serviceBus = ServiceBus()
         let workRegistryLocal = WorkRegistry()
         let tokenAuthorityLocal = TokenAuthority()
         self.tokenAuthority = tokenAuthorityLocal
@@ -143,7 +143,7 @@ package actor Server {
         self.workflowPool = pool
         self.workflowRunner = runnerLocal
         self.workflowScheduler = scheduler
-        self.workflowHandlerBus = handlerBus
+        self.serviceBus = serviceBus
         self.workRegistry = workRegistryLocal
         
         let supervisorLocal = ServiceSupervisor(
@@ -163,7 +163,7 @@ package actor Server {
             scheduleStore: scheduleStore,
             jobStore: jobStoreLocal,
             supervisor: supervisorLocal,
-            handlerBus: handlerBus
+            serviceBus: serviceBus
         )
         let workflow = WorkflowNamespace(
             runner: runnerLocal,
@@ -184,13 +184,10 @@ package actor Server {
         let policy = PolicyNamespace(store: policyStoreLocal)
         let token = TokenNamespace(authority: tokenAuthorityLocal)
         let daemon = DaemonNamespace(status: daemonStatusMethod)
-        let handler = HandlerNamespace(
-            handlerBus: handlerBus,
-            workRegistry: workRegistryLocal
-        )
         let service = ServiceNamespace(
             supervisor: supervisorLocal,
-            handlerBus: handlerBus,
+            serviceBus: serviceBus,
+            workRegistry: workRegistryLocal,
             configPath: configPath,
             instanceHome: instanceHome,
             configSnapshot: configSnapshot
@@ -203,7 +200,6 @@ package actor Server {
                 + policy.methods
                 + token.methods
                 + daemon.methods
-                + handler.methods
                 + service.methods,
             authority: tokenAuthorityLocal
         )

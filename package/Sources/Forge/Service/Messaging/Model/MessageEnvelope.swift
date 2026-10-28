@@ -1,5 +1,5 @@
 //
-//  HandlerFrameEnvelope.swift
+//  MessageEnvelope.swift
 //  Forge
 //
 //  Created by JSilver on 8/9/26.
@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct HandlerFrameEnvelope: Sendable {
+struct MessageEnvelope: Sendable {
     // MARK: - Property
     let runID: String
     let origin: DispatchOrigin

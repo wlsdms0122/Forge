@@ -1,5 +1,5 @@
 //
-//  HandlerRegisterMethod.swift
+//  ServiceRegisterMethod.swift
 //  Forge
 //
 //  Created by JSilver on 8/9/26.
@@ -7,13 +7,13 @@
 
 import Foundation
 
-struct HandlerRegisterMethod: Sendable {
+struct ServiceRegisterMethod: Sendable {
     // MARK: - Property
-    let handlerBus: WorkflowHandlerBus
+    let serviceBus: ServiceBus
 
     // MARK: - Initializer
-    init(handlerBus: WorkflowHandlerBus) {
-        self.handlerBus = handlerBus
+    init(serviceBus: ServiceBus) {
+        self.serviceBus = serviceBus
     }
 
     // MARK: - Public
@@ -23,17 +23,17 @@ struct HandlerRegisterMethod: Sendable {
         sink: any EventSink
     ) async throws {
         guard let service = request.params["service"]?.stringValue, !service.isEmpty else {
-            throw ProtocolError("handler.register: 'service' (string) required")
+            throw ProtocolError("service.register: 'service' (string) required")
         }
 
         try ServiceAuthorization.requireActingAs(
             service,
             claims: claims,
-            method: "handler.register"
+            method: "service.register"
         )
 
         let schema = request.params["schema"]?.objectValue.map(JSONValue.object)
-        let handle = await handlerBus.register(service: service, schema: schema, sink: sink)
+        let handle = await serviceBus.register(service: service, schema: schema, sink: sink)
 
         await sink.emit([
             "id":     .string(request.id),
@@ -45,7 +45,7 @@ struct HandlerRegisterMethod: Sendable {
         } catch {
         }
 
-        await handlerBus.unregister(service: service, handle: handle)
+        await serviceBus.unregister(service: service, handle: handle)
     }
 
     // MARK: - Private

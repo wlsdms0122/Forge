@@ -10,13 +10,13 @@ import Foundation
 struct ServiceStatusMethod: Sendable {
     // MARK: - Property
     let supervisor: ServiceSupervisor
-    let handlerBus: WorkflowHandlerBus
+    let serviceBus: ServiceBus
 
     // MARK: - Initializer
     // MARK: - Public
     func handle(_ request: RPCRequest) async throws -> JSONValue {
         let records = await supervisor.statuses()
-        let registered = Set(await handlerBus.listing().map(\.0))
+        let registered = Set(await serviceBus.listing().map(\.0))
         let services: [JSONValue] = records.map { record in
             var object = record.fields
             object["registered"] = .bool(registered.contains(record.name))
