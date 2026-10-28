@@ -57,6 +57,83 @@ struct DocumentOriginTests {
         #expect(described == "5:5: returns String, and its declaration promises Int", "\(described)")
     }
 
+    @Test("a load refusal inside a closure handed to a verb reads at its line")
+    func aLoadRefusalInAClosureReadsAtItsLine() throws {
+        // Given
+        let (document, sut) = try Self.spent(workflowFile("""
+        returns: String
+        failing: anything
+        result:
+          call:
+            procedure: invoke
+            arguments:
+              body:
+                closure:
+                  returns: String
+                  body:
+                    - var: kept
+                      value: null
+                  result: hi
+        """, named: "loaded"))
+
+        // When
+        let error = #expect(throws: (any Error).self) {
+            _ = try Loader().load(document)
+        }
+
+        // Then
+        let described = sut.described(try #require(error))
+
+        #expect(described.hasPrefix("15:19: a document says each thing one way"), "\(described)")
+    }
+
+    @Test("a build refusal of an argument written by name reads at the line it is written at, not at its place in the verb's order")
+    func aBuildRefusalOfANamedArgumentReadsAtItsLine() async throws {
+        // Given
+        let (document, sut) = try Self.spent(workflowFile("""
+        returns: String
+        failing: [nonzero_exit, timeout]
+        result:
+          call:
+            procedure: shell
+            arguments:
+              timeout: soon
+              command: [ls]
+        """, named: "built"))
+        let module = try Loader().load(document)
+
+        // When
+        let error = await #expect(throws: (any Error).self) {
+            _ = try await WorkflowBuilder.shipped.get().compiled([module])
+        }
+
+        // Then
+        let described = sut.described(try #require(error))
+
+        #expect(described == "10:11: sending 'Forge.shell' with timeout, which holds String where Double? is declared", "\(described)")
+    }
+
+    @Test("a name nothing declares is refused at the line it is read at")
+    func anUndeclaredNameReadsAtItsLine() throws {
+        // Given
+        let (document, sut) = try Self.spent(workflowFile("""
+        returns: String
+        body:
+          - value: { ref: missing }
+        result: hi
+        """, named: "loaded"))
+
+        // When
+        let error = #expect(throws: (any Error).self) {
+            _ = try Loader().load(document)
+        }
+
+        // Then
+        let described = sut.described(try #require(error))
+
+        #expect(described == "6:9: reads 'missing', which is not visible here. Declare it earlier or check the spelling", "\(described)")
+    }
+
     @Test("a place past what the text wrote reads at the nearest spot it wrote, and says so")
     func aPlacePastTheTextIsTheNearest() throws {
         // Given
