@@ -69,16 +69,14 @@ struct WorkflowBuilder: Sendable {
             do {
                 let dependencies = standing.map { index in Dependency.text(texts[index]) }
 
-                return (try SpendingThread().run { try frontend.leaning(on: dependencies) }, refusals)
+                return (try frontend.leaning(on: dependencies), refusals)
             } catch let refusal as AuthoringError {
                 guard let position = refusal.text else { throw refusal }
 
                 let index = standing.remove(at: position)
 
                 do {
-                    let text = texts[index]
-
-                    _ = try SpendingThread().run { try frontend.document(from: text) }
+                    _ = try frontend.document(from: texts[index])
                     refusals[index] = refusal
                 } catch {
                     refusals[index] = error

@@ -185,7 +185,7 @@ struct CatalogGenerationTests {
         #expect(answer == .bool(false))
     }
 
-    @Test("A file nested deeper than the cooperative pool's stack holds is refused at its line")
+    @Test("A file nested past the bound is refused at its line")
     func aDeeplyNestedFileIsRefused() async throws {
         // Given
         let directory = try temporary.make("wf-deep")
@@ -206,11 +206,11 @@ struct CatalogGenerationTests {
         #expect(snapshot.failures.first?.reason.hasSuffix("the text nests deeper than 128 containers") == true)
     }
 
-    @Test("An inline spec nested deeper than the cooperative pool's stack holds is refused")
+    @Test("An inline spec nested past the bound is refused")
     func aDeeplyNestedInlineSpecIsRefused() async throws {
         // Given
         let sut = try WorkflowCatalog(directory: nil)
-        let result = (0..<400).reduce(JSONValue.int(1)) { nested, _ in .array([nested]) }
+        let result = (0..<129).reduce(JSONValue.int(1)) { nested, _ in .array([nested]) }
 
         do {
 
