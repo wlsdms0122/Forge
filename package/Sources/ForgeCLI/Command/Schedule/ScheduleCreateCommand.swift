@@ -46,8 +46,11 @@ struct ScheduleCreateCommand: ParsableCommand {
 
             EXAMPLE — inline spec, one-shot in 30 minutes:
                 forge schedule create --after 30m --spec '{
-                  "steps": [{"id":"send","shell":{"command":["forge","service","send","slack",
-                    "--payload","{\\"kind\\":\\"slack.thread\\",\\"target\\":\\"<permalink>\\",\\"text\\":\\"<message>\\"}"]}}]
+                  "failing": ["nonzero_exit", "timeout"],
+                  "body": [{"value": {"call": {"procedure": "shell", "arguments": {"command": [
+                    "forge", "service", "send", "slack", "--payload",
+                    "{\\"kind\\":\\"slack.thread\\",\\"target\\":\\"<permalink>\\",\\"text\\":\\"<message>\\"}"
+                  ]}}}}]
                 }'
             """
     )
