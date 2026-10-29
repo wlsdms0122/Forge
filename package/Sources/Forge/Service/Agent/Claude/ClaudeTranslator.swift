@@ -48,7 +48,7 @@ struct ClaudeTranslator: AgentTranslator {
     }
     
     func translate(_ agent: Agent) throws -> AgentTranslation<ClaudeAgentConfiguration> {
-        let model = agent.model.specifiedModel
+        let model = agent.model?.specifiedModel
         let allowedTools = agent.allowed
         
         return AgentTranslation(

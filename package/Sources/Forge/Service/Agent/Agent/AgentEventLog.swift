@@ -41,7 +41,7 @@ enum AgentEventLog {
     
     static func tool(
         invocationID: String,
-        model: String,
+        model: String?,
         turn: Int,
         sequence: Int,
         name: String?,
@@ -55,7 +55,7 @@ enum AgentEventLog {
     ) async {
         var payload: [String: Any] = [
             "id": invocationID,
-            "model": model,
+            "model": model as Any? ?? NSNull(),
             "turn": turn,
             "seq": sequence,
             "name": name as Any? ?? NSNull(),
@@ -87,7 +87,7 @@ enum AgentEventLog {
     
     static func toolDenied(
         invocationID: String,
-        model: String,
+        model: String?,
         turn: Int,
         sequence: Int,
         name: String?,
@@ -98,7 +98,7 @@ enum AgentEventLog {
     ) async {
         var payload: [String: Any] = [
             "id": invocationID,
-            "model": model,
+            "model": model as Any? ?? NSNull(),
             "turn": turn,
             "seq": sequence,
             "name": name as Any? ?? NSNull(),
@@ -125,7 +125,7 @@ enum AgentEventLog {
     
     static func turn(
         invocationID: String,
-        model: String,
+        model: String?,
         turn: Int,
         output: String,
         toolCalls: Int,
@@ -135,7 +135,7 @@ enum AgentEventLog {
     ) async {
         var payload: [String: Any] = [
             "id": invocationID,
-            "model": model,
+            "model": model as Any? ?? NSNull(),
             "turn": turn,
             "out_preview": String(output.prefix(1000)),
             "tool_calls": toolCalls,

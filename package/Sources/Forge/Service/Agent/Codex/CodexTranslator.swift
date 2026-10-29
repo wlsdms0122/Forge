@@ -72,7 +72,7 @@ struct CodexTranslator: AgentTranslator {
             "shell_environment_policy.include_only=[\(environmentList)]"
         ]
         
-        let model = agent.model.specifiedModel
+        let model = agent.model?.specifiedModel
         
         return AgentTranslation(
             CodexAgentConfiguration(

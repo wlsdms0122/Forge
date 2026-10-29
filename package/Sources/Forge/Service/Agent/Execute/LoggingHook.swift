@@ -26,7 +26,7 @@ struct LoggingHook: PreHook, PostHook, ErrorHook {
         let model = invocation.agent.model
         var payload: [String: Any] = [
             "id": invocation.id,
-            "model": model.displayName,
+            "model": model?.displayName as Any? ?? NSNull(),
             "model_resolution": Self.modelResolution(model),
             "user_len": invocation.prompt.count,
             "user_preview": String(invocation.prompt.prefix(Self.userPreviewLimit)),
@@ -52,7 +52,7 @@ struct LoggingHook: PreHook, PostHook, ErrorHook {
         
         var responsePayload: [String: Any] = [
             "id": invocation.id,
-            "model": model.displayName,
+            "model": model?.displayName as Any? ?? NSNull(),
             "model_resolution": Self.modelResolution(model),
             "duration_ms": response.durationMs,
             "stdout_len": response.stdoutLength,
@@ -73,7 +73,7 @@ struct LoggingHook: PreHook, PostHook, ErrorHook {
     
     func onError(_ invocation: AgentInvocation, _ error: any Error) async -> ErrorAction {
         let model = invocation.executionContext.modelReference ?? invocation.agent.model
-        let resolvedModel = model.displayName
+        let resolvedModel = model?.displayName ?? "default"
         let stage: String
         
         switch error {
@@ -99,7 +99,7 @@ struct LoggingHook: PreHook, PostHook, ErrorHook {
         
         var payload: [String: Any] = [
             "id": invocation.id,
-            "model": resolvedModel,
+            "model": model?.displayName as Any? ?? NSNull(),
             "model_resolution": Self.modelResolution(model),
             "stage": stage,
             "error_type": String(describing: type(of: error))
@@ -162,7 +162,7 @@ struct LoggingHook: PreHook, PostHook, ErrorHook {
         LogContext.metadata?.dict ?? [:]
     }
     
-    private static func modelResolution(_ model: ModelReference) -> String {
-        model.isBackendDefault ? "backend_default" : "specific"
+    private static func modelResolution(_ model: ModelReference?) -> String {
+        (model?.isBackendDefault ?? true) ? "backend_default" : "specific"
     }
 }

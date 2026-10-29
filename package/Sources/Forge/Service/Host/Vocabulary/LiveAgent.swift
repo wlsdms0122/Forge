@@ -85,7 +85,7 @@ struct LiveAgent: AgentServing {
         ) ?? [:]
 
         return try Agent(
-            model: settings.model ?? "",
+            model: settings.model,
             allowed: try settings.allowed?.map { item in try AgentToolReference.decode(ValueBridge.json(item)) },
             workingDirectory: settings.cwd,
             environment: environment,

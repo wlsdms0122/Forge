@@ -16,10 +16,10 @@ struct WorkflowDescribeCommand: ParsableCommand {
         abstract: "Show a single workflow's calling contract — description, inputs, return type.",
         discussion: """
             Returns what dispatching a workflow needs without grep'ing the YAML
-            file: its inputs (the type, where an Optional type is one a caller
-            may leave out; the default the file writes; the hint) and its return
-            type. Counterpart to `service describe`. Plain output is
-            human-readable; pass --json to parse.
+            file: its inputs, each with the type (Optional where a caller may
+            leave it out) and the hint, and its return type. Counterpart to
+            `service describe`. Plain output is human-readable; pass --json to
+            parse.
             """
     )
     
@@ -61,13 +61,8 @@ struct WorkflowDescribeCommand: ParsableCommand {
             
             for key in inputs.keys.sorted() {
                 let spec = inputs[key]
-                var bits: [String] = []
-                
-                if let type = spec?["type"]?.stringValue { bits.append(type) }
-                
-                let header = bits.isEmpty
-                    ? key
-                    : "\(key) (\(bits.joined(separator: ", ")))"
+                let type = spec?["type"]?.stringValue ?? ""
+                let header = "\(key) (\(type))"
                 
                 if let hint = spec?["hint"]?.stringValue, !hint.isEmpty {
                     print("    \(header) — \(hint)")

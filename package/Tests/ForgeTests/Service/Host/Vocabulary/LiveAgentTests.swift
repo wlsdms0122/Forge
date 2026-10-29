@@ -29,7 +29,7 @@ struct LiveAgentTests {
 
         // Then
         #expect(reply == .string("echo:hello"))
-        #expect(recorder.invocations.elements.first?.agent.model.displayName == "claude:probe")
+        #expect(recorder.invocations.elements.first?.agent.model?.displayName == "claude:probe")
     }
 
     @Test("send without a session throws as an author error")
@@ -59,7 +59,7 @@ struct LiveAgentTests {
         }
 
         // Then
-        #expect(recorder.invocations.elements.first?.agent.model.displayName == "claude:outer")
+        #expect(recorder.invocations.elements.first?.agent.model?.displayName == "claude:outer")
     }
 
     @Test("share_session without an outer session opens a new one from the carried config")
@@ -77,7 +77,45 @@ struct LiveAgentTests {
 
         // Then
         #expect(reply == .string("echo:solo"))
-        #expect(recorder.invocations.elements.first?.agent.model.displayName == "claude:fallback")
+        #expect(recorder.invocations.elements.first?.agent.model?.displayName == "claude:fallback")
+    }
+
+    @Test("invoke without a model runs on the one registered backend")
+    func noModelRunsOnTheSoleBackend() async throws {
+        // Given
+        let recorder = AgentRecorder()
+        let sut = LiveAgent(executor: AgentExecutor(backend: recorder))
+        let settings = AgentSessionSettings()
+
+        // When
+        let reply = try await sut.withSession(settings) {
+            .string(try await sut.send(prompt: "hello"))
+        }
+
+        // Then
+        let invocation = try #require(recorder.invocations.elements.first)
+
+        #expect(reply == .string("echo:hello"))
+        #expect(invocation.agent.model == nil)
+    }
+
+    @Test("invoke without a model is refused with the registry's reason when more than one backend is registered")
+    func noModelIsRefusedAmongBackends() async throws {
+        // Given
+        let registry = BackendRegistry(["claude": StubBackend(), "codex": StubBackend()])
+        let sut = LiveAgent(executor: AgentExecutor(backends: registry))
+        let settings = AgentSessionSettings()
+        let reason = #expect(throws: BackendNotRegistered.self) {
+            try registry.resolve(provider: nil)
+        }
+
+        // When
+        let refusal = await #expect(throws: BackendNotRegistered.self) {
+            _ = try await sut.withSession(settings) { .null }
+        }
+
+        // Then
+        #expect(refusal?.message == (try #require(reason)).message)
     }
 
     @Test("an invalid permission_mode throws")
