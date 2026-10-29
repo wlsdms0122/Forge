@@ -8,13 +8,11 @@
 import Foundation
 
 enum JSONPath {
-    enum EvalError: ForgeError, CustomStringConvertible {
+    enum EvalError: ForgeError {
         case syntax(String)
         case notFound(String)
         
-        var message: String { description }
-        
-        var description: String {
+        var message: String {
             switch self {
             case .syntax(let detail):
                 return "JSONPath syntax: \(detail)"

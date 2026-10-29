@@ -43,7 +43,7 @@ struct ScheduleCreateTests {
         }
 
         // Then
-        #expect(error?.message == "schedule.create: malformed 'spec' — \(try #require(refusal).message)")
+        #expect(error?.message == "schedule.create: malformed 'spec': \(try #require(refusal).message)")
     }
 
     // MARK: - Public

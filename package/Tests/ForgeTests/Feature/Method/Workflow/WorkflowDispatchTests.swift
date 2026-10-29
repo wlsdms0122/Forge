@@ -150,7 +150,7 @@ struct WorkflowDispatchTests {
         }
 
         // Then
-        #expect(error?.message == "workflow.dispatch: malformed 'spec' — \(try #require(refusal).message)")
+        #expect(error?.message == "workflow.dispatch: malformed 'spec': \(try #require(refusal).message)")
     }
 
     @Test("An inline spec containing an invalid reference is rejected")

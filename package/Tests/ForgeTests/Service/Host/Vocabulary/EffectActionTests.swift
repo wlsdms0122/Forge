@@ -162,7 +162,7 @@ struct EffectActionTests {
         // MARK: - Public
         func read(_ relative: String) async throws -> String {
             guard let body = files[relative] else {
-                throw ExecutionError("no resource '\(relative)'")
+                throw ResourceError("no resource '\(relative)'")
             }
     
             return body
@@ -170,7 +170,7 @@ struct EffectActionTests {
     
         func locate(_ relative: String) async throws -> String {
             guard files[relative] != nil else {
-                throw ExecutionError("no resource '\(relative)'")
+                throw ResourceError("no resource '\(relative)'")
             }
     
             return "/resource-root/" + relative
@@ -810,7 +810,7 @@ struct EffectActionTests {
         }
 
         // When
-        await #expect(throws: ExecutionError.self) {
+        await #expect(throws: ResourceError.self) {
             try await sut.run(spec)
         }
 

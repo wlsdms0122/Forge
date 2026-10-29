@@ -233,7 +233,7 @@ struct ScheduleCreateMethod: Sendable {
                 // something that will not load when it fires.
                 _ = try await catalog.inline(specValue)
             } catch {
-                throw ProtocolError("\(context): malformed 'spec' — \(ErrorObject(error).message)")
+                throw ProtocolError("\(context): malformed 'spec': \(error)")
             }
 
             return (WorkflowCatalog.inlineSigil, specValue)

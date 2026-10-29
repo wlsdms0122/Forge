@@ -174,7 +174,7 @@ struct WorkflowDispatchMethod: Sendable {
             do {
                 return try await catalog.inline(.object(spec))
             } catch {
-                throw ProtocolError("workflow.dispatch: malformed 'spec' — \(ErrorObject(error).message)")
+                throw ProtocolError("workflow.dispatch: malformed 'spec': \(error)")
             }
         }
 
