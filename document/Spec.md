@@ -126,7 +126,9 @@ failing anything. `env_extra` defaults to an empty dictionary and `share_session
 
 Opens an agent session with these settings and calls `body` inside it; what
 the body returns is what `invoke` returns, so the body writes its `returns`.
-`model` is `<provider>[:<model>]`. `allowed` is the list of tools to expose,
+`model` is `<provider>[:<model>]`; left out, the one registered backend runs
+with its own model, and with more than one `invoke` fails with
+`BackendNotRegistered`. `allowed` is the list of tools to expose,
 each a name or a dictionary of `command` to a pattern; left out, the backend's own
 setting stands, and `[]` exposes none. `cwd` and `permission_mode` left out are
 unset; an empty string is refused. `share_session: true` reuses the session of

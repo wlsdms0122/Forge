@@ -85,10 +85,11 @@ struct CodexBackend: Backend {
             agentArguments: agentArguments,
             resume: session?.threadIdentifier
         )
-        let modelReference = try invocation.agent.model.replacingModel(with: native.model)
-        invocation.executionContext.record(modelReference: modelReference)
+        let modelReference = try invocation.agent.model?.replacingModel(with: native.model)
         
-        let modelLabel = modelReference.displayName
+        if let modelReference { invocation.executionContext.record(modelReference: modelReference) }
+        
+        let modelLabel = modelReference?.displayName
         let eventLogContext = AgentEventLogContext.current
         let reader = CodexEventStream.Reader()
         let started = ContinuousClock.now
@@ -172,7 +173,7 @@ struct CodexBackend: Backend {
     private static func logTools(
         _ completed: [ToolEvent],
         invocation: AgentInvocation,
-        model: String,
+        model: String?,
         turn: Int,
         context: AgentEventLogContext
     ) async -> [ToolEvent] {

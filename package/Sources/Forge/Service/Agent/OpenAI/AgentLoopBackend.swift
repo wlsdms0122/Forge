@@ -115,10 +115,11 @@ struct AgentLoopBackend: Backend {
         )
         
         let model = native.model
-        let modelReference = try invocation.agent.model.replacingModel(with: model)
-        invocation.executionContext.record(modelReference: modelReference)
+        let modelReference = try invocation.agent.model?.replacingModel(with: model)
         
-        let modelLabel = modelReference.displayName
+        if let modelReference { invocation.executionContext.record(modelReference: modelReference) }
+        
+        let modelLabel = modelReference?.displayName
         let commandAuthorization = native.commandAuthorization
         let jsonMode = false
         let tools = native.tools

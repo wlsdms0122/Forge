@@ -18,9 +18,9 @@ struct OpenAICompatibleTranslator: AgentTranslator {
     // MARK: - Initializer
     // MARK: - Public
     func translate(_ agent: Agent) throws -> AgentTranslation<OpenAICompatibleAgentConfiguration> {
-        guard let model = agent.model.specifiedModel else {
+        guard let model = agent.model?.specifiedModel else {
             throw AgentValidationError(
-                "openai-compatible provider '\(agent.provider)' requires an explicit model"
+                "an openai-compatible provider requires an explicit model ('<provider>:<model>')"
             )
         }
 
