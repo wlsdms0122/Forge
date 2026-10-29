@@ -104,7 +104,7 @@ struct WorkflowDispatchMethod: Sendable {
     ) async throws -> WorkflowRunResult {
         try await runner.dispatch(
             prepared.workflow,
-            inputs: prepared.inputs,
+            inputs: try prepared.inputs.mapValues(ValueBridge.value),
             principal: prepared.principal,
             origin: prepared.origin,
             rootID: prepared.rootID,

@@ -54,7 +54,7 @@ actor WorkflowRunner {
     // here for every caller — RPC, scheduler and child steps alike.
     func dispatch(
         _ workflow: Workflow,
-        inputs: [String: JSONValue],
+        inputs: [String: Warp.Value],
         principal: String,
         origin: DispatchOrigin,
         rootID: String? = nil,
@@ -115,7 +115,7 @@ actor WorkflowRunner {
     // there, once; this frame owns tokens, registry and event framing.
     private func run(
         _ workflow: Workflow,
-        inputs: [String: JSONValue] = [:],
+        inputs: [String: Warp.Value] = [:],
         origin: DispatchOrigin = .manual,
         principal: String? = nil,
         parameters: [String: JSONValue]? = nil,
@@ -180,7 +180,7 @@ actor WorkflowRunner {
 
     private func runBody(
         _ workflow: Workflow,
-        inputs: [String: JSONValue],
+        inputs: [String: Warp.Value],
         origin: DispatchOrigin,
         runID: String
     ) async -> WorkflowRunResult {
@@ -193,7 +193,7 @@ actor WorkflowRunner {
             workflowName: name,
             origin: origin,
             parameters: LogContext.parameters,
-            inputs: inputs.isEmpty ? nil : inputs
+            inputs: inputs.isEmpty ? nil : try? inputs.mapValues(ValueBridge.json)
         ))
 
         let eventBus = self.eventBus
@@ -303,13 +303,13 @@ actor WorkflowRunner {
     // parameter it left out: the language takes every argument from its
     // caller, and a caller that holds nothing there says so.
     private static func arguments(
-        _ inputs: [String: JSONValue],
+        _ inputs: [String: Warp.Value],
         for signature: Signature?
     ) throws -> [Name: Warp.Value] {
         var arguments: [Name: Warp.Value] = [:]
 
         for (name, value) in inputs {
-            arguments[try Name(name)] = try ValueBridge.value(value)
+            arguments[try Name(name)] = value
         }
 
         for parameter in signature?.parameters ?? [] where arguments[parameter.name] == nil {
@@ -344,7 +344,7 @@ extension WorkflowRunner: RunDispatching {
 
         let result = try await dispatch(
             workflow,
-            inputs: try inputs.mapValues { value in try ValueBridge.json(value) },
+            inputs: inputs,
             principal: "cli:\(parentName)",
             origin: .manual,
             rootID: LogContext.rootID,
