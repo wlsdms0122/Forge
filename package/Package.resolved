@@ -24,7 +24,7 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/wlsdms0122/warp-frontend-yaml.git",
       "state" : {
-        "revision" : "6b984839ae39390ac47904f765bbad9438f82015",
+        "revision" : "4dee3370d1a2025001dcb19773ca8f58e652e4fa",
         "version" : "0.1.0"
       }
     },
@@ -33,7 +33,7 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/wlsdms0122/warp-runtime-swift.git",
       "state" : {
-        "revision" : "0f603a440695b156a3ed616ae52177a332898e29",
+        "revision" : "a72ebe54e9267dd89dda6a81a395518dbeb67957",
         "version" : "0.1.0"
       }
     },
