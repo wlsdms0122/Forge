@@ -374,7 +374,7 @@ actor WorkflowScheduler {
         do {
             _ = try await runner.dispatch(
                 target,
-                inputs: inputs,
+                inputs: try inputs.mapValues(ValueBridge.value),
                 principal: principal,
                 origin: .schedule(id),
                 runID: runID,

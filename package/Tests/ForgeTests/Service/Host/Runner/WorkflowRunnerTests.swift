@@ -286,6 +286,47 @@ struct WorkflowRunnerTests {
         #expect(result.output == 1)
     }
 
+    @Test("a struct a parent hands a child reaches the child as that struct")
+    func dispatchHandsAParentStructAsItself() async throws {
+        // Given
+        let harness = try makeRunner(
+            catalog: [
+                "parent": """
+                returns: Int
+                failing: [child_run_failed, timeout, cast_refused]
+                body:
+                  - let: point
+                    type: Point
+                    value: { struct: { x: 2 } }
+                  - let: call
+                    value: { call: { procedure: dispatch, arguments: { name: child, inputs: { dictionary: [ [p, { ref: point }] ] } } } }
+                  - let: x
+                    value: { as: { of: { ref: call }, type: Int } }
+                result: { ref: x }
+                """,
+                "child": """
+                types:
+                  Point: { struct: { x: Int } }
+                procedures:
+                  child:
+                    access: public
+                    parameters: [ p: Point ]
+                    returns: Int
+                    result: { ref: p.x }
+                """
+            ],
+            policy: ["cli:parent": ["parent", "child"]]
+        )
+        let workflow = try await harness.catalog.workflow(named: "parent")
+
+        // When
+        let result = try await harness.dispatch(workflow)
+
+        // Then
+        #expect(result.failure == nil)
+        #expect(result.output == 2)
+    }
+
     @Test("a child returning a value JSON cannot hold fails, and its parent faults")
     func dispatchOfAnUnwritableChildFaults() async throws {
         // Given
@@ -724,7 +765,7 @@ struct WorkflowRunnerTests {
         // MARK: - Public
         func dispatch(
             _ workflow: Workflow,
-            inputs: [String: JSONValue] = [:],
+            inputs: [String: Warp.Value] = [:],
             runID: String? = nil
         ) async throws -> WorkflowRunResult {
             try await runner.dispatch(
