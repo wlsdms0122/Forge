@@ -577,7 +577,7 @@ struct EffectActionTests {
     func inlineRejectsWhenSpecIsMalformed() async throws {
         // Given — the inline door reads one procedure in the YAML notation
         let catalog = try WorkflowCatalog(directory: nil)
-        let spec = JSONValue.object(["returns": .string("String"), "result": .string("ok"), "fallbck": .string("typo")])
+        let spec: [String: JSONValue] = ["returns": "String", "result": "ok", "fallbck": "typo"]
 
         // When / Then
         await #expect(throws: (any Error).self) {
@@ -601,7 +601,7 @@ struct EffectActionTests {
         result: { format: "said ${word}", with: { word: { ref: word } } }
         """, named: "said").write(to: directory.appendingPathComponent("said.yaml"), atomically: true, encoding: .utf8)
         let catalog = try WorkflowCatalog(directory: directory)
-        let spec = try YAMLSpec.decode(JSONValue.self, from: Data("""
+        let spec = try YAMLSpec.decode([String: JSONValue].self, from: Data("""
         returns: String
         failing: [nonzero_exit, timeout]
         body:

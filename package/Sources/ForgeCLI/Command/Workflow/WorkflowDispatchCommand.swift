@@ -15,9 +15,9 @@ struct WorkflowDispatchCommand: ParsableCommand {
         commandName: "dispatch",
         abstract: "Dispatch a workflow run.",
         discussion: """
-            Runs a registered workflow by name, or an anonymous inline
-            workflow by `--spec` (JSON; a `name` key is rejected — the run is
-            named `<inline>` and gated by that sigil).
+            Runs a registered workflow by name, or an inline workflow by
+            `--spec` (JSON, one procedure; the run is named `<inline>` and
+            gated by that sigil).
 
             IDENTITY & ENVELOPE
                 The bearer token (FORGE_ACCESS_TOKEN or --token) carries the
@@ -63,7 +63,7 @@ struct WorkflowDispatchCommand: ParsableCommand {
     @Argument(help: "Registered workflow name. Omit when using --spec.")
     var name: String?
     
-    @Option(help: "Inline anonymous workflow JSON — use instead of the name argument.")
+    @Option(help: "Inline workflow JSON, one procedure; use instead of the name argument.")
     var spec: String?
     
     @Option(help: "Workflow inputs as a JSON object (default: {}).")

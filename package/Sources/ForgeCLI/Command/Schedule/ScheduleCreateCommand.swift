@@ -17,8 +17,7 @@ struct ScheduleCreateCommand: ParsableCommand {
         discussion: """
             Registers a schedule in the runtime dir (runtime_directory/schedule).
             Fires either a registered workflow (`--workflow <name>`) or an
-            anonymous inline workflow (`--spec <json>`) on a trigger —
-            exactly one of:
+            inline workflow (`--spec <json>`) on a trigger, exactly one of:
 
                 --every <dur>            repeat forever, every interval
                 --at <HH:mm> --timezone  repeat on a wall-clock (combine --days)
@@ -29,8 +28,8 @@ struct ScheduleCreateCommand: ParsableCommand {
             A one-shot stays on disk after firing — runtime-created ones are
             auto-GC'd by the daemon; hand-authored config ones show `spent` in
             `list` for you to remove. The target flags are mutually exclusive;
-            inline `spec` rejects a `name` key and runs gated by the `<inline>`
-            sigil — identical shape to `workflow dispatch --spec`.
+            inline `spec` runs gated by the `<inline>` sigil, the same shape
+            as `workflow dispatch --spec`.
 
             Creation is policy-gated: your principal must be allowed to
             dispatch the target workflow directly (policy/*.yaml), or the
@@ -58,7 +57,7 @@ struct ScheduleCreateCommand: ParsableCommand {
     @Option(help: "Registered workflow name. Omit when using --spec.")
     var workflow: String?
     
-    @Option(help: "Inline anonymous workflow JSON — use instead of --workflow.")
+    @Option(help: "Inline workflow JSON, one procedure; use instead of --workflow.")
     var spec: String?
     
     @Option(help: "Repeat every interval (30s 5m 1h 2d).")

@@ -208,7 +208,7 @@ struct ScheduleCreateMethod: Sendable {
         params: [String: JSONValue],
         context: String,
         catalog: WorkflowCatalog
-    ) async throws -> (name: String, spec: JSONValue?) {
+    ) async throws -> (name: String, spec: [String: JSONValue]?) {
         let nameParam = params["workflow"]?.stringValue
             .flatMap { value in value.isEmpty ? nil : value }
         let specParam = params["spec"]?.objectValue
@@ -219,24 +219,17 @@ struct ScheduleCreateMethod: Sendable {
 
             return (name, nil)
 
-        case let (nil, raw?):
-            guard raw["name"] == nil else {
-                throw ProtocolError(
-                    "\(context): inline 'spec' must be anonymous — a 'name' key is not allowed (the name is fixed to '\(WorkflowCatalog.inlineSigil)')")
-            }
-
-            let specValue = JSONValue.object(raw)
-
+        case let (nil, spec?):
             do {
                 // An inline spec is one procedure, the same shape workflow.dispatch
-                // admits — checked here so a schedule cannot be stored carrying
+                // admits, checked here so a schedule cannot be stored carrying
                 // something that will not load when it fires.
-                _ = try await catalog.inline(specValue)
+                _ = try await catalog.inline(spec)
             } catch {
                 throw ProtocolError("\(context): malformed 'spec': \(error)")
             }
 
-            return (WorkflowCatalog.inlineSigil, specValue)
+            return (WorkflowCatalog.inlineSigil, spec)
 
         case (.some, .some):
             throw ProtocolError(

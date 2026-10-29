@@ -302,7 +302,7 @@ actor WorkflowScheduler {
     
     private static func resolveFireTarget(
         name: String,
-        spec: JSONValue?,
+        spec: [String: JSONValue]?,
         catalog: WorkflowCatalog
     ) async -> FireResolution {
         if let spec {
