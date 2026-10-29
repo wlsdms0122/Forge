@@ -1,0 +1,36 @@
+# Agent seams: invoke turns, in-session continuity, and share_session
+# inheritance.
+procedures:
+  converse:
+    access: public
+    returns: "Dictionary<String, Any>"
+    failing: anything
+    body:
+      - let: outer
+        value:
+          call:
+            procedure: invoke
+            arguments:
+              model: claude
+              body:
+                closure:
+                  returns: "Dictionary<String, Any>"
+                  body:
+                    - let: first
+                      value: { call: { procedure: agent, arguments: { prompt: ping one } } }
+                    - let: second
+                      value: { call: { procedure: agent, arguments: { prompt: ping two } } }
+                    - let: nested
+                      value:
+                        call:
+                          procedure: invoke
+                          arguments:
+                            model: claude
+                            share_session: true
+                            body: { closure: { returns: String, result: { call: { procedure: agent, arguments: { prompt: ping three } } } } }
+                  result:
+                    dictionary:
+                      - [first, { ref: first }]
+                      - [second, { ref: second }]
+                      - [inherited, { ref: nested }]
+    result: { ref: outer }

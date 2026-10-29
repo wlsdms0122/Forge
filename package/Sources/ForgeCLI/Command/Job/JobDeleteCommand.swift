@@ -7,6 +7,7 @@
 
 import ArgumentParser
 import Foundation
+import Forge
 
 struct JobDeleteCommand: ParsableCommand {
     // MARK: - Property
@@ -33,7 +34,7 @@ struct JobDeleteCommand: ParsableCommand {
     func run() throws {
         let client = Client(global, context: "job delete")
         
-        printResult(client.call("job.delete", ["id": id]), json: json)
+        client.call("job.delete", ["id": .string(id)]).printResult(json: json)
     }
     
     // MARK: - Private

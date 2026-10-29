@@ -9,7 +9,7 @@ import Foundation
 import Testing
 @testable import Forge
 
-/// A guard that reads the sources and checks an invariant. It inspects the *shape* of the codebase, not the *behavior* of the target.
+// A guard that reads the sources and checks an invariant. It inspects the *shape* of the codebase, not the *behavior* of the target.
 @Suite("ForgeErrorAdoptionGuard Tests")
 struct ForgeErrorAdoptionGuardTests {
     // MARK: - Property

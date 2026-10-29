@@ -1,44 +1,40 @@
-description: Host seams — shell and resource in one pass
-inputs:
-  name:
-    type: string
-    default: e2e
-steps:
-- id: shout
-  shell:
-    command:
-    - /bin/sh
-    - -c
-    - printf 'shell:%s' "$1"
-    - _
-    - { ref: inputs.name }
-    timeout: 30
-- id: letter
-  resource:
-    content: greeting.txt
-    inputs:
-      name: { ref: inputs.name }
-- id: script
-  resource:
-    path: script/stamp.sh
-- id: stamped
-  shell:
-    command:
-    - /bin/sh
-    - { ref: script }
-    - { ref: inputs.name }
-- id: fragile
-  shell:
-    command: [/bin/sh, -c, "echo warned >&2; exit 7"]
-  rescue:
-  - id: excuse
-    value:
-      format: "rescued(${code}): ${said}"
-      with:
-        code: { ref: fragile.exit_code }
-        said: { ref: fragile.stderr }
-outputs:
-  shell: { ref: shout }
-  resource: { ref: letter }
-  stamped: { ref: stamped }
-  rescued: { ref: fragile }
+# Host seams: shell and resource in one pass.
+procedures:
+  host:
+    access: public
+    parameters: [ name: { type: String, default: e2e } ]
+    returns: "Dictionary<String, Any>"
+    failing: [nonzero_exit, timeout]
+    body:
+      - let: shout
+        value:
+          call:
+            procedure: shell
+            arguments: { command: [ /bin/sh, -c, "printf 'shell:%s' \"$1\"", _, { ref: name } ], timeout: 30 }
+      - let: letter
+        value: { call: { procedure: resource, arguments: { content: greeting.txt, inputs: { dictionary: [ [name, { ref: name }] ] } } } }
+      - let: script
+        value: { locate: script/stamp.sh }
+      - let: stamped
+        value: { call: { procedure: shell, arguments: { command: [ /bin/sh, { ref: script }, { ref: name } ] } } }
+      - var: rescued
+        type: String
+        value: ""
+      - let: fragile
+        value:
+          try:
+            body:
+              - value: { call: { procedure: shell, arguments: { command: [ /bin/sh, -c, "echo warned >&2; exit 7" ] } } }
+            catch:
+              - set: rescued
+                value:
+                  format: "rescued(${code}): ${said}"
+                  with:
+                    code: { ref: 'fragile.details["exit_code"]' }
+                    said: { ref: 'fragile.details["stderr"]' }
+    result:
+      dictionary:
+        - [shell, { ref: shout }]
+        - [resource, { ref: letter }]
+        - [stamped, { ref: stamped }]
+        - [rescued, { ref: rescued }]

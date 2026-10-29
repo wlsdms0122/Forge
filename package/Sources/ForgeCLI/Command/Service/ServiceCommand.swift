@@ -21,7 +21,7 @@ struct ServiceCommand: ParsableCommand {
             backoff when they crash.
 
             CONTROL    run / shutdown / restart / status / reload
-            INSPECT    list / describe  (registered handler schemas)
+            INSPECT    list / describe  (registered services' schemas)
             CALL       send             (hand a payload to a service)
             INTERNAL   register         (the bridge a spawned service runs)
             """,

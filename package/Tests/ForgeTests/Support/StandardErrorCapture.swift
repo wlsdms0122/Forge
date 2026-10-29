@@ -7,22 +7,21 @@
 
 import Foundation
 
-/// Temporarily redirects the process's standard error into a pipe and reads what was written in between.
-///
-/// The source emits failures directly to `FileHandle.standardError` (there is no injectable
-/// surface), so seeing "did it surface / was it silent" leaves no option but swapping the
-/// process-global fd.
-///
-/// Two traps:
-/// - **Waiting for EOF hangs.** `readDataToEndOfFile()` only returns once every write end is
-///   closed, but `STDERR_FILENO` is global, so if another test running in parallel (especially
-///   a child process that inherited fd 2) is holding it, EOF never comes. Observed in
-///   practice as the runner freezing entirely (`--filter JobStoreTests` waited forever;
-///   serial execution took 0.06s). So read non-blocking and treat `EAGAIN` as the end
-///   signal — there is no write end to wait for.
-/// - **While the window is open, other tests' stderr flows in here too.** There is no way to
-///   isolate it, so callers declare `.exclusive(.standardError)` to keep captures from
-///   overlapping.
+// Temporarily redirects the process's standard error into a pipe and reads what was written in between.
+//
+// The source emits failures directly to `FileHandle.standardError` (there is no injectable
+// surface), so seeing "did it surface / was it silent" leaves no option but swapping the
+// process-global fd.
+//
+// Two traps:
+// - **Waiting for EOF hangs.** `readDataToEndOfFile()` only returns once every write end is
+//   closed, but `STDERR_FILENO` is global, so if another test running in parallel (especially
+//   a child process that inherited fd 2) is holding it, EOF never comes and the
+//   runner freezes. So read non-blocking and treat `EAGAIN` as the end
+//   signal — there is no write end to wait for.
+// - **While the window is open, other tests' stderr flows in here too.** There is no way to
+//   isolate it, so callers declare `.exclusive(.standardError)` to keep captures from
+//   overlapping.
 struct StandardErrorCapture {
     // MARK: - Property
     // MARK: - Initializer

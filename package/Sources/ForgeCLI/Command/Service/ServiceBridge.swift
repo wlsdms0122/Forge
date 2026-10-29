@@ -6,19 +6,20 @@
 //
 
 import Foundation
+import Forge
 
 final class ServiceBridge: @unchecked Sendable {
     // MARK: - Property
     private let service: String
     private let socketPath: String
-    private let schema: [String: Any]?
+    private let schema: JSONValue?
     private let token: String
     private let lock = NSLock()
     private var sock: StreamSocket?
     private var stopped = false
     
     // MARK: - Initializer
-    init(service: String, socketPath: String, schema: [String: Any]?, token: String) {
+    init(service: String, socketPath: String, schema: JSONValue?, token: String) {
         self.service = service
         self.socketPath = socketPath
         self.schema = schema
@@ -37,7 +38,7 @@ final class ServiceBridge: @unchecked Sendable {
     // MARK: - Private
     private func readerLoop() {
         guard let socket = connectRegisterOnce() else {
-            emitStderr("forge service: connect/register failed — exiting")
+            FileHandle.standardError.write(line: "forge service: connect/register failed — exiting")
             exit(1)
         }
         
@@ -48,9 +49,9 @@ final class ServiceBridge: @unchecked Sendable {
             
             if frame.isEmpty { continue }
             
-            if let object = try? JSONSerialization.jsonObject(with: frame) as? [String: Any],
-                (object["kind"] as? String) == "session.message" {
-                emitStdoutLine(String(decoding: frame, as: UTF8.self))
+            if let object = try? JSONDecoder().decode(JSONValue.self, from: frame),
+                object["kind"]?.stringValue == "service.message" {
+                FileHandle.standardOutput.write(line: String(decoding: frame, as: UTF8.self))
             }
         }
         
@@ -59,19 +60,19 @@ final class ServiceBridge: @unchecked Sendable {
         
         if isStopped() { return }
         
-        emitStderr("forge service: connection lost — exiting")
+        FileHandle.standardError.write(line: "forge service: connection lost — exiting")
         exit(1)
     }
     
     private func connectRegisterOnce() -> StreamSocket? {
         guard let socket = StreamSocket(path: socketPath) else { return nil }
         
-        var params: [String: Any] = ["service": service, "token": token]
+        var params: [String: JSONValue] = ["service": .string(service), "token": .string(token)]
         
         if let schema { params["schema"] = schema }
         
         guard let data = RPC.requestLine(
-            method: "session.handler.register",
+            method: "service.register",
             params: params,
             idPrefix: "reg"
         ), socket.writeLine(data) else {
@@ -87,13 +88,13 @@ final class ServiceBridge: @unchecked Sendable {
         }
         
         if case .err(let type, let message) = RPC.parseFrame(ackFrame) {
-            emitStderr("forge service: register failed: \(type): \(message)")
+            FileHandle.standardError.write(line: "forge service: register failed: \(type): \(message)")
             socket.close()
             
             return nil
         }
         
-        emitStderr("forge service: registered service=\(service)")
+        FileHandle.standardError.write(line: "forge service: registered service=\(service)")
         
         return socket
     }
@@ -103,25 +104,26 @@ final class ServiceBridge: @unchecked Sendable {
             if line.isEmpty { continue }
             
             guard let data = line.data(using: .utf8),
-                let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                let messageID = object["message_id"] as? String
+                let line = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                let object = try? JSONValue(jsonObject: line),
+                let messageID = object["message_id"]?.stringValue
             else {
-                emitStderr("forge service: bad ack line dropped")
+                FileHandle.standardError.write(line: "forge service: bad ack line dropped")
                 
                 continue
             }
             
-            var params: [String: Any] = [
-                "service": service,
-                "message_id": messageID,
-                "token": token,
+            var params: [String: JSONValue] = [
+                "service": .string(service),
+                "message_id": .string(messageID),
+                "token": .string(token)
             ]
             
             if let result = object["result"] { params["result"] = result }
             if let error = object["error"] { params["error"] = error }
             
             guard let requestData = RPC.requestLine(
-                method: "session.handler.ack",
+                method: "service.ack",
                 params: params,
                 idPrefix: "ack"
             ) else {
@@ -135,7 +137,7 @@ final class ServiceBridge: @unchecked Sendable {
             lock.unlock()
             
             if socket == nil || !(socket!.writeLine(requestData)) {
-                emitStderr("forge service: ack drop — connection closed")
+                FileHandle.standardError.write(line: "forge service: ack drop — connection closed")
             }
         }
         

@@ -11,7 +11,7 @@ package actor Server {
     // MARK: - Property
     let config: ForgeConfig
     let bootedAt: Date
-    let workflowStore: SpecCatalog
+    let catalog: WorkflowCatalog
     let scheduleStore: ScheduleStore
     let fireLedger: FireLedger
     let runtimeScheduleDirectory: URL
@@ -21,15 +21,15 @@ package actor Server {
     let workflowEventBus: WorkflowEventBus
     let workflowLogger: WorkflowLogger
     let workflowPool: WorkflowPool
-    let workflowRunner: SpecWorkflowRunner
+    let workflowRunner: WorkflowRunner
     let workflowScheduler: WorkflowScheduler
-    let workflowHandlerBus: WorkflowHandlerBus
+    let serviceBus: ServiceBus
     let workRegistry: WorkRegistry
     let serviceSupervisor: ServiceSupervisor
     let tokenAuthority: TokenAuthority
-    let sessionHome: URL
+    let instanceHome: URL
     let socketPath: String
-    let session: String
+    let instance: String
     
     private let configSnapshot: ConfigSnapshot
     private let socketServer: UnixSocketServer
@@ -40,15 +40,16 @@ package actor Server {
     init(
         config: ForgeConfig,
         configReport: ConfigReport,
-        sessionHome: URL,
-        session: String,
-        configPath: String? = nil
+        instanceHome: URL,
+        instance: String,
+        configPath: String? = nil,
+        vocabulary: ForgeVocabulary
     ) {
         self.config = config
         self.configSnapshot = ConfigSnapshot(configReport)
-        self.sessionHome = sessionHome
-        self.socketPath = Session.socket(in: sessionHome)
-        self.session = session
+        self.instanceHome = instanceHome
+        self.socketPath = Instance.socket(in: instanceHome)
+        self.instance = instance
         self.bootedAt = Date()
         
         var byProvider: [String: any Backend] = [:]
@@ -77,15 +78,15 @@ package actor Server {
         if config.hooks.logging { postHooks.append(logging) }
         if config.hooks.logging { errorHooks.append(logging) }
         
-        let executor = Executor(
+        let executor = AgentExecutor(
             backends: backends,
             preHooks: preHooks,
             postHooks: postHooks,
             errorHooks: errorHooks
         )
-        let workflowStoreLocal = SpecCatalog(
+        let catalogLocal = WorkflowCatalog(
             directory: config.workflowDirectory,
-            loader: ForgeSpec.loader()
+            builder: WorkflowBuilder(vocabulary: vocabulary)
         )
         let runtimeScheduleDirectory = config.runtimeDirectory.appendingPathComponent("schedule")
         let scheduleStore = ScheduleStore(
@@ -99,7 +100,7 @@ package actor Server {
         let resourceStore = ResourceStore(directory: config.resourceDirectory)
         let policyStoreLocal = PolicyStore(directory: config.policyDirectory)
         let bus = WorkflowEventBus()
-        let handlerBus = WorkflowHandlerBus()
+        let serviceBus = ServiceBus()
         let workRegistryLocal = WorkRegistry()
         let tokenAuthorityLocal = TokenAuthority()
         self.tokenAuthority = tokenAuthorityLocal
@@ -109,26 +110,28 @@ package actor Server {
             maximumConcurrentSteps: config.pool.maximumConcurrentSteps,
             maximumActiveRuns: config.pool.maximumActiveRuns
         )
-        let runnerLocal = SpecWorkflowRunner(
-            catalog: workflowStoreLocal,
+        let runnerLocal = WorkflowRunner(
+            catalog: catalogLocal,
             eventBus: bus,
             policyStore: policyStoreLocal,
             pool: pool,
             workRegistry: workRegistryLocal,
             tokenAuthority: tokenAuthorityLocal,
             jobStore: jobStoreLocal,
-            shell: LiveShell(),
-            agent: LiveAgent(executor: executor),
-            resources: LiveResources(store: resourceStore)
+            capabilities: CapabilitySet(
+                shell: LiveShell(),
+                agent: LiveAgent(executor: executor),
+                resources: LiveResources(store: resourceStore)
+            )
         )
         let scheduler = WorkflowScheduler(
-            workflowStore: workflowStoreLocal,
+            catalog: catalogLocal,
             store: scheduleStore,
             ledger: fireLedger,
             runner: runnerLocal
         )
         
-        self.workflowStore = workflowStoreLocal
+        self.catalog = catalogLocal
         self.scheduleStore = scheduleStore
         self.fireLedger = fireLedger
         self.runtimeScheduleDirectory = runtimeScheduleDirectory
@@ -140,116 +143,9 @@ package actor Server {
         self.workflowPool = pool
         self.workflowRunner = runnerLocal
         self.workflowScheduler = scheduler
-        self.workflowHandlerBus = handlerBus
+        self.serviceBus = serviceBus
         self.workRegistry = workRegistryLocal
         
-        let workflowDispatchMethod = WorkflowDispatchMethod(
-            runner: runnerLocal,
-            store: workflowStoreLocal,
-            workRegistry: workRegistryLocal,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let workflowDispatchStreamMethod = WorkflowDispatchStreamMethod(
-            dispatchMethod: workflowDispatchMethod,
-            eventBus: bus
-        )
-        let workflowListMethod = WorkflowListMethod(
-            store: workflowStoreLocal,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let workflowDescribeMethod = WorkflowDescribeMethod(
-            store: workflowStoreLocal,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let workflowHealthMethod = WorkflowHealthMethod(
-            pool: pool,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let workflowListActiveMethod = WorkflowListActiveMethod(
-            pool: pool,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let workflowCancelMethod = WorkflowCancelMethod(
-            pool: pool,
-            policyStore: policyStoreLocal,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let scheduleListMethod = ScheduleListMethod(
-            store: scheduleStore,
-            ledger: fireLedger,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let scheduleSetEnabledMethod = ScheduleSetEnabledMethod(
-            store: scheduleStore,
-            policyStore: policyStoreLocal,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let scheduleCreateMethod = ScheduleCreateMethod(
-            store: scheduleStore,
-            workflowStore: workflowStoreLocal,
-            policyStore: policyStoreLocal,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let scheduleDeleteMethod = ScheduleDeleteMethod(
-            store: scheduleStore,
-            policyStore: policyStoreLocal,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let jobCreateMethod = JobCreateMethod(
-            store: jobStoreLocal,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let jobShowMethod = JobShowMethod(
-            store: jobStoreLocal,
-            tokenAuthority: tokenAuthorityLocal,
-            workRegistry: workRegistryLocal
-        )
-        let jobListMethod = JobListMethod(
-            store: jobStoreLocal,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let jobUpdateMethod = JobUpdateMethod(
-            store: jobStoreLocal,
-            tokenAuthority: tokenAuthorityLocal,
-            workRegistry: workRegistryLocal
-        )
-        let jobDeleteMethod = JobDeleteMethod(
-            store: jobStoreLocal,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let resourceListMethod = ResourceListMethod(
-            store: resourceStore,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let resourceReadMethod = ResourceReadMethod(
-            store: resourceStore,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let policyListMethod = PolicyListMethod(
-            store: policyStoreLocal,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let policyCheckMethod = PolicyCheckMethod(
-            store: policyStoreLocal,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let sessionSendMethod = SessionSendMethod(
-            handlerBus: handlerBus,
-            workRegistry: workRegistryLocal,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let sessionHandlerAck = SessionHandlerAckMethod(
-            handlerBus: handlerBus,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let sessionListMethod = SessionListMethod(
-            handlerBus: handlerBus,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let sessionHandlerRegisterMethod = SessionHandlerRegisterMethod(
-            handlerBus: handlerBus,
-            tokenAuthority: tokenAuthorityLocal
-        )
         let supervisorLocal = ServiceSupervisor(
             services: config.services,
             runtimeDirectory: config.runtimeDirectory,
@@ -257,99 +153,68 @@ package actor Server {
         )
         self.serviceSupervisor = supervisorLocal
         
-        let serviceRunMethod = ServiceRunMethod(
-            supervisor: supervisorLocal,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let serviceShutdownMethod = ServiceShutdownMethod(
-            supervisor: supervisorLocal,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let serviceRestartMethod = ServiceRestartMethod(
-            supervisor: supervisorLocal,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let serviceStatusMethod = ServiceStatusMethod(
-            supervisor: supervisorLocal,
-            handlerBus: handlerBus,
-            tokenAuthority: tokenAuthorityLocal
-        )
-        let serviceReloadMethod = ServiceReloadMethod(
-            supervisor: supervisorLocal,
-            tokenAuthority: tokenAuthorityLocal,
-            configPath: configPath,
-            sessionHome: sessionHome,
-            configSnapshot: configSnapshot
-        )
-        let tokenIssueMethod = TokenIssueMethod(authority: tokenAuthorityLocal)
         let daemonStatusMethod = DaemonStatusMethod(
-            session: session,
+            instance: instance,
             socketPath: socketPath,
             runtimeDirectory: config.runtimeDirectory,
             bootedAt: self.bootedAt,
             configSnapshot: configSnapshot,
-            workflowStore: workflowStoreLocal,
+            catalog: catalogLocal,
             scheduleStore: scheduleStore,
             jobStore: jobStoreLocal,
             supervisor: supervisorLocal,
-            handlerBus: handlerBus
+            serviceBus: serviceBus
         )
-        
-        let handlerMap: [String: DispatchService.Handler] = [
-            "workflow.dispatch":      { request in try await workflowDispatchMethod.handle(request) },
-            "workflow.list":          { request in try await workflowListMethod.handle(request) },
-            "workflow.describe":      { request in try await workflowDescribeMethod.handle(request) },
-            "workflow.list_active":   { request in try await workflowListActiveMethod.handle(request) },
-            "workflow.health":        { request in try await workflowHealthMethod.handle(request) },
-            "workflow.cancel":        { request in try await workflowCancelMethod.handle(request) },
-            "schedule.list":          { request in try await scheduleListMethod.handle(request) },
-            "schedule.set_enabled":   { request in try await scheduleSetEnabledMethod.handle(request) },
-            "schedule.create":        { request in try await scheduleCreateMethod.handle(request) },
-            "schedule.delete":        { request in try await scheduleDeleteMethod.handle(request) },
-            "job.create":             { request in try await jobCreateMethod.handle(request) },
-            "job.show":               { request in try await jobShowMethod.handle(request) },
-            "job.list":               { request in try await jobListMethod.handle(request) },
-            "job.update":             { request in try await jobUpdateMethod.handle(request) },
-            "job.delete":             { request in try await jobDeleteMethod.handle(request) },
-            "resource.list":          { request in try await resourceListMethod.handle(request) },
-            "resource.read":          { request in try await resourceReadMethod.handle(request) },
-            "policy.list":            { request in try await policyListMethod.handle(request) },
-            "policy.check":           { request in try await policyCheckMethod.handle(request) },
-            "token.issue":            { request in try await tokenIssueMethod.handle(request) },
-            "daemon.status":          { request in try await daemonStatusMethod.handle(request) },
-            "session.send":           { request in try await sessionSendMethod.handle(request) },
-            "session.handler.ack":    { request in try await sessionHandlerAck.handle(request) },
-            "session.list":           { request in try await sessionListMethod.handle(request) },
-            "service.run":            { request in try await serviceRunMethod.handle(request) },
-            "service.shutdown":       { request in try await serviceShutdownMethod.handle(request) },
-            "service.restart":        { request in try await serviceRestartMethod.handle(request) },
-            "service.status":         { request in try await serviceStatusMethod.handle(request) },
-            "service.reload":         { request in try await serviceReloadMethod.handle(request) },
-        ]
-        
-        let dispatch = DispatchService(
-            handlers: handlerMap,
-            streamingHandlers: [
-                "session.handler.register": { request, sink in
-                    try await sessionHandlerRegisterMethod.handle(request, sink: sink)
-                },
-                "workflow.dispatch_stream": { request, sink in
-                    try await workflowDispatchStreamMethod.handle(request, sink: sink)
-                },
-            ]
+        let workflow = WorkflowNamespace(
+            runner: runnerLocal,
+            catalog: catalogLocal,
+            workRegistry: workRegistryLocal,
+            pool: pool,
+            policyStore: policyStoreLocal,
+            eventBus: bus
+        )
+        let schedule = ScheduleNamespace(
+            store: scheduleStore,
+            ledger: fireLedger,
+            catalog: catalogLocal,
+            policyStore: policyStoreLocal
+        )
+        let job = JobNamespace(store: jobStoreLocal, workRegistry: workRegistryLocal)
+        let resource = ResourceNamespace(store: resourceStore)
+        let policy = PolicyNamespace(store: policyStoreLocal)
+        let token = TokenNamespace(authority: tokenAuthorityLocal)
+        let daemon = DaemonNamespace(status: daemonStatusMethod)
+        let service = ServiceNamespace(
+            supervisor: supervisorLocal,
+            serviceBus: serviceBus,
+            workRegistry: workRegistryLocal,
+            configPath: configPath,
+            instanceHome: instanceHome,
+            configSnapshot: configSnapshot
+        )
+        let router = RPCRouter(
+            methods: workflow.methods
+                + schedule.methods
+                + job.methods
+                + resource.methods
+                + policy.methods
+                + token.methods
+                + daemon.methods
+                + service.methods,
+            authority: tokenAuthorityLocal
         )
         
         self.socketServer = UnixSocketServer(path: socketPath)
-        self.acceptLoop = AcceptLoop(server: socketServer, dispatch: dispatch)
+        self.acceptLoop = AcceptLoop(server: socketServer, router: router)
     }
     
     // MARK: - Public
     func boot() async throws {
-        try Session.checkSocketLength(socketPath)
+        try Instance.checkSocketLength(socketPath)
         
         if UnixSocketServer.isLive(path: socketPath) {
-            throw ProtocolError("daemon already listening at \(socketPath) — "
-                + "stop it, or use a different --session")
+            throw SocketError("daemon already listening at \(socketPath) — "
+                + "stop it, or use a different --instance")
         }
         
         setenv("FORGE_SOCKET", socketPath, 1)
@@ -358,12 +223,12 @@ package actor Server {
         await Log.shared.setSink(config.logJSONL)
         await Log.shared.setErrorSink(config.errorLog)
         await Log.shared.setMaxBytes(config.logMaximumBytes)
-        await workflowStore.catalog()
+        await catalog.reload()
         await scheduleStore.ensureRuntimeDirectory()
-        await scheduleStore.catalog()
+        await scheduleStore.reload()
         await jobStore.reload()
         await jobStore.closeOrphans()
-        await policyStore.catalog()
+        await policyStore.reload()
         await workflowLogger.start()
         await workflowScheduler.start()
         
@@ -410,7 +275,7 @@ package actor Server {
         
         if !leftover.isEmpty {
             FileHandle.standardError.write(Data(
-                "forge: shutdown drain grace expired with \(leftover.count) run(s) still live: \(leftover.map(\.workflowID).joined(separator: ", "))\n".utf8))
+                "forge: shutdown drain grace expired with \(leftover.count) run(s) still live: \(leftover.map(\.runID).joined(separator: ", "))\n".utf8))
         }
         
         await workflowLogger.stop()
@@ -425,20 +290,21 @@ package actor Server {
         return isTTY ? .stdout : .withheld
     }
     
-    package static func run(configPath: String?, session: String?) async throws {
+    package static func run(configPath: String?, instance: String?) async throws {
         let absoluteConfigPath = configPath
             .map { path in URL(fileURLWithPath: path).standardizedFileURL.path }
-        let home = try Session.home(session: session)
+        let home = try Instance.home(instance: instance)
         let (configuration, report) = try ConfigLoader.loadResolved(
             configPath: absoluteConfigPath,
-            sessionHome: home
+            instanceHome: home
         )
         let server = Server(
             config: configuration,
             configReport: report,
-            sessionHome: home,
-            session: Session.name(session),
-            configPath: absoluteConfigPath
+            instanceHome: home,
+            instance: Instance.name(instance),
+            configPath: absoluteConfigPath,
+            vocabulary: try ForgeVocabulary()
         )
         
         try await server.boot()
@@ -473,13 +339,13 @@ package actor Server {
     }
     
     private func runtimeInfoURL() -> URL {
-        Session.runtimeInfo(in: sessionHome)
+        Instance.runtimeInfo(in: instanceHome)
     }
     
     private func writeRuntimeInfo() {
         let info: [String: Any] = [
             "socket":                     socketPath,
-            "session":                    session,
+            "instance":                   instance,
             "version":                    Version.current,
             "pid":                        ProcessInfo.processInfo.processIdentifier,
             "started_at":                 ISO8601DateFormatter().string(from: bootedAt),

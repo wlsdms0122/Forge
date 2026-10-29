@@ -10,5 +10,5 @@ import Foundation
 protocol ErrorHook: Sendable {
     var name: String { get }
 
-    func onError(_ invocation: Invocation, _ error: any Error) async -> ErrorAction
+    func onError(_ invocation: AgentInvocation, _ error: any Error) async -> ErrorAction
 }

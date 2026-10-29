@@ -7,6 +7,7 @@
 
 import ArgumentParser
 import Foundation
+import Forge
 
 struct JobUpdateCommand: ParsableCommand {
     // MARK: - Property
@@ -62,18 +63,18 @@ struct JobUpdateCommand: ParsableCommand {
     func run() throws {
         let client = Client(global, context: "job update")
         
-        var params: [String: Any] = ["id": id]
+        var params: [String: JSONValue] = ["id": .string(id)]
         
-        if let note { params["note"] = note }
-        if let brief { params["brief"] = brief }
-        if let ref { params["ref"] = ref }
-        if let refNote { params["ref_note"] = refNote }
-        if let item { params["item"] = item }
-        if let itemDesc { params["item_desc"] = itemDesc }
-        if let itemStatus { params["item_status"] = itemStatus }
-        if let status { params["status"] = status }
+        if let note { params["note"] = .string(note) }
+        if let brief { params["brief"] = .string(brief) }
+        if let ref { params["ref"] = .string(ref) }
+        if let refNote { params["ref_note"] = .string(refNote) }
+        if let item { params["item"] = .int(item) }
+        if let itemDesc { params["item_desc"] = .string(itemDesc) }
+        if let itemStatus { params["item_status"] = .string(itemStatus) }
+        if let status { params["status"] = .string(status) }
         
-        printResult(client.call("job.update", params), json: json)
+        client.call("job.update", params).printResult(json: json)
     }
     
     // MARK: - Private

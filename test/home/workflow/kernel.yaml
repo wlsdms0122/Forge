@@ -1,83 +1,80 @@
-description: Kernel language tour — every control-flow feature in one shallow pass
-inputs:
-  who:
-    type: string
-    default: world
-  mode:
-    type: string
-    oneOf: [a, b]
-    default: a
-  items:
-    type: array
-    default: [one, two]
-steps:
-- id: greet
-  value: { format: "hello, ${name}", with: { name: { ref: inputs.who } } }
-- id: quoted
-  value: { value: { ref: kept-as-data } }
-- id: pick
-  branch:
-    when:
-      { of: { ref: inputs.mode }, is: a }
-    then:
-      steps:
-      - id: chosen
-        value: took-a
-      output: { ref: chosen }
-    else:
-      steps:
-      - id: chosen
-        value: took-b
-      output: { ref: chosen }
-- id: gate
-  loop:
-    where:
-      { of: { ref: "gate.index" }, is_not: 2 }
-    steps:
-    - id: latest
-      value: { ref: gate.index }
-    guard: 5
-    output: { ref: latest }
-- id: walk
-  each:
-    in: { ref: inputs.items }
-    steps:
-    - id: tagged
-      value:
-        format: "${index}:${item}"
-        with:
-          index: { ref: walk.index }
-          item: { ref: walk.item }
-    output: { ref: tagged }
-- id: par
-  parallel:
-  - id: left
-    value: 1
-  - id: right
-    value: 2
-- id: blk
-  group:
-    steps:
-    - id: inner
-      value: grouped
-    output: { ref: inner }
-- id: caught
-  abort: bail out
-  rescue:
-  - id: recovery
-    value: rescued
-- id: called
-  use:
-    spec: child
-    inputs:
-      tag: from-use
-outputs:
-  greeting: { ref: greet }
-  quoted: { ref: quoted }
-  branch: { ref: pick }
-  loop: { ref: gate }
-  walk: { ref: walk }
-  parallel: { ref: par }
-  group: { ref: blk }
-  rescued: { ref: caught }
-  used: { ref: called.tag_out }
+procedures:
+  kernel:
+    description: Kernel language tour, every control-flow feature in one shallow pass.
+    access: public
+    parameters:
+      - who: { type: String, default: world, hint: whom the tour greets }
+      - mode: { type: String, default: a }
+      - items: { type: "Array<String>", default: [ one, two ] }
+    returns: "Dictionary<String, Any>"
+    failing: [aborted, concurrent_failed]
+    body:
+      - let: greet
+        value: { format: "hello, ${name}", with: { name: { ref: who } } }
+      - let: quoted
+        value: { dictionary: [ [ref, kept-as-data] ] }
+      - var: pick
+        type: String
+        value: ""
+      - value:
+          cases:
+            - when: { of: { ref: mode }, is: a }
+              then: [ { set: pick, value: took-a } ]
+            - else: [ { set: pick, value: took-b } ]
+      - var: rounds
+        type: Int
+        value: 0
+      - var: latest
+        type: Int
+        value: 0
+      - value:
+          loop:
+            while: { of: { ref: rounds }, is_not: 2 }
+            body:
+              - set: latest
+                value: { ref: rounds }
+              - set: rounds
+                value: { of: { ref: rounds }, plus: 1 }
+      - var: walked
+        type: "Array<String>"
+        value: []
+      - let: walk
+        value:
+          each:
+            of: { ref: items }
+            as: item
+            index: at
+            body:
+              - set: walked
+                value: { of: { ref: walked }, appending: { format: "${at}:${item}", with: { at: { ref: at }, item: { ref: item } } } }
+      - let: par
+        value:
+          call:
+            procedure: Standard.Concurrent.allKeyed
+            arguments:
+              - dictionary:
+                  - [left, { closure: { returns: Int, result: 1 } }]
+                  - [right, { closure: { returns: Int, result: 2 } }]
+      - var: recovered
+        type: String
+        value: ""
+      - let: caught
+        value:
+          try:
+            body:
+              - value: { abort: bail out }
+            catch:
+              - set: recovered
+                value: rescued
+      - let: called
+        value: { call: { procedure: child, arguments: { tag: from-use } } }
+    result:
+      dictionary:
+        - [greeting, { ref: greet }]
+        - [quoted, { ref: quoted }]
+        - [branch, { ref: pick }]
+        - [loop, { ref: latest }]
+        - [walk, { ref: walked }]
+        - [parallel, { ref: par }]
+        - [rescued, { ref: recovered }]
+        - [used, { ref: 'called["tag_out"]' }]

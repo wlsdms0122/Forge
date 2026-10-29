@@ -1,9 +1,7 @@
-description: E2E child — echoes its input back
-inputs:
-  tag:
-    type: string
-steps:
-- id: echo
-  value: { format: "child:${tag}", with: { tag: { ref: inputs.tag } } }
-outputs:
-  tag_out: { ref: echo }
+# E2E child: echoes its input back.
+procedures:
+  child:
+    access: public
+    parameters: [ tag: String ]
+    returns: "Dictionary<String, Any>"
+    result: { dictionary: [ [tag_out, { format: "child:${tag}", with: { tag: { ref: tag } } }] ] }

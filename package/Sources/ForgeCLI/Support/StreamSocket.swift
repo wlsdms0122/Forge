@@ -123,11 +123,3 @@ final class StreamSocket: @unchecked Sendable {
         return fd
     }
 }
-
-func emitStdoutLine(_ text: String) {
-    FileHandle.standardOutput.write(Data((text + "\n").utf8))
-}
-
-func emitStderr(_ text: String) {
-    FileHandle.standardError.write(Data((text + "\n").utf8))
-}

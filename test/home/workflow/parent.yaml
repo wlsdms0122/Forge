@@ -1,10 +1,10 @@
-description: Cross-run dispatch — parent spawns a child run through the policy gate
-steps:
-- id: fan
-  dispatch:
-    name: child
-    inputs:
-      tag: from-dispatch
-    timeout: 60
-outputs:
-  child: { ref: fan }
+# Cross-run dispatch: parent spawns a child run through the policy gate.
+procedures:
+  parent:
+    access: public
+    returns: "Dictionary<String, Any>"
+    failing: [child_run_failed, timeout]
+    body:
+      - let: fan
+        value: { call: { procedure: dispatch, arguments: { name: child, inputs: { dictionary: [ [tag, from-dispatch] ] }, timeout: 60 } } }
+    result: { dictionary: [ [child, { ref: fan }] ] }

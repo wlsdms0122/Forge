@@ -41,35 +41,37 @@ struct LogContextRunTests {
         #expect(adopted[2] == "wf-parent", "the parent span is the parent node")
     }
     
-    @Test("A top-level dispatch opens the trace at the workflow id")
-    func topLevelDispatchRootsTraceAtWorkflowID() async throws {
+    @Test("A top-level dispatch opens the trace at the run id")
+    func topLevelDispatchRootsTraceAtRunID() async throws {
         // Given
         let directory = FileManager.default.temporaryDirectory
         .appendingPathComponent("forge-tracerun-\(UUID().uuidString.prefix(6))")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        try #"""
-        steps:
-          - id: x
-            shell:
-              command: ["/bin/echo", "ok"]
-        """#.write(to: directory.appendingPathComponent("echo.yaml"), atomically: true, encoding: .utf8)
-        let store = SpecCatalog(directory: directory, loader: ForgeSpec.loader())
+        try workflowFile(#"""
+        failing: [nonzero_exit, timeout]
+        body:
+          - let: x
+            value: { call: { procedure: shell, arguments: { command: ["/bin/echo", "ok"] } } }
+        """#, named: "echo").write(to: directory.appendingPathComponent("echo.yaml"), atomically: true, encoding: .utf8)
+        let catalog = try WorkflowCatalog(directory: directory)
         let bus = WorkflowEventBus()
-        let runner = SpecWorkflowRunner(
-            catalog: store,
+        let runner = WorkflowRunner(
+            catalog: catalog,
             eventBus: bus,
             policyStore: PolicyStore(seed: ["cli:test": ["echo"]]),
             pool: WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: Int.max),
             workRegistry: WorkRegistry(),
             tokenAuthority: TokenAuthority(),
-            shell: LiveShell(),
-            agent: LiveAgent(executor: Executor(backend: StubBackend("noop"))),
-            resources: LiveResources(store: ResourceStore(directory: nil))
+            capabilities: CapabilitySet(
+                shell: LiveShell(),
+                agent: LiveAgent(executor: AgentExecutor(backend: StubBackend("noop"))),
+                resources: LiveResources(store: ResourceStore(directory: nil))
+            )
         )
         let (_, stream) = await bus.subscribe()
-        let program = try await store.spec(named: "echo")
+        let workflow = try await catalog.workflow(named: "echo")
         let result = try await runner.dispatch(
-            program: program, name: "echo", inputs: [:], principal: "cli:test", origin: .rpc,
+            workflow, inputs: [:], principal: "cli:test", origin: .rpc,
             mode: .awaited
         )
         var started: WorkflowEvent?
@@ -79,8 +81,8 @@ struct LogContextRunTests {
         }
 
         // Then
-        #expect(started?.workflowID == result.workflowID)
-        #expect(started?.rootID == result.workflowID, "top-level run: root_id(trace_id) == workflow_id")
+        #expect(started?.runID == result.runID)
+        #expect(started?.rootID == result.runID, "top-level run: root_id(trace_id) == run_id")
     }
     
     // MARK: - Private
