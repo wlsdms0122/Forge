@@ -141,7 +141,7 @@ struct WorkflowDispatchTests {
             "body": [["let": "x", "value": ["format": 5]]],
         ]
         let refusal = await #expect(throws: WorkflowValidationError.self) {
-            try await WorkflowCatalog(directory: nil).inline(.object(badSpec))
+            try await WorkflowCatalog(directory: nil).inline(badSpec)
         }
 
         // When
@@ -150,7 +150,7 @@ struct WorkflowDispatchTests {
         }
 
         // Then
-        #expect(error?.message == "workflow.dispatch: malformed 'spec' — \(try #require(refusal).message)")
+        #expect(error?.message == "workflow.dispatch: malformed 'spec': \(try #require(refusal).message)")
     }
 
     @Test("An inline spec containing an invalid reference is rejected")

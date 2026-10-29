@@ -313,8 +313,8 @@ struct ScheduleStoreRuntimeTests {
         #expect(matches.first?.runtime ?? false)
     }
 
-    @Test("A hand-edited spec claiming a foreign name is rejected")
-    func handEditedForeignSpecNameRejected() async throws {
+    @Test("A hand-written schedule naming a workflow and a spec both is refused at the load")
+    func handEditedWorkflowAndSpecRefused() async throws {
         // Given
         let directory = try temporary.make("cfg-foreign"); defer { try? FileManager.default.removeItem(at: directory) }
         let runtimeDirectoryectory = try temporary.make("rt-foreign"); defer { try? FileManager.default.removeItem(at: runtimeDirectoryectory) }
@@ -322,8 +322,7 @@ struct ScheduleStoreRuntimeTests {
         id: he
         workflow: wf-x
         every: 1m
-        spec:
-          name: evil-identity
+        spec: {}
         """#.write(to: directory.appendingPathComponent("he.yaml"), atomically: true, encoding: .utf8)
         try #"""
         id: ok
@@ -338,17 +337,16 @@ struct ScheduleStoreRuntimeTests {
         // Then
         #expect(control != nil, "the control (a valid schedule) must load")
         let loaded = await store.lookup("he")
-        #expect(loaded == nil, "a hand-edited schedule whose spec carries a self-claimed name must be rejected at the load boundary")
+        #expect(loaded == nil, "a schedule runs a workflow by name or a spec, so a file writing both is refused")
     }
 
-    @Test("A hand-written anonymous spec is kept as written, the procedure the dispatch door names")
+    @Test("A hand-written spec is kept as written and runs as the inline sigil")
     func handEditedAnonymousSpecIsKeptAsWritten() async throws {
         // Given
         let directory = try temporary.make("cfg-anon"); defer { try? FileManager.default.removeItem(at: directory) }
         let runtimeDirectoryectory = try temporary.make("rt-anon"); defer { try? FileManager.default.removeItem(at: runtimeDirectoryectory) }
         try #"""
         id: ha
-        workflow: "<inline>"
         every: 1m
         spec: {}
         """#.write(to: directory.appendingPathComponent("ha.yaml"), atomically: true, encoding: .utf8)
@@ -358,15 +356,12 @@ struct ScheduleStoreRuntimeTests {
         let fetched = await store.lookup("ha")
 
         // Then
-        let schedule = try #require(fetched, "anonymous spec must load")
-        guard case .object(let object)? = schedule.spec else {
-            Issue.record("spec must be an object")
-            
-            return
-        }
-        
-        #expect(object == [:], "an inline spec is one procedure, which the notation names nowhere")
-        _ = try await WorkflowCatalog(directory: nil).inline(.object(object))
+        let schedule = try #require(fetched, "a spec must load")
+        let spec = try #require(schedule.spec)
+
+        #expect(spec == [:])
+        #expect(schedule.workflow == WorkflowCatalog.inlineSigil)
+        _ = try await WorkflowCatalog(directory: nil).inline(spec)
     }
 
     @Test("A broken file and an id collision both surface as failures, and the collided id is excluded on both sides")

@@ -31,7 +31,7 @@ struct ScheduleStoreEnabledTests {
                 concurrency: .skip,
                 enabled: true,
                 inputs: ["scope": .string("quick"), "limit": .int(5)],
-                spec: .object(["body": .array([])])))
+                spec: ["body": .array([])]))
 
         // When
         try await store.setEnabled(
@@ -49,7 +49,7 @@ struct ScheduleStoreEnabledTests {
         #expect(after.concurrency == .skip, "concurrency preserved (a field that would be lost under re-serialization drift)")
         #expect(after.inputs?["scope"] == .string("quick"))
         #expect(after.inputs?["limit"] == .int(5))
-        #expect(after.spec == .object(["body": .array([])]), "spec preserved as written")
+        #expect(after.spec == ["body": .array([])], "spec preserved as written")
     }
 
     @Test("The definition file is never rewritten — even human-written comments stay intact")
@@ -262,17 +262,17 @@ struct ScheduleStoreEnabledTests {
 
     @Test("withEnabled is a copy that preserves the other fields")
     func withEnabledIsFieldPreservingCopy() {
-        let schedule = Schedule(id: "a", workflow: "w", trigger: .every(Interval(seconds: 30)),
+        let schedule = Schedule(id: "a", workflow: WorkflowCatalog.inlineSigil, trigger: .every(Interval(seconds: 30)),
             concurrency: .replace, enabled: true,
-            inputs: ["x": .int(1)], spec: .string("s"))
+            inputs: ["x": .int(1)], spec: ["result": "s"])
         let disabled = schedule.withEnabled(false)
         #expect(disabled.enabled == false)
         #expect(disabled.id == "a")
-        #expect(disabled.workflow == "w")
+        #expect(disabled.workflow == WorkflowCatalog.inlineSigil)
         #expect(disabled.trigger == .every(Interval(seconds: 30)))
         #expect(disabled.concurrency == .replace)
         #expect(disabled.inputs?["x"] == .int(1))
-        #expect(disabled.spec == .string("s"))
+        #expect(disabled.spec == ["result": "s"])
         #expect(schedule.enabled == true, "original unchanged (value semantics)")
     }
     // MARK: - Private

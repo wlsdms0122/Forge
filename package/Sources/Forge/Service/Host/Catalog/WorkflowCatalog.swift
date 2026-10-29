@@ -154,10 +154,8 @@ actor WorkflowCatalog {
     // way a catalog file is, leaning on the library and on the catalog's
     // files, and declared public under the inline sigil, which a run starts
     // from.
-    func inline(_ spec: JSONValue) async throws -> Workflow {
-        guard case var .object(procedure) = spec else {
-            throw WorkflowValidationError("an inline spec is one procedure, written as an object")
-        }
+    func inline(_ spec: [String: JSONValue]) async throws -> Workflow {
+        var procedure = spec
 
         procedure["access"] = .string("public")
 

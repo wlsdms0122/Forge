@@ -7,12 +7,10 @@
 
 import Foundation
 
-enum PipeReaderError: ForgeError, CustomStringConvertible {
+enum PipeReaderError: ForgeError {
     case creationFailed(errno: Int32)
     
-    var message: String { description }
-    
-    var description: String {
+    var message: String {
         switch self {
         case .creationFailed(let code):
             return "failed to create pipe (errno=\(code))"

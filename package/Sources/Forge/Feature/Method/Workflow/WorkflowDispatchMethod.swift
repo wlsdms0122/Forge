@@ -167,14 +167,10 @@ struct WorkflowDispatchMethod: Sendable {
         _ params: [String: JSONValue]
     ) async throws -> Workflow {
         if let spec = params["spec"]?.objectValue {
-            guard spec["name"] == nil else {
-                throw ProtocolError("workflow.dispatch: inline 'spec' must be anonymous — a 'name' key is not allowed (the name is fixed to '\(WorkflowCatalog.inlineSigil)')")
-            }
-
             do {
-                return try await catalog.inline(.object(spec))
+                return try await catalog.inline(spec)
             } catch {
-                throw ProtocolError("workflow.dispatch: malformed 'spec' — \(ErrorObject(error).message)")
+                throw ProtocolError("workflow.dispatch: malformed 'spec': \(error)")
             }
         }
 

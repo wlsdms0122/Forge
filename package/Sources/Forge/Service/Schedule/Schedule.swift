@@ -23,7 +23,7 @@ struct Schedule: Sendable, Codable {
     let concurrency: ConcurrencyPolicy
     let enabled: Bool
     let inputs: [String: JSONValue]?
-    let spec: JSONValue?
+    let spec: [String: JSONValue]?
     
     // MARK: - Initializer
     init(
@@ -33,7 +33,7 @@ struct Schedule: Sendable, Codable {
         concurrency: ConcurrencyPolicy = .queue,
         enabled: Bool = true,
         inputs: [String: JSONValue]? = nil,
-        spec: JSONValue? = nil
+        spec: [String: JSONValue]? = nil
     ) {
         self.id = id
         self.workflow = workflow
@@ -55,7 +55,25 @@ struct Schedule: Sendable, Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         
         self.id = try container.decodeIfPresent(String.self, forKey: .id) ?? ""
-        self.workflow = try container.decode(String.self, forKey: .workflow)
+        self.spec = try container.decodeIfPresent([String: JSONValue].self, forKey: .spec)
+        
+        // A schedule runs a workflow by name or an inline spec, which runs as
+        // the inline sigil, so a file writes one of the two.
+        if spec == nil {
+            self.workflow = try container.decode(String.self, forKey: .workflow)
+        } else {
+            guard !container.contains(.workflow) else {
+                throw DecodingError.dataCorrupted(
+                    .init(
+                        codingPath: container.codingPath + [CodingKeys.workflow],
+                        debugDescription: "'workflow' and 'spec' are mutually exclusive; write only one"
+                    )
+                )
+            }
+            
+            self.workflow = WorkflowCatalog.inlineSigil
+        }
+        
         self.trigger = try Trigger(from: decoder)
         self.concurrency = try container.decodeIfPresent(
             ConcurrencyPolicy.self,
@@ -63,42 +81,6 @@ struct Schedule: Sendable, Codable {
         ) ?? .queue
         self.enabled = false
         self.inputs = try container.decodeIfPresent([String: JSONValue].self, forKey: .inputs)
-        
-        if let rawSpec = try container.decodeIfPresent(JSONValue.self, forKey: .spec) {
-            guard case let .object(object) = rawSpec else {
-                throw DecodingError.dataCorrupted(
-                    .init(
-                        codingPath: container.codingPath + [CodingKeys.spec],
-                        debugDescription: "inline 'spec' must be a JSON object"
-                    )
-                )
-            }
-            
-            guard object["name"] == nil else {
-                throw DecodingError.dataCorrupted(
-                    .init(
-                        codingPath: container.codingPath + [CodingKeys.spec],
-                        debugDescription: "inline 'spec' must be anonymous — a 'name' key is"
-                            + " not allowed (name is fixed to '\(WorkflowCatalog.inlineSigil)')"
-                    )
-                )
-            }
-            
-            guard workflow == WorkflowCatalog.inlineSigil else {
-                throw DecodingError.dataCorrupted(
-                    .init(
-                        codingPath: container.codingPath + [CodingKeys.workflow],
-                        debugDescription: "a schedule with an inline 'spec' runs as"
-                            + " '\(WorkflowCatalog.inlineSigil)' — 'workflow' must be"
-                            + " '\(WorkflowCatalog.inlineSigil)', got '\(workflow)'"
-                    )
-                )
-            }
-            
-            self.spec = .object(object)
-        } else {
-            self.spec = nil
-        }
     }
     
     // MARK: - Public
@@ -130,7 +112,8 @@ struct Schedule: Sendable, Codable {
         var container = encoder.container(keyedBy: CodingKeys.self)
         
         try container.encode(id, forKey: .id)
-        try container.encode(workflow, forKey: .workflow)
+        if spec == nil { try container.encode(workflow, forKey: .workflow) }
+
         try trigger.encode(to: encoder)
         
         if concurrency != .queue { try container.encode(concurrency, forKey: .concurrency) }

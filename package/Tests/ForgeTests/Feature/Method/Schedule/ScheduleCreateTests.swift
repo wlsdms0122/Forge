@@ -32,7 +32,7 @@ struct ScheduleCreateTests {
             "body": [["let": "x", "value": ["format": 5]]],
         ]
         let refusal = await #expect(throws: WorkflowValidationError.self) {
-            try await catalog.inline(.object(badSpec))
+            try await catalog.inline(badSpec)
         }
 
         // When
@@ -43,7 +43,7 @@ struct ScheduleCreateTests {
         }
 
         // Then
-        #expect(error?.message == "schedule.create: malformed 'spec' — \(try #require(refusal).message)")
+        #expect(error?.message == "schedule.create: malformed 'spec': \(try #require(refusal).message)")
     }
 
     // MARK: - Public

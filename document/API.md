@@ -172,7 +172,7 @@ forge workflow dispatch [<name>] [--spec <spec>] [--inputs <json>]
 | Option | Meaning |
 |--------|---------|
 | `<name>` | registered workflow name (positional). Omit when using `--spec` |
-| `--spec` | inline **anonymous** workflow JSON — use instead of the name argument. A `name` key is rejected — the run is named `<inline>` and gated by that sigil |
+| `--spec` | inline workflow JSON, one procedure; use instead of the name argument. The run is named `<inline>` and gated by that sigil |
 | `--inputs` | workflow inputs, JSON object (default `{}`) |
 | `--parameters` | caller passthrough, JSON object — rides the log envelope only |
 | `--correlator` | opaque string, ridden through to `service.message` frames |
@@ -604,7 +604,7 @@ calls and nested calls from inside a workflow are distinguished by the **token**
 |-------|-----|-------|
 | `token` | ✅ | identity derived from claims; caller cannot set `principal` |
 | `name` | △ | registered workflow name — exclusive with `spec` |
-| `spec` | △ | inline anonymous workflow JSON; a `name` key is rejected, run is named `<inline>` |
+| `spec` | △ | inline workflow JSON, one procedure; the run is named `<inline>` |
 | `inputs` | — | object, default `{}` |
 | `async` | — | bool, default `false` |
 | `parameters` / `correlator` / `origin` / `root` | — | honored only for fresh-root tokens; for a workflow-subprocess token they are inherited from the parent `WorkRecord` and caller values are ignored |
@@ -818,9 +818,10 @@ target workflow (`policy/*.yaml`, checked against the resolved name —
 `<inline>` for a spec). The principal is not stored; fires run as
 `system:schedule:<id>` — authorization is a creation-time concern only.
 
-Fire target via `workflow` (registered name) or `spec` (anonymous inline) —
-same rules as `workflow.dispatch`: mutually exclusive, `spec` rejects a
-`name` key and runs under the `<inline>` sigil. A schedule file that gives a `spec` writes `workflow: "<inline>"`; any other name is a load failure. At create time the spec is
+Fire target via `workflow` (registered name) or `spec` (inline), the same
+rules as `workflow.dispatch`: mutually exclusive, and `spec` runs under the
+`<inline>` sigil. A schedule file writes one of the two; a file writing both
+is a load failure. At create time the spec is
 read the way a catalog file is, through the YAML front end leaning on
 Forge's library and on the catalog's files, and loaded, so what the front
 end or the load refuses surfaces at create time. It is not built there: a
@@ -833,7 +834,7 @@ the schedule record as written and read again on every fire.
 |-------|-----|-------|
 | `token` | ✅ | any authenticated token |
 | `workflow` | △ | registered workflow name — exclusive with `spec` |
-| `spec` | △ | inline anonymous workflow JSON — `name` key rejected, run as `<inline>` |
+| `spec` | △ | inline workflow JSON, one procedure; runs as `<inline>` |
 | `every` | △ | interval duration (`"30s" "5m" "1h" "2d"`) — repeating |
 | `at` | △ | wall-clock `"HH:mm"` (24h) — repeating; requires `timezone` |
 | `once` | △ | wall-clock `"yyyy-MM-dd HH:mm:ss"` — one-shot; requires `timezone` |

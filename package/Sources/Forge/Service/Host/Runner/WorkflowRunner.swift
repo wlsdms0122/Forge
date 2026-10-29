@@ -8,13 +8,12 @@
 import Foundation
 import Warp
 
-// The run-level driver over the language's executor — the daemon-facing frame
-// Warp deliberately does not own: run identity, tokens, the work registry,
-// pool slots, run started/completed/failed events and the child-run boundary.
-// It also IS the dispatch seam: a `dispatch` step asks the daemon for an
-// isolated run, and every entrance (RPC method, scheduler, child step) walks
-// through the same `dispatch(_:...)` door — authorization, pool registration,
-// log adoption — before a run begins.
+// Runs a workflow on the language's executor and owns what a run is to the
+// daemon: its identity, its token, the work registry, its pool slot, its
+// started, completed and failed events, and the boundary of a child run. Every
+// entrance (RPC method, scheduler, a `dispatch` step) comes in through
+// `dispatch(_:...)`, which authorizes, registers in the pool and adopts the
+// log before a run begins.
 actor WorkflowRunner {
     // MARK: - Property
     let catalog: WorkflowCatalog

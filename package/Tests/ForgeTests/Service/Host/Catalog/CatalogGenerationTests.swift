@@ -215,7 +215,7 @@ struct CatalogGenerationTests {
         do {
 
         // When
-            _ = try await sut.inline(.object(["returns": "Any", "result": result]))
+            _ = try await sut.inline(["returns": "Any", "result": result])
 
         // Then
             Issue.record("an inline spec nested past the bound is refused")
