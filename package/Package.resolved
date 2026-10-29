@@ -1,5 +1,5 @@
 {
-  "originHash" : "1cadeafcee315ec770ccbf1fa684c1198530b821323b05a6bddc6365c84cbbeb",
+  "originHash" : "4dc86934de719ba3f9423762a985018c393d346369a0e73ecf13dc60843f2bbb",
   "pins" : [
     {
       "identity" : "swift-argument-parser",
@@ -17,6 +17,24 @@
       "state" : {
         "revision" : "ec6198d37d495efc6acd4dffbd262cdca7ff9b3f",
         "version" : "0.6.0"
+      }
+    },
+    {
+      "identity" : "warp-frontend-yaml",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/wlsdms0122/warp-frontend-yaml.git",
+      "state" : {
+        "revision" : "6b984839ae39390ac47904f765bbad9438f82015",
+        "version" : "0.1.0"
+      }
+    },
+    {
+      "identity" : "warp-runtime-swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/wlsdms0122/warp-runtime-swift.git",
+      "state" : {
+        "revision" : "0f603a440695b156a3ed616ae52177a332898e29",
+        "version" : "0.1.0"
       }
     },
     {

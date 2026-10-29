@@ -13,8 +13,8 @@ let package = Package(
         .executable(name: "ForgeCLI", targets: ["ForgeCLI"]),
     ],
     dependencies: [
-        .package(path: "../../warp-runtime-swift"),
-        .package(path: "../../warp-frontend-yaml"),
+        .package(url: "https://github.com/wlsdms0122/warp-runtime-swift.git", exact: "0.1.0"),
+        .package(url: "https://github.com/wlsdms0122/warp-frontend-yaml.git", exact: "0.1.0"),
         .package(url: "https://github.com/LebJe/TOMLKit.git", from: "0.6.0"),
         .package(url: "https://github.com/jpsim/Yams.git", from: "5.1.0"),
         .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.3.0")
