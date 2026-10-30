@@ -28,12 +28,11 @@ struct PolicyCommand: ParsableCommand {
 
             Principal classes:
                 cli:<workflow>           workflow subprocess (daemon mints)
-                system:rpc               unauthenticated external RPC
+                service:<name>           managed service (supervisor mints)
                 system:admin             admin route (manual triggers)
                 system:runner            slack / runner pipeline
-                system:schedule:<id>    daemon's internal scheduler
-                admin:<user>   (future)  authenticated admin
-                runner:<worker>(future)  authenticated runner
+                system:schedule:<id>     daemon's internal scheduler
+                admin:<user>             named admin (token issue)
             """,
         subcommands: [
             PolicyListCommand.self,

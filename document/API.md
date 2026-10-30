@@ -1100,12 +1100,10 @@ internally at workflow-subprocess spawn, never over RPC.
 |-----------|--------|
 | `cli:<workflow>` | workflow subprocess (daemon mints at spawn) |
 | `service:<name>` | managed service subprocess (supervisor mints at spawn; never issuable over RPC). Bound to its own name on named service surfaces (service.register/ack/run/shutdown/restart) and rejected on global service control (service.reload) |
-| `system:rpc` | unauthenticated external RPC |
 | `system:runner` | slack / runner pipeline |
-| `system:admin` | admin route (manual triggers) |
+| `system:admin` | admin route (manual triggers); the daemon's boot token |
 | `system:schedule:<id>` | the daemon's internal scheduler (repeating + one-shot fires) |
-| `admin:<user>` | authenticated admin (future) |
-| `runner:<worker>` | authenticated runner (future) |
+| `admin:<user>` | a named admin, issued over `token.issue`; may delegate like `system:admin` |
 
 ---
 
