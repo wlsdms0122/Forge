@@ -462,8 +462,7 @@ forge service send <name> --payload <json> [--async] [--json]
 ```
 
 `--async` returns as soon as the work is dispatched (`{message_id,
-status:"dispatched"}`) instead of blocking for the service's result. A `wait`
-key in the payload is rejected — async-ness is a call-level flag, not payload.
+status:"dispatched"}`) instead of blocking for the service's result.
 
 #### Managed-service control
 

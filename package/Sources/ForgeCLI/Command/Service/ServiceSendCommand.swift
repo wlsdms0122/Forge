@@ -29,8 +29,6 @@ struct ServiceSendCommand: ParsableCommand {
                 `send` blocks until the service acks and returns its result.
                 Pass --async to return as soon as the work is dispatched
                 ({ message_id, status: "dispatched" }) without waiting.
-                Whether to wait is the caller's business — a `wait` key in
-                the payload is rejected; use --async.
 
             EXAMPLE
                 forge service send slack \\
@@ -65,10 +63,6 @@ struct ServiceSendCommand: ParsableCommand {
             let payloadObject = try? JSONValue(jsonObject: payloadAny)
         else {
             die("service send: --payload must be a JSON object", code: 4)
-        }
-        
-        if payloadObject["wait"] != nil {
-            die("service send: control whether to wait with the --async flag, not a payload field (omit --async to block until completion)", code: 4)
         }
         
         let params: [String: JSONValue] = [
