@@ -1,5 +1,5 @@
 //
-//  StreamStrictDecodeTests.swift
+//  RPCTests.swift
 //  ForgeTests
 //
 //  Created by JSilver on 8/8/26.
@@ -10,8 +10,8 @@ import Testing
 @testable import Forge
 @testable import ForgeCLI
 
-@Suite("StreamStrictDecode Tests")
-struct StreamStrictDecodeTests {
+@Suite("RPC Tests")
+struct RPCTests {
     // MARK: - Property
     // MARK: - Initializer
     // MARK: - Test
