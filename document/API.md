@@ -77,7 +77,7 @@ instance-owned (`<instanceHome>/runtime`) and not configurable — like the sock
 | `[log]` `jsonl` / `error` | `<instanceHome>/log/forge.log.jsonl` · `…/error.log` | structured + stderr logs |
 | `[log]` `maximum_bytes` | `52428800` (50 MiB) | single-file rotation threshold; ≤0 disables rotation |
 | `[pool]` `maximum_concurrent_steps` | `4` | concurrent leaf-step (invoke/shell) cap; excess queues FIFO |
-| `[providers.<name>]` `kind` (+ settings) | one `claude` (claude-cli) | backend instances. `kind` = `claude-cli` \| `codex-cli` \| `openai-compat`. CLI kinds accept `bin`; OpenAI-compatible accepts `endpoint`; an Agent reference without a model leaves the choice to the endpoint. Declaring any drops the built-in claude default — list it explicitly alongside others. API keys via `FORGE_PROVIDER_<NAME>_API_KEY` env only. |
+| `[provider.<name>]` `kind` (+ settings) | one `claude` (claude-cli) | backend instances. `kind` = `claude-cli` \| `codex-cli` \| `openai-compat`. CLI kinds accept `executable` (default: the CLI's name on `PATH`); `openai-compat` requires `endpoint`, the base URL, and an Agent reference without a model leaves the choice to the endpoint. A provider without a known `kind` or a required setting is skipped with a warning on stderr. Declaring any drops the built-in claude default, so list it explicitly alongside others. API keys via `FORGE_PROVIDER_<NAME>_API_KEY` env only. |
 | `[service.<name>]` `command` (+ `cwd`/`env`/`auto_spawn`/`log_file`/`restart_*`) | — (must declare) | managed child processes forge spawns/supervises (§3 of `forge serve -h`) |
 | `[hooks]` `logging` | `true` | structured event logging |
 

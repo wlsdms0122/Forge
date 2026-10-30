@@ -127,8 +127,53 @@ struct ConfigLoaderTests {
         // Then — a parsed provider must replace the builtin default, or a stub
         // executable in config silently falls through to the real CLI
         let provider = try #require(configuration.providers.first { provider in provider.name == "claude" })
-        #expect(provider.kind == "claude-cli")
-        #expect(provider.settings["executable"] == "/tmp/agent-stub")
+        #expect(provider.kind == .claudeCLI(executable: "/tmp/agent-stub"))
+    }
+    
+    @Test("a provider forge cannot build is skipped and the rest stay")
+    func undecodableProviderIsSkipped() throws {
+        // Given
+        let directory = try temporary.make("prov-skip")
+        let home = try temporary.make("prov-skip-home")
+        defer { for d in [directory, home] { try? FileManager.default.removeItem(at: d) } }
+        let url = try writeTOML("""
+        [provider.claude]
+        kind = "claude-cli"
+        
+        [provider.local]
+        kind = "openai-compat"
+        """, in: directory)
+
+        // When
+        let configuration = ConfigLoader.build(file: try ConfigLoader.parse(url), tomlDirectory: directory, instanceHome: home, environment: [:])
+
+        // Then
+        #expect(configuration.providers == [ProviderConfig(name: "claude", kind: .claudeCLI(executable: "claude"))])
+    }
+    
+    @Test("the provider API key comes from its environment variable")
+    func providerAPIKeyComesFromEnvironment() throws {
+        // Given
+        let directory = try temporary.make("prov-key")
+        let home = try temporary.make("prov-key-home")
+        defer { for d in [directory, home] { try? FileManager.default.removeItem(at: d) } }
+        let url = try writeTOML("""
+        [provider.local]
+        kind = "openai-compat"
+        endpoint = "http://localhost:11434/v1"
+        """, in: directory)
+
+        // When
+        let configuration = ConfigLoader.build(
+            file: try ConfigLoader.parse(url),
+            tomlDirectory: directory,
+            instanceHome: home,
+            environment: ["FORGE_PROVIDER_LOCAL_API_KEY": "secret"]
+        )
+
+        // Then
+        let endpoint = try #require(URL(string: "http://localhost:11434/v1"))
+        #expect(configuration.providers == [ProviderConfig(name: "local", kind: .openAICompatible(endpoint: endpoint, apiKey: "secret"))])
     }
 
     @Test("When TOML is silent, environment variables win")
