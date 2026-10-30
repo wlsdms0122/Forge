@@ -368,7 +368,7 @@ struct OutputExtractorTests {
     
     @Test("Full-form decoding")
     func codableFullFormDecode() throws {
-        let json = #"{"path":"$.x","type":"int","default":99,"hint":"count"}"#
+        let json = #"{"path":"$.x","type":"int","default":99}"#
         let dec = JSONDecoder()
         let spec = try dec.decode(OutputSpec.self, from: json.data(using: .utf8)!)
         guard case .path(let path) = spec.extractor else {
@@ -381,7 +381,6 @@ struct OutputExtractorTests {
         #expect(spec.type == .int)
         #expect(spec.canOmit)
         #expect(spec.default == .int(99))
-        #expect(spec.hint == "count")
     }
     
     @Test("Writing a default means the field is omittable")
@@ -421,13 +420,6 @@ struct OutputExtractorTests {
         let json = #"{"path":"$.a","regex":"x"}"#
         #expect(throws: (any Error).self) { try JSONDecoder().decode(OutputSpec.self,
                 from: json.data(using: .utf8)!) }
-    }
-    
-    @Test("Short-form round trip")
-    func codableShortFormRoundTrip() throws {
-        let spec = OutputSpec(extractor: .path("$.x"))
-        let encoder = try JSONEncoder().encode(spec)
-        #expect(String(data: encoder, encoding: .utf8) == "\"$.x\"")
     }
     
     // MARK: - semantic corner cases

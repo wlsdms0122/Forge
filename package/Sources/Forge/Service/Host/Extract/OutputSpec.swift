@@ -14,7 +14,7 @@ struct OutputSpec: Sendable, Equatable {
         case line(Int)
     }
     
-    enum CoerceType: String, Sendable, Codable, Equatable {
+    enum CoerceType: String, Sendable, Decodable, Equatable {
         case string
         case int
         case float
@@ -26,7 +26,6 @@ struct OutputSpec: Sendable, Equatable {
     let extractor: Extractor
     let type: CoerceType
     let `default`: JSONValue?
-    let hint: String?
     
     var canOmit: Bool { `default` != nil }
     
@@ -34,27 +33,24 @@ struct OutputSpec: Sendable, Equatable {
     init(
         extractor: Extractor,
         type: CoerceType = .string,
-        default: JSONValue? = nil,
-        hint: String? = nil
+        default: JSONValue? = nil
     ) {
         self.extractor = extractor
         self.type = type
         self.default = `default`
-        self.hint = hint
     }
     
     // MARK: - Public
     // MARK: - Private
 }
 
-extension OutputSpec: Codable {
+extension OutputSpec: Decodable {
     private enum CodingKeys: String, CodingKey, CaseIterable {
         case path
         case regex
         case line
         case type
         case `default`
-        case hint
     }
     
     init(from decoder: Decoder) throws {
@@ -62,7 +58,6 @@ extension OutputSpec: Codable {
             self.extractor = .path(path)
             self.type = .string
             self.default = nil
-            self.hint = nil
             
             return
         }
@@ -99,37 +94,5 @@ extension OutputSpec: Codable {
         self.default = container.contains(.default)
             ? try container.decode(JSONValue.self, forKey: .default)
             : nil
-        self.hint = try container.decodeIfPresent(String.self, forKey: .hint)
-    }
-    
-    func encode(to encoder: Encoder) throws {
-        if
-            case .path(let path) = extractor,
-            type == .string, `default` == nil, hint == nil
-        {
-            var singleValue = encoder.singleValueContainer()
-            
-            try singleValue.encode(path)
-            
-            return
-        }
-        
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        
-        switch extractor {
-        case .path(let path):
-            try container.encode(path, forKey: .path)
-        
-        case .regex(let regex):
-            try container.encode(regex, forKey: .regex)
-        
-        case .line(let line):
-            try container.encode(line, forKey: .line)
-        }
-        
-        if type != .string { try container.encode(type, forKey: .type) }
-        
-        try container.encodeIfPresent(`default`, forKey: .default)
-        try container.encodeIfPresent(hint, forKey: .hint)
     }
 }
