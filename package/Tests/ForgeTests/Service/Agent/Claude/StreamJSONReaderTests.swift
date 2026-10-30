@@ -134,5 +134,21 @@ struct StreamJSONReaderTests {
         #expect(parsed.toolEvents[0].durationMs == nil)
     }
     
+    @Test("a broken frame is counted, not repaired")
+    func invalidUTF8FrameIsCountedNotRepaired() {
+        // Given
+        let sut = StreamJSON.Reader()
+        var frame = Data(#"{"type":"result","result":"ok-"#.utf8)
+        frame.append(0xFF)
+        frame.append(contentsOf: Data(#""}"#.utf8))
+
+        // When
+        sut.feed(frame: frame, at: .fixture)
+
+        // Then
+        #expect(sut.snapshot().malformedLineCount == 1)
+        #expect(sut.snapshot().finalText.isEmpty)
+    }
+    
     // MARK: - Private
 }
