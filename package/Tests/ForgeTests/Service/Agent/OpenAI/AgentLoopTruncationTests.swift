@@ -129,7 +129,7 @@ struct AgentLoopTruncationTests {
     @Test("maps wire length to truncation")
     func parseMapsLengthFromWire() throws {
         let json = Data(#"{"choices":[{"finish_reason":"length","message":{"content":"cut"}}]}"#.utf8)
-        let parsed = try OpenAICompatibleBackend.parse(json)
+        let parsed = try OpenAICompatibleTransport.parse(json)
         #expect(parsed.finishReason == .length)
     }
     

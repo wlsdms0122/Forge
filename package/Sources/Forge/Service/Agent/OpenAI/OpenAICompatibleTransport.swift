@@ -1,5 +1,5 @@
 //
-//  OpenAICompatibleBackend.swift
+//  OpenAICompatibleTransport.swift
 //  Forge
 //
 //  Created by JSilver on 8/8/26.
@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct OpenAICompatibleBackend: ChatTransport {
+struct OpenAICompatibleTransport: ChatTransport {
     // MARK: - Property
     let baseURL: URL
     let apiKey: String?

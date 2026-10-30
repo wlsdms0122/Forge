@@ -1,5 +1,5 @@
 //
-//  OpenAICompatibleBackendTests.swift
+//  OpenAICompatibleTransportTests.swift
 //  ForgeTests
 //
 //  Created by JSilver on 8/8/26.
@@ -9,8 +9,8 @@ import Foundation
 import Testing
 @testable import Forge
 
-@Suite("OpenAICompatibleBackend Tests", .exclusive(.stubURLProtocol))
-struct OpenAICompatibleBackendTests {
+@Suite("OpenAICompatibleTransport Tests", .exclusive(.stubURLProtocol))
+struct OpenAICompatibleTransportTests {
     // MARK: - Property
     private static let userMsg = [ChatMessage(role: .user, content: "hi")]
     
@@ -26,7 +26,7 @@ struct OpenAICompatibleBackendTests {
         """#.data(using: .utf8)!
 
         // When
-        let parsed = try OpenAICompatibleBackend.parse(json)
+        let parsed = try OpenAICompatibleTransport.parse(json)
 
         // Then
         #expect(parsed.text == "Pong")
@@ -42,7 +42,7 @@ struct OpenAICompatibleBackendTests {
         """#.data(using: .utf8)!
 
         // When
-        let parsed = try OpenAICompatibleBackend.parse(json)
+        let parsed = try OpenAICompatibleTransport.parse(json)
 
         // Then
         #expect(parsed.usage == AgentUsage(inputTokens: 1_000, outputTokens: 200, cacheReadTokens: 4_000))
@@ -54,7 +54,7 @@ struct OpenAICompatibleBackendTests {
         let json = #"{"choices":[{"message":{"role":"assistant"}}]}"#.data(using: .utf8)!
 
         // Then
-        let error = try #require(throws: (any Error).self) { try OpenAICompatibleBackend.parse(json) }
+        let error = try #require(throws: (any Error).self) { try OpenAICompatibleTransport.parse(json) }
         
         #expect(error is MalformedOutput, "expected MalformedOutput, got \(error)")
     }
@@ -65,7 +65,7 @@ struct OpenAICompatibleBackendTests {
         let data = "not json at all".data(using: .utf8)!
 
         // Then
-        let error = try #require(throws: (any Error).self) { try OpenAICompatibleBackend.parse(data) }
+        let error = try #require(throws: (any Error).self) { try OpenAICompatibleTransport.parse(data) }
         
         #expect(error is MalformedOutput, "expected MalformedOutput, got \(error)")
     }
@@ -80,7 +80,7 @@ struct OpenAICompatibleBackendTests {
         """#.data(using: .utf8)!
 
         // When
-        let parsed = try OpenAICompatibleBackend.parse(json)
+        let parsed = try OpenAICompatibleTransport.parse(json)
 
         // Then
         #expect(parsed.text == "")
@@ -100,7 +100,7 @@ struct OpenAICompatibleBackendTests {
         """#.data(using: .utf8)!
 
         // When
-        let parsed = try OpenAICompatibleBackend.parse(json)
+        let parsed = try OpenAICompatibleTransport.parse(json)
 
         // Then
         #expect(parsed.toolCalls.count == 1)
@@ -120,7 +120,7 @@ struct OpenAICompatibleBackendTests {
         """#.data(using: .utf8)!
 
         // Then
-        let error = try #require(throws: (any Error).self) { try OpenAICompatibleBackend.parse(json) }
+        let error = try #require(throws: (any Error).self) { try OpenAICompatibleTransport.parse(json) }
         
         #expect(error is MalformedOutput, "expected MalformedOutput, got \(error)")
     }
@@ -133,7 +133,7 @@ struct OpenAICompatibleBackendTests {
         """#.data(using: .utf8)!
 
         // Then
-        let error = try #require(throws: (any Error).self) { try OpenAICompatibleBackend.parse(json) }
+        let error = try #require(throws: (any Error).self) { try OpenAICompatibleTransport.parse(json) }
         
         #expect(error is MalformedOutput, "expected MalformedOutput, got \(error)")
     }
@@ -142,7 +142,7 @@ struct OpenAICompatibleBackendTests {
     @Test("transport timeouts translate to backend timeouts")
     func translateTimeoutIsBackendTimeout() {
         // Given
-        let translated = OpenAICompatibleBackend.translate(URLError(.timedOut))
+        let translated = OpenAICompatibleTransport.translate(URLError(.timedOut))
 
         // Then
         #expect(translated is BackendTimeout, "got \(type(of: translated))")
@@ -152,7 +152,7 @@ struct OpenAICompatibleBackendTests {
     @Test("connection refused translates to unavailable")
     func translateConnectionRefusedIsUnavailable() {
         // Given
-        let translated = OpenAICompatibleBackend.translate(URLError(.cannotConnectToHost))
+        let translated = OpenAICompatibleTransport.translate(URLError(.cannotConnectToHost))
 
         // Then
         #expect(translated is BackendUnavailable, "got \(type(of: translated))")
@@ -162,11 +162,11 @@ struct OpenAICompatibleBackendTests {
     @Test("classifies HTTP status codes into failure kinds")
     func hTTPErrorClassification() {
         // Given
-        let unavailable = OpenAICompatibleBackend.httpError(status: 503, body: Data())
+        let unavailable = OpenAICompatibleTransport.httpError(status: 503, body: Data())
 
         // Then
         #expect(unavailable is BackendUnavailable, "5xx → Unavailable, got \(type(of: unavailable))")
-        let nonzeroExit = OpenAICompatibleBackend.httpError(status: 404, body: Data())
+        let nonzeroExit = OpenAICompatibleTransport.httpError(status: 404, body: Data())
         #expect(nonzeroExit is BackendNonzeroExit, "4xx → NonzeroExit, got \(type(of: nonzeroExit))")
     }
     
@@ -174,7 +174,7 @@ struct OpenAICompatibleBackendTests {
     @Test("JSON mode request body shape")
     func requestBodyJSONMode() {
         // Given
-        let body = OpenAICompatibleBackend.requestBody(
+        let body = OpenAICompatibleTransport.requestBody(
             model: "m",
             messages: [ChatMessage(role: .system, content: "sys"),
                 ChatMessage(role: .user, content: "u")],
@@ -194,7 +194,7 @@ struct OpenAICompatibleBackendTests {
     @Test("with no tools, the tools key is omitted entirely")
     func requestBodyOmitsEmptyTools() {
         // Given
-        let body = OpenAICompatibleBackend.requestBody(
+        let body = OpenAICompatibleTransport.requestBody(
             model: "m",
             messages: [ChatMessage(role: .user, content: "u")],
             tools: [],
@@ -211,7 +211,7 @@ struct OpenAICompatibleBackendTests {
     @Test("with no model specified, the model key is omitted")
     func requestBodyOmitsUnspecifiedModel() {
         // Given
-        let body = OpenAICompatibleBackend.requestBody(
+        let body = OpenAICompatibleTransport.requestBody(
             model: nil,
             messages: [ChatMessage(role: .user, content: "u")],
             tools: [],
@@ -226,7 +226,7 @@ struct OpenAICompatibleBackendTests {
         // Given
         let tool = ToolSpec(name: "bash", description: "run",
             parametersJSON: #"{"type":"object"}"#)
-        let body = OpenAICompatibleBackend.requestBody(
+        let body = OpenAICompatibleTransport.requestBody(
             model: "m",
             messages: [
                 ChatMessage(role: .assistant, content: "",
@@ -323,7 +323,7 @@ struct OpenAICompatibleBackendTests {
     )
     func liveOllamaRoundtrip() async throws {
         // Given
-        let transport = OpenAICompatibleBackend(
+        let transport = OpenAICompatibleTransport(
             baseURL: URL(string: "http://localhost:11434/v1")!
         )
         let completion = try await transport.complete(
@@ -341,8 +341,8 @@ struct OpenAICompatibleBackendTests {
     
     // MARK: - Private
     // MARK: - complete (URLProtocol stub)
-    private func stubTransport() -> OpenAICompatibleBackend {
-        OpenAICompatibleBackend(
+    private func stubTransport() -> OpenAICompatibleTransport {
+        OpenAICompatibleTransport(
             baseURL: URL(string: "http://localhost:11434/v1")!,
             session: StubURLProtocol.session())
     }

@@ -261,7 +261,7 @@ struct AgentLoopBackendTests {
         )
     )
     func liveOllamaAgentLoop() async throws {
-        let transport = OpenAICompatibleBackend(
+        let transport = OpenAICompatibleTransport(
             baseURL: URL(string: "http://localhost:11434/v1")!)
         let backend = AgentLoopBackend(transport: transport)
         let agent = try Agent(

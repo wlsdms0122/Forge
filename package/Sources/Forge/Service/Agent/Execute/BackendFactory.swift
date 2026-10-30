@@ -28,7 +28,7 @@ enum BackendFactory {
                 return nil
             }
             
-            let transport = OpenAICompatibleBackend(
+            let transport = OpenAICompatibleTransport(
                 baseURL: url,
                 apiKey: provider.settings["api_key"]
             )

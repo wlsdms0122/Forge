@@ -55,7 +55,7 @@ struct BackendFactoryTests {
 
         // Then
         #expect(loop != nil)
-        #expect(loop?.transport is OpenAICompatibleBackend, "got \(String(describing: loop?.transport))")
+        #expect(loop?.transport is OpenAICompatibleTransport, "got \(String(describing: loop?.transport))")
     }
     
     @Test("unknown kinds build nothing — nil")
