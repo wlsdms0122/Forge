@@ -219,7 +219,7 @@ filters nothing by lineage — unawaited children's events flow like any other, 
 what to display is the consumer's call.
 
 **Identity & envelope** — the bearer token carries the caller's identity. A
-workflow subprocess's injected token is a `cli:<workflow>` token; trace /
+workflow subprocess's injected token is a `cli:<workflow>` token; root /
 correlator / parameters / origin are then inherited from the parent run
 server-side and the corresponding flags are ignored (a nested run cannot forge
 its own coordinates). An operator token (`system:*`) carries no parent, so
@@ -425,9 +425,9 @@ forge service describe <name> [--json]
 #### `forge service register`
 
 Run the current process as a service, a long-lived **co-process**.
-forge owns the socket, the `service.register` handshake, and
-reconnect/backoff; the parent process speaks JSON over stdio and never touches
-the socket. RPC: `service.register` + `service.ack`.
+forge owns the socket and the `service.register` handshake; the parent
+process speaks JSON over stdio and never touches the socket. RPC:
+`service.register` + `service.ack`.
 
 ```
 forge service register <name> [--schema <json>]
@@ -449,10 +449,10 @@ principals (`system:*`, `admin:*`) may register any name.
 | stdout | one JSON line per incoming `service.message` frame |
 | stdin | one JSON line per ack: `{"message_id":"...","result":{...}}` or `{"message_id":"...","error":{...}}` |
 
-The daemon dropping the connection is invisible to the parent — forge
-reconnects and re-registers with exponential backoff. Exits 0 on stdin EOF.
-If the daemon restarts and rejects the token (seed rotation), the co-process
-exits **6** so the parent can respawn it with a freshly issued token.
+It connects and registers once. Any failure (connect refused, register
+rejected, connection lost) exits **1**; the parent treats that as fatal and
+exits, and the supervisor respawns the whole service with a fresh token.
+Exits 0 on stdin EOF.
 
 #### `forge service send`
 
@@ -1147,14 +1147,16 @@ Inspect with `forge policy list` / `forge policy check`.
 
 ## 7. Error types
 
-The error envelope is `{"type": "<ErrorType>", "message": "<text>"}` and the fields a type carries beside them. A failed run's `error`, in a `workflow.dispatch` result and in a stream's `workflow.result`, is the same object, and a `workflow.event` names a failure by the same type. A run or a step that fails with a failure of the language (such as `aborted`, `cast_refused`, `concurrent_failed`, `timeout`) is typed by the name the language gives it, the name a workflow's `catch` reads. Any other failure that is none of the types below is `InternalError` with its text. A failure that a run can meet as well keeps its type when a request meets it: `resource.read` answers `ResourceError` as a `resource` step does, and `workflow.dispatch` answers `WorkflowNotFound` as a `dispatch` step does. A request whose payload is malformed, or whose id is invalid, taken or missing in a store only requests reach, is refused with `ProtocolError`.
+The error envelope is `{"type": "<ErrorType>", "message": "<text>"}` and the fields a type carries beside them. A failed run's `error`, in a `workflow.dispatch` result and in a stream's `workflow.result`, is the same object, and a `workflow.event` names a failure by the same type. A run or a step that fails with a failure of the language (such as `aborted`, `cast_refused`, `concurrent_failed`, `timeout`) is typed by the name the language gives it, the name a workflow's `catch` reads. A Forge failure that a workflow's `catch` may take keeps its Forge type on the wire; its row names the type the `catch` reads. Any other failure that is none of the types below is `InternalError` with its text. A failure that a run can meet as well keeps its type when a request meets it: `resource.read` answers `ResourceError` as a `resource` step does, and `workflow.dispatch` answers `WorkflowNotFound` as a `dispatch` step does. A request whose payload is malformed, or whose id is invalid, taken or missing in a store only requests reach, is refused with `ProtocolError`.
 
 | Type | Meaning |
 |------|---------|
 | `BackendTimeout` | a backend call exceeded its timeout — retry candidate |
-| `BackendNonzeroExit` | a backend exited non-zero (also carries `exit_code`, `stderr`, `stdout`) |
+| `BackendNonzeroExit` | a backend exited non-zero (also carries `exit_code`, `stderr`, `stdout`); a `catch` reads it as `nonzero_exit` |
 | `BackendUnavailable` | a backend could not be reached (e.g. an OpenAI-compatible endpoint refused or errored) |
 | `MalformedOutput` | a backend response was not the promised shape |
+| `BackendProtocolViolation` | a CLI backend's successful turn broke its stream: malformed frames, no terminal result, or neither text nor a tool call |
+| `IncompleteCompletion` | an agent turn ended without completing (a `finish_reason` such as `length` or `content_filter`), so its answer is a fragment |
 | `BackendNotRegistered` | an `invoke` names a provider no backend is registered for, or names none while there is not exactly one backend |
 | `CatalogIncomplete` | the catalog directory was not fully read, so the catalog cannot answer for a workflow name — retry after resolving |
 | `WorkflowNotFound` | no workflow of that name in the catalog (`workflow.dispatch`, `workflow.describe`, `schedule.create`, a `dispatch` step) |
@@ -1169,9 +1171,10 @@ The error envelope is `{"type": "<ErrorType>", "message": "<text>"}` and the fie
 | `UnknownMethod` | the daemon does not know the method name |
 | `PolicyDenied` | the principal may not dispatch/control that workflow (policy/*.yaml) — retry is pointless |
 | `WorkflowValidationError` | the workflow definition failed validation (inline spec or broken catalog file) — fix the spec |
+| `OutputResolutionError` | an `extract` step's text does not hold what its `outputs` asks (no JSON, a missing mandatory path, a regex that does not match, a value that does not coerce); a `catch` reads it as `extract_refused` |
 | `OutputDeclarationError` | an `extract` step's `outputs` is no extractor declaration (a dictionary that is no extractor, the key `_raw`, a path or a regex that does not parse) — fix the spec |
 | `DaemonShuttingDown` | the daemon is draining for shutdown: it starts no new run (`workflow.dispatch`, a schedule's fire) and no service (`service.run`, `service.restart`) |
 | `RunCapExceeded` | run cap saturation (backpressure) — retry later is meaningful |
 | `RunCancelled` | the run was cancelled (`workflow.cancel`, or the daemon shutting down) |
 | `InternalError` | a failure neither Forge nor the language names (an error of the system); the message is its text |
-| `ChildRunFailed` | a `dispatch` step's child run completed as failed — message carries the child's error type |
+| `ChildRunFailed` | a `dispatch` step's child run completed as failed — message carries the child's error type; a `catch` reads it as `child_run_failed` |
