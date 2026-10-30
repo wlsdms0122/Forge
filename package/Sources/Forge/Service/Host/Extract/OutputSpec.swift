@@ -9,8 +9,8 @@ import Foundation
 
 struct OutputSpec: Sendable, Equatable {
     enum Extractor: Sendable, Equatable {
-        case path(String)
-        case regex(String)
+        case path(JSONPath)
+        case regex(NSRegularExpression)
         case line(Int)
     }
     
@@ -44,6 +44,8 @@ struct OutputSpec: Sendable, Equatable {
     // MARK: - Private
 }
 
+// A declaration that is no extractor is the workflow's defect, refused here
+// with `OutputDeclarationError` before any text is read.
 extension OutputSpec: Decodable {
     private enum CodingKeys: String, CodingKey, CaseIterable {
         case path
@@ -54,45 +56,99 @@ extension OutputSpec: Decodable {
     }
     
     init(from decoder: Decoder) throws {
-        if let path = try? decoder.singleValueContainer().decode(String.self) {
-            self.extractor = .path(path)
-            self.type = .string
-            self.default = nil
+        let name = (["outputs"] + decoder.codingPath.map(\.stringValue)).joined(separator: ".")
+        
+        if let expression = try? decoder.singleValueContainer().decode(String.self) {
+            self.init(extractor: .path(try Self.path(expression, in: name)))
             
             return
         }
         
-        try SpecGate.rejectUnknownKeys(in: decoder, known: CodingKeys.self, context: "step output")
+        let container: KeyedDecodingContainer<CodingKeys>
         
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        
-        var found: [String] = []
-        
-        if container.contains(.path) { found.append("path") }
-        if container.contains(.regex) { found.append("regex") }
-        if container.contains(.line) { found.append("line") }
-        
-        guard found.count == 1 else {
-            throw DecodingError.dataCorrupted(
-                .init(
-                    codingPath: container.codingPath,
-                    debugDescription: "OutputSpec must declare exactly one of"
-                        + " {path, regex, line}; got: \(found)"
-                )
+        do {
+            try SpecGate.rejectUnknownKeys(in: decoder, known: CodingKeys.self, context: name)
+            
+            container = try decoder.container(keyedBy: CodingKeys.self)
+        } catch let DecodingError.dataCorrupted(context) {
+            throw OutputDeclarationError(context.debugDescription)
+        } catch {
+            throw OutputDeclarationError(
+                "\(name): an extractor is a JSONPath, or a dictionary of path, regex or line"
+                    + " with type and default"
             )
         }
         
-        if container.contains(.path) {
-            self.extractor = .path(try container.decode(String.self, forKey: .path))
-        } else if container.contains(.regex) {
-            self.extractor = .regex(try container.decode(String.self, forKey: .regex))
-        } else {
-            self.extractor = .line(try container.decode(Int.self, forKey: .line))
+        let extractors = [CodingKeys.path, .regex, .line].filter(container.contains)
+        
+        guard extractors.count == 1 else {
+            throw OutputDeclarationError(
+                "\(name): declare exactly one of path, regex and line, not"
+                    + " \(extractors.isEmpty ? "none" : extractors.map(\.stringValue).joined(separator: " and "))"
+            )
         }
         
-        self.type = try container.decodeIfPresent(CoerceType.self, forKey: .type) ?? .string
-        self.default = container.contains(.default)
-            ? try container.decode(JSONValue.self, forKey: .default)
-            : nil
+        let extractor: Extractor
+        
+        switch extractors[0] {
+        case .path:
+            let expression = try Self.field(String.self, .path, of: container, in: name, is: "a JSONPath")
+            
+            extractor = .path(try Self.path(expression, in: name))
+        
+        case .regex:
+            let pattern = try Self.field(String.self, .regex, of: container, in: name, is: "a regular expression")
+            
+            extractor = .regex(try Self.regex(pattern, in: name))
+        
+        default:
+            extractor = .line(try Self.field(Int.self, .line, of: container, in: name, is: "an integer"))
+        }
+        
+        self.init(
+            extractor: extractor,
+            type: container.contains(.type)
+                ? try Self.field(
+                    CoerceType.self,
+                    .type,
+                    of: container,
+                    in: name,
+                    is: "one of string, int, float, bool and json"
+                )
+                : .string,
+            default: container.contains(.default)
+                ? try container.decode(JSONValue.self, forKey: .default)
+                : nil
+        )
+    }
+    
+    private static func field<Value: Decodable>(
+        _ type: Value.Type,
+        _ key: CodingKeys,
+        of container: KeyedDecodingContainer<CodingKeys>,
+        in name: String,
+        is description: String
+    ) throws -> Value {
+        do {
+            return try container.decode(type, forKey: key)
+        } catch {
+            throw OutputDeclarationError("\(name): `\(key.stringValue)` is \(description)")
+        }
+    }
+    
+    private static func path(_ expression: String, in name: String) throws -> JSONPath {
+        do {
+            return try JSONPath(expression)
+        } catch {
+            throw OutputDeclarationError("\(name): \(error)")
+        }
+    }
+    
+    private static func regex(_ pattern: String, in name: String) throws -> NSRegularExpression {
+        do {
+            return try NSRegularExpression(pattern: pattern, options: [.anchorsMatchLines])
+        } catch {
+            throw OutputDeclarationError("\(name): `\(pattern)` is no regular expression")
+        }
     }
 }
