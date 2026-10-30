@@ -13,7 +13,7 @@ struct ServiceRunCommand: ParsableCommand {
     // MARK: - Property
     static let configuration = CommandConfiguration(
         commandName: "run",
-        abstract: "Start a managed service (declared in .forge/config.toml).",
+        abstract: "Start a managed service (declared in config.toml).",
         discussion: """
             Spawns the service process under the daemon's supervisor.
             Idempotent — running services are left alone. A service that hit

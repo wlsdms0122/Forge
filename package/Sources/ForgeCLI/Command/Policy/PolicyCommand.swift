@@ -16,7 +16,7 @@ struct PolicyCommand: ParsableCommand {
         discussion: """
             Every `workflow dispatch` — operator, runner, admin, or a
             nested call from inside a workflow — is gated by YAML files
-            under the policy dir (`[dir].policy`, default `.forge/policy`). Each file is a flat
+            under the policy dir (`[directory] policy`, default `<instanceHome>/policy`). Each file is a flat
             mapping of principal patterns to workflow name patterns.
             Multiple files are union-merged by principal key, and changes
             hot-reload on next dispatch.
