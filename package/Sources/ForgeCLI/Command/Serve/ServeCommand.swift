@@ -37,21 +37,24 @@ struct ServeCommand: AsyncParsableCommand {
                 under instanceHome. runtime·socket are instance-owned.
 
             CONFIG SCHEMA (everything optional — convention defaults shown)
-                [dir]   catalog roots default to `<instanceHome>/<key>`
+                [directory]  catalog roots default to `<instanceHome>/<key>`
                         (workflow · schedule · resource · policy); a
                         relative value resolves against the toml's directory.
                         (runtime is instance-owned at `<instanceHome>/runtime` —
                         not configurable.)
                 [log]   jsonl · error · maximum_bytes (default 50 MiB). Default under
-                        `<instanceHome>/log`; this project points them at the shared log/ tree.
+                        `<instanceHome>/log`.
                 [pool]  maximum_concurrent_steps (default 4) — leaf-step concurrency cap.
                         maximum_active_runs (default 256) — concurrent registered-run cap.
-                [providers.<name>]  configured backends; `kind` = \(BackendKind.allCases.map(\.rawValue).joined(separator: "|")).
+                [provider.<name>]   configured backends; `kind` = \(BackendKind.allCases.map(\.rawValue).joined(separator: "|")).
+                        CLI kinds take `executable` (default: the CLI on PATH);
+                        openai-compat requires `endpoint`. A provider without a known
+                        kind or a required setting is skipped with a warning.
                         Silent → a single `claude` (claude-cli) default. Declaring any
                         drops that default, so list `claude` explicitly alongside others.
                         Secrets via env FORGE_PROVIDER_<NAME>_API_KEY only.
                 [service.<name>]    managed child processes (no default; must be declared):
-                        command (argv, required) · cwd · env · auto_spawn · log_file ·
+                        command (argv, required) · working_directory · environment · auto_spawn · log_file ·
                         restart_backoff_initial_milliseconds · restart_backoff_maximum_milliseconds · restart_crash_loop_limit.
                 [hooks] logging (default true).
                 Inspect the resolved values + their source with `forge status`.

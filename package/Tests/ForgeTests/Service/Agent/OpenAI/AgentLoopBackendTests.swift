@@ -194,22 +194,23 @@ struct AgentLoopBackendTests {
         #expect(result.toolEvents.first?.resultPreview.contains("bypass-marker-abc") ?? false)
     }
     
-    @Test("a provider-only model fails before transport")
-    func providerOnlyModelFailsBeforeTransport() async throws {
+    @Test("a provider-only model reaches the transport with no model")
+    func providerOnlyModelReachesTransportWithNoModel() async throws {
         // Given
         let transport = StubChatTransport([ChatCompletion(text: "ok")])
-        let backend = AgentLoopBackend(transport: transport)
+        let sut = AgentLoopBackend(transport: transport)
         let agent = try Agent(model: "local", allowed: [])
-        do {
 
         // When
-            _ = try await backend.invoke(invocation(agent))
+        let response = try await sut.invoke(invocation(agent))
 
         // Then
-            Issue.record("provider-only OpenAI-compatible model must fail")
-        } catch is AgentValidationError {}
         let callCount = await transport.callCount
-        #expect(callCount == 0)
+        let lastModel = await transport.lastModel
+
+        #expect(response.text == "ok")
+        #expect(callCount == 1)
+        #expect(lastModel == nil)
     }
     
     @Test("denied commands are fed back to the model as errors")
@@ -260,7 +261,7 @@ struct AgentLoopBackendTests {
         )
     )
     func liveOllamaAgentLoop() async throws {
-        let transport = OpenAICompatibleBackend(
+        let transport = OpenAICompatibleTransport(
             baseURL: URL(string: "http://localhost:11434/v1")!)
         let backend = AgentLoopBackend(transport: transport)
         let agent = try Agent(

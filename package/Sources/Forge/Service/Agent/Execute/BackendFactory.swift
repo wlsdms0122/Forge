@@ -11,29 +11,18 @@ enum BackendFactory {
     // MARK: - Property
     // MARK: - Initializer
     // MARK: - Public
-    static func make(_ provider: ProviderConfig) -> (any Backend)? {
-        guard let kind = BackendKind(rawValue: provider.kind) else { return nil }
+    static func make(_ configuration: BackendConfiguration) -> any Backend {
+        switch configuration {
+        case let .claudeCLI(executable):
+            return ClaudeBackend(executable: executable)
         
-        switch kind {
-        case .claudeCLI:
-            return ClaudeBackend(executable: provider.settings["executable"] ?? "claude")
+        case let .codexCLI(executable):
+            return CodexBackend(executable: executable)
         
-        case .codexCLI:
-            return CodexBackend(executable: provider.settings["executable"] ?? "codex")
-        
-        case .openAICompatible:
-            guard let endpoint = provider.settings["endpoint"],
-                let url = URL(string: endpoint)
-            else {
-                return nil
-            }
-            
-            let transport = OpenAICompatibleBackend(
-                baseURL: url,
-                apiKey: provider.settings["api_key"]
+        case let .openAICompatible(endpoint, apiKey):
+            return AgentLoopBackend(
+                transport: OpenAICompatibleTransport(baseURL: endpoint, apiKey: apiKey)
             )
-            
-            return AgentLoopBackend(transport: transport)
         }
     }
     

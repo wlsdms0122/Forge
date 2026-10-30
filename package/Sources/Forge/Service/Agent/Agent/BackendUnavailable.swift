@@ -1,5 +1,5 @@
 //
-//  BackendTimeout.swift
+//  BackendUnavailable.swift
 //  Forge
 //
 //  Created by JSilver on 8/9/26.
@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct BackendTimeout: BackendError, WorkFailure {
+struct BackendUnavailable: WorkFailure {
     // MARK: - Property
     let message: String
 

@@ -17,24 +17,24 @@ struct JSONPathTests {
     // MARK: - Tokenize
     @Test("Splits a path into tokens")
     func tokenizeBasic() throws {
-        #expect(try JSONPath.tokenize("$") == [])
-        #expect(try JSONPath.tokenize("$.x") == [.field("x")])
-        #expect(try JSONPath.tokenize("$.a.b.c") == [.field("a"), .field("b"), .field("c")])
-        #expect(try JSONPath.tokenize("$.arr[0]") == [.field("arr"), .index(0)])
-        #expect(try JSONPath.tokenize("$.arr[-1]") == [.field("arr"), .index(-1)])
-        #expect(try JSONPath.tokenize("$.arr[*]") == [.field("arr"), .wildcardIndex])
-        #expect(try JSONPath.tokenize("$.obj.*") == [.field("obj"), .wildcardField])
+        #expect(try JSONPath("$").tokens == [])
+        #expect(try JSONPath("$.x").tokens == [.field("x")])
+        #expect(try JSONPath("$.a.b.c").tokens == [.field("a"), .field("b"), .field("c")])
+        #expect(try JSONPath("$.arr[0]").tokens == [.field("arr"), .index(0)])
+        #expect(try JSONPath("$.arr[-1]").tokens == [.field("arr"), .index(-1)])
+        #expect(try JSONPath("$.arr[*]").tokens == [.field("arr"), .wildcardIndex])
+        #expect(try JSONPath("$.obj.*").tokens == [.field("obj"), .wildcardField])
     }
     
     @Test("Rejects paths with invalid syntax")
     func tokenizeRejectsBadSyntax() {
-        #expect(throws: (any Error).self) { try JSONPath.tokenize("") }
-        #expect(throws: (any Error).self) { try JSONPath.tokenize(".x") }
-        #expect(throws: (any Error).self) { try JSONPath.tokenize("$.") }
-        #expect(throws: (any Error).self) { try JSONPath.tokenize("$.x[") }
-        #expect(throws: (any Error).self) { try JSONPath.tokenize("$.x[1:5]") }
-        #expect(throws: (any Error).self) { try JSONPath.tokenize("$.x[?(@.y>1)]") }
-        #expect(throws: (any Error).self) { try JSONPath.tokenize("$..x") }
+        #expect(throws: (any Error).self) { try JSONPath("").tokens }
+        #expect(throws: (any Error).self) { try JSONPath(".x").tokens }
+        #expect(throws: (any Error).self) { try JSONPath("$.").tokens }
+        #expect(throws: (any Error).self) { try JSONPath("$.x[").tokens }
+        #expect(throws: (any Error).self) { try JSONPath("$.x[1:5]").tokens }
+        #expect(throws: (any Error).self) { try JSONPath("$.x[?(@.y>1)]").tokens }
+        #expect(throws: (any Error).self) { try JSONPath("$..x").tokens }
     }
     
     // MARK: - Evaluate
@@ -44,7 +44,7 @@ struct JSONPathTests {
         let value = json(#"{"a":1}"#)
 
         // Then
-        #expect(try JSONPath.evaluate("$", on: value) == value)
+        #expect(try JSONPath("$").evaluate(on: value) == value)
     }
     
     @Test("Field access")
@@ -53,7 +53,7 @@ struct JSONPathTests {
         let value = json(#"{"name":"hello"}"#)
 
         // Then
-        #expect(try JSONPath.evaluate("$.name", on: value) == .string("hello"))
+        #expect(try JSONPath("$.name").evaluate(on: value) == .string("hello"))
     }
     
     @Test("Nested field access")
@@ -62,7 +62,7 @@ struct JSONPathTests {
         let value = json(#"{"a":{"b":{"c":42}}}"#)
 
         // Then
-        #expect(try JSONPath.evaluate("$.a.b.c", on: value) == .int(42))
+        #expect(try JSONPath("$.a.b.c").evaluate(on: value) == .int(42))
     }
     
     @Test("Array index access")
@@ -71,10 +71,10 @@ struct JSONPathTests {
         let value = json(#"{"arr":["x","y","z"]}"#)
 
         // Then
-        #expect(try JSONPath.evaluate("$.arr[0]", on: value) == .string("x"))
-        #expect(try JSONPath.evaluate("$.arr[2]", on: value) == .string("z"))
-        #expect(try JSONPath.evaluate("$.arr[-1]", on: value) == .string("z"))
-        #expect(try JSONPath.evaluate("$.arr[-3]", on: value) == .string("x"))
+        #expect(try JSONPath("$.arr[0]").evaluate(on: value) == .string("x"))
+        #expect(try JSONPath("$.arr[2]").evaluate(on: value) == .string("z"))
+        #expect(try JSONPath("$.arr[-1]").evaluate(on: value) == .string("z"))
+        #expect(try JSONPath("$.arr[-3]").evaluate(on: value) == .string("x"))
     }
     
     @Test("An out-of-bounds index throws")
@@ -83,8 +83,8 @@ struct JSONPathTests {
         let value = json(#"{"arr":["a"]}"#)
 
         // Then
-        #expect(throws: (any Error).self) { try JSONPath.evaluate("$.arr[5]", on: value) }
-        #expect(throws: (any Error).self) { try JSONPath.evaluate("$.arr[-5]", on: value) }
+        #expect(throws: (any Error).self) { try JSONPath("$.arr[5]").evaluate(on: value) }
+        #expect(throws: (any Error).self) { try JSONPath("$.arr[-5]").evaluate(on: value) }
     }
     
     @Test("Index wildcard")
@@ -93,7 +93,7 @@ struct JSONPathTests {
         let value = json(#"{"arr":[1,2,3]}"#)
 
         // Then
-        #expect(try JSONPath.evaluate("$.arr[*]", on: value) == .array([.int(1), .int(2), .int(3)]))
+        #expect(try JSONPath("$.arr[*]").evaluate(on: value) == .array([.int(1), .int(2), .int(3)]))
     }
     
     @Test("Field wildcard")
@@ -102,7 +102,7 @@ struct JSONPathTests {
         let value = json(#"{"obj":{"a":1,"b":2}}"#)
 
         // Then
-        #expect(try JSONPath.evaluate("$.obj.*", on: value) == .array([.int(1), .int(2)]))
+        #expect(try JSONPath("$.obj.*").evaluate(on: value) == .array([.int(1), .int(2)]))
     }
     
     @Test("A missing path throws notFound")
@@ -111,7 +111,7 @@ struct JSONPathTests {
         let value = json(#"{"a":1}"#)
 
         // Then
-        let error = try #require(throws: (any Error).self) { try JSONPath.evaluate("$.b", on: value) }
+        let error = try #require(throws: (any Error).self) { try JSONPath("$.b").evaluate(on: value) }
         
         guard case JSONPath.EvalError.notFound = error else {
             Issue.record("expected notFound, got \(error)")
@@ -126,8 +126,8 @@ struct JSONPathTests {
         let value = json(#"{"a":"string"}"#)
 
         // Then
-        #expect(throws: (any Error).self) { try JSONPath.evaluate("$.a.b", on: value) }
-        #expect(throws: (any Error).self) { try JSONPath.evaluate("$.a[0]", on: value) }
+        #expect(throws: (any Error).self) { try JSONPath("$.a.b").evaluate(on: value) }
+        #expect(throws: (any Error).self) { try JSONPath("$.a[0]").evaluate(on: value) }
     }
     
     @Test("Chaining wildcards is a syntax error")
@@ -136,7 +136,7 @@ struct JSONPathTests {
         let value = json(#"{"arr":[{"name":"a"},{"name":"b"}]}"#)
 
         // Then
-        let error = try #require(throws: (any Error).self) { try JSONPath.evaluate("$.arr[*].name", on: value) }
+        let error = try #require(throws: (any Error).self) { try JSONPath("$.arr[*].name").evaluate(on: value) }
         
         guard case JSONPath.EvalError.syntax = error else {
             Issue.record("expected syntax, got \(error)")
@@ -151,8 +151,8 @@ struct JSONPathTests {
         let value = json(#"[1,2,3]"#)
 
         // Then
-        #expect(try JSONPath.evaluate("$[0]", on: value) == .int(1))
-        #expect(try JSONPath.evaluate("$[-1]", on: value) == .int(3))
+        #expect(try JSONPath("$[0]").evaluate(on: value) == .int(1))
+        #expect(try JSONPath("$[-1]").evaluate(on: value) == .int(3))
     }
     
     // MARK: - Private

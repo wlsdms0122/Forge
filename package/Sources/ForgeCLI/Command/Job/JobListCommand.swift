@@ -59,7 +59,7 @@ struct JobListCommand: ParsableCommand {
         
         for job in jobs {
             let id = job["id"]?.stringValue ?? "?"
-            let status = job["status"]?.stringValue ?? "?"
+            let status = job["status"]?.stringValue ?? "-"
             let title = job["title"]?.stringValue ?? ""
             let parent = job["parent_job"]?.stringValue
                 .map { parentID in " ↳\(parentID)" } ?? ""

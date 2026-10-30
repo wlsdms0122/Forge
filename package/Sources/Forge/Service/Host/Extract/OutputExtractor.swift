@@ -11,30 +11,25 @@ enum OutputExtractor {
     // MARK: - Property
     // MARK: - Initializer
     // MARK: - Public
-    // The values the declarations name, read out of the text. What the
-    // declarations themselves get wrong is refused before the text is read,
-    // as the workflow's defect; a text that does not hold what they ask
-    // fails with `OutputResolutionError`.
+    // The values the declarations name, read out of the text. A text that
+    // does not hold what they ask fails with `OutputResolutionError`.
     static func extract(
         stdout: String,
         declarations: [String: OutputSpec]
     ) throws -> JSONValue {
-        try refuseDefects(in: declarations)
-        
-        var parsedJSON: JSONValue? = nil
-        var jsonParseError: String? = nil
+        if declarations["_raw"] != nil {
+            throw OutputDeclarationError(
+                "outputs key `_raw` is reserved (auto-injected with raw stdout)"
+            )
+        }
         
         let needsJSON = declarations.values.contains { spec in
             if case .path = spec.extractor { return true } else { return false }
         }
         
-        if needsJSON {
-            do {
-                parsedJSON = try parseJSON(stdout)
-            } catch {
-                jsonParseError = String(describing: error)
-            }
-        }
+        let parsedJSON = needsJSON
+            ? try? JSONDecoder().decode(JSONValue.self, from: Data(stdout.utf8))
+            : nil
         
         var result: [String: JSONValue] = ["_raw": .string(stdout)]
         
@@ -43,8 +38,7 @@ enum OutputExtractor {
                 spec: spec,
                 key: key,
                 stdout: stdout,
-                parsedJSON: parsedJSON,
-                jsonParseError: jsonParseError
+                parsedJSON: parsedJSON
             )
         }
         
@@ -52,58 +46,25 @@ enum OutputExtractor {
     }
     
     // MARK: - Private
-    // What no text can make right: the key the raw text stands under, and a
-    // path or a regex that does not parse.
-    private static func refuseDefects(in declarations: [String: OutputSpec]) throws {
-        if declarations["_raw"] != nil {
-            throw OutputDeclarationError(
-                "outputs key `_raw` is reserved (auto-injected with raw stdout)"
-            )
-        }
-        
-        for (key, spec) in declarations.sorted(by: { left, right in left.key < right.key }) {
-            switch spec.extractor {
-            case .path(let expression):
-                do {
-                    _ = try JSONPath.tokenize(expression)
-                } catch {
-                    throw OutputDeclarationError("outputs.\(key): \(error)")
-                }
-            
-            case .regex(let pattern):
-                do {
-                    _ = try NSRegularExpression(pattern: pattern, options: [.anchorsMatchLines])
-                } catch {
-                    throw OutputDeclarationError("outputs.\(key): invalid regex `\(pattern)`: \(error)")
-                }
-            
-            case .line:
-                break
-            }
-        }
-    }
-    
     private static func evaluate(
         spec: OutputSpec,
         key: String,
         stdout: String,
-        parsedJSON: JSONValue?,
-        jsonParseError: String?
+        parsedJSON: JSONValue?
     ) throws -> JSONValue {
         let raw: JSONValue?
         
         switch spec.extractor {
-        case .path(let expression):
+        case .path(let path):
             guard let parsed = parsedJSON else {
                 throw OutputResolutionError(
-                    "outputs.\(key): path `\(expression)` requires JSON stdout but parse"
-                        + " failed — \(jsonParseError ?? "unknown"). first 200 chars:"
-                        + " \(stdout.prefix(200))"
+                    "outputs.\(key): path `\(path.expression)` reads JSON, and stdout is not"
+                        + " JSON. first 200 chars: \(stdout.prefix(200))"
                 )
             }
             
             do {
-                raw = try JSONPath.evaluate(expression, on: parsed)
+                raw = try path.evaluate(on: parsed)
             } catch JSONPath.EvalError.notFound(let message) {
                 if spec.canOmit {
                     raw = nil
@@ -112,8 +73,8 @@ enum OutputExtractor {
                 }
             }
         
-        case .regex(let pattern):
-            raw = try matchRegex(pattern, in: stdout, key: key, canOmit: spec.canOmit)
+        case .regex(let regex):
+            raw = try matchRegex(regex, in: stdout, key: key, canOmit: spec.canOmit)
         
         case .line(let line):
             raw = matchLine(line, in: stdout)
@@ -133,19 +94,17 @@ enum OutputExtractor {
     }
     
     private static func matchRegex(
-        _ pattern: String,
+        _ regex: NSRegularExpression,
         in stdout: String,
         key: String,
         canOmit: Bool
     ) throws -> JSONValue? {
-        let regex = try NSRegularExpression(pattern: pattern, options: [.anchorsMatchLines])
-        
         let range = NSRange(stdout.startIndex..<stdout.endIndex, in: stdout)
         
         guard let match = regex.firstMatch(in: stdout, options: [], range: range) else {
             if canOmit { return nil }
             
-            throw OutputResolutionError("outputs.\(key): regex `\(pattern)` did not match")
+            throw OutputResolutionError("outputs.\(key): regex `\(regex.pattern)` did not match")
         }
         
         let captureIndex = match.numberOfRanges > 1 ? 1 : 0
@@ -158,7 +117,7 @@ enum OutputExtractor {
             if canOmit { return nil }
             
             throw OutputResolutionError(
-                "outputs.\(key): regex `\(pattern)` matched but capture group missing"
+                "outputs.\(key): regex `\(regex.pattern)` matched but capture group missing"
             )
         }
         
@@ -342,65 +301,6 @@ enum OutputExtractor {
         case .object:
             return "object"
         }
-    }
-    
-    private static func parseJSON(_ text: String) throws -> JSONValue {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        guard let data = trimmed.data(using: .utf8) else {
-            throw OutputResolutionError("stdout is not UTF-8")
-        }
-        
-        let any: Any
-        
-        do {
-            any = try JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed])
-        } catch {
-            throw OutputResolutionError(
-                "stdout is not valid JSON: \(error.localizedDescription)"
-            )
-        }
-        
-        return try anyToJSONValue(any)
-    }
-    
-    private static func anyToJSONValue(_ any: Any) throws -> JSONValue {
-        if any is NSNull { return .null }
-        
-        if let bool = any as? Bool {
-            let typeID = CFGetTypeID(any as CFTypeRef)
-            
-            if typeID == CFBooleanGetTypeID() { return .bool(bool) }
-        }
-        
-        if let integer = any as? Int { return .int(integer) }
-        
-        if let double = any as? Double {
-            guard double.isFinite else {
-                throw OutputResolutionError(
-                    "stdout has non-finite number (\(double)) — not representable in JSON"
-                )
-            }
-            
-            if double.truncatingRemainder(dividingBy: 1) == 0, abs(double) < Double(Int.max) {
-                return .int(Int(double))
-            }
-            
-            return .double(double)
-        }
-        
-        if let string = any as? String { return .string(string) }
-        if let array = any as? [Any] { return .array(try array.map(anyToJSONValue)) }
-        
-        if let dictionary = any as? [String: Any] {
-            var object: [String: JSONValue] = [:]
-            
-            for (key, value) in dictionary { object[key] = try anyToJSONValue(value) }
-            
-            return .object(object)
-        }
-        
-        return .null
     }
 }
 

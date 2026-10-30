@@ -80,9 +80,7 @@ enum CodexEventStream {
                 sawTurnCompleted = true
                 
                 if let rawUsage = object["usage"] as? [String: Any] {
-                    let parsed = AgentUsage(
-                        providerValues: rawUsage.compactMapValues(Self.integer)
-                    )
+                    let parsed = Self.usage(rawUsage.compactMapValues(Self.integer))
                     usage = parsed.isEmpty ? nil : parsed
                 }
             
@@ -190,6 +188,19 @@ enum CodexEventStream {
             }
             
             return json(object) ?? "codex turn failed"
+        }
+        
+        // Codex counts the cache it reads inside `input_tokens`.
+        private static func usage(_ values: [String: Int]) -> AgentUsage {
+            let cacheRead = values["cached_input_tokens"]
+            
+            return AgentUsage(
+                inputTokens: values["input_tokens"].map { input in max(0, input - (cacheRead ?? 0)) },
+                outputTokens: values["output_tokens"],
+                cacheWriteTokens: values["cache_write_input_tokens"],
+                cacheReadTokens: cacheRead,
+                reasoningOutputTokens: values["reasoning_output_tokens"]
+            )
         }
         
         private static func integer(_ value: Any) -> Int? {

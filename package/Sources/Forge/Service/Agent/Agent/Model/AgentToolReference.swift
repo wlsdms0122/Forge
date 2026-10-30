@@ -28,23 +28,35 @@ enum AgentToolReference {
         case .string("schedule"):
             return .schedule
         
-        case .object(let object):
+        case let .object(object):
             guard object.count == 1, let (key, payload) = object.first else {
-                throw AgentValidationError("invoke: tool object must contain exactly one key")
+                throw AgentValidationError("a tool dictionary has exactly one key, got \(object.count)")
             }
             
-            switch (key, payload) {
-            case ("command", .string(let pattern)):
+            switch key {
+            case "command":
+                guard case let .string(pattern) = payload else {
+                    throw AgentValidationError("tool `command` takes a pattern string")
+                }
+                
                 do {
                     return .command(try CommandPattern(pattern))
                 } catch let error as CommandPattern.ValidationError {
-                    throw AgentValidationError("invoke: \(error.message)")
+                    throw AgentValidationError(error.message)
                 }
             
-            case ("mcp", .string(let pattern)) where !pattern.isEmpty:
+            case "mcp":
+                guard case let .string(pattern) = payload else {
+                    throw AgentValidationError("tool `mcp` takes a pattern string")
+                }
+                
+                guard !pattern.isEmpty else {
+                    throw AgentValidationError("an mcp pattern is '*', '<server>.*' or '<server>.<tool>', got ''")
+                }
+                
                 guard pattern == "*" || pattern.contains(".") else {
                     throw AgentValidationError(
-                        "invoke: mcp pattern must be '*', '<server>.*', or '<server>.<tool>'"
+                        "an mcp pattern is '*', '<server>.*' or '<server>.<tool>', got '\(pattern)'"
                             + " — a bare server name matches nothing (did you mean '\(pattern).*'?)"
                     )
                 }
@@ -52,14 +64,14 @@ enum AgentToolReference {
                 return .modelContextProtocol(pattern)
             
             default:
-                throw AgentValidationError("invoke: unsupported tool object '\(key)'")
+                throw AgentValidationError("unknown tool '\(key)'")
             }
         
-        case .string(let name):
-            throw AgentValidationError("invoke: unknown tool '\(name)'")
+        case let .string(name):
+            throw AgentValidationError("unknown tool '\(name)'")
         
         default:
-            throw AgentValidationError("invoke: tool must be a domain string or a single-key object")
+            throw AgentValidationError("a tool is a name or a dictionary of one key")
         }
     }
     

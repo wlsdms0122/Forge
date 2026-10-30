@@ -49,11 +49,11 @@ struct BackendCancellationTests {
         // Given
         StubURLProtocol.failure = URLError(.cancelled)
         defer { StubURLProtocol.failure = nil }
-        let backend = OpenAICompatibleBackend(
+        let transport = OpenAICompatibleTransport(
             baseURL: URL(string: "http://localhost:11434/v1")!,
             session: StubURLProtocol.session())
         do {
-            _ = try await backend.complete(
+            _ = try await transport.complete(
                 messages: [ChatMessage(role: .user, content: "hi")],
                 tools: [], model: "m", jsonMode: false)
 

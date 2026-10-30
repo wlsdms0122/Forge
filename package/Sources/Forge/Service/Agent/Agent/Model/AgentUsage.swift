@@ -50,30 +50,6 @@ struct AgentUsage: Sendable, Equatable {
         self.reasoningOutputTokens = reasoningOutputTokens
     }
     
-    init(providerValues: [String: Int]) {
-        let cacheRead = providerValues["cache_read_input_tokens"]
-            ?? providerValues["cached_input_tokens"]
-        
-        var input = providerValues["input_tokens"] ?? providerValues["prompt_tokens"]
-        
-        if
-            providerValues["cached_input_tokens"] != nil,
-            let total = input,
-            let cached = cacheRead
-        {
-            input = max(0, total - cached)
-        }
-        
-        self.init(
-            inputTokens: input,
-            outputTokens: providerValues["output_tokens"] ?? providerValues["completion_tokens"],
-            cacheWriteTokens: providerValues["cache_creation_input_tokens"]
-                ?? providerValues["cache_write_input_tokens"],
-            cacheReadTokens: cacheRead,
-            reasoningOutputTokens: providerValues["reasoning_output_tokens"]
-        )
-    }
-    
     // MARK: - Public
     subscript(key: String) -> Int? { asDictionary[key] }
     

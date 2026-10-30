@@ -1,5 +1,5 @@
 //
-//  OpenAICompatibleBackend.swift
+//  OpenAICompatibleTransport.swift
 //  Forge
 //
 //  Created by JSilver on 8/8/26.
@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct OpenAICompatibleBackend: ChatTransport {
+struct OpenAICompatibleTransport: ChatTransport {
     // MARK: - Property
     let baseURL: URL
     let apiKey: String?
@@ -110,24 +110,13 @@ struct OpenAICompatibleBackend: ChatTransport {
         }
         
         let finishReason = ChatFinishReason(rawValue: first["finish_reason"] as? String)
-        var usage: [String: Int]?
-        
-        if let rawUsage = object["usage"] as? [String: Any] {
-            let integerUsage = rawUsage.compactMapValues { value -> Int? in
-                if let integer = value as? Int { return integer }
-                if let number = value as? NSNumber { return number.intValue }
-                
-                return nil
-            }
-            
-            usage = integerUsage.isEmpty ? nil : integerUsage
-        }
+        let usage = (object["usage"] as? [String: Any]).map(Self.usage)
         
         return ChatCompletion(
             text: content,
             toolCalls: toolCalls,
             finishReason: finishReason,
-            usage: usage
+            usage: usage?.isEmpty == true ? nil : usage
         )
     }
     
@@ -248,4 +237,17 @@ struct OpenAICompatibleBackend: ChatTransport {
     }
     
     // MARK: - Private
+    // A chat completion counts the cache it reads inside `prompt_tokens`.
+    private static func usage(_ raw: [String: Any]) -> AgentUsage {
+        let details = raw["prompt_tokens_details"] as? [String: Any]
+        let cacheRead = (details?["cached_tokens"] as? NSNumber)?.intValue
+        
+        return AgentUsage(
+            inputTokens: (raw["prompt_tokens"] as? NSNumber).map { prompt in
+                max(0, prompt.intValue - (cacheRead ?? 0))
+            },
+            outputTokens: (raw["completion_tokens"] as? NSNumber)?.intValue,
+            cacheReadTokens: cacheRead
+        )
+    }
 }

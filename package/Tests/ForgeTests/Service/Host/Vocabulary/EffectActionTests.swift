@@ -388,7 +388,7 @@ struct EffectActionTests {
         }
 
         // Then
-        #expect("\(String(describing: error))".contains("invalid regex"))
+        #expect("\(String(describing: error))".contains("is no regular expression"))
     }
 
     @Test("when shell exceeds its timeout, catch recovers it")

@@ -95,11 +95,7 @@ extension ForgeConfig {
             logJSONL: cwd.appendingPathComponent("forge.log.jsonl"),
             errorLog: cwd.appendingPathComponent("error.log"),
             providers: [
-                ProviderConfig(
-                    name: "claude",
-                    kind: "claude-cli",
-                    settings: ["executable": "claude"]
-                )
+                ProviderConfig(name: "claude", backend: .claudeCLI(executable: "claude"))
             ]
         )
     }

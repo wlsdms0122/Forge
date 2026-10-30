@@ -16,7 +16,7 @@ struct ServiceCommand: ParsableCommand {
         discussion: """
             A service (e.g. `slack`) is a process that implements a capability
             forge itself does not. forge is the supervisor: services are
-            declared in `.forge/config.toml` `[service.<name>]`, spawned by the
+            declared in `config.toml` `[service.<name>]`, spawned by the
             daemon (auto_spawn or `run`), monitored, and restarted with
             backoff when they crash.
 

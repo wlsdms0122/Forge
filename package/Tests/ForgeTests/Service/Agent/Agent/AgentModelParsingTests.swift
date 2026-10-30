@@ -50,7 +50,6 @@ struct AgentModelParsingTests {
         #expect(throws: (any Error).self) { try ModelReference("") }
         #expect(throws: (any Error).self) { try ModelReference(":sonnet") }
         #expect(throws: (any Error).self) { try ModelReference("claude:") }
-        #expect(throws: (any Error).self) { try ModelReference("claude:auto") }
     }
     
     @Test("rejects an invalid model reference at Agent creation time")

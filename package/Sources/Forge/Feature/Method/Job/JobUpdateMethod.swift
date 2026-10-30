@@ -49,7 +49,7 @@ struct JobUpdateMethod: Sendable {
 
         if let item = request.params["item"]?.intValue {
             let status = request.params["item_status"]?.stringValue
-                .flatMap { value in value.isEmpty ? nil : value } ?? "done"
+                .flatMap { value in value.isEmpty ? nil : value }
             let desc = request.params["item_desc"]?.stringValue
             try await store.setPlanItem(id: id, by: by, item: item, desc: desc, status: status)
         }
@@ -62,7 +62,11 @@ struct JobUpdateMethod: Sendable {
             throw ProtocolError("job not found: \(id)")
         }
 
-        return ["id": .string(id), "status": .string(job.status)]
+        var result: [String: JSONValue] = ["id": .string(id)]
+
+        if let status = job.status { result["status"] = .string(status) }
+
+        return .object(result)
     }
 
     // MARK: - Private

@@ -233,7 +233,7 @@ struct ScheduleCreateMethod: Sendable {
 
         case (.some, .some):
             throw ProtocolError(
-                "\(context): 'workflow' and 'spec' are mutually exclusive — pass only one")
+                "\(context): 'workflow' and 'spec' are mutually exclusive; pass only one")
 
         case (nil, nil):
             throw ProtocolError(
