@@ -93,7 +93,7 @@ struct WorkflowDispatchCommand: ParsableCommand {
     @Flag(help: "Stream the run's progress as JSONL (workflow.event lines, then a workflow.result line).")
     var stream: Bool = false
     
-    @Flag(help: "Emit the full RPC response as JSON (default: readable result).")
+    @Flag(help: "Emit the result as JSON (default: readable result).")
     var json: Bool = false
     
     // MARK: - Initializer
