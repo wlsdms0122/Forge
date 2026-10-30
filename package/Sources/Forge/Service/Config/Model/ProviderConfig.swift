@@ -10,12 +10,12 @@ import Foundation
 struct ProviderConfig: Sendable, Equatable {
     // MARK: - Property
     let name: String
-    let kind: BackendKind
+    let backend: BackendConfiguration
 
     // MARK: - Initializer
-    init(name: String, kind: BackendKind) {
+    init(name: String, backend: BackendConfiguration) {
         self.name = name
-        self.kind = kind
+        self.backend = backend
     }
     
     init(
@@ -24,31 +24,31 @@ struct ProviderConfig: Sendable, Equatable {
         settings: [String: String],
         apiKey: String?
     ) throws(ProviderDeclarationError) {
-        let names = BackendKind.Name.allCases.map(\.rawValue).joined(separator: ", ")
+        let names = BackendKind.allCases.map(\.rawValue).joined(separator: ", ")
         
         guard let kind else {
             throw ProviderDeclarationError("'kind' is required, one of \(names)")
         }
         
-        guard let kindName = BackendKind.Name(rawValue: kind) else {
+        guard let backendKind = BackendKind(rawValue: kind) else {
             throw ProviderDeclarationError("kind '\(kind)' is not one of \(names)")
         }
         
         self.name = name
         
-        switch kindName {
+        switch backendKind {
         case .claudeCLI:
-            self.kind = .claudeCLI(executable: settings["executable"] ?? "claude")
+            self.backend = .claudeCLI(executable: settings["executable"] ?? "claude")
         
         case .codexCLI:
-            self.kind = .codexCLI(executable: settings["executable"] ?? "codex")
+            self.backend = .codexCLI(executable: settings["executable"] ?? "codex")
         
         case .openAICompatible:
             guard let endpoint = settings["endpoint"].flatMap(URL.init(string:)) else {
                 throw ProviderDeclarationError("\(kind) requires 'endpoint', the base URL")
             }
             
-            self.kind = .openAICompatible(endpoint: endpoint, apiKey: apiKey)
+            self.backend = .openAICompatible(endpoint: endpoint, apiKey: apiKey)
         }
     }
 

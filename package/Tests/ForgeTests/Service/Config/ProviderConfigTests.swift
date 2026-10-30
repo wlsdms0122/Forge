@@ -20,7 +20,7 @@ struct ProviderConfigTests {
         let sut = try ProviderConfig(name: "codex", kind: "codex-cli", settings: [:], apiKey: nil)
 
         // Then
-        #expect(sut.kind == .codexCLI(executable: "codex"))
+        #expect(sut.backend == .codexCLI(executable: "codex"))
     }
     
     @Test("openai-compat carries its endpoint and the API key")
@@ -35,7 +35,7 @@ struct ProviderConfigTests {
 
         // Then
         let endpoint = try #require(URL(string: "http://localhost:11434/v1"))
-        #expect(sut.kind == .openAICompatible(endpoint: endpoint, apiKey: "secret"))
+        #expect(sut.backend == .openAICompatible(endpoint: endpoint, apiKey: "secret"))
     }
     
     @Test(
