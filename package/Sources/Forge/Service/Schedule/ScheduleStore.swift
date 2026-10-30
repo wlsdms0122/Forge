@@ -15,7 +15,6 @@ actor ScheduleStore {
         let mtime: Date
         let path: URL
         let source: String
-        let runtime: Bool
         
         // MARK: - Initializer
         // MARK: - Public
@@ -45,25 +44,20 @@ actor ScheduleStore {
     
     enum IDState {
         case live(Entry)
-        case collided
         case unknown(reason: String)
         case absent
     }
     
     // MARK: - Property
-    let configDir: URL?
-    let runtimeDirectory: URL?
-    let stateFile: URL
+    let directory: URL
+    let enabledFile: URL
     
-    private var configFiles: SpecDirectory<Entry>?
-    private var runtimeFiles: SpecDirectory<Entry>?
+    private var files: SpecDirectory<Entry>
     private var cache: [String: Entry] = [:]
     private var enabledIDs: [String: String]
-    private var stateFailure: LoadFailure?
+    private var enabledFailure: LoadFailure?
     private var failureCache: [String: LoadFailure] = [:]
-    private var collisions: [LoadFailure] = []
     private var scanFailures: [LoadFailure] = []
-    private var collidedIDs: Set<String> = []
     private var failedIDs: Set<String> = []
     private var scanIncomplete = false
     
@@ -72,28 +66,23 @@ actor ScheduleStore {
             entries: cache.values.map { entry in effective(entry) },
             failures: (
                 Array(failureCache.values)
-                    + collisions
                     + scanFailures
-                    + (stateFailure.map { failure in [failure] } ?? [])
+                    + (enabledFailure.map { failure in [failure] } ?? [])
             )
                 .sorted { lhs, rhs in lhs.path < rhs.path }
         )
     }
     
     // MARK: - Initializer
-    init(configDir: URL?, runtimeDirectory: URL? = nil, stateFile: URL) {
-        self.configDir = configDir
-        self.runtimeDirectory = runtimeDirectory
-        self.stateFile = stateFile
-        self.configFiles = configDir.map { directory in SpecDirectory(directory: directory, kind: "schedule") }
-        self.runtimeFiles = runtimeDirectory.map { directory in SpecDirectory(directory: directory, kind: "schedule") }
-        (self.enabledIDs, self.stateFailure) = Self.loadEnabled(stateFile)
+    init(directory: URL, enabledFile: URL) {
+        self.directory = directory
+        self.enabledFile = enabledFile
+        self.files = SpecDirectory(directory: directory, kind: "schedule")
+        (self.enabledIDs, self.enabledFailure) = Self.loadEnabled(enabledFile)
     }
     
     // MARK: - Public
-    func ensureRuntimeDirectory() {
-        guard let directory = runtimeDirectory else { return }
-        
+    func ensureDirectory() {
         do {
             try FileManager.default.createDirectory(
                 at: directory,
@@ -101,42 +90,22 @@ actor ScheduleStore {
             )
         } catch {
             FileHandle.standardError.write(Data(
-                "forge: runtime schedule directory could not be created (\(directory.path)): \(error) — declarations will read as unobserved\n".utf8))
+                "forge: schedule directory could not be created (\(directory.path)): \(error); declarations will read as unobserved\n".utf8))
         }
     }
     
     @discardableResult
     func reload() async -> Snapshot {
         var ledger = LoadFailureLedger(prior: failureCache)
-        var candidates: [(key: String, source: String, value: Entry)] = []
-        var obstructed: [LoadFailure] = []
-        
-        for runtime in [false, true] {
-            guard var files = runtime ? runtimeFiles : configFiles else { continue }
-            
-            let reading = files.read(skipping: runtime ? nil : runtimeDirectory, recording: &ledger) { file, data in
-                try Self.entry(decoding: data, of: file, runtime: runtime)
-            }
-            
-            if runtime { runtimeFiles = files } else { configFiles = files }
-            
-            candidates += reading.loaded.map { loaded in (loaded.value.schedule.id, loaded.file.file.source, loaded.value) }
-            obstructed += reading.scanFailures
+        let reading = files.read(recording: &ledger) { file, data in
+            try Self.entry(decoding: data, of: file)
         }
-        
-        let partition = KeyPartition(candidates)
-        collisions = partition.collisions.flatMap { collision in
-            collision.failures(kind: "schedule id", standing: collisions, recording: &ledger)
-        }
-        collidedIDs = Set(partition.collisions.map(\.key))
         
         failureCache = ledger.fresh
-        failedIDs = Set(failureCache.keys.map { source in
-            URL(fileURLWithPath: source).deletingPathExtension().lastPathComponent
-        })
-        scanFailures = obstructed
-        scanIncomplete = !obstructed.isEmpty
-        cache = partition.live
+        failedIDs = Set(failureCache.keys.map(Self.id(of:)))
+        scanFailures = reading.scanFailures
+        scanIncomplete = !reading.scanFailures.isEmpty
+        cache = Dictionary(uniqueKeysWithValues: reading.loaded.map { loaded in (loaded.value.schedule.id, loaded.value) })
         FileHandle.standardError.write(Data(ledger.announcement.utf8))
         
         return currentSnapshot
@@ -151,7 +120,7 @@ actor ScheduleStore {
         
         return TickSnapshot(
             entries: cache.values.map { entry in effective(entry) },
-            declaredIDs: Set(cache.keys).union(collidedIDs).union(failedIDs),
+            declaredIDs: Set(cache.keys).union(failedIDs),
             declarationsComplete: !scanIncomplete
         )
     }
@@ -198,16 +167,10 @@ actor ScheduleStore {
     }
     
     @discardableResult
-    func create(_ requested: Schedule) async throws -> Schedule {
-        guard let directory = runtimeDirectory else {
-            throw ScheduleDirectoryNotConfigured("runtime schedule directory not configured — schedule.create is disabled")
+    func create(_ schedule: Schedule) async throws -> Schedule {
+        guard StoreScan.isSafeID(schedule.id) else {
+            throw ProtocolError("schedule id must match [A-Za-z0-9._-] with no leading dot: '\(schedule.id)'")
         }
-        
-        guard StoreScan.isSafeID(requested.id) else {
-            throw ProtocolError("schedule id must match [A-Za-z0-9._-] with no leading dot: '\(requested.id)'")
-        }
-        
-        let schedule = requested.withID(ScheduleIDSpace.stamp(requested.id))
         
         switch await observedIDState(schedule.id) {
         case .absent:
@@ -216,13 +179,9 @@ actor ScheduleStore {
         case .live:
             throw ProtocolError("schedule id already exists: '\(schedule.id)'")
         
-        case .collided:
-            throw ProtocolError(
-                "schedule id '\(schedule.id)' collides across multiple definition files — resolve the collision (see schedule.list failures) before creating")
-        
         case .unknown(let reason):
             throw ProtocolError(
-                "cannot prove schedule id '\(schedule.id)' is unused — \(reason); retry after resolving")
+                "cannot prove schedule id '\(schedule.id)' is unused: \(reason); retry after resolving")
         }
         
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -239,7 +198,7 @@ actor ScheduleStore {
                 try persistEnabled(next)
             } catch {
                 throw ProtocolError(
-                    "schedule '\(schedule.id)' created but enabling failed (\(error)) — it stays disabled; retry with schedule.set_enabled")
+                    "schedule '\(schedule.id)' created but enabling failed (\(error)); it stays disabled; retry with schedule.set_enabled")
             }
         }
         
@@ -270,26 +229,23 @@ actor ScheduleStore {
     }
     
     // MARK: - Private
-    // A schedule file's entry: its id is the file's basename, and the id
-    // keeps the namespace of its directory.
-    private static func entry(decoding data: Data, of file: ObservedFile, runtime: Bool) throws -> Entry {
+    // A schedule's id is where its file sits under the directory, without
+    // the extension, so no two files hold one id.
+    private static func id(of source: String) -> String {
+        String(source.dropLast(StoreScan.specFileExtension.count + 1))
+    }
+    
+    private static func entry(decoding data: Data, of file: ObservedFile) throws -> Entry {
         var schedule = try YAMLSpec.decode(Schedule.self, from: data)
         let source = file.file.source
-        let base = file.file.url.deletingPathExtension().lastPathComponent
+        let id = id(of: source)
         
-        if schedule.id.isEmpty { schedule = schedule.withID(base) }
+        if schedule.id.isEmpty { schedule = schedule.withID(id) }
         
-        guard schedule.id == base else {
+        guard schedule.id == id else {
             throw LoadRefusal(
-                message: "schedule id '\(schedule.id)' must equal the file basename '\(base)' — identity is the filename (rename the file or drop the id from the body)",
-                line: "schedule id/filename mismatch (\(source)): id '\(schedule.id)' vs basename '\(base)'"
-            )
-        }
-        
-        if let violation = ScheduleIDSpace.violation(id: schedule.id, runtime: runtime) {
-            throw LoadRefusal(
-                message: violation,
-                line: "schedule id namespace violation (\(source)): \(violation)"
+                message: "schedule id '\(schedule.id)' must equal the file's path '\(id)': identity is where the file sits (rename the file or drop the id from the body)",
+                line: "schedule id/path mismatch (\(source)): id '\(schedule.id)' vs path '\(id)'"
             )
         }
         
@@ -297,8 +253,7 @@ actor ScheduleStore {
             schedule: schedule,
             mtime: file.mtime,
             path: file.file.url,
-            source: source,
-            runtime: runtime
+            source: source
         )
     }
     
@@ -306,7 +261,6 @@ actor ScheduleStore {
         await reload()
         
         if let entry = cache[id] { return .live(entry) }
-        if collidedIDs.contains(id) { return .collided }
         
         if failedIDs.contains(id) {
             return .unknown(
@@ -328,12 +282,8 @@ actor ScheduleStore {
         case .live(let entry):
             return entry
         
-        case .collided:
-            throw ProtocolError(
-                "schedule id '\(id)' collides across multiple definition files — resolve the collision (see schedule.list failures) before mutating")
-        
         case .unknown(let reason):
-            throw ProtocolError("schedule '\(id)' state unknown — \(reason); retry after resolving")
+            throw ProtocolError("schedule '\(id)' state unknown: \(reason); retry after resolving")
         
         case .absent:
             throw ProtocolError("schedule not found: \(id)")
@@ -347,7 +297,7 @@ actor ScheduleStore {
     ) throws {
         guard entry.schedule.workflow == authorizedWorkflow else {
             throw ProtocolError(
-                "schedule '\(id)' now points at workflow '\(entry.schedule.workflow)' (authorized against '\(authorizedWorkflow)') — the definition changed underneath; re-read and retry")
+                "schedule '\(id)' now points at workflow '\(entry.schedule.workflow)' (authorized against '\(authorizedWorkflow)'); the definition changed underneath; re-read and retry")
         }
     }
     
@@ -360,15 +310,14 @@ actor ScheduleStore {
             schedule: entry.schedule.withEnabled(isEnabled),
             mtime: entry.mtime,
             path: entry.path,
-            source: entry.source,
-            runtime: entry.runtime
+            source: entry.source
         )
     }
     
     private func persistEnabled(_ next: [String: String]) throws {
-        try Self.writeEnabled(next, to: stateFile)
+        try Self.writeEnabled(next, to: enabledFile)
         enabledIDs = next
-        stateFailure = nil
+        enabledFailure = nil
     }
     
     private func write(_ schedule: Schedule, to url: URL) throws {
@@ -395,7 +344,7 @@ actor ScheduleStore {
             
             if FileManager.default.fileExists(atPath: url.path) {
                 throw ProtocolError(
-                    "schedule file '\(url.lastPathComponent)' already exists — refusing to overwrite an existing declaration")
+                    "schedule file '\(url.lastPathComponent)' already exists; refusing to overwrite an existing declaration")
             }
             
             throw error
@@ -472,7 +421,7 @@ actor ScheduleStore {
             
             return ([:], surfaceLedgerFailure(
                 path,
-                "unparseable — expected a JSON {id: workflow} object",
+                "unparseable: expected a JSON {id: workflow} object",
                 quarantining: moved ? quarantine.lastPathComponent : nil
             ))
         }
@@ -488,7 +437,7 @@ actor ScheduleStore {
         let suffix = quarantine.map { name in " (preserved as '\(name)')" } ?? ""
         
         FileHandle.standardError.write(Data(
-            "forge: schedule enabled-ledger '\(path.path)' \(reason)\(suffix) — treating every schedule as disabled until the ledger is rewritten\n".utf8))
+            "forge: schedule enabled-ledger '\(path.path)' \(reason)\(suffix); treating every schedule as disabled until the ledger is rewritten\n".utf8))
         
         return LoadFailure(
             path: path.lastPathComponent,

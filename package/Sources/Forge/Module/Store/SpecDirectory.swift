@@ -56,9 +56,8 @@ struct SpecDirectory<Value> {
     }
     
     // MARK: - Public
-    // The files under the directory, those under `nested` left out.
+    // The files under the directory.
     mutating func read(
-        skipping nested: URL? = nil,
         recording ledger: inout LoadFailureLedger,
         decode: (ObservedFile, Data) throws -> Value
     ) -> Reading {
@@ -68,14 +67,7 @@ struct SpecDirectory<Value> {
             return Reading(observed: [], loaded: [], obstructions: [], scanFailures: [])
         }
         
-        let nestedPath = nested?.standardizedFileURL.path
-        let found = StoreScan(directory: directory, pathExtension: pathExtension)
-        let files = found.files.filter { file in
-            guard let nestedPath else { return true }
-            
-            return !file.url.standardizedFileURL.path.hasPrefix(nestedPath + "/")
-        }
-        var scan = StoreScan(files: files, obstructions: found.obstructions)
+        var scan = StoreScan(directory: directory, pathExtension: pathExtension)
         let observed = scan.observe()
         var fresh: [URL: Loaded] = [:]
         

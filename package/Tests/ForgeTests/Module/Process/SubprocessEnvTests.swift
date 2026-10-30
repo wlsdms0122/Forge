@@ -49,7 +49,7 @@ struct SubprocessEnvTests {
 
         // Then
         #expect(env["FORGE_SOCKET"] == nil)
-        #expect(env["FORGE_RUNTIME"] == nil)
+        #expect(env["FORGE_STATE"] == nil)
     }
     
     @Test("the forge bin path has a single source — same value as the baseline env")

@@ -272,12 +272,12 @@ struct CatalogGenerationTests {
     @Test("The schedule snapshot is one observation — no mix of fragmented moments")
     func scheduleCatalogIsOneObservation() async throws {
         // Given
-        let config = try temporary.make("sched-config")
-        defer { try? FileManager.default.removeItem(at: config) }
-        try write("workflow: w\nevery: 1h\n", named: "good", in: config)
-        try write("steps: notalist\n", named: "bad", in: config)
-        let store = ScheduleStore(configDir: config,
-            stateFile: config.appendingPathComponent("state.json"))
+        let directory = try temporary.make("sched")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try write("workflow: w\nevery: 1h\n", named: "good", in: directory)
+        try write("steps: notalist\n", named: "bad", in: directory)
+        let store = ScheduleStore(directory: directory,
+            enabledFile: try temporary.file("schedule-enabled.json"))
 
         // When
         let snapshot = await store.reload()
@@ -290,20 +290,20 @@ struct CatalogGenerationTests {
     @Test("A schedule directory the scan could not enter is a failure at <scan>")
     func scheduleScanObstructionIsReported() async throws {
         // Given
-        let config = try temporary.make("sched-obstruction")
-        let closed = config.appendingPathComponent("closed")
+        let directory = try temporary.make("sched-obstruction")
+        let closed = directory.appendingPathComponent("closed")
         try FileManager.default.createDirectory(at: closed, withIntermediateDirectories: true)
-        try write("workflow: w\nevery: 1h\n", named: "visible", in: config)
+        try write("workflow: w\nevery: 1h\n", named: "visible", in: directory)
         try write("workflow: w\nevery: 1h\n", named: "hidden", in: closed)
         try FileManager.default.setAttributes([.posixPermissions: 0o000],
             ofItemAtPath: closed.path)
         defer {
             try? FileManager.default.setAttributes([.posixPermissions: 0o755],
                 ofItemAtPath: closed.path)
-            try? FileManager.default.removeItem(at: config)
+            try? FileManager.default.removeItem(at: directory)
         }
-        let store = ScheduleStore(configDir: config,
-            stateFile: config.appendingPathComponent("state.json"))
+        let store = ScheduleStore(directory: directory,
+            enabledFile: try temporary.file("schedule-enabled.json"))
 
         // When
         let snapshot = await store.reload()

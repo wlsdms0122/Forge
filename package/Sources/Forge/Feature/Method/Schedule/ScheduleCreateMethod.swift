@@ -134,8 +134,7 @@ struct ScheduleCreateMethod: Sendable {
         var out: [String: JSONValue] = [
             "id":       .string(created.id),
             "workflow": .string(workflowName),
-            "trigger":  try JSONValue(encoding: trigger),
-            "runtime":  true
+            "trigger":  try JSONValue(encoding: trigger)
         ]
 
         if let at = Self.fireAt(trigger) {

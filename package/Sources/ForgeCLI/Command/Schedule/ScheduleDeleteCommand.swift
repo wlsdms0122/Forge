@@ -15,9 +15,7 @@ struct ScheduleDeleteCommand: ParsableCommand {
         commandName: "delete",
         abstract: "Delete a schedule.",
         discussion: """
-            Deletes a schedule by id — regardless of origin (config or runtime).
-            Deleting a hand-authored config file removes it from the working
-            tree; restore it from the repo if needed.
+            Deletes a schedule by id.
             """
     )
     

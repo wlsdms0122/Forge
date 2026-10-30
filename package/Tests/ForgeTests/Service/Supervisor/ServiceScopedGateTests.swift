@@ -142,7 +142,7 @@ struct ServiceScopedGateTests {
     func shutdownRejectsCrossServiceToken() async throws {
         // Given
         let authority = TokenAuthority()
-        let sup = ServiceSupervisor(services: [], runtimeDirectory: FileManager.default.temporaryDirectory,
+        let sup = ServiceSupervisor(services: [], directory: FileManager.default.temporaryDirectory,
             tokenAuthority: authority)
         let method = ServiceShutdownMethod(supervisor: sup)
         let jira = authority.mint(TokenClaims(principal: "service:jira"))
@@ -176,7 +176,7 @@ struct ServiceScopedGateTests {
     func reloadRejectsServiceToken() async throws {
         // Given
         let authority = TokenAuthority()
-        let sup = ServiceSupervisor(services: [], runtimeDirectory: FileManager.default.temporaryDirectory,
+        let sup = ServiceSupervisor(services: [], directory: FileManager.default.temporaryDirectory,
             tokenAuthority: authority)
         let method = ServiceReloadMethod(supervisor: sup,
             configPath: nil,

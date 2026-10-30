@@ -21,10 +21,8 @@ struct ScheduleStoreEnabledTests {
     @Test("On/off does not touch the other fields")
     func setEnabledPreservesAllOtherFields() async throws {
         // Given
-        let directory = try temporary.make("toggle-cfg"); defer { try? FileManager.default.removeItem(at: directory) }
-        let runtimeDirectoryectory = try temporary.make("toggle-rt"); defer { try? FileManager.default.removeItem(at: runtimeDirectoryectory) }
-        let stateFile = runtimeDirectoryectory.appendingPathComponent("enabled-overrides.json")
-        let store = ScheduleStore(configDir: directory, runtimeDirectory: runtimeDirectoryectory, stateFile: stateFile)
+        let directory = try temporary.make("toggle"); defer { try? FileManager.default.removeItem(at: directory) }
+        let store = ScheduleStore(directory: directory, enabledFile: try temporary.file("schedule-enabled.json"))
         let created = try await store.create(Schedule(
                 id: "tog", workflow: WorkflowCatalog.inlineSigil,
                 trigger: .every(Interval(seconds: 90)),
@@ -65,7 +63,7 @@ struct ScheduleStoreEnabledTests {
         # human-written comment — the machine must not squash it
         """#
         try body.write(to: defURL, atomically: true, encoding: .utf8)
-        let store = ScheduleStore(configDir: directory, stateFile: state)
+        let store = ScheduleStore(directory: directory, enabledFile: state)
 
         // When
         let initial = await store.lookup("nr")?.enabled
@@ -93,7 +91,7 @@ struct ScheduleStoreEnabledTests {
         workflow: wf
         every: 1h
         """#.write(to: directory.appendingPathComponent("cv.yaml"), atomically: true, encoding: .utf8)
-        let store = ScheduleStore(configDir: directory, stateFile: state)
+        let store = ScheduleStore(directory: directory, enabledFile: state)
 
         // When
         try await store.setEnabled(id: "cv", enabled: true, authorizedWorkflow: "wf")
@@ -118,7 +116,7 @@ struct ScheduleStoreEnabledTests {
         every: 1h
         enabled: true
         """#.write(to: directory.appendingPathComponent("gh.yaml"), atomically: true, encoding: .utf8)
-        let store = ScheduleStore(configDir: directory, stateFile: try temporary.file("schedule-enabled.json"))
+        let store = ScheduleStore(directory: directory, enabledFile: try temporary.file("schedule-enabled.json"))
 
         // When
         let loaded = await store.lookup("gh")
@@ -141,9 +139,9 @@ struct ScheduleStoreEnabledTests {
             """.write(to: directory.appendingPathComponent("\(id).yaml"), atomically: true, encoding: .utf8)
         }
         
-        let store = ScheduleStore(configDir: directory, stateFile: state)
+        let store = ScheduleStore(directory: directory, enabledFile: state)
         try await store.setEnabled(id: "on1", enabled: true, authorizedWorkflow: "wf")
-        let reborn = ScheduleStore(configDir: directory, stateFile: state)
+        let reborn = ScheduleStore(directory: directory, enabledFile: state)
 
         // When
         let enabled = await reborn.lookup("on1")?.enabled
@@ -153,7 +151,7 @@ struct ScheduleStoreEnabledTests {
         #expect(enabled == true, "the enabled state must survive a restart")
         #expect(off == false, "what was never enabled must stay disabled")
         try FileManager.default.removeItem(at: state)
-        let amnesiac = ScheduleStore(configDir: directory, stateFile: state)
+        let amnesiac = ScheduleStore(directory: directory, enabledFile: state)
         let lost = await amnesiac.lookup("on1")?.enabled
         #expect(lost == false, "with no ledger, treat as not enabled (the safe direction)")
     }
@@ -165,7 +163,7 @@ struct ScheduleStoreEnabledTests {
         let state = try temporary.file("schedule-enabled.json")
         let defURL = directory.appendingPathComponent("ru.yaml")
         try "workflow: original\nevery: 1h\n".write(to: defURL, atomically: true, encoding: .utf8)
-        let store = ScheduleStore(configDir: directory, stateFile: state)
+        let store = ScheduleStore(directory: directory, enabledFile: state)
 
         // When
         try await store.setEnabled(id: "ru", enabled: true, authorizedWorkflow: "original")
@@ -192,7 +190,7 @@ struct ScheduleStoreEnabledTests {
         try FileManager.default.createDirectory(at: state.deletingLastPathComponent(),
             withIntermediateDirectories: true)
         try "{not json[".write(to: state, atomically: true, encoding: .utf8)
-        let store = ScheduleStore(configDir: directory, stateFile: state)
+        let store = ScheduleStore(directory: directory, enabledFile: state)
 
         // When
         let effective = await store.lookup("cs")?.enabled
@@ -216,14 +214,14 @@ struct ScheduleStoreEnabledTests {
 
     @Test("Strings that look sexagesimal round-trip verbatim")
     func createRoundTripsSexagesimalString() async throws {
-        let runtimeDirectoryectory = try temporary.make("sexagesimal"); defer { try? FileManager.default.removeItem(at: runtimeDirectoryectory) }
+        let directory = try temporary.make("sexagesimal"); defer { try? FileManager.default.removeItem(at: directory) }
         let state = try temporary.file("schedule-enabled.json")
-        let store = ScheduleStore(configDir: nil, runtimeDirectory: runtimeDirectoryectory, stateFile: state)
+        let store = ScheduleStore(directory: directory, enabledFile: state)
         let created = try await store.create(Schedule(
                 id: "sg", workflow: "wf",
                 trigger: .every(Interval(seconds: 3600)),
                 inputs: ["at_time": .string("09:20"), "window": .string("09:20:00"), "n": .int(5)]))
-        let fresh = ScheduleStore(configDir: nil, runtimeDirectory: runtimeDirectoryectory, stateFile: state)
+        let fresh = ScheduleStore(directory: directory, enabledFile: state)
         let decoded = await fresh.lookup(created.id)
         #expect(decoded?.inputs?["at_time"] == .string("09:20"), "a time-of-day-looking string must not degrade into a sexagesimal number")
         #expect(decoded?.inputs?["window"] == .string("09:20:00"))
@@ -233,15 +231,14 @@ struct ScheduleStoreEnabledTests {
     @Test("Mutation is rejected when identity changed after authorization")
     func mutationRejectsWhenScheduleIdentityChangedAfterAuthorization() async throws {
         let directory = try temporary.make("toctou"); defer { try? FileManager.default.removeItem(at: directory) }
-        let stateDir = try temporary.make("toctou-state"); defer { try? FileManager.default.removeItem(at: stateDir) }
-        let stateFile = stateDir.appendingPathComponent("overrides.json")
+        let enabledFile = try temporary.file("schedule-enabled.json")
         let defURL = directory.appendingPathComponent("tc.yaml")
         try #"""
         id: tc
         workflow: victim
         every: 1h
         """#.write(to: defURL, atomically: true, encoding: .utf8)
-        let store = ScheduleStore(configDir: directory, stateFile: stateFile)
+        let store = ScheduleStore(directory: directory, enabledFile: enabledFile)
         do {
             try await store.setEnabled(id: "tc", enabled: true, authorizedWorkflow: "attacker-owned")
             Issue.record("setEnabled must refuse when identity mismatches")

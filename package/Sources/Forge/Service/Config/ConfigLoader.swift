@@ -14,7 +14,6 @@ enum ConfigLoader {
         var providers: [PartialProvider]?
         var services: [PartialService]?
         var rootDirectory: String?
-        var scheduleDirectory: String?
         var policyDirectory: String?
         var logJSONL: String?
         var errorLog: String?
@@ -135,13 +134,6 @@ enum ConfigLoader {
                 key: "root_directory",
                 value: config.rootDirectory?.path ?? "(unset)",
                 source: source(toml: fromFile.rootDirectory, environmentName: "FORGE_ROOT_DIRECTORY")
-            )
-        )
-        entries.append(
-            .init(
-                key: "schedule_directory",
-                value: config.scheduleDirectory?.path ?? "(unset)",
-                source: source(toml: fromFile.scheduleDirectory, environmentName: "FORGE_SCHEDULE_DIRECTORY")
             )
         )
         entries.append(
@@ -273,7 +265,6 @@ enum ConfigLoader {
         
         if let directory = table["directory"]?.table {
             if let value = directory["root"]?.string { partial.rootDirectory = value }
-            if let value = directory["schedule"]?.string { partial.scheduleDirectory = value }
             if let value = directory["policy"]?.string { partial.policyDirectory = value }
         }
         
@@ -367,7 +358,7 @@ enum ConfigLoader {
     ) -> ForgeConfig {
         let providers = resolveProviders(file.providers, environment: environment)
         let anchor = tomlDirectory ?? instanceHome
-        let runtimeDirectory = Instance.runtimeDirectory(in: instanceHome)
+        let stateDirectory = Instance.stateDirectory(in: instanceHome)
         let logDir = instanceHome.appendingPathComponent("log")
         let logJSONL = resolveURLWithDefault(
             cli: nil,
@@ -405,7 +396,6 @@ enum ConfigLoader {
         }
         
         let rootDirectory = catalogDir("FORGE_ROOT_DIRECTORY", file.rootDirectory, "document")
-        let scheduleDirectory = catalogDir("FORGE_SCHEDULE_DIRECTORY", file.scheduleDirectory, "schedule")
         let policyDirectory = catalogDir("FORGE_POLICY_DIRECTORY", file.policyDirectory, "policy")
         
         let defaultHooks = ForgeConfig.HookToggles()
@@ -471,13 +461,12 @@ enum ConfigLoader {
         }
         
         return ForgeConfig(
-            runtimeDirectory: runtimeDirectory,
+            stateDirectory: stateDirectory,
             logJSONL: logJSONL,
             errorLog: errorLog,
             logMaximumBytes: logMaximumBytes,
             providers: providers,
             rootDirectory: rootDirectory,
-            scheduleDirectory: scheduleDirectory,
             policyDirectory: policyDirectory,
             services: services,
             hooks: hooks,

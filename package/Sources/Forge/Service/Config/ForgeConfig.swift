@@ -37,13 +37,12 @@ struct ForgeConfig: Sendable {
     }
     
     // MARK: - Property
-    let runtimeDirectory: URL
+    let stateDirectory: URL
     let logJSONL: URL
     let errorLog: URL
     let logMaximumBytes: Int
     let providers: [ProviderConfig]
     let rootDirectory: URL?
-    let scheduleDirectory: URL?
     let policyDirectory: URL?
     let services: [ServiceConfig]
     let hooks: HookToggles
@@ -51,25 +50,23 @@ struct ForgeConfig: Sendable {
     
     // MARK: - Initializer
     init(
-        runtimeDirectory: URL,
+        stateDirectory: URL,
         logJSONL: URL,
         errorLog: URL,
         logMaximumBytes: Int = 50 * 1024 * 1024,
         providers: [ProviderConfig] = [],
         rootDirectory: URL? = nil,
-        scheduleDirectory: URL? = nil,
         policyDirectory: URL? = nil,
         services: [ServiceConfig] = [],
         hooks: HookToggles = HookToggles(),
         pool: PoolConfig = PoolConfig()
     ) {
-        self.runtimeDirectory = runtimeDirectory
+        self.stateDirectory = stateDirectory
         self.logJSONL = logJSONL
         self.errorLog = errorLog
         self.logMaximumBytes = logMaximumBytes
         self.providers = providers
         self.rootDirectory = rootDirectory
-        self.scheduleDirectory = scheduleDirectory
         self.policyDirectory = policyDirectory
         self.services = services
         self.hooks = hooks
@@ -88,7 +85,7 @@ extension ForgeConfig {
         )
         
         return ForgeConfig(
-            runtimeDirectory: cwd,
+            stateDirectory: cwd,
             logJSONL: cwd.appendingPathComponent("forge.log.jsonl"),
             errorLog: cwd.appendingPathComponent("error.log"),
             providers: [

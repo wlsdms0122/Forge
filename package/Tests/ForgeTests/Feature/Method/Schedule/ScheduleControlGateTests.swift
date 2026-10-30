@@ -85,9 +85,7 @@ struct ScheduleControlGateTests {
     // MARK: - Private
     
     private func seedSchedule(_ directory: URL, _ authority: TokenAuthority) async throws -> (ScheduleStore, String) {
-        let store = ScheduleStore(
-            configDir: nil, runtimeDirectory: directory,
-            stateFile: FileManager.default.temporaryDirectory
+        let store = ScheduleStore(directory: directory, enabledFile: FileManager.default.temporaryDirectory
             .appendingPathComponent("forge-sched-enabled-\(UUID().uuidString.prefix(6)).json"))
         let create = ScheduleCreateMethod(
             store: store, catalog: try WorkflowCatalog(directory: nil),

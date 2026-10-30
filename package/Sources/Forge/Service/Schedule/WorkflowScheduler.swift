@@ -115,14 +115,12 @@ actor WorkflowScheduler {
                 
                 if case .closed(.denied) = record.state, schedule.trigger.isOneShot { continue }
                 
-                if entry.runtime {
-                    do {
-                        try await store.delete(id: schedule.id)
-                        try await ledger.clear(id: schedule.id)
-                    } catch {
-                        FileHandle.standardError.write(Data(
-                            "forge: schedule '\(schedule.id)' spent-once GC failed: \(error)\n".utf8))
-                    }
+                do {
+                    try await store.delete(id: schedule.id)
+                    try await ledger.clear(id: schedule.id)
+                } catch {
+                    FileHandle.standardError.write(Data(
+                        "forge: schedule '\(schedule.id)' spent-once GC failed: \(error)\n".utf8))
                 }
                 
                 continue

@@ -19,17 +19,10 @@ struct ScheduleCommand: ParsableCommand {
             wall-clock or `--after` relative delay, fired exactly once. A
             single surface covers both repeating and one-shot.
 
-            Definitions live in two directories — an operational split, not a
-            domain tier:
-
-                config     schedule_directory/*.yaml — hand-authored. The daemon's
-                           autonomous machinery never mutates these.
-                runtime    runtime_directory/schedule/*.yaml — created via `create`,
-                           daemon-owned.
-
-            `create` writes to the runtime dir. `delete` and enable/disable act
-            on any schedule regardless of origin; hand-authored config files are
-            usually edited directly.
+            Schedules are daemon state, one file each under
+            state_directory/schedule/, written by `create` and removed by
+            `delete`. A repeating schedule stands until it is deleted; a
+            one-shot is removed once it has fired.
             """,
         subcommands: [
             ScheduleListCommand.self,
