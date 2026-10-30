@@ -132,8 +132,7 @@ def main():
             check(name in listed, f"workflow list carries '{name}'", listed)
         check("Kernel language tour" in listed, "workflow list carries a description", listed)
 
-        # The authoring gate reads files straight from the kit, together, as
-        # the kernel fixture calls the child by name.
+        # The authoring gate reads files straight from the kit, each alone.
         checked = harness.forge(
             "workflow", "check",
             os.path.join(KIT, "home/document/kernel.yaml"),
