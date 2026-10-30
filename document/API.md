@@ -73,12 +73,13 @@ instance-owned (`<instanceHome>/runtime`) and not configurable — like the sock
 
 | Table / key | Default | Meaning |
 |---|---|---|
-| `[dir]` `workflow`/`schedule`/`resource`/`policy` | `<instanceHome>/<key>` | source catalog roots; a relative value resolves against the toml's directory. |
+| `[directory]` `workflow`/`schedule`/`resource`/`policy` | `<instanceHome>/<key>` | source catalog roots; a relative value resolves against the toml's directory. |
 | `[log]` `jsonl` / `error` | `<instanceHome>/log/forge.log.jsonl` · `…/error.log` | structured + stderr logs |
 | `[log]` `maximum_bytes` | `52428800` (50 MiB) | single-file rotation threshold; ≤0 disables rotation |
 | `[pool]` `maximum_concurrent_steps` | `4` | concurrent leaf-step (invoke/shell) cap; excess queues FIFO |
+| `[pool]` `maximum_active_runs` | `256` | concurrent registered-run cap |
 | `[provider.<name>]` `kind` (+ settings) | one `claude` (claude-cli) | backend instances. `kind` = `claude-cli` \| `codex-cli` \| `openai-compat`. CLI kinds accept `executable` (default: the CLI's name on `PATH`); `openai-compat` requires `endpoint`, the base URL, and an Agent reference without a model leaves the choice to the endpoint. A provider without a known `kind` or a required setting is skipped with a warning on stderr. Declaring any drops the built-in claude default, so list it explicitly alongside others. API keys via `FORGE_PROVIDER_<NAME>_API_KEY` env only. |
-| `[service.<name>]` `command` (+ `cwd`/`env`/`auto_spawn`/`log_file`/`restart_*`) | — (must declare) | managed child processes forge spawns/supervises (§3 of `forge serve -h`) |
+| `[service.<name>]` `command` (+ `working_directory`/`environment`/`auto_spawn`/`log_file`/`restart_*`) | — (must declare) | managed child processes forge spawns/supervises (§3 of `forge serve -h`) |
 | `[hooks]` `logging` | `true` | structured event logging |
 
 The socket is **not** a config key — it lives at `<instanceHome>/forged.sock`
@@ -118,12 +119,13 @@ there issuance is delegation (§5).
 | Code | Meaning |
 |------|---------|
 | 0 | success |
-| 1 | daemon boot failure (`serve`) |
-| 2 | argument parse error |
-| 3 | configuration load failure |
-| 4 | payload validation failure (incl. missing token) |
-| 5 | RPC error returned by the daemon |
-| 6 | RPC rejected for a stale/invalid token — reissue needed |
+| 1 | the command itself failed: `serve` could not boot (a config it cannot load included), `service register` could not register or lost the daemon, `policy check` denied, `workflow check` found a failing file |
+| 4 | the request could not be formed: a missing token, a bad JSON option, conflicting flags, an unusable instance or socket path |
+| 5 | the call failed: the daemon returned an RPC error or could not be reached, or `service describe` named a service that is not registered |
+| 6 | RPC rejected for a stale or invalid token; reissue it |
+| 64 | argument parse error (`EX_USAGE`) |
+
+The exit code reports the call, not the work it started. A `workflow dispatch` whose run fails still exits 0 once the call went through; the failure is in the result (`"status":"failed"` and `error`). A `service send` the service answers with an error is the call's own answer, so it comes back as `ServiceFailed` and exits 5.
 
 ---
 
@@ -1101,12 +1103,10 @@ internally at workflow-subprocess spawn, never over RPC.
 |-----------|--------|
 | `cli:<workflow>` | workflow subprocess (daemon mints at spawn) |
 | `service:<name>` | managed service subprocess (supervisor mints at spawn; never issuable over RPC). Bound to its own name on named service surfaces (service.register/ack/run/shutdown/restart) and rejected on global service control (service.reload) |
-| `system:rpc` | unauthenticated external RPC |
 | `system:runner` | slack / runner pipeline |
-| `system:admin` | admin route (manual triggers) |
+| `system:admin` | admin route (manual triggers); the daemon's boot token |
 | `system:schedule:<id>` | the daemon's internal scheduler (repeating + one-shot fires) |
-| `admin:<user>` | authenticated admin (future) |
-| `runner:<worker>` | authenticated runner (future) |
+| `admin:<user>` | a named admin, issued over `token.issue`; may delegate like `system:admin` |
 
 ---
 
@@ -1115,7 +1115,7 @@ internally at workflow-subprocess spawn, never over RPC.
 Every `workflow.dispatch` — operator, runner, admin, or a nested call from
 inside a workflow — is gated by the policy store.
 
-- YAML files (`*.yaml`) under the policy dir (`[dir] policy`, default
+- YAML files (`*.yaml`) under the policy dir (`[directory] policy`, default
   `<instanceHome>/policy`). Each file is a flat mapping of **principal
   patterns** to lists of **workflow-name patterns**.
 - Multiple files are union-merged by principal key. Changes hot-reload on the

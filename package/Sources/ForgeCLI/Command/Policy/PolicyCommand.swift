@@ -16,7 +16,7 @@ struct PolicyCommand: ParsableCommand {
         discussion: """
             Every `workflow dispatch` — operator, runner, admin, or a
             nested call from inside a workflow — is gated by YAML files
-            under the policy dir (`[dir].policy`, default `.forge/policy`). Each file is a flat
+            under the policy dir (`[directory] policy`, default `<instanceHome>/policy`). Each file is a flat
             mapping of principal patterns to workflow name patterns.
             Multiple files are union-merged by principal key, and changes
             hot-reload on next dispatch.
@@ -28,12 +28,11 @@ struct PolicyCommand: ParsableCommand {
 
             Principal classes:
                 cli:<workflow>           workflow subprocess (daemon mints)
-                system:rpc               unauthenticated external RPC
+                service:<name>           managed service (supervisor mints)
                 system:admin             admin route (manual triggers)
                 system:runner            slack / runner pipeline
-                system:schedule:<id>    daemon's internal scheduler
-                admin:<user>   (future)  authenticated admin
-                runner:<worker>(future)  authenticated runner
+                system:schedule:<id>     daemon's internal scheduler
+                admin:<user>             named admin (token issue)
             """,
         subcommands: [
             PolicyListCommand.self,
