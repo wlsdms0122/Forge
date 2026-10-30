@@ -50,7 +50,7 @@ struct JobCreateCommand: ParsableCommand {
     @Option(name: .customLong("parent-job"), help: "Parent job id (epic/sub-ticket hierarchy).")
     var parentJob: String?
     
-    @Option(help: "Initial status (free string, default \"open\"; vocabulary is the client's convention).")
+    @Option(help: "Initial status (free string; vocabulary is the client's convention).")
     var status: String?
     
     @Option(help: "Job id (default: auto-generated).")
