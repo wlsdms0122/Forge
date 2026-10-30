@@ -83,7 +83,7 @@ actor Log {
         let effectiveNode = nodeID ?? LogContext.nodeID
         let effectiveParent = parentNodeID ?? LogContext.parentNodeID
         let effectiveParameters = parameters ?? LogContext.parameters ?? [:]
-        let parametersAny: [String: Any] = effectiveParameters.mapValues(Self.jsonValueToAny)
+        let parametersAny: [String: Any] = effectiveParameters.mapValues(\.jsonObject)
         
         let record: [String: Any] = [
             "timestamp": Self.iso(timestampNanoseconds),
@@ -167,31 +167,6 @@ actor Log {
         let now = Date().timeIntervalSince1970
         
         return Int64(now * 1_000_000_000)
-    }
-    
-    fileprivate static func jsonValueToAny(_ value: JSONValue) -> Any {
-        switch value {
-        case .null:
-            return NSNull()
-        
-        case .bool(let bool):
-            return bool
-        
-        case .int(let integer):
-            return integer
-        
-        case .double(let double):
-            return double
-        
-        case .string(let string):
-            return string
-        
-        case .array(let array):
-            return array.map(jsonValueToAny)
-        
-        case .object(let object):
-            return object.mapValues(jsonValueToAny)
-        }
     }
     
     private func write(_ data: Data, to url: URL) {

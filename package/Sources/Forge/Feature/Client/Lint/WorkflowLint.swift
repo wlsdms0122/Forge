@@ -6,64 +6,63 @@
 //
 
 import Foundation
-import Spec
 
-package enum WorkflowLint {
+package struct WorkflowLint: Sendable {
     // MARK: - Property
+    // How the files are built, the daemon's way.
+    let builder: WorkflowBuilder
+
     // MARK: - Initializer
+    // A lint over the vocabulary the binary carries.
+    package init() throws {
+        self.init(builder: WorkflowBuilder(vocabulary: try ForgeVocabulary()))
+    }
+
+    init(builder: WorkflowBuilder) {
+        self.builder = builder
+    }
+
     // MARK: - Public
-    package static func check(path: String) -> Report {
-        let url = URL(fileURLWithPath: path)
-        let data: Data
+    // The files admitted as the daemon admits its catalog's at a reload,
+    // read through the catalog itself, with what it records for each, and
+    // the authoring issues the catalog has no rule for. One report per path
+    // in the order given.
+    package func check(paths: [String]) async -> [Report] {
+        var read: [(path: String, data: Data)] = []
+        var unread: [String: String] = [:]
 
-        do {
-            data = try Data(contentsOf: url)
-        } catch {
-            return Report(
-                path: path,
-                readError: error.localizedDescription,
-                decodeError: nil,
-                issues: []
-            )
+        for path in paths {
+            do {
+                read.append((path, try Data(contentsOf: URL(fileURLWithPath: path))))
+            } catch {
+                unread[path] = error.localizedDescription
+            }
         }
 
-        let program: Spec.Program
+        let snapshot = await WorkflowCatalog(directory: nil, builder: builder).reload(of: read.map(\.path))
+        let refusals = Dictionary(
+            snapshot.failures.map { failure in (failure.path, failure.reason) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        let issues = Dictionary(
+            read.map { file in (file.path, Self.staleTemplateIssues(data: file.data)) },
+            uniquingKeysWith: { first, _ in first }
+        )
 
-        do {
-            program = try ForgeSpec.loader().load(data)
-        } catch {
-            return Report(
-                path: path,
-                readError: nil,
-                decodeError: "\(error)",
-                issues: []
-            )
+        return paths.map { path in
+            Report(path: path, readError: unread[path], refusal: refusals[path], issues: issues[path] ?? [])
         }
-
-        let base = url.deletingPathExtension().lastPathComponent
-        var issues: [String] = []
-
-        if let declared = program.name, declared != base {
-            issues.append(
-                "name: '\(declared)' must equal the file basename '\(base)'"
-                    + " — identity is the filename (rename the file or drop the name from the body)"
-            )
-        }
-
-        issues += staleTemplateIssues(data: data)
-
-        return Report(path: path, readError: nil, decodeError: nil, issues: issues)
     }
 
     // MARK: - Private
-    // A string in a spec is a literal — an old-grammar `${...}` inside one is
-    // no longer a reference and would silently ship as text. The language stays
-    // inert on purpose (runtime-lowered data may legitimately carry `${`), so
-    // the authored-file gate is where the migration trap gets loud. Exempt:
-    // `format` templates (the dialect's home), metadata prose, and `{ value: }`
-    // quotations (the sanctioned escape for literal `${` text).
+    // A string in a workflow is a literal, so a `${...}` inside one ships as
+    // text. The language takes it as text on purpose (data may carry `${`),
+    // and the authored file is where an interpolation written as a plain
+    // string gets loud. Exempt: a `format` template, whose `$$` writes `$`,
+    // and the prose the front end takes beside the document (`description`,
+    // `hint`).
     private static func staleTemplateIssues(data: Data) -> [String] {
-        guard let tree = try? ForgeSpec.loader().decode(Spec.Value.self, from: data) else {
+        guard let tree = try? YAMLSpec.decode(JSONValue.self, from: data) else {
             return []
         }
 
@@ -77,31 +76,26 @@ package enum WorkflowLint {
     private static let proseKeys: Set<String> = ["format", "description", "hint"]
 
     private static func walk(
-        _ value: Spec.Value,
+        _ value: JSONValue,
         at location: String,
         into issues: inout [String]
     ) {
         switch value {
-        case .string(let string):
+        case let .string(string):
             if string.contains("${") {
                 issues.append(
-                    "\(location): string contains '${' — strings are literals now;"
-                        + " use { format:, with: } to interpolate, or wrap in"
-                        + " { value: } if the text is meant verbatim"
+                    "\(location): string contains '${', and a string is a literal;"
+                        + " use { format:, with: } to interpolate, where '$$' writes '$'"
                 )
             }
 
-        case .array(let array):
+        case let .array(array):
             for (index, element) in array.enumerated() {
                 walk(element, at: "\(location)[\(index)]", into: &issues)
             }
 
-        case .object(let object):
-            // A single-key { value: } object is the quotation form — its
-            // payload is data by declaration, not a stale template.
-            if object.count == 1, object.keys.first == "value" { return }
-
-            for (key, element) in object.sorted(by: { $0.key < $1.key }) {
+        case let .object(object):
+            for (key, element) in object.sorted(by: { one, other in one.key < other.key }) {
                 guard !Self.proseKeys.contains(key) else { continue }
 
                 walk(element, at: "\(location).\(key)", into: &issues)

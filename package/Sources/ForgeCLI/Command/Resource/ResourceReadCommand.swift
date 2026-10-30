@@ -7,6 +7,7 @@
 
 import ArgumentParser
 import Foundation
+import Forge
 
 struct ResourceReadCommand: ParsableCommand {
     // MARK: - Property
@@ -31,19 +32,19 @@ struct ResourceReadCommand: ParsableCommand {
     func run() throws {
         let client = Client(global, context: "resource read")
         
-        var params: [String: Any] = ["path": path]
+        var params: [String: JSONValue] = ["path": .string(path)]
         
-        if let maxBytes { params["maximum_bytes"] = maxBytes }
+        if let maxBytes { params["maximum_bytes"] = .int(maxBytes) }
         
         let result = client.call("resource.read", params)
         
         if json {
-            printJSON(result)
+            result.printJSON()
             
             return
         }
         
-        print((result["body"] as? String) ?? "")
+        print(result["body"]?.stringValue ?? "")
     }
     
     // MARK: - Private

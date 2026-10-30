@@ -30,7 +30,7 @@ struct Client {
     // one up front.
     init(_ global: GlobalOptions, context: String, token: String) {
         do {
-            self.socketPath = try Session.clientSocket(session: global.session)
+            self.socketPath = try Instance.clientSocket(instance: global.instance)
         } catch {
             die("\(error)", code: 4)
         }
@@ -40,7 +40,7 @@ struct Client {
     }
     
     // MARK: - Public
-    func call(_ method: String, _ params: [String: Any] = [:]) -> [String: Any] {
+    func call(_ method: String, _ params: [String: JSONValue] = [:]) -> JSONValue {
         switch send(method, params) {
         case .ok(let result):
             return result
@@ -52,9 +52,9 @@ struct Client {
     
     // For the caller that reads the failure before giving up — `forge status`
     // turns a dead socket into a diagnosis rather than an error line.
-    func send(_ method: String, _ params: [String: Any] = [:]) -> RPCResult {
+    func send(_ method: String, _ params: [String: JSONValue] = [:]) -> RPCResult {
         var params = params
-        params["token"] = token
+        params["token"] = .string(token)
         
         return RPC.call(socketPath: socketPath, method: method, params: params)
     }

@@ -8,16 +8,16 @@
 import Foundation
 @testable import Forge
 
-/// Redirects the `Log.shared` sink to a temporary file and reads the records collected in between.
-///
-/// The global sink is not isolated — while installed, **logs emitted by other tests** flow
-/// into the same file. The `.exclusive(.logSink)` lock only guards tests that *swap* the
-/// sink, not tests that *emit* logs. So the read surface defaults to the filtering side
-/// (`records(kind:)` / `records(workflowID:)`) rather than everything.
-///
-/// Checks that need not go through the sink at all (behavior of `Log` itself, like rotation
-/// and thresholds) use a `Log()` instance instead of the global — contamination is
-/// impossible there by construction.
+// Redirects the `Log.shared` sink to a temporary file and reads the records collected in between.
+//
+// The global sink is not isolated — while installed, **logs emitted by other tests** flow
+// into the same file. The `.exclusive(.logSink)` lock only guards tests that *swap* the
+// sink, not tests that *emit* logs. So the read surface defaults to the filtering side
+// (`records(kind:)` / `records(runID:)`) rather than everything.
+//
+// Checks that need not go through the sink at all (behavior of `Log` itself, like rotation
+// and thresholds) use a `Log()` instance instead of the global — contamination is
+// impossible there by construction.
 struct LogSinkCapture {
     // MARK: - Property
     let url: URL
@@ -26,7 +26,7 @@ struct LogSinkCapture {
 
     // MARK: - Initializer
     // MARK: - Public
-    /// Redirects the global sink to a temporary file, runs `body`, and restores it whether it exits by success or failure.
+    // Redirects the global sink to a temporary file, runs `body`, and restores it whether it exits by success or failure.
     static func capture<T>(
         _ name: String,
         performing body: (LogSinkCapture) async throws -> T
@@ -46,7 +46,7 @@ struct LogSinkCapture {
         }
     }
 
-    /// All records collected in the file. Logs from other tests may be mixed in.
+    // All records collected in the file. Logs from other tests may be mixed in.
     func records() -> [LogRecord] {
         guard let raw = try? String(contentsOf: url, encoding: .utf8) else { return [] }
         let decoder = JSONDecoder()
@@ -60,8 +60,27 @@ struct LogSinkCapture {
         records().filter { record in record.kind == kind }
     }
 
-    func records(workflowID: String) -> [LogRecord] {
-        records().filter { record in record.workflowID == workflowID }
+    func records(runID: String) -> [LogRecord] {
+        records().filter { record in record.runID == runID }
+    }
+
+    // The records of a run once `count` of them are in the file, or the ones there when `timeout` passes.
+    func records(
+        runID: String,
+        awaiting count: Int,
+        timeout: Duration = .seconds(10)
+    ) async throws -> [LogRecord] {
+        let deadline = ContinuousClock.now + timeout
+
+        while ContinuousClock.now < deadline {
+            let found = records(runID: runID)
+
+            if found.count >= count { return found }
+
+            try await Task.sleep(for: .milliseconds(10))
+        }
+
+        return records(runID: runID)
     }
 
     // MARK: - Private

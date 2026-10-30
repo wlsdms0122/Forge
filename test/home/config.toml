@@ -1,5 +1,5 @@
-# e2e session home — release-gate scenario. The runner copies this directory
-# to a throwaway session home and replaces __AGENT_STUB__ with the absolute
+# e2e instance home — release-gate scenario. The runner copies this directory
+# to a throwaway instance home and replaces __AGENT_STUB__ with the absolute
 # path of E2E/agent-stub before booting the daemon under test.
 [directory]
 workflow = "workflow"

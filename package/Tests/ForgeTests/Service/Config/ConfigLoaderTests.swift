@@ -22,23 +22,23 @@ struct ConfigLoaderTests {
         let noToml = "/nonexistent-forge-config-\(UUID().uuidString).toml"
         let home = try temporary.make("home")
         defer { try? FileManager.default.removeItem(at: home) }
-        let invalidEnvironment = try ConfigLoader.loadWithSources(configPath: noToml, sessionHome: home,
+        let invalidEnvironment = try ConfigLoader.loadWithSources(configPath: noToml, instanceHome: home,
             environment: ["FORGE_LOG_MAXIMUM_BYTES": "abc"])
 
         // Then
         let maxBytes = try #require(invalidEnvironment.entries.first { entry in entry.key == "log_maximum_bytes" })
         #expect(maxBytes.source.label == "default", "invalid env falsely reported as source=env")
         #expect(maxBytes.value == String(50 * 1024 * 1024))
-        let zeroConcurrency = try ConfigLoader.loadWithSources(configPath: noToml, sessionHome: home,
+        let zeroConcurrency = try ConfigLoader.loadWithSources(configPath: noToml, instanceHome: home,
             environment: ["FORGE_POOL_MAXIMUM_CONCURRENT_STEPS": "0"])
         let zeroed = try #require(zeroConcurrency.entries.first { entry in entry.key == "pool.maximum_concurrent_steps" })
         #expect(zeroed.source.label == "default", "0 fails the >0 gate so builtin applies, yet source=env is falsely reported")
-        let validConcurrency = try ConfigLoader.loadWithSources(configPath: noToml, sessionHome: home,
+        let validConcurrency = try ConfigLoader.loadWithSources(configPath: noToml, instanceHome: home,
             environment: ["FORGE_POOL_MAXIMUM_CONCURRENT_STEPS": "8"])
         let concurrency = try #require(validConcurrency.entries.first { entry in entry.key == "pool.maximum_concurrent_steps" })
         #expect(concurrency.source.label == "environment (FORGE_POOL_MAXIMUM_CONCURRENT_STEPS)")
         #expect(concurrency.value == "8")
-        let runtimeOverride = try ConfigLoader.loadWithSources(configPath: noToml, sessionHome: home,
+        let runtimeOverride = try ConfigLoader.loadWithSources(configPath: noToml, instanceHome: home,
             environment: ["FORGE_RUNTIME": "/tmp/rt"])
         #expect(runtimeOverride.entries.first { entry in entry.key == "runtime_directory" } == nil)
         #expect(runtimeOverride.entries.first { entry in entry.key == "socket" } == nil)
@@ -51,11 +51,11 @@ struct ConfigLoaderTests {
         let home = try temporary.make("poolzero-home")
         defer { for d in [directory, home] { try? FileManager.default.removeItem(at: d) } }
         let url = try writeTOML("[pool]\nmaximum_concurrent_steps = 0\n", in: directory)
-        let configuration = ConfigLoader.build(file: try ConfigLoader.parse(url), tomlDirectory: directory, sessionHome: home, environment: [:])
+        let configuration = ConfigLoader.build(file: try ConfigLoader.parse(url), tomlDirectory: directory, instanceHome: home, environment: [:])
 
         // Then
         #expect(configuration.pool.maximumConcurrentSteps == 4, "an invalid toml value (0) must fall through to the builtin default")
-        let report = try ConfigLoader.loadWithSources(configPath: url.path, sessionHome: home, environment: [:])
+        let report = try ConfigLoader.loadWithSources(configPath: url.path, instanceHome: home, environment: [:])
         let entry = try #require(report.entries.first { entry in entry.key == "pool.maximum_concurrent_steps" })
         #expect(entry.source.label == "default", "invalid toml must not be falsely reported as source=toml")
         #expect(entry.value == "4", "the report value must match the actual build value (4) so daemon.status/workflow.list_active do not diverge")
@@ -68,7 +68,7 @@ struct ConfigLoaderTests {
         let home = try temporary.make("home")
         defer { for d in [directory, home] { try? FileManager.default.removeItem(at: d) } }
         let url = try writeTOML("[pool]\nmaximum_concurrent_steps = 2\n", in: directory)
-        let configuration = ConfigLoader.build(file: try ConfigLoader.parse(url), tomlDirectory: directory, sessionHome: home, environment: [:])
+        let configuration = ConfigLoader.build(file: try ConfigLoader.parse(url), tomlDirectory: directory, instanceHome: home, environment: [:])
 
         // Then
         #expect(configuration.workflowDirectory?.path == home.appendingPathComponent("workflow").path)
@@ -81,7 +81,7 @@ struct ConfigLoaderTests {
         #expect(!(configuration.workflowDirectory!.path.hasPrefix(directory.path)), "the catalog must not be tied to the config.toml location")
     }
     
-    @Test("[directory] and [log] tables override the session-home defaults")
+    @Test("[directory] and [log] tables override the instance-home defaults")
     func dirAndLogTablesOverride() throws {
         // Given
         let directory = try temporary.make("ovr")
@@ -97,7 +97,7 @@ struct ConfigLoaderTests {
         error     = "./logs/e.log"
         maximum_bytes = 12345
         """, in: directory)
-        let configuration = ConfigLoader.build(file: try ConfigLoader.parse(url), tomlDirectory: directory, sessionHome: home, environment: [:])
+        let configuration = ConfigLoader.build(file: try ConfigLoader.parse(url), tomlDirectory: directory, instanceHome: home, environment: [:])
 
         // Then
         #expect(configuration.runtimeDirectory.path == home.appendingPathComponent("runtime").path)
@@ -122,7 +122,7 @@ struct ConfigLoaderTests {
         """, in: directory)
 
         // When
-        let configuration = ConfigLoader.build(file: try ConfigLoader.parse(url), tomlDirectory: directory, sessionHome: home, environment: [:])
+        let configuration = ConfigLoader.build(file: try ConfigLoader.parse(url), tomlDirectory: directory, instanceHome: home, environment: [:])
 
         // Then — a parsed provider must replace the builtin default, or a stub
         // executable in config silently falls through to the real CLI
@@ -139,7 +139,7 @@ struct ConfigLoaderTests {
         defer { try? FileManager.default.removeItem(at: directory); try? FileManager.default.removeItem(at: home) }
         let url = try writeTOML("", in: directory)
         let configuration = ConfigLoader.build(
-            file: try ConfigLoader.parse(url), tomlDirectory: directory, sessionHome: home,
+            file: try ConfigLoader.parse(url), tomlDirectory: directory, instanceHome: home,
             environment: ["FORGE_WORKFLOW_DIRECTORY": "/abs/wf"])
 
         // Then

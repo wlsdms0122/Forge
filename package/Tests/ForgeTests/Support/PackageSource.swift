@@ -7,13 +7,13 @@
 
 import Foundation
 
-/// The package layout used by guards that read the sources to check invariants.
-///
-/// Calling `deletingLastPathComponent()` a fixed number of times from `#filePath` means
-/// that the moment a file moves to a different depth, it **reads the wrong path yet passes
-/// as "no violations"**. That failure mode is worse because it is silent — so instead of
-/// counting depth, walk upward until `Package.swift` is found, and throw rather than
-/// quietly returning an empty result when it isn't.
+// The package layout used by guards that read the sources to check invariants.
+//
+// Calling `deletingLastPathComponent()` a fixed number of times from `#filePath` means
+// that the moment a file moves to a different depth, it **reads the wrong path yet passes
+// as "no violations"**. That failure mode is worse because it is silent — so instead of
+// counting depth, walk upward until `Package.swift` is found, and throw rather than
+// quietly returning an empty result when it isn't.
 struct PackageSource {
     // MARK: - Property
     let root: URL
@@ -46,7 +46,7 @@ struct PackageSource {
         root.appendingPathComponent("Tests")
     }
 
-    /// All Swift files under `directory`. Recursive and path-sorted, so the order is the same on every run.
+    // All Swift files under `directory`. Recursive and path-sorted, so the order is the same on every run.
     func swiftFiles(in directory: URL) throws -> [URL] {
         guard let enumerator = FileManager.default.enumerator(
             at: directory,

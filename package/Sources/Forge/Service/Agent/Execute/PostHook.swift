@@ -10,5 +10,5 @@ import Foundation
 protocol PostHook: Sendable {
     var name: String { get }
 
-    func after(_ invocation: Invocation, _ response: BackendResponse) async
+    func after(_ invocation: AgentInvocation, _ response: BackendResponse) async
 }

@@ -8,11 +8,11 @@
 import Foundation
 
 enum SubprocessEnv {
-    static func baseline() -> [String: String] {
+    static func baseline(accessToken: String?) -> [String: String] {
         var environment: [String: String] = [:]
         
-        if let token = WorkflowExecutionState.accessToken {
-            environment["FORGE_ACCESS_TOKEN"] = token
+        if let accessToken {
+            environment["FORGE_ACCESS_TOKEN"] = accessToken
         }
         
         for (key, value) in forgeBinEnv() { environment[key] = value }

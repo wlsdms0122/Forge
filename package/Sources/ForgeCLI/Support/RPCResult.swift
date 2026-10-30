@@ -6,8 +6,9 @@
 //
 
 import Foundation
+import Forge
 
 enum RPCResult {
-    case ok([String: Any])
+    case ok(JSONValue)
     case err(type: String, message: String)
 }

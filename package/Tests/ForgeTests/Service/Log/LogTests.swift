@@ -11,6 +11,14 @@ import Testing
 
 @Suite("Log Tests")
 struct LogTests {
+    private struct ResolvedModelFailureBackend: Backend {
+        func invoke(_ invocation: AgentInvocation) async throws -> BackendResponse {
+            invocation.executionContext.record(modelReference: try ModelReference(
+                    provider: "local", model: "qwen3:8b"))
+            throw BackendUnavailable("offline")
+        }
+    }
+    
     // MARK: - Property
     // MARK: - Initializer
     // MARK: - Test
@@ -60,10 +68,7 @@ struct LogTests {
     @Test("The snapshotted log context carries over intact into a detached task", .exclusive(.logSink))
     func agentEventSnapshotCrossesDetachedTaskBoundary() async throws {
         // Given
-        let workflowContext = WorkflowExecutionContext(
-            workflowID: "wf-context",
-            workflowName: "review",
-            origin: .manual)
+        let metadata: LogPayload = ["run_id": "wf-context", "workflow_name": "review"]
 
         // When
         let records = try await LogSinkCapture.capture("log-agent-context") { capture in
@@ -71,7 +76,7 @@ struct LogTests {
                 runID: "wf-context", parentRootID: nil, parentNodeID: nil
             ) {
                 await LogContext.$parameters.withValue(["ticket": .string("T-1")]) {
-                    LogContext.$workflowContext.withValue(workflowContext) {
+                    LogContext.$metadata.withValue(metadata) {
                         AgentEventLogContext.current
                     }
                 }
@@ -89,7 +94,7 @@ struct LogTests {
                     context: context)
             }.value
 
-            return capture.records(workflowID: "wf-context")
+            return capture.records(runID: "wf-context")
         }
 
         // Then
@@ -97,18 +102,18 @@ struct LogTests {
         #expect(record.rootID == "wf-context")
         #expect(record.nodeID == "wf-context")
         #expect(record.parameters["ticket"] == .string("T-1"))
-        #expect(record.payload["workflow_id"] == .string("wf-context"))
+        #expect(record.payload["run_id"] == .string("wf-context"))
     }
 
     @Test("Even when the backend fails, the translated model reference remains in agent.error", .exclusive(.logSink))
     func failedInvocationLogsTranslatedModelReference() async throws {
         // Given
         let logging = LoggingHook()
-        let executor = Executor(
+        let executor = AgentExecutor(
             backends: BackendRegistry(["local": ResolvedModelFailureBackend()]),
             preHooks: [logging],
             errorHooks: [logging])
-        let invocation = Invocation(
+        let invocation = AgentInvocation(
             id: "translated-failure",
             agent: try Agent(model: "local"),
             prompt: "hello")
@@ -127,13 +132,5 @@ struct LogTests {
         let payload = try #require(records.first?.payload)
         #expect(payload["model"] == .string("local:qwen3:8b"))
         #expect(payload["model_resolution"] == .string("specific"))
-    }
-}
-
-private struct ResolvedModelFailureBackend: Backend {
-    func invoke(_ invocation: Invocation) async throws -> BackendResponse {
-        invocation.executionContext.record(modelReference: try ModelReference(
-                provider: "local", model: "qwen3:8b"))
-        throw BackendUnavailable("offline")
     }
 }

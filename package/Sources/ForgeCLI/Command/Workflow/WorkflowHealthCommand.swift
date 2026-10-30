@@ -7,6 +7,7 @@
 
 import ArgumentParser
 import Foundation
+import Forge
 
 struct WorkflowHealthCommand: ParsableCommand {
     // MARK: - Property
@@ -27,59 +28,60 @@ struct WorkflowHealthCommand: ParsableCommand {
         let result = client.call("workflow.health")
         
         if json {
-            printJSON(result)
+            result.printJSON()
             
             return
         }
         
-        let runs = result["runs"] as? [String: Any] ?? [:]
-        let slots = result["slots"] as? [String: Any] ?? [:]
-        let dispatch = result["dispatch"] as? [String: Any] ?? [:]
-        let active = runs["active"] as? Int ?? 0
-        let cap = runs["cap"] as? Int ?? 0
-        let refused = runs["refused_total"] as? Int ?? 0
+        let runs = result["runs"]
+        let slots = result["slots"]
+        let dispatch = result["dispatch"]
+        let active = runs?["active"]?.intValue ?? 0
+        let cap = runs?["cap"]?.intValue ?? 0
+        let refused = runs?["refused_total"]?.intValue ?? 0
         
         var runLine = "runs   \(active) active / cap \(cap)"
         
         if refused > 0 { runLine += " (\(refused) refused)" }
         
-        if let oldest = (runs["oldest"] as? [[String: Any]])?.first,
-            let age = oldest["age_ms"] as? Int, active > 0 {
-            runLine += "   oldest \(age / 1000)s (\(oldest["workflow_id"] as? String ?? "?") \(oldest["workflow_name"] as? String ?? "?"))"
+        if let oldest = runs?["oldest"]?.arrayValue?.first,
+            let age = oldest["age_ms"]?.intValue, active > 0 {
+            runLine += "   oldest \(age / 1000)s (\(oldest["run_id"]?.stringValue ?? "?") \(oldest["workflow_name"]?.stringValue ?? "?"))"
         }
         
         print(runLine)
         
-        let waiters = slots["waiters"] as? [[String: Any]] ?? []
-        var slotLine = "slots  \(slots["free"] as? Int ?? 0) free / \(slots["max"] as? Int ?? 0) total"
+        let waiters = slots?["waiters"]?.arrayValue ?? []
+        var slotLine = "slots  \(slots?["free"]?.intValue ?? 0) free / \(slots?["max"]?.intValue ?? 0) total"
         
         if !waiters.isEmpty {
-            let maxWait = waiters.compactMap { waiter in waiter["waited_ms"] as? Int }.max() ?? 0
+            let maxWait = waiters.compactMap { waiter in waiter["waited_ms"]?.intValue }.max() ?? 0
             slotLine += ", \(waiters.count) waiting (max \(maxWait / 1000)s)"
         }
         
         print(slotLine)
-        print("rate   \(dispatch["last_60s"] as? Int ?? 0) dispatches / 60s")
+        print("rate   \(dispatch?["last_60s"]?.intValue ?? 0) dispatches / 60s")
         
-        for tree in runs["trees"] as? [[String: Any]] ?? [] {
-            let names = (tree["names"] as? [String: Int] ?? [:])
+        for tree in runs?["trees"]?.arrayValue ?? [] {
+            let names = (tree["names"]?.objectValue ?? [:])
+                .compactMapValues(\.intValue)
                 .sorted { lhs, rhs in lhs.value > rhs.value }
                 .map { pair in "\(pair.key)×\(pair.value)" }
                 .joined(separator: " ")
             
-            print("tree   \(tree["root_id"] as? String ?? "?") \(tree["runs"] as? Int ?? 0) runs (\(names))")
+            print("tree   \(tree["root_id"]?.stringValue ?? "?") \(tree["runs"]?.intValue ?? 0) runs (\(names))")
         }
         
-        let flags = result["flags"] as? [[String: Any]] ?? []
+        let flags = result["flags"]?.arrayValue ?? []
         
         if flags.isEmpty {
             print("flags  none")
         } else {
             for flag in flags {
-                let kind = flag["kind"] as? String ?? "?"
-                let rest = flag
+                let kind = flag["kind"]?.stringValue ?? "?"
+                let rest = (flag.objectValue ?? [:])
                     .filter { entry in entry.key != "kind" }
-                    .map { entry in "\(entry.key)=\(entry.value)" }
+                    .map { entry in "\(entry.key)=\(entry.value.plainText)" }
                     .sorted()
                     .joined(separator: " ")
                 

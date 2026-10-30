@@ -15,7 +15,8 @@ enum LogContext {
     @TaskLocal static var parentRunID: String?
     @TaskLocal static var asyncDispatch: Bool?
     @TaskLocal static var parameters: [String: JSONValue]?
-    @TaskLocal static var workflowContext: WorkflowExecutionContext?
+    // The fields every log line of the current task carries in its payload.
+    @TaskLocal static var metadata: LogPayload?
     
     // MARK: - Initializer
     // MARK: - Public

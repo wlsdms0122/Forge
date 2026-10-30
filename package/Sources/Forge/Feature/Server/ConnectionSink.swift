@@ -17,10 +17,10 @@ struct ConnectionSink: EventSink {
     }
 
     // MARK: - Public
-    func emit(_ object: JSONObject) async {
+    func emit(_ frame: JSONValue) async {
         guard
             let data = try? JSONSerialization.data(
-                withJSONObject: object.dict,
+                withJSONObject: frame.jsonObject,
                 options: [.sortedKeys, .withoutEscapingSlashes]
             )
         else {

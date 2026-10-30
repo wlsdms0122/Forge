@@ -31,64 +31,67 @@ struct StatusCommand: ParsableCommand {
         switch client.send("daemon.status") {
         case .err(let type, let message):
             if type == "ClientError" {
-                reportNotRunning(session: global.session, socketPath: client.socketPath)
+                reportNotRunning(instance: global.instance, socketPath: client.socketPath)
             }
             
             client.fail(type: type, message: message)
         
-        case .ok(let dictionary):
+        case .ok(let result):
             if json {
-                printJSON(dictionary)
+                result.printJSON()
                 
                 return
             }
             
-            printPlain(dictionary)
+            printPlain(result)
         }
     }
     
     // MARK: - Private
-    private func printPlain(_ dictionary: [String: Any]) {
-        if let daemon = dictionary["daemon"] as? [String: Any] {
-            for key in ["session", "version", "socket", "pid", "started_at", "uptime_s"] {
-                if let value = daemon[key] { print("\(key):\(pad(key))\(value)") }
+    private func printPlain(_ result: JSONValue) {
+        if let daemon = result["daemon"] {
+            for key in ["instance", "version", "socket", "pid", "started_at", "uptime_s"] {
+                if let value = daemon[key] { print("\(key):\(pad(key))\(value.plainText)") }
             }
         }
         
         if
-            let config = dictionary["config"] as? [String: Any],
-            let values = config["values"] as? [[String: Any]]
+            let config = result["config"],
+            let values = config["values"]?.arrayValue
         {
-            let toml = config["toml"] as? String ?? "(none)"
+            let toml = config["toml"]?.stringValue ?? "(none)"
             
             print("\nconfig (toml: \(toml)):")
             
-            let maxKey = values.compactMap { value in (value["key"] as? String)?.count }.max() ?? 0
+            let maxKey = values.compactMap { value in value["key"]?.stringValue?.count }.max() ?? 0
             
             for value in values {
-                let key = value["key"] as? String ?? "?"
-                let text = value["value"] as? String ?? "?"
-                let source = value["source"] as? String ?? "?"
+                let key = value["key"]?.stringValue ?? "?"
+                let text = value["value"]?.stringValue ?? "?"
+                let source = value["source"]?.stringValue ?? "?"
                 let gap = String(repeating: " ", count: maxKey - key.count)
                 
                 print("  \(key)\(gap)  = \(text)  ← \(source)")
             }
         }
         
-        if let runtime = dictionary["runtime"] as? [String: Any] {
+        if let runtime = result["runtime"]?.objectValue {
             print("\nruntime:")
             
-            if let workflows = runtime["workflows"] { print("  workflows: \(workflows)") }
+            if let workflows = runtime["workflows"] { print("  workflows: \(workflows.plainText)") }
             
-            if let schedules = runtime["schedules"] as? [String: Any] {
-                print("  schedules: \(schedules["enabled"] ?? 0)/\(schedules["total"] ?? 0) enabled")
+            if let schedules = runtime["schedules"]?.objectValue {
+                let enabled = schedules["enabled"]?.plainText ?? "0"
+                let total = schedules["total"]?.plainText ?? "0"
+                
+                print("  schedules: \(enabled)/\(total) enabled")
             }
             
-            if let jobs = runtime["jobs"] { print("  jobs:      \(jobs)") }
+            if let jobs = runtime["jobs"] { print("  jobs:      \(jobs.plainText)") }
             
-            if let services = runtime["services"] as? [[String: Any]], !services.isEmpty {
+            if let services = runtime["services"]?.arrayValue, !services.isEmpty {
                 let parts = services.map { service in
-                    "\(service["name"] ?? "?")=\(service["state"] ?? "?")"
+                    "\(service["name"]?.plainText ?? "?")=\(service["state"]?.plainText ?? "?")"
                 }
                 
                 print("  services:  \(parts.joined(separator: " "))")
@@ -100,10 +103,10 @@ struct StatusCommand: ParsableCommand {
         String(repeating: " ", count: max(1, 12 - key.count))
     }
     
-    private func reportNotRunning(session: String?, socketPath: String) {
+    private func reportNotRunning(instance: String?, socketPath: String) {
         if
-            let home = try? Session.home(session: session),
-            let data = try? Data(contentsOf: Session.runtimeInfo(in: home)),
+            let home = try? Instance.home(instance: instance),
+            let data = try? Data(contentsOf: Instance.runtimeInfo(in: home)),
             let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
         {
             let message = "daemon not reachable at \(socketPath) but runtime.json exists "
@@ -112,7 +115,7 @@ struct StatusCommand: ParsableCommand {
             
             FileHandle.standardError.write(Data(message.utf8))
         } else {
-            let message = "no daemon for this session — socket \(socketPath) not listening "
+            let message = "no daemon for this instance — socket \(socketPath) not listening "
                 + "(start one with `forge serve`)\n"
             
             FileHandle.standardError.write(Data(message.utf8))

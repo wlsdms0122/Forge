@@ -7,12 +7,13 @@
 
 import ArgumentParser
 import Foundation
+import Forge
 
 struct WorkflowActiveCommand: ParsableCommand {
     // MARK: - Property
     static let configuration = CommandConfiguration(
         commandName: "active",
-        abstract: "Show workflows the pool is currently tracking."
+        abstract: "Show runs the pool is currently tracking."
     )
     
     @OptionGroup var global: GlobalOptions
@@ -27,29 +28,29 @@ struct WorkflowActiveCommand: ParsableCommand {
         let result = client.call("workflow.list_active")
         
         if json {
-            printJSON(result)
+            result.printJSON()
             
             return
         }
         
-        let rows = (result["workflows"] as? [[String: Any]]) ?? []
+        let rows = result["runs"]?.arrayValue ?? []
         
         if rows.isEmpty {
-            print("(no active workflows)")
+            print("(no active runs)")
         } else {
             for row in rows {
-                let id = row["workflow_id"] as? String ?? "?"
-                let name = row["workflow_name"] as? String ?? "?"
-                let state = row["state"] as? String ?? "?"
-                let principal = row["principal"] as? String ?? "?"
+                let id = row["run_id"]?.stringValue ?? "?"
+                let name = row["workflow_name"]?.stringValue ?? "?"
+                let state = row["state"]?.stringValue ?? "?"
+                let principal = row["principal"]?.stringValue ?? "?"
                 
                 print("\(id)\t\(name)\t\(state)\t\(principal)")
             }
         }
         
-        let slots = result["maximum_concurrent_steps"] as? Int ?? 0
-        let free = result["free_slots"] as? Int ?? 0
-        let queued = result["queued_waiters"] as? Int ?? 0
+        let slots = result["maximum_concurrent_steps"]?.intValue ?? 0
+        let free = result["free_slots"]?.intValue ?? 0
+        let queued = result["queued_waiters"]?.intValue ?? 0
         
         print("slots: \(free) free / \(slots) total, \(queued) queued")
     }
