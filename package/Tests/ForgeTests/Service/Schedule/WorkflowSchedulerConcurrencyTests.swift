@@ -21,13 +21,13 @@ struct WorkflowSchedulerConcurrencyTests {
     func fireIsNonBlockingAndRunsSchedulesConcurrently() async throws {
         // Given
         let marker = try fixture.temporary.make("nb").appendingPathComponent("m")
-        let wfA = fixture.markerWorkflow(name: "wfa", marker: marker, tag: "A", sleep: 0.5)
-        let wfB = fixture.markerWorkflow(name: "wfb", marker: marker, tag: "B", sleep: 0.5)
+        let wfA = fixture.markerWorkflow(path: "wfa.yaml", marker: marker, tag: "A", sleep: 0.5)
+        let wfB = fixture.markerWorkflow(path: "wfb.yaml", marker: marker, tag: "B", sleep: 0.5)
         let scheduler = try await fixture.scheduler(
             workflows: [wfA, wfB],
             scheduleYAML: [
-                "a": "id: a\nworkflow: wfa\nevery: 1s\n",
-                "b": "id: b\nworkflow: wfb\nevery: 1s\n",
+                "a": "id: a\nworkflow: wfa.yaml\nevery: 1s\n",
+                "b": "id: b\nworkflow: wfb.yaml\nevery: 1s\n",
         ])
         await scheduler.tickOnce()
         try await Task.sleep(for: .milliseconds(1_100))
@@ -47,10 +47,10 @@ struct WorkflowSchedulerConcurrencyTests {
     func skipPolicyDropsOverlappingFire() async throws {
         // Given
         let marker = try fixture.temporary.make("skip").appendingPathComponent("m")
-        let workflow = fixture.markerWorkflow(name: "wfslow", marker: marker, tag: "x", sleep: 2.0)
+        let workflow = fixture.markerWorkflow(path: "wfslow.yaml", marker: marker, tag: "x", sleep: 2.0)
         let scheduler = try await fixture.scheduler(
             workflows: [workflow],
-            scheduleYAML: ["s": "id: s\nworkflow: wfslow\nevery: 1s\nconcurrency: skip\n"])
+            scheduleYAML: ["s": "id: s\nworkflow: wfslow.yaml\nevery: 1s\nconcurrency: skip\n"])
 
         // When
         await scheduler.tickOnce()
@@ -68,10 +68,10 @@ struct WorkflowSchedulerConcurrencyTests {
     func queuePolicySerializesOverlappingFire() async throws {
         // Given
         let marker = try fixture.temporary.make("queue").appendingPathComponent("m")
-        let workflow = fixture.markerWorkflow(name: "wfq", marker: marker, tag: "S", sleep: 1.5, endTag: "E")
+        let workflow = fixture.markerWorkflow(path: "wfq.yaml", marker: marker, tag: "S", sleep: 1.5, endTag: "E")
         let scheduler = try await fixture.scheduler(
             workflows: [workflow],
-            scheduleYAML: ["q": "id: q\nworkflow: wfq\nevery: 1s\n"])
+            scheduleYAML: ["q": "id: q\nworkflow: wfq.yaml\nevery: 1s\n"])
         await scheduler.tickOnce()
         try await Task.sleep(for: .milliseconds(1_200))
         await scheduler.tickOnce()
@@ -90,10 +90,10 @@ struct WorkflowSchedulerConcurrencyTests {
     func replacePolicyCancelsPreviousRun() async throws {
         // Given
         let marker = try fixture.temporary.make("replace").appendingPathComponent("m")
-        let workflow = fixture.markerWorkflow(name: "wfr", marker: marker, tag: "S", sleep: 2.0, endTag: "E")
+        let workflow = fixture.markerWorkflow(path: "wfr.yaml", marker: marker, tag: "S", sleep: 2.0, endTag: "E")
         let scheduler = try await fixture.scheduler(
             workflows: [workflow],
-            scheduleYAML: ["r": "id: r\nworkflow: wfr\nevery: 1s\nconcurrency: replace\n"])
+            scheduleYAML: ["r": "id: r\nworkflow: wfr.yaml\nevery: 1s\nconcurrency: replace\n"])
 
         // When
         await scheduler.tickOnce()
@@ -111,16 +111,16 @@ struct WorkflowSchedulerConcurrencyTests {
     func replaceResolveFailureKeepsPriorRunAlive() async throws {
         // Given
         let marker = try fixture.temporary.make("den-rep").appendingPathComponent("m")
-        let workflow = fixture.markerWorkflow(name: "wfr", marker: marker, tag: "S", sleep: 1.5, endTag: "E")
+        let workflow = fixture.markerWorkflow(path: "wfr.yaml", marker: marker, tag: "S", sleep: 1.5, endTag: "E")
         let wfDir = try fixture.temporary.make("den-rep-wf")
         try fixture.write(workflow, to: wfDir)
         let catalog = try fixture.catalog(directory: wfDir)
         let schedDir = try fixture.temporary.make("den-rep-sched")
-        try "id: r\nworkflow: wfr\nevery: 1s\nconcurrency: replace\n"
+        try "id: r\nworkflow: wfr.yaml\nevery: 1s\nconcurrency: replace\n"
         .write(to: schedDir.appendingPathComponent("r.yaml"), atomically: true, encoding: .utf8)
         let scheduler = WorkflowScheduler(
             catalog: catalog,
-            store: try fixture.scheduleStore(configDir: schedDir, runtimeDirectory: try fixture.temporary.make("sched-rt-b"), ids: ["r": "wfr"]),
+            store: try fixture.scheduleStore(configDir: schedDir, runtimeDirectory: try fixture.temporary.make("sched-rt-b"), ids: ["r": "wfr.yaml"]),
             ledger: FireLedger(path: try fixture.temporary.make("den-rep-led").appendingPathComponent("l.json")),
             runner: fixture.runner(catalog: catalog),
             tickIntervalSeconds: 1
@@ -143,10 +143,10 @@ struct WorkflowSchedulerConcurrencyTests {
     func everyDoesNotBurstAfterStall() async throws {
         // Given
         let marker = try fixture.temporary.make("burst").appendingPathComponent("m")
-        let workflow = fixture.markerWorkflow(name: "wfb", marker: marker, tag: "x", sleep: 0.1)
+        let workflow = fixture.markerWorkflow(path: "wfb.yaml", marker: marker, tag: "x", sleep: 0.1)
         let scheduler = try await fixture.scheduler(
             workflows: [workflow],
-            scheduleYAML: ["e": "id: e\nworkflow: wfb\nevery: 1s\n"])
+            scheduleYAML: ["e": "id: e\nworkflow: wfb.yaml\nevery: 1s\n"])
 
         // When
         await scheduler.tickOnce()

@@ -1,5 +1,5 @@
 procedures:
-  kernel:
+  main:
     description: Kernel language tour, every control-flow feature in one shallow pass.
     access: public
     parameters:
@@ -67,7 +67,7 @@ procedures:
               - set: recovered
                 value: rescued
       - let: called
-        value: { call: { procedure: child, arguments: { tag: from-use } } }
+        value: { call: { procedure: tagged, arguments: { tag: from-use } } }
     result:
       dictionary:
         - [greeting, { ref: greet }]
@@ -78,3 +78,8 @@ procedures:
         - [parallel, { ref: par }]
         - [rescued, { ref: recovered }]
         - [used, { ref: 'called["tag_out"]' }]
+
+  tagged:
+    parameters: [ tag: String ]
+    returns: "Dictionary<String, Any>"
+    result: { dictionary: [ [tag_out, { format: "helper:${tag}", with: { tag: { ref: tag } } }] ] }

@@ -25,8 +25,8 @@ struct WorkflowDescribeCommand: ParsableCommand {
     
     @OptionGroup var global: GlobalOptions
     
-    @Argument(help: "Registered workflow name.")
-    var name: String
+    @Argument(help: "The workflow's path under the root.")
+    var path: String
     
     @Flag(help: "Emit JSON.")
     var json: Bool = false
@@ -35,7 +35,7 @@ struct WorkflowDescribeCommand: ParsableCommand {
     // MARK: - Public
     func run() throws {
         let client = Client(global, context: "workflow describe")
-        let result = client.call("workflow.describe", ["name": .string(name)])
+        let result = client.call("workflow.describe", ["path": .string(path)])
         
         if json {
             result.printJSON()
@@ -43,14 +43,11 @@ struct WorkflowDescribeCommand: ParsableCommand {
             return
         }
         
-        let resolvedName = result["name"]?.stringValue ?? name
         let description = result["description"]?.stringValue ?? ""
-        let source = result["source"]?.stringValue ?? ""
         
-        print(resolvedName)
+        print(result["path"]?.stringValue ?? path)
         
         if !description.isEmpty { print("  \(description)") }
-        if !source.isEmpty { print("  source: \(source)") }
         
         let inputs = result["inputs"]?.objectValue ?? [:]
         

@@ -33,7 +33,7 @@ struct WorkflowCatalogScanTests {
         }
         
         let catalog = try WorkflowCatalog(directory: directory)
-        guard case .found = await catalog.resolve("shadowed") else {
+        guard case .found = await catalog.resolve("closed/shadowed.yaml") else {
 
         // Then
             Issue.record("precondition — before obstructing, both must be visible")
@@ -42,19 +42,19 @@ struct WorkflowCatalogScanTests {
         }
         
         try chmod(closed, 0o000)
-        guard case .found = await catalog.resolve("shadowed") else {
+        guard case .found = await catalog.resolve("closed/shadowed.yaml") else {
             Issue.record("a single enumeration failure erased a deployed definition from the catalog")
             
             return
         }
         
-        guard case .found = await catalog.resolve("visible") else {
+        guard case .found = await catalog.resolve("open/visible.yaml") else {
             Issue.record("an observed definition must be unaffected")
             
             return
         }
         
-        switch await catalog.resolve("never-existed") {
+        switch await catalog.resolve("never-existed.yaml") {
         case .missing:
             Issue.record("absence was claimed despite an incomplete enumeration — dispatch would absorb a deployment defect")
         case .invalid:
@@ -86,7 +86,7 @@ struct WorkflowCatalogScanTests {
         }
         
         let catalog = try WorkflowCatalog(directory: directory)
-        guard case .found = await catalog.resolve("deleted-later") else {
+        guard case .found = await catalog.resolve("open/deleted-later.yaml") else {
 
         // Then
             Issue.record("precondition")
@@ -96,51 +96,37 @@ struct WorkflowCatalogScanTests {
 
         try FileManager.default.removeItem(at: open.appendingPathComponent("deleted-later.yaml"))
         try chmod(closed, 0o000)
-        switch await catalog.resolve("deleted-later") {
+        switch await catalog.resolve("open/deleted-later.yaml") {
         case .found:
             Issue.record("a properly observed deletion was resurrected by an unrelated obstruction")
         case .unobserved, .missing, .invalid:
             break
         }
-        guard case .found = await catalog.resolve("shadowed") else {
+        guard case .found = await catalog.resolve("closed/shadowed.yaml") else {
             Issue.record("a definition inside the observation-failure scope must be carried forward")
             
             return
         }
     }
     
-    @Test("A name collision does not resolve itself just because there was an obstruction")
-    func collisionSurvivesAnObstructionInsteadOfResolvingItself() async throws {
+    @Test("Files of one basename in different folders each declare main and each resolve at its own path")
+    func filesOfOneBasenameInDifferentFoldersEachResolve() async throws {
         // Given
-        let directory = try temporary.make("collision-obstructed")
-        let firstDirectory = directory.appendingPathComponent("a")
-        let secondDirectory = directory.appendingPathComponent("b")
-        for sub in [firstDirectory, secondDirectory] {
-            try FileManager.default.createDirectory(at: sub, withIntermediateDirectories: true)
+        let directory = try temporary.make("same-basename")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        for sub in ["a", "b"] {
+            let folder = directory.appendingPathComponent(sub)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            try writeWorkflow(named: "dup", in: folder)
         }
-        try writeWorkflow(named: "dup", in: firstDirectory)
-        try writeWorkflow(named: "dup", in: secondDirectory)
-        defer {
-            try? chmod(secondDirectory, 0o755)
-            try? FileManager.default.removeItem(at: directory)
-        }
-        
-        let catalog = try WorkflowCatalog(directory: directory)
-        guard case .invalid = await catalog.resolve("dup") else {
+        let sut = try WorkflowCatalog(directory: directory)
+
+        // When
+        let snapshot = await sut.reload()
 
         // Then
-            Issue.record("precondition — a collision must exclude both sides from live")
-            
-            return
-        }
-        
-        try chmod(secondDirectory, 0o000)
-        switch await catalog.resolve("dup") {
-        case .found:
-            Issue.record("while the shadowed collision partner was invisible, the remaining side became runnable")
-        case .invalid, .unobserved, .missing:
-            break
-        }
+        #expect(snapshot.entries.map(\.path) == ["a/dup.yaml", "b/dup.yaml"])
+        #expect(snapshot.failures.isEmpty)
     }
     
     @Test("An unreadable definition is never folded into absence")
@@ -154,7 +140,7 @@ struct WorkflowCatalogScanTests {
         }
         
         let catalog = try WorkflowCatalog(directory: directory)
-        guard case .found = await catalog.resolve("ghost") else {
+        guard case .found = await catalog.resolve("ghost.yaml") else {
 
         // Then
             Issue.record("precondition")
@@ -163,7 +149,7 @@ struct WorkflowCatalogScanTests {
         }
         
         try chmod(directory, 0o444)
-        switch await catalog.resolve("ghost") {
+        switch await catalog.resolve("ghost.yaml") {
         case .found, .unobserved, .invalid:
             break
         case .missing:
@@ -181,7 +167,7 @@ struct WorkflowCatalogScanTests {
         defer { try? FileManager.default.removeItem(at: directory) }
         try writeWorkflow(named: "a", in: directory)
         let catalog = try WorkflowCatalog(directory: directory)
-        guard case .missing = await catalog.resolve("nope") else {
+        guard case .missing = await catalog.resolve("nope.yaml") else {
 
         // Then
             Issue.record("under a complete scan, absence must be .missing")
@@ -201,7 +187,7 @@ struct WorkflowCatalogScanTests {
         body:
           - let: x
             value: { call: { procedure: shell, arguments: { command: ["/bin/echo", "ok"] } } }
-        """#, named: name).write(to: directory.appendingPathComponent("\(name).yaml"),
+        """#).write(to: directory.appendingPathComponent("\(name).yaml"),
             
             atomically: true, encoding: .utf8)
         

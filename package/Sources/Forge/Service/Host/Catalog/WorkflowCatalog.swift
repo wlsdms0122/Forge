@@ -10,16 +10,16 @@ import Warp
 import WarpSyntax
 import WarpYAML
 
-// The workflow catalog, with the same scan and failure-ledger discipline as
-// the other stores. At a reload every file is read by the YAML front end
-// leaning on the library and on the other files, loaded as a document and
-// built against what builds; a file that does not is a failure, and the
-// entries are the files that built. Identity is the file basename, and the
-// file declares one procedure under it.
+// The workflows under the root, with the same scan and failure-ledger
+// discipline as the other stores. A workflow is a `.yaml` file, addressed by
+// its path relative to the root, and is a program of its own: read by the
+// YAML front end leaning on the library alone, loaded as a document and built
+// against the vocabulary into the image its runs run. A file that does not is
+// a failure. A file is read again only where it changed.
 actor WorkflowCatalog {
     struct Snapshot: Sendable {
         // MARK: - Property
-        let entries: [(workflow: Workflow, source: String)]
+        let entries: [Workflow]
         let failures: [LoadFailure]
 
         // MARK: - Initializer
@@ -38,11 +38,7 @@ actor WorkflowCatalog {
         // MARK: - Property
         let workflow: Workflow
         let mtime: Date
-        let source: String
-
-        // The document the file was loaded as, which a build refusal of the
-        // workflow is read back to the file's text through.
-        let origin: DocumentOrigin
+        let image: Image
 
         // MARK: - Initializer
         // MARK: - Public
@@ -50,7 +46,7 @@ actor WorkflowCatalog {
     }
 
     // MARK: - Property
-    // The name an inline spec's one procedure is declared under.
+    // What stands in an inline spec's path.
     static let inlineSigil = "<inline>"
 
     let directory: URL?
@@ -61,8 +57,6 @@ actor WorkflowCatalog {
     private let builder: WorkflowBuilder
     private var cache: [String: Entry] = [:]
     private var failureCache: [String: LoadFailure] = [:]
-    private var collisions: [LoadFailure] = []
-    private var collidedNames: [String: [String]] = [:]
     private var scanObstructions: [StoreScan.Obstruction] = []
 
     // The observation the entries and failures were read from: each file
@@ -72,24 +66,14 @@ actor WorkflowCatalog {
     // The reload in progress, which a caller arriving during it waits for.
     private var reloading: Task<String, Never>?
 
-    // The front end the files of this observation were read with, leaning on
-    // the library and on them.
-    private var reading: YAMLFrontend?
-
-    // The files that built, each compiled once a reload, in the order they
-    // were compiled, and the image the reload linked them into, which a run
-    // of one of them runs.
-    private var compiled: [(name: String, compiled: Compiled)] = []
-    private var image: Image?
-
     private var currentSnapshot: Snapshot {
-        let scanFailures = scanObstructions.map { obstruction in obstruction.failure(kind: "workflow") }
+        let scanFailures = scanObstructions.map { obstruction in obstruction.failure(kind: "root") }
 
         return Snapshot(
             entries: cache.values
-                .map { entry in (entry.workflow, entry.source) }
-                .sorted { left, right in left.workflow.name < right.workflow.name },
-            failures: (Array(failureCache.values) + collisions + scanFailures)
+                .map(\.workflow)
+                .sorted { left, right in left.path < right.path },
+            failures: (Array(failureCache.values) + scanFailures)
                 .sorted { left, right in left.path < right.path }
         )
     }
@@ -102,20 +86,15 @@ actor WorkflowCatalog {
     }
 
     // MARK: - Public
-    // The directory, the daemon's, reloaded where it changed and answered
-    // as a snapshot: a reload announces on stderr each failure new to it.
+    // The root, reloaded where it changed and answered as a snapshot: a
+    // reload announces on stderr each failure new to it.
     @discardableResult
     func reload() async -> Snapshot {
         guard let directory else {
             cache.removeAll()
             failureCache.removeAll()
-            collisions.removeAll()
-            collidedNames.removeAll()
             scanObstructions.removeAll()
             generation = nil
-            reading = nil
-            compiled.removeAll()
-            image = nil
 
             return currentSnapshot
         }
@@ -126,7 +105,7 @@ actor WorkflowCatalog {
             scanObstructions = [
                 .init(
                     scope: "",
-                    reason: "configured workflow directory is not visible (\(directory.path))"
+                    reason: "configured root is not visible (\(directory.path))"
                 )
             ]
 
@@ -140,9 +119,8 @@ actor WorkflowCatalog {
         return observed.snapshot
     }
 
-    // The files at these paths read the way a reload reads the directory's,
-    // for a gate that admits what the daemon admits and reports what it
-    // records.
+    // The files at these paths read the way a reload reads the root's, for
+    // a gate that admits what the daemon admits and reports what it records.
     func reload(of paths: [String]) async -> Snapshot {
         await observing(
             StoreScan(files: paths.map { path in ScannedFile(url: URL(fileURLWithPath: path), source: path) })
@@ -151,25 +129,20 @@ actor WorkflowCatalog {
     }
 
     // An inline spec: one procedure written in the YAML notation, read the
-    // way a catalog file is, leaning on the library and on the catalog's
-    // files, and declared public under the inline sigil, which a run starts
-    // from.
+    // way a file is, leaning on the library, and declared as the entry a run
+    // starts from.
     func inline(_ spec: [String: JSONValue]) async throws -> Workflow {
         var procedure = spec
 
         procedure["access"] = .string("public")
 
-        let written = JSONValue.object(["procedures": .object([Self.inlineSigil: .object(procedure)])])
-
-        await reload()
-
-        let frontend = reading ?? vocabulary.frontend
+        let written = JSONValue.object(["procedures": .object([Workflow.entry: .object(procedure)])])
         let spent: Data
 
         // The caller wrote an object and no text, so a refusal names its
         // place in the document and not a line of the text written here.
         do {
-            spent = try frontend.document(from: try JSONEncoder().encode(written)).document
+            spent = try vocabulary.frontend.document(from: try JSONEncoder().encode(written)).document
         } catch let refusal as AuthoringError {
             throw WorkflowValidationError(refusal.message)
         }
@@ -177,54 +150,32 @@ actor WorkflowCatalog {
         let document = try BinaryEncoding().value(from: spent)
 
         return try Workflow(
-            name: Self.inlineSigil,
+            path: Self.inlineSigil,
             module: try Loader().load(document),
             documentation: nil
         )
     }
 
-    // The image a run of this module runs: for a file of the catalog, the
-    // one the reload linked; for another module, an inline spec, the module
-    // compiled against every file that built, as each was compiled at the
-    // reload, and the vocabulary compiled once, and linked beside
-    // them, a file declaring the name it runs by left out, since the
-    // caller's is the one meant.
-    func image(running module: Warp.Module, entry: Warp.Name) async throws -> Image {
-        await reload()
-
-        let standing = compiled
-        let files = cache
-
-        if let file = files[entry.spelling], file.workflow.module.identity == module.identity, let image {
-            return image
+    // The image a run of this workflow runs: for a file under the root, the
+    // one its reload built; for an inline spec, its module built alone.
+    func image(of workflow: Workflow) async throws -> Image {
+        if let entry = cache[workflow.path], entry.workflow.module.identity == workflow.module.identity {
+            return entry.image
         }
 
-        let world = standing
-            .filter { file in files[file.name]?.workflow.module.procedures[entry] == nil }
-            .map(\.compiled)
-
-        return try await builder.linked(world + builder.compiled([module], beside: world))
+        return try await builder.image(of: workflow.module)
     }
 
-    func resolve(_ name: String) async -> Lookup {
+    func resolve(_ path: String) async -> Lookup {
         await reload()
 
-        if let entry = cache[name] { return .found(entry.workflow) }
+        if let entry = cache[path] { return .found(entry.workflow) }
 
-        if let failure = failureCache.values.first(where: { failure in failure.name == name }) {
-            return .invalid(reason: failure.reason)
-        }
-
-        if let sources = collidedNames[name] {
-            return .invalid(
-                reason: "duplicate workflow name '\(name)' — all definitions excluded"
-                    + " (\(sources.joined(separator: ", ")))"
-            )
-        }
+        if let failure = failureCache[path] { return .invalid(reason: failure.reason) }
 
         if !scanObstructions.isEmpty {
             return .unobserved(
-                reason: "workflow directory was not fully enumerated this reload — '\(name)'"
+                reason: "root was not fully enumerated this reload, so '\(path)'"
                     + " may exist in an unobserved path"
                     + " (\(scanObstructions.map(\.description).joined(separator: "; ")))"
             )
@@ -240,10 +191,6 @@ actor WorkflowCatalog {
     private func observing(_ scan: StoreScan) async -> (snapshot: Snapshot, announcement: String) {
         var scan = scan
         let observed = scan.observe()
-
-
-        // The files lean on each other, so a change to one is a reload of
-        // all of them.
         let generation = observed.map { file in "\(file.file.source)\t\(file.mtime.timeIntervalSinceReferenceDate)" }
             + scan.obstructions.map(\.description)
 
@@ -268,306 +215,144 @@ actor WorkflowCatalog {
         return (currentSnapshot, announcement)
     }
 
-    // Every observed file read, loaded and built again, and the entries and
-    // failures of this observation put in place; what is announced for the
-    // failures new to it.
+    // The entries and failures of this observation put in place: a file
+    // unchanged since the last keeps what it was, one the scan could not
+    // see keeps its standing, and any other is read and built again. What is
+    // announced for the failures new to it.
     private func reload(_ observed: [ObservedFile], scan: StoreScan, observation: [String]) async -> String {
         var ledger = LoadFailureLedger(prior: failureCache)
-        let spending = spent(observed, recording: &ledger)
-        var candidates = spending.candidates
+        var entries: [String: Entry] = [:]
         let observedSources = Set(observed.map(\.file.source))
 
-        func isUnobserved(_ source: String) -> Bool {
-            !observedSources.contains(source) && scan.isUnobserved(source: source)
-        }
-
-        for entry in cache.values where isUnobserved(entry.source) {
-            candidates.append((entry.workflow.name, entry.source, entry))
-        }
-
-        for (source, failure) in failureCache where isUnobserved(source) {
-            _ = ledger.reuse(source: source, mtime: failure.mtime)
-        }
-
-        let partition = KeyPartition(candidates)
-        var live = partition.live
-        var collided = partition.collisions
-
-        for (key, sources) in collidedNames where sources.contains(where: isUnobserved) {
-            live.removeValue(forKey: key)
-
-            if !collided.contains(where: { collision in collision.key == key }) {
-                collided.append(KeyCollision(key: key, sources: sources))
-            }
-        }
-
-        let freshCollisions = collided.flatMap { collision in
-            collision.failures(kind: "workflow name", standing: collisions, recording: &ledger)
-        }
-        let standing = await built(live, recording: &ledger)
-
-        cache = standing.entries
-        compiled = standing.compiled
-        image = standing.image
-        failureCache = ledger.fresh
-        collisions = freshCollisions
-        scanObstructions = scan.obstructions
-        collidedNames = Dictionary(
-            uniqueKeysWithValues: collided.map { collision in (collision.key, collision.sources) }
-        )
-        generation = observation
-        reading = spending.frontend
-
-        return ledger.announcement
-    }
-
-    // The observed files read leaning on each other and on the library,
-    // each loaded the way a runtime receives a document and held to Forge's
-    // convention. What does not read, load or keep the convention is
-    // recorded, and a file the convention refuses leans no other: the files
-    // are read again without it, so no other file is refused for what it
-    // declares.
-    private func spent(
-        _ observed: [ObservedFile],
-        recording ledger: inout LoadFailureLedger
-    ) -> (candidates: [(key: String, source: String, value: Entry)], frontend: YAMLFrontend?) {
-        var texts: [(observed: ObservedFile, text: String)] = []
-
         for file in observed {
-            do {
-                texts.append((file, try String(contentsOf: file.file.url, encoding: .utf8)))
-            } catch {
-                record(file, refusal: "\(error)", in: &ledger)
-            }
-        }
+            let source = file.file.source
 
-        while true {
-            let leaning: (frontend: YAMLFrontend, refusals: [Int: any Error])
-
-            do {
-                leaning = try builder.frontend(leaningOn: texts.map(\.text))
-            } catch {
-                for (file, _) in texts {
-                    record(file, refusal: "\(error)", in: &ledger)
-                }
-
-                return ([], nil)
-            }
-
-            var candidates: [(key: String, source: String, value: Entry)] = []
-            var refusals: [(file: ObservedFile, refusal: String)] = []
-            var unconventional: Set<Int> = []
-
-            for (index, (file, text)) in texts.enumerated() {
-                if let refusal = leaning.refusals[index] {
-                    refusals.append((file, "\(refusal)"))
-
-                    continue
-                }
-
-                let base = file.file.url.deletingPathExtension().lastPathComponent
-                var origin: DocumentOrigin?
-
-                do {
-                    let spent = try leaning.frontend.document(from: text)
-                    let document = try BinaryEncoding().value(from: spent.document)
-                    let loading = DocumentOrigin(identity: try Identity.of(document), origin: spent.origin)
-
-                    origin = loading
-
-                    let module = try Loader().load(document)
-                    let documentation = try leaning.frontend.documentation(from: text)
-
-                    if let breach = try convention(module, named: base) {
-                        ledger.record(
-                            source: file.file.source,
-                            reason: breach.reason,
-                            mtime: file.mtime,
-                            stderrLine: "\(breach.line) (\(file.file.source))",
-                            name: base
-                        )
-                        unconventional.insert(index)
-
-                        continue
-                    }
-
-                    candidates.append(
-                        (
-                            base,
-                            file.file.source,
-                            Entry(
-                                workflow: try Workflow(name: base, module: module, documentation: documentation),
-                                mtime: file.mtime,
-                                source: file.file.source,
-                                origin: loading
-                            )
-                        )
-                    )
-                } catch {
-                    refusals.append((file, origin.map { origin in origin.described(error) } ?? "\(error)"))
-                }
-            }
-
-            guard unconventional.isEmpty else {
-                texts = texts.indices.filter { index in !unconventional.contains(index) }.map { index in texts[index] }
+            if let entry = cache[source], entry.mtime == file.mtime {
+                entries[source] = entry
 
                 continue
             }
 
-            for (file, refusal) in refusals {
-                record(file, refusal: refusal, in: &ledger)
+            if ledger.reuse(source: source, mtime: file.mtime) { continue }
+
+            if let entry = await built(file, recording: &ledger) {
+                entries[source] = entry
+            }
+        }
+
+        for (source, entry) in cache where !observedSources.contains(source) && scan.isUnobserved(source: source) {
+            entries[source] = entry
+        }
+
+        for (source, failure) in failureCache
+        where !observedSources.contains(source) && scan.isUnobserved(source: source) {
+            _ = ledger.reuse(source: source, mtime: failure.mtime)
+        }
+
+        cache = entries
+        failureCache = ledger.fresh
+        scanObstructions = scan.obstructions
+        generation = observation
+
+        return ledger.announcement
+    }
+
+    // A file read leaning on the library, loaded the way a runtime receives
+    // a document, held to Forge's convention and built, or recorded with what
+    // refused it.
+    private func built(_ file: ObservedFile, recording ledger: inout LoadFailureLedger) async -> Entry? {
+        let source = file.file.source
+        var origin: DocumentOrigin?
+
+        do {
+            let text = try String(contentsOf: file.file.url, encoding: .utf8)
+            let spent = try vocabulary.frontend.document(from: text)
+            let document = try BinaryEncoding().value(from: spent.document)
+            let loading = DocumentOrigin(identity: try Identity.of(document), origin: spent.origin)
+
+            origin = loading
+
+            let module = try Loader().load(document)
+
+            if let breach = convention(module) {
+                ledger.record(
+                    source: source,
+                    reason: breach,
+                    mtime: file.mtime,
+                    stderrLine: "workflow has no entry (\(source)): \(breach)"
+                )
+
+                return nil
             }
 
-            return (candidates, leaning.frontend)
+            let workflow = try Workflow(
+                path: source,
+                module: module,
+                documentation: try vocabulary.frontend.documentation(from: text)
+            )
+
+            do {
+                return Entry(workflow: workflow, mtime: file.mtime, image: try await builder.image(of: module))
+            } catch {
+                let refusal = loading.described(error)
+
+                ledger.record(
+                    source: source,
+                    reason: "build: \(refusal)",
+                    mtime: file.mtime,
+                    stderrLine: "workflow build failed (\(source)): \(refusal)"
+                )
+
+                return nil
+            }
+        } catch {
+            let refusal = origin.map { origin in origin.described(error) } ?? "\(error)"
+
+            ledger.record(
+                source: source,
+                reason: refusal,
+                mtime: file.mtime,
+                stderrLine: "workflow load failed (\(source)): \(refusal)"
+            )
+
+            return nil
         }
     }
 
-    // Forge's convention on top of the language: a workflow file declares one
-    // procedure, names it after the file, and takes a name that shadows
-    // nothing the library, std and the notation give, since another workflow
-    // calls it by that name. The language lets a module declare many; this is
-    // where a workflow says it is one thing you can run by the name you know
-    // it by. The breach, where the file makes one.
-    private func convention(
-        _ module: Warp.Module,
-        named base: String
-    ) throws -> (reason: String, line: String)? {
-        let declared = module.procedures.keys.map(\.spelling).sorted()
-
-        guard declared == [base], let name = module.procedures.keys.first else {
-            return (
-                "a workflow file declares exactly one procedure named"
-                    + " after the file — expected 'procedures: { \(base): ... }',"
-                    + " found \(declared.map { key in "'\(key)'" })",
-                "workflow procedure/filename mismatch"
-            )
+    // Forge's convention on top of the language: a workflow file declares
+    // its entry, a public procedure named `main`, which a run starts from.
+    // The breach, where the file makes one.
+    private func convention(_ module: Warp.Module) -> String? {
+        guard
+            let entry = try? Warp.Name(Workflow.entry),
+            let procedure = module.procedures[entry]
+        else {
+            return "a workflow file declares the procedure '\(Workflow.entry)' a run starts from;"
+                + " found \(module.procedures.keys.map { key in "'\(key.spelling)'" }.sorted().joined(separator: ", "))"
         }
 
-        if let shadowed = try shadowing(name) {
-            return (
-                "a workflow is called by its name, and one named so shadows what the library, std or the notation"
-                    + " give: \(shadowed)",
-                "workflow named like the vocabulary"
-            )
+        guard procedure.access == .public else {
+            return "'\(Workflow.entry)' is the procedure a run starts from, so it is 'access: public'"
         }
 
         return nil
     }
-
-    // What a workflow of this name shadows for a text leaning on the
-    // vocabulary, said in a sentence, and nothing where it shadows nothing.
-    private func shadowing(_ name: Warp.Name) throws -> String? {
-        let shadowing = vocabulary.frontend.shadowing(try WarpYAML.Name(name.spelling), as: .procedure)
-        let declared = shadowing.declarations.map(\.spelling)
-        var shadowed: [String] = []
-
-        if let last = declared.last {
-            let listed = declared.count > 1 ? "\(declared.dropLast().joined(separator: ", ")) and \(last)" : last
-
-            shadowed.append("the short name of \(listed)")
-        }
-
-        if shadowing.isKeyword {
-            shadowed.append("a key this notation reads as its own")
-        }
-
-        guard !shadowed.isEmpty else { return nil }
-
-        return "'\(name)' is \(shadowed.joined(separator: ", and "))"
-    }
-
-    // The entries that build, each compiled against the vocabulary, which
-    // is compiled once: all of them where they build together,
-    // and otherwise each against the entries compiled before it, until a
-    // round admits none. An entry left is recorded with its build refusal,
-    // and no run links it. The image is the last link that admitted, which
-    // holds every entry admitted.
-    private func built(
-        _ live: [String: Entry],
-        recording ledger: inout LoadFailureLedger
-    ) async -> (entries: [String: Entry], compiled: [(name: String, compiled: Compiled)], image: Image?) {
-        var pending = live.values.sorted { left, right in left.workflow.name < right.workflow.name }
-
-        if
-            let together = try? await builder.compiled(pending.map(\.workflow.module)),
-            let image = try? await builder.linked(together)
-        {
-            return (live, zip(pending, together).map { entry, object in (entry.workflow.name, object) }, image)
-        }
-
-        var standing: [String: Entry] = [:]
-        var compiled: [(name: String, compiled: Compiled)] = []
-        var image: Image?
-        var refusals: [String: String] = [:]
-        var admitted = true
-
-        while admitted, !pending.isEmpty {
-            admitted = false
-
-            for entry in pending {
-                do {
-                    let own = try await builder.compiled([entry.workflow.module], beside: compiled.map(\.compiled))
-
-                    image = try await builder.linked(compiled.map(\.compiled) + own)
-                    standing[entry.workflow.name] = entry
-                    compiled += own.map { object in (entry.workflow.name, object) }
-                    admitted = true
-                } catch {
-                    refusals[entry.workflow.name] = entry.origin.described(error)
-                }
-            }
-
-            pending.removeAll { entry in standing[entry.workflow.name] != nil }
-        }
-
-        for entry in pending {
-            ledger.record(
-                source: entry.source,
-                reason: "build: \(refusals[entry.workflow.name] ?? "refused")",
-                mtime: entry.mtime,
-                stderrLine: "workflow build failed (\(entry.source)): \(refusals[entry.workflow.name] ?? "refused")",
-                name: entry.workflow.name
-            )
-        }
-
-        return (standing, compiled, image)
-    }
-
-    private func record(_ file: ObservedFile, refusal: String, in ledger: inout LoadFailureLedger) {
-        ledger.record(
-            source: file.file.source,
-            reason: refusal,
-            mtime: file.mtime,
-            stderrLine: "workflow load failed (\(file.file.source)): \(refusal)",
-            name: file.file.url.deletingPathExtension().lastPathComponent
-        )
-    }
 }
 
-// The set a link is handed: every workflow that built goes into every link,
-// and which one runs is the entry name. The corpus is read and built at a
-// reload rather than on demand, so a duplicate symbol is refused there and
-// not when someone happens to call it.
 extension WorkflowCatalog {
-    func workflow(named name: String) async throws -> Workflow {
-        switch await resolve(name) {
+    func workflow(at path: String) async throws -> Workflow {
+        switch await resolve(path) {
         case let .found(workflow):
             return workflow
 
         case let .invalid(reason):
-            throw WorkflowValidationError("workflow '\(name)' is broken — \(reason)")
+            throw WorkflowValidationError("workflow '\(path)' is broken: \(reason)")
 
         case let .unobserved(reason):
-            throw CatalogIncomplete("workflow '\(name)' could not be resolved — \(reason)")
+            throw CatalogIncomplete("workflow '\(path)' could not be resolved: \(reason)")
 
         case .missing:
-            throw WorkflowNotFound("workflow not found: \(name)")
+            throw WorkflowNotFound("workflow not found: \(path)")
         }
     }
-
-    // The workflows that built, without the vocabulary a link adds.
-    func modules() async -> [Warp.Module] {
-        await reload().entries.map(\.workflow.module)
-    }
 }
-

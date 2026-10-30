@@ -19,13 +19,10 @@ struct WorkflowListMethod: Sendable {
     // MARK: - Public
     func handle(_ request: RPCRequest) async throws -> JSONValue {
         let snapshot = await catalog.reload()
-        let summary: [JSONValue] = snapshot.entries.map { entry in
-            var listed: [String: JSONValue] = [
-                "name":   .string(entry.workflow.name),
-                "source": .string(entry.source)
-            ]
+        let summary: [JSONValue] = snapshot.entries.map { workflow in
+            var listed: [String: JSONValue] = ["path": .string(workflow.path)]
 
-            listed["description"] = entry.workflow.description.map(JSONValue.string)
+            listed["description"] = workflow.description.map(JSONValue.string)
 
             return .object(listed)
         }

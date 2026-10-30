@@ -13,7 +13,7 @@ struct WorkflowListCommand: ParsableCommand {
     // MARK: - Property
     static let configuration = CommandConfiguration(
         commandName: "list",
-        abstract: "List registered workflows."
+        abstract: "List the workflows under the root."
     )
     
     @OptionGroup var global: GlobalOptions
@@ -43,10 +43,10 @@ struct WorkflowListCommand: ParsableCommand {
         }
         
         for workflow in workflows {
-            let name = workflow["name"]?.stringValue ?? "?"
+            let path = workflow["path"]?.stringValue ?? "?"
             let description = workflow["description"]?.stringValue ?? ""
             
-            print(description.isEmpty ? name : "\(name)\t\(description)")
+            print(description.isEmpty ? path : "\(path)\t\(description)")
         }
         
         if !failures.isEmpty {

@@ -24,11 +24,11 @@ struct LoadFailureLedgerTests {
         // When
         sut.record(source: "kept.yaml", reason: "broken", mtime: stamp, stderrLine: "kept failed")
         sut.record(source: "new.yaml", reason: "broken", mtime: stamp, stderrLine: "new failed")
-        sut.record(collision: "workflow name 'a' collides across: a.yaml, b/a.yaml")
+        sut.record(collision: "schedule id 'a' collides across: a.yaml, b/a.yaml")
 
         // Then
         #expect(sut.fresh.keys.sorted() == ["kept.yaml", "new.yaml"])
-        #expect(sut.announcement == "forge: new failed\nforge: workflow name 'a' collides across: a.yaml, b/a.yaml\n")
+        #expect(sut.announcement == "forge: new failed\nforge: schedule id 'a' collides across: a.yaml, b/a.yaml\n")
     }
 
     @Test("A ledger with nothing new announces nothing")

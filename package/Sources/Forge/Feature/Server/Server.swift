@@ -115,7 +115,7 @@ package actor Server {
             capabilities: CapabilitySet(
                 shell: LiveShell(),
                 agent: LiveAgent(executor: executor),
-                resources: LiveResources(store: documentRoot)
+                resources: LiveResources(root: documentRoot)
             )
         )
         let scheduler = WorkflowScheduler(

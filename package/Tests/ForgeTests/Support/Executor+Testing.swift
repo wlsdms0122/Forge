@@ -9,7 +9,7 @@ import Foundation
 import Warp
 @testable import Forge
 
-let entryName = "entry"
+let entryName = Workflow.entry
 
 extension Executor {
     // Builds the module beside the others, the Forge module and the standard

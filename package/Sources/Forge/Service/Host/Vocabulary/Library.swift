@@ -81,11 +81,11 @@ enum Library {
                 arguments: [ { ref: prompt } ]
         
           dispatch:
-            description: Runs a catalog workflow as a run of its own, with its own policy check, slot and ledger, and returns the value the workflow returns.
+            description: Runs the workflow at a path under the root as a run of its own, with its own policy check, slot and ledger, and returns the value the workflow returns.
             access: public
             isolated: true
             parameters:
-              - name: { type: String, hint: "the catalog workflow to run" }
+              - path: { type: String, hint: "the workflow to run, by its path under the root" }
               - inputs: { type: "Dictionary<String, Any>", default: {}, hint: "its inputs by name" }
               - timeout: { type: Double?, hint: "seconds before the child fails with timeout" }
             returns: Any
@@ -93,14 +93,14 @@ enum Library {
             result:
               call:
                 procedure: Forge.Native.dispatch
-                arguments: [ { ref: name }, { ref: inputs }, { ref: timeout } ]
+                arguments: [ { ref: path }, { ref: inputs }, { ref: timeout } ]
         
           resource:
             description: Reads a resource file and renders it as a template over inputs.
             access: public
             isolated: true
             parameters:
-              - content: { type: String, hint: "the file, relative to the resource directory" }
+              - content: { type: String, hint: "the file, relative to the document root" }
               - inputs: { type: "Dictionary<String, Any>", default: {}, hint: "what ${name} in the file stands for" }
             returns: String
             result:
@@ -113,7 +113,7 @@ enum Library {
             access: public
             isolated: true
             parameters:
-              - path: { type: String, hint: "the file, relative to the resource directory" }
+              - path: { type: String, hint: "the file, relative to the document root" }
             returns: String
             result:
               call:

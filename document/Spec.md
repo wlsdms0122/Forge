@@ -10,27 +10,25 @@ native procedures the daemon lends a run.
 
 ## The file
 
-A workflow file declares exactly one procedure, named after the file: the file
-`echo.yaml` declares `procedures: { echo: … }`, and that name is the workflow's
-identity in the catalog. The procedure is `access: public`, since a run starts
-from it. Another workflow calls it by that name, so the name is not a short
-name the library or std gives (`run`, `count`) or a key the notation spells
-as an operator (`is`): a file taking one is refused at its own file, and the
-other files are read without it.
+A workflow is a `.yaml` file under the document root (`[directory] root`),
+and its path relative to the root is its identity: `workflow dispatch
+bot/review.yaml`, a `dispatch` verb, a schedule and a policy entry all name
+it so. The root holds the files a workflow reads beside it, prompts and
+scripts, and every `.yaml` file in it is read as a workflow.
 
-The catalog reads every file leaning on the library and on the other files,
-so a workflow names a verb, or another workflow, by its short name and hands
-its arguments by name. At each reload every file is built against the
-library, the natives under it, the standard vocabulary and the files that
-build; a file that does not load or does not build is listed with its refusal
-and left out of every run. A run is built from the dispatched workflow and
-every file that built. A workflow calls another one in the same run with
-`call`, by its name, and starts another run with `dispatch`.
+A workflow file is a program of its own. It declares the procedure `main`,
+`access: public`, which a run starts from, and may declare other procedures
+beside it, which `main` calls by name. The file is read leaning on the
+library alone and built against the library, the natives under it and the
+standard vocabulary; a file that does not load, has no public `main` or does
+not build is listed with its refusal and runs nothing. A file is read again
+when it changes. A workflow starts another workflow with `dispatch`, as a
+run of its own.
 
 An inline spec, handed to `workflow.dispatch` or `schedule.create` in place
-of a name, is one procedure written as an object in the same notation, with
-no name. It is read the way a file is, leaning on the library and on the
-catalog's files, and runs under the name `<inline>`.
+of a path, is one procedure written as an object in the same notation, with
+no name. It is read the way a file is, as that file's `main`, and runs under
+the name `<inline>`.
 
 - **Inputs** are the procedure's parameters. A caller hands them by name. An
   input of an optional type (`String?`) may be left out, and the daemon hands
@@ -58,7 +56,7 @@ hands back beside the document: `workflow list` prints the description, and
 
 ```yaml
 procedures:
-  greet:
+  main:
     description: Says hello.
     access: public
     parameters: [ who: { type: String, hint: whom to greet } ]
@@ -157,10 +155,10 @@ are `exit_code`, `stderr` and `stdout`.
 
 ### `Forge.dispatch`
 
-`dispatch(name: String, inputs: Dictionary<String, Any>, timeout: Double?) -> Any`,
+`dispatch(path: String, inputs: Dictionary<String, Any>, timeout: Double?) -> Any`,
 failing `child_run_failed`, `timeout`. `inputs` defaults to an empty dictionary.
 
-Runs the catalog workflow `name` as a run of its own, with its own policy
+Runs the workflow at `path` under the root as a run of its own, with its own policy
 check, slot and ledger, and returns the value the child returns, as it is.
 The value reads as `Any`, so a parent reads a part of it through a cast. A child that fails at its work fails with `child_run_failed`, which a
 catch may take. A child the policy refuses, or one that faults or is
@@ -171,7 +169,7 @@ cancelled, fails the parent past any catch.
 `resource(content: String, inputs: Dictionary<String, Any>) -> String`.
 `inputs` defaults to an empty dictionary.
 
-Reads the resource file `content`, relative to the resource directory, and
+Reads the file `content`, relative to the document root, and
 renders it as a template over `inputs`: `${name}` stands for the input of that
 name and `$${` writes `${`. A null input is written `null`, as the language's
 `format` writes it, and a name the inputs do not hold is refused. An input
@@ -181,7 +179,7 @@ that must not be null is declared without `?`.
 
 `locate(path: String) -> String`.
 
-The absolute path of the resource file `path`, which is not read.
+The absolute path of the file `path` under the document root, which is not read.
 
 ### `Forge.run`
 

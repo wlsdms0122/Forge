@@ -16,7 +16,7 @@ struct ScheduleCreateCommand: ParsableCommand {
         abstract: "Create a schedule (runtime dir).",
         discussion: """
             Registers a schedule in the runtime dir (runtime_directory/schedule).
-            Fires either a registered workflow (`--workflow <name>`) or an
+            Fires either a workflow under the root (`--workflow <path>`) or an
             inline workflow (`--spec <json>`) on a trigger, exactly one of:
 
                 --every <dur>            repeat forever, every interval
@@ -37,14 +37,14 @@ struct ScheduleCreateCommand: ParsableCommand {
 
             Remove with `forge schedule delete <id>`.
 
-            Example values (`<wf>`, channel IDs, JSON contents) are
-            placeholders — substitute your own.
+            Example values (`<path>`, channel IDs, JSON contents) are
+            placeholders; substitute your own.
 
-            EXAMPLE — registered workflow, repeating:
-                forge schedule create --workflow <wf> \\
+            EXAMPLE: a workflow under the root, repeating:
+                forge schedule create --workflow <path> \\
                     --every 1h --inputs '{"channel":"<channel-id>"}'
 
-            EXAMPLE — inline spec, one-shot in 30 minutes:
+            EXAMPLE: inline spec, one-shot in 30 minutes:
                 forge schedule create --after 30m --spec '{
                   "failing": ["nonzero_exit", "timeout"],
                   "body": [{"value": {"call": {"procedure": "shell", "arguments": {"command": [
@@ -57,7 +57,7 @@ struct ScheduleCreateCommand: ParsableCommand {
     
     @OptionGroup var global: GlobalOptions
     
-    @Option(help: "Registered workflow name. Omit when using --spec.")
+    @Option(help: "The workflow's path under the root. Omit when using --spec.")
     var workflow: String?
     
     @Option(help: "Inline workflow JSON, one procedure; use instead of --workflow.")

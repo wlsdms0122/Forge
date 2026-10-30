@@ -12,14 +12,12 @@ struct LoadFailure: Sendable, Equatable {
     let path: String
     let reason: String
     let mtime: Date
-    let name: String?
 
     // MARK: - Initializer
-    init(path: String, reason: String, mtime: Date, name: String? = nil) {
+    init(path: String, reason: String, mtime: Date) {
         self.path = path
         self.reason = reason
         self.mtime = mtime
-        self.name = name
     }
 
     // MARK: - Public

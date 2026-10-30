@@ -40,11 +40,11 @@ struct CatalogGenerationTests {
 
         // Then
         #expect(snapshot.entries.isEmpty)
-        #expect(snapshot.failures.map(\.name) == ["mender"])
+        #expect(snapshot.failures.map(\.path) == ["mender.yaml"])
         try writeWorkflow(validBody, named: "mender", in: directory)
         snapshot = await catalog.reload()
         try assertAccountedForExactlyOnce(snapshot, in: directory)
-        #expect(snapshot.entries.map(\.workflow.name) == ["mender"])
+        #expect(snapshot.entries.map(\.path) == ["mender.yaml"])
         #expect(snapshot.failures.isEmpty)
     }
     
@@ -61,8 +61,8 @@ struct CatalogGenerationTests {
         try assertAccountedForExactlyOnce(snapshot, in: directory)
 
         // Then
-        #expect(snapshot.entries.map(\.workflow.name) == ["ok"])
-        #expect(snapshot.failures.compactMap(\.name) == ["bad"])
+        #expect(snapshot.entries.map(\.path) == ["ok.yaml"])
+        #expect(snapshot.failures.map(\.path) == ["bad.yaml"])
     }
     
     @Test("A workflow that loads and does not build is a failure, and the others still build and run")
@@ -81,68 +81,60 @@ struct CatalogGenerationTests {
 
         // Then
         try assertAccountedForExactlyOnce(snapshot, in: directory)
-        #expect(snapshot.entries.map(\.workflow.name) == ["ok"])
-        #expect(snapshot.failures.compactMap(\.name) == ["unbuilt"])
+        #expect(snapshot.entries.map(\.path) == ["ok.yaml"])
+        #expect(snapshot.failures.map(\.path) == ["unbuilt.yaml"])
         #expect(snapshot.failures.first?.reason.hasPrefix("build: 4:5: ") == true)
 
-        guard case .invalid = await sut.resolve("unbuilt") else {
+        guard case .invalid = await sut.resolve("unbuilt.yaml") else {
             Issue.record("a workflow that does not build resolves as broken")
             return
         }
 
-        _ = try await Builder().build(await sut.modules() + ForgeVocabulary.shipped.get().linkables)
+        _ = try await sut.image(of: try await sut.workflow(at: "ok.yaml"))
     }
 
-    @Test("Workflows lean on each other: one calls another by its short name and its arguments by name")
-    func workflowsLeanOnEachOther() async throws {
+    @Test("A file's private procedure is a helper its main calls")
+    func aPrivateProcedureIsAHelperItsMainCalls() async throws {
         // Given
-        let directory = try temporary.make("wf-leaning")
+        let directory = try temporary.make("wf-helper")
         defer { try? FileManager.default.removeItem(at: directory) }
-        try writeWorkflow("""
-        returns: Int
-        result: { call: { procedure: scaled, arguments: { base: 21 } } }
-        """, named: "caller", in: directory)
-        try writeWorkflow("""
-        parameters: [ base: Int, by: { type: Int, default: 2 } ]
-        returns: Int
-        result: { of: { ref: base }, times: { ref: by } }
-        """, named: "scaled", in: directory)
+        try write("""
+        procedures:
+          main:
+            access: public
+            returns: Int
+            result: { call: { procedure: scaled, arguments: { base: 21 } } }
+          scaled:
+            parameters: [ base: Int, by: { type: Int, default: 2 } ]
+            returns: Int
+            result: { of: { ref: base }, times: { ref: by } }
+        """, named: "helped", in: directory)
         let sut = try WorkflowCatalog(directory: directory)
 
         // When
         let snapshot = await sut.reload()
+        let image = try await sut.image(of: try await sut.workflow(at: "helped.yaml"))
+        let answer = try await Executor().run(image, entry: try Name(Workflow.entry), arguments: [:])
 
         // Then
         #expect(snapshot.failures.isEmpty)
-        #expect(snapshot.entries.map(\.workflow.name) == ["caller", "scaled"])
-
-        let image = try await Builder().build(await sut.modules() + ForgeVocabulary.shipped.get().linkables)
-        let answer = try await Executor().run(image, entry: try Name("caller"), arguments: [:])
-
+        #expect(snapshot.entries.map(\.path) == ["helped.yaml"])
         #expect(answer == .int(42))
     }
 
-    @Test("A workflow named by a short name the library or std gives is refused at its own file, and the files writing that name build")
-    func aWorkflowNamedLikeTheVocabularyIsRefusedAlone() async throws {
+    @Test("A file that declares no main is a failure that names what it declares")
+    func aFileWithoutMainIsAFailure() async throws {
         // Given
-        let directory = try temporary.make("wf-named")
+        let directory = try temporary.make("wf-no-main")
         defer { try? FileManager.default.removeItem(at: directory) }
-        try writeWorkflow("""
-        returns: String
-        result: hello
-        """, named: "run", in: directory)
-        try writeWorkflow("""
-        returns: Int
-        result: 0
-        """, named: "count", in: directory)
-        try writeWorkflow("""
-        returns: Forge.Run
-        result: { call: { procedure: run } }
-        """, named: "who", in: directory)
-        try writeWorkflow("""
-        returns: Int
-        result: { call: { procedure: count, arguments: [ [1, 2, 3] ] } }
-        """, named: "sized", in: directory)
+        try writeWorkflow(validBody, named: "ok", in: directory)
+        try write("""
+        procedures:
+          echo:
+            access: public
+            returns: Int
+            result: 1
+        """, named: "echo", in: directory)
         let sut = try WorkflowCatalog(directory: directory)
 
         // When
@@ -150,39 +142,67 @@ struct CatalogGenerationTests {
 
         // Then
         try assertAccountedForExactlyOnce(snapshot, in: directory)
-        #expect(snapshot.entries.map(\.workflow.name) == ["sized", "who"])
-        #expect(snapshot.failures.compactMap(\.name) == ["count", "run"])
-        #expect(snapshot.failures.allSatisfy { failure in failure.reason.hasPrefix("a workflow is called by its name") })
-        #expect(snapshot.failures.last?.reason.contains("'run' is the short name of Forge.run") == true)
+        #expect(snapshot.entries.map(\.path) == ["ok.yaml"])
+        #expect(snapshot.failures.map(\.path) == ["echo.yaml"])
+        #expect(snapshot.failures.first?.reason.contains("declares the procedure 'main'") == true)
+        #expect(snapshot.failures.first?.reason.contains("echo") == true)
     }
 
-    @Test("A workflow named by a key the notation spells is refused at its own file, and the files writing that key read it as the notation does")
-    func aWorkflowNamedLikeAnOperatorIsRefusedAlone() async throws {
+    @Test("A main that is not public is a failure")
+    func aMainThatIsNotPublicIsAFailure() async throws {
         // Given
-        let directory = try temporary.make("wf-operator")
+        let directory = try temporary.make("wf-private-main")
         defer { try? FileManager.default.removeItem(at: directory) }
-        try writeWorkflow("""
-        parameters: [ of: Int, to: Int ]
-        returns: Bool
-        result: true
-        """, named: "is", in: directory)
-        try writeWorkflow("""
-        returns: Bool
-        result: { of: 1, is: 2 }
-        """, named: "same", in: directory)
+        try write("""
+        procedures:
+          main:
+            returns: Int
+            result: 1
+        """, named: "hidden", in: directory)
         let sut = try WorkflowCatalog(directory: directory)
 
         // When
         let snapshot = await sut.reload()
 
         // Then
-        #expect(snapshot.entries.map(\.workflow.name) == ["same"])
-        #expect(snapshot.failures.compactMap(\.name) == ["is"])
+        #expect(snapshot.entries.isEmpty)
+        #expect(snapshot.failures.map(\.path) == ["hidden.yaml"])
+        #expect(snapshot.failures.first?.reason.contains("'access: public'") == true)
 
-        let image = try await Builder().build(await sut.modules() + ForgeVocabulary.shipped.get().linkables)
-        let answer = try await Executor().run(image, entry: try Name("same"), arguments: [:])
+        guard case .invalid = await sut.resolve("hidden.yaml") else {
+            Issue.record("a file whose main is not public resolves as broken")
+            return
+        }
+    }
 
-        #expect(answer == .bool(false))
+    @Test("A reload reads again only the files whose mtime changed")
+    func aReloadReadsAgainOnlyChangedFiles() async throws {
+        // Given
+        let directory = try temporary.make("wf-unchanged")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let kept = directory.appendingPathComponent("kept.yaml")
+        let touched = directory.appendingPathComponent("touched.yaml")
+        let mtime = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        try writeWorkflow(validBody, named: "kept", in: directory)
+        try writeWorkflow(validBody, named: "touched", in: directory)
+        for file in [kept, touched] {
+            try FileManager.default.setAttributes([.modificationDate: mtime], ofItemAtPath: file.path)
+        }
+        let sut = try WorkflowCatalog(directory: directory)
+        let before = try await sut.workflow(at: "kept.yaml")
+        try writeWorkflow("returns: Int\nresult: 2\n", named: "kept", in: directory)
+        try writeWorkflow("returns: Int\nresult: 2\n", named: "touched", in: directory)
+        try FileManager.default.setAttributes([.modificationDate: mtime], ofItemAtPath: kept.path)
+        try FileManager.default.setAttributes([.modificationDate: mtime.addingTimeInterval(1)], ofItemAtPath: touched.path)
+
+        // When
+        let after = try await sut.workflow(at: "kept.yaml")
+        let reread = try await sut.workflow(at: "touched.yaml")
+
+        // Then
+        #expect(after.module.identity == before.module.identity)
+        #expect(after.contract.returns == "Null")
+        #expect(reread.contract.returns == "Int")
     }
 
     @Test("A file nested past the bound is refused at its line")
@@ -201,8 +221,8 @@ struct CatalogGenerationTests {
         let snapshot = await sut.reload()
 
         // Then
-        #expect(snapshot.entries.map(\.workflow.name) == ["ok"])
-        #expect(snapshot.failures.compactMap(\.name) == ["deep"])
+        #expect(snapshot.entries.map(\.path) == ["ok.yaml"])
+        #expect(snapshot.failures.map(\.path) == ["deep.yaml"])
         #expect(snapshot.failures.first?.reason.hasSuffix("the text nests deeper than 128 containers") == true)
     }
 
@@ -244,7 +264,7 @@ struct CatalogGenerationTests {
         let snapshot = try await WorkflowCatalog(directory: directory).reload()
 
         // Then
-        #expect(snapshot.entries.map(\.workflow.name) == ["visible"])
+        #expect(snapshot.entries.map(\.path) == ["visible.yaml"])
         #expect(snapshot.failures.contains { failure in failure.path == "<scan>" }, "the blocked enumeration never made it into the same response")
     }
     
@@ -316,7 +336,7 @@ struct CatalogGenerationTests {
     // A workflow file carries the module envelope; the config directory's
     // files (policy, schedules) are not workflows and are written as they are.
     private func writeWorkflow(_ body: String, named name: String, in directory: URL) throws {
-        try write(workflowFile(body, named: name), named: name, in: directory)
+        try write(workflowFile(body), named: name, in: directory)
     }
 
     private func write(_ body: String, named name: String, in directory: URL) throws {
@@ -329,10 +349,9 @@ struct CatalogGenerationTests {
         file: StaticString = #filePath, line: UInt = #line
     ) throws {
         let onDisk = Set(try FileManager.default.contentsOfDirectory(atPath: directory.path)
-            .filter { name in name.hasSuffix(".yaml") }
-            .map { name in (name as NSString).deletingPathExtension })
-        let live = snapshot.entries.map(\.workflow.name)
-        let broken = snapshot.failures.compactMap(\.name)
+            .filter { name in name.hasSuffix(".yaml") })
+        let live = snapshot.entries.map(\.path)
+        let broken = snapshot.failures.map(\.path)
         #expect(Set(live).intersection(broken) == [], "counted on both sides at once")
         #expect(Set(live).union(broken) == onDisk, "missing from the accounting — evaporated from the response")
     }

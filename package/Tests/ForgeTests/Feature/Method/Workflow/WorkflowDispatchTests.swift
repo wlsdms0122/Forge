@@ -39,7 +39,7 @@ struct WorkflowDispatchTests {
 
         // Then
         #expect(result["status"]?.stringValue == "ok")
-        #expect(result["name"]?.stringValue == WorkflowCatalog.inlineSigil, "The result name of an inline run is fixed to the sigil")
+        #expect(result["path"]?.stringValue == WorkflowCatalog.inlineSigil, "The result path of an inline run is fixed to the sigil")
     }
 
     @Test("Run id is freshly minted — the wire id is not borrowed")
@@ -61,8 +61,8 @@ struct WorkflowDispatchTests {
         #expect(firstID != secondID, "Two dispatches with the same wire id sharing a runID means cross-run contamination (finding J)")
     }
 
-    @Test("A name beside an inline spec is rejected")
-    func nameBesideInlineSpecRejected() async throws {
+    @Test("A path beside an inline spec is rejected")
+    func pathBesideInlineSpecRejected() async throws {
         // Given
         let (sut, authority, _) = try await makeMethod(policy: ["*": ["*"]])
         let token = authority.mint(TokenClaims(principal: "cli:test"))
@@ -71,22 +71,22 @@ struct WorkflowDispatchTests {
         // When
         let error = try await #require(throws: ProtocolError.self) {
             try await sut.handle(
-                request(["token": .string(token), "name": "echo", "spec": .object(anonSpec)]),
+                request(["token": .string(token), "path": "echo.yaml", "spec": .object(anonSpec)]),
                 claims: claims
             )
         }
 
         // Then
-        #expect(error.message == "workflow.dispatch: 'name' and 'spec' are mutually exclusive; pass only one")
+        #expect(error.message == "workflow.dispatch: 'path' and 'spec' are mutually exclusive; pass only one")
     }
 
     @Test(
-        "A name or spec of the wrong type is refused, not read as absent",
+        "A path or spec of the wrong type is refused, not read as absent",
         arguments: [
-            (["name": "echo", "spec": "oops"], "workflow.dispatch: 'name' and 'spec' are mutually exclusive; pass only one"),
+            (["path": "echo.yaml", "spec": "oops"], "workflow.dispatch: 'path' and 'spec' are mutually exclusive; pass only one"),
             (["spec": "oops"], "workflow.dispatch: 'spec' is an object"),
-            (["name": 5], "workflow.dispatch: 'name' is a non-empty string"),
-            (["name": ""], "workflow.dispatch: 'name' is a non-empty string")
+            (["path": 5], "workflow.dispatch: 'path' is a non-empty string"),
+            (["path": ""], "workflow.dispatch: 'path' is a non-empty string")
         ] as [([String: JSONValue], String)]
     )
     func wronglyTypedProgramRefused(program: [String: JSONValue], message: String) async throws {
@@ -202,23 +202,23 @@ struct WorkflowDispatchTests {
         }
     }
 
-    // MARK: - registered name
-    @Test("A registered name dispatches as-is")
-    func registeredNameDispatches() async throws {
+    // MARK: - path
+    @Test("A path under the root dispatches as-is")
+    func pathUnderTheRootDispatches() async throws {
         // Given
-        let (method, authority, _) = try await makeMethod(policy: ["cli:test": ["echo"]])
+        let (method, authority, _) = try await makeMethod(policy: ["cli:test": ["echo.yaml"]])
         let token = authority.mint(TokenClaims(principal: "cli:test"))
 
         // When
-        let result = try await method.handle(request(["token": .string(token), "name": "echo"]), claims: try #require(authority.verify(token)))
+        let result = try await method.handle(request(["token": .string(token), "path": "echo.yaml"]), claims: try #require(authority.verify(token)))
 
         // Then
         #expect(result["status"]?.stringValue == "ok")
-        #expect(result["name"]?.stringValue == "echo")
+        #expect(result["path"]?.stringValue == "echo.yaml")
     }
 
-    @Test("Rejected when neither name nor spec is given")
-    func missingNameAndSpecRejected() async throws {
+    @Test("Rejected when neither path nor spec is given")
+    func missingPathAndSpecRejected() async throws {
         // Given
         let (method, authority, _) = try await makeMethod(policy: ["*": ["*"]])
         let token = authority.mint(TokenClaims(principal: "cli:test"))
@@ -228,7 +228,7 @@ struct WorkflowDispatchTests {
             _ = try await method.handle(request(["token": .string(token)]), claims: try #require(authority.verify(token)))
 
         // Then
-            Issue.record("Should be rejected when neither name nor spec is present")
+            Issue.record("Should be rejected when neither path nor spec is present")
         } catch is ProtocolError {
         }
     }
@@ -237,7 +237,7 @@ struct WorkflowDispatchTests {
     @Test("Calling with a workflow token attaches as a nested run")
     func workflowTokenDispatchesAsNested() async throws {
         // Given
-        let (method, authority, registry) = try await makeMethod(policy: ["cli:parent": ["echo"]])
+        let (method, authority, registry) = try await makeMethod(policy: ["cli:parent": ["echo.yaml"]])
         await registry.register(WorkRecord(
                 runID: "wf-parent",
                 workflowName: "parent",
@@ -251,11 +251,11 @@ struct WorkflowDispatchTests {
         let token = authority.mint(TokenClaims(principal: "cli:parent", runID: "wf-parent"))
 
         // When
-        let result = try await method.handle(request(["token": .string(token), "name": "echo"]), claims: try #require(authority.verify(token)))
+        let result = try await method.handle(request(["token": .string(token), "path": "echo.yaml"]), claims: try #require(authority.verify(token)))
 
         // Then
         #expect(result["status"]?.stringValue == "ok")
-        #expect(result["name"]?.stringValue == "echo")
+        #expect(result["path"]?.stringValue == "echo.yaml")
     }
 
     @Test("A token of a finished run is rejected")
@@ -263,7 +263,7 @@ struct WorkflowDispatchTests {
         // Given
         let directory = try temporary.make("stale")
         defer { try? FileManager.default.removeItem(at: directory) }
-        try echoWorkflowYAML(name: "echo2").write(
+        try echoWorkflowYAML.write(
             to: directory.appendingPathComponent("echo2.yaml"), atomically: true, encoding: .utf8)
         let catalog = try WorkflowCatalog(directory: directory)
         let authority = TokenAuthority()
@@ -278,14 +278,14 @@ struct WorkflowDispatchTests {
             capabilities: CapabilitySet(
                 shell: LiveShell(),
                 agent: LiveAgent(executor: AgentExecutor(backend: StubBackend())),
-                resources: LiveResources(store: DocumentRoot(directory: nil))
+                resources: LiveResources(root: DocumentRoot(directory: nil))
             ))
         let method = WorkflowDispatchMethod(runner: runner, catalog: catalog,
             workRegistry: registry)
         let stale = authority.mint(TokenClaims(principal: "cli:gone", runID: "wf-gone"))
         do {
             _ = try await method.handle(RPCRequest(id: "r1", method: "workflow.dispatch",
-                    params: ["token": .string(stale), "name": "echo2"]), claims: try #require(authority.verify(stale)))
+                    params: ["token": .string(stale), "path": "echo2.yaml"]), claims: try #require(authority.verify(stale)))
 
         // Then
             Issue.record("A stale run token should be rejected")
@@ -296,7 +296,7 @@ struct WorkflowDispatchTests {
 
     // MARK: - Private
 
-    private func echoWorkflowYAML(name: String) -> String {
+    private var echoWorkflowYAML: String {
         workflowFile("""
         failing: [nonzero_exit, timeout]
         body:
@@ -304,14 +304,14 @@ struct WorkflowDispatchTests {
             value: { call: { procedure: shell, arguments: { command: ["/bin/echo", "ok"] } } }
         returns: "Dictionary<String, Any>"
         result: { dictionary: [ [v, { ref: x }] ] }
-        """, named: name)
+        """)
     }
 
     private func makeMethod(policy: [String: [String]]) async throws
 
     -> (WorkflowDispatchMethod, TokenAuthority, WorkRegistry) {
         let directory = try temporary.make("wf")
-        try echoWorkflowYAML(name: "echo").write(to: directory.appendingPathComponent("echo.yaml"), atomically: true, encoding: .utf8)
+        try echoWorkflowYAML.write(to: directory.appendingPathComponent("echo.yaml"), atomically: true, encoding: .utf8)
         let catalog = try WorkflowCatalog(directory: directory)
         let authority = TokenAuthority()
         let registry = WorkRegistry()
@@ -325,7 +325,7 @@ struct WorkflowDispatchTests {
             capabilities: CapabilitySet(
                 shell: LiveShell(),
                 agent: LiveAgent(executor: AgentExecutor(backend: StubBackend("noop"))),
-                resources: LiveResources(store: DocumentRoot(directory: nil))
+                resources: LiveResources(root: DocumentRoot(directory: nil))
             ))
         let method = WorkflowDispatchMethod(runner: runner, catalog: catalog,
             workRegistry: registry)

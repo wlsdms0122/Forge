@@ -19,7 +19,7 @@ struct EffectActionTests {
         private(set) var shellSteps: [String?] = []
         private(set) var prompts: [String] = []
         private(set) var sessions: [AgentSessionSettings] = []
-        private(set) var dispatches: [(name: String, inputs: [String: Warp.Value])] = []
+        private(set) var dispatches: [(path: String, inputs: [String: Warp.Value])] = []
     
         // MARK: - Initializer
         // MARK: - Public
@@ -36,8 +36,8 @@ struct EffectActionTests {
             sessions.append(settings)
         }
     
-        func recordDispatch(name: String, inputs: [String: Warp.Value]) {
-            dispatches.append((name, inputs))
+        func recordDispatch(path: String, inputs: [String: Warp.Value]) {
+            dispatches.append((path, inputs))
         }
     
         // MARK: - Private
@@ -145,8 +145,8 @@ struct EffectActionTests {
         }
     
         // MARK: - Public
-        func dispatch(name: String, inputs: [String: Warp.Value]) async throws -> Warp.Value {
-            await recorder.recordDispatch(name: name, inputs: inputs)
+        func dispatch(path: String, inputs: [String: Warp.Value]) async throws -> Warp.Value {
+            await recorder.recordDispatch(path: path, inputs: inputs)
     
             return result
         }
@@ -557,7 +557,7 @@ struct EffectActionTests {
         failing: [child_run_failed, timeout]
         body:
           - let: child
-            value: { call: { procedure: dispatch, arguments: { name: worker, inputs: { dictionary: [ [job_id, { ref: job }] ] } } } }
+            value: { call: { procedure: dispatch, arguments: { path: worker.yaml, inputs: { dictionary: [ [job_id, { ref: job }] ] } } } }
         result: { ref: child }
         """)
         let sut = try harness.executor()
@@ -569,7 +569,7 @@ struct EffectActionTests {
         #expect(fields["ok"] == .bool(true))
         let dispatched = await harness.recorder.dispatches
         #expect(dispatched.count == 1)
-        #expect(dispatched.first?.name == "worker")
+        #expect(dispatched.first?.path == "worker.yaml")
         #expect(dispatched.first?.inputs == ["job_id": .string("j-1")])
     }
 
@@ -585,37 +585,24 @@ struct EffectActionTests {
         }
     }
 
-    @Test("an inline spec is read as a catalog file is: a verb and a catalog workflow by short name, their arguments by name")
-    func inlineLeansOnTheLibraryAndTheCatalog() async throws {
+    @Test("an inline spec is read as a file is: leaning on the library, a verb by short name and its arguments by name")
+    func inlineLeansOnTheLibrary() async throws {
         // Given
         let harness = Harness()
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
-            "inline-leaning-\(UUID().uuidString)",
-            isDirectory: true
-        )
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: directory) }
-        try workflowFile("""
-        parameters: [ word: String ]
-        returns: String
-        result: { format: "said ${word}", with: { word: { ref: word } } }
-        """, named: "said").write(to: directory.appendingPathComponent("said.yaml"), atomically: true, encoding: .utf8)
-        let catalog = try WorkflowCatalog(directory: directory)
+        let catalog = try WorkflowCatalog(directory: nil)
         let spec = try YAMLSpec.decode([String: JSONValue].self, from: Data("""
         returns: String
         failing: [nonzero_exit, timeout]
         body:
           - let: echoed
             value: { call: { procedure: shell, arguments: { command: [ echo ] } } }
-          - let: spoken
-            value: { call: { procedure: said, arguments: { word: hi } } }
-        result: { ref: spoken }
+        result: { format: "said ${word}", with: { word: hi } }
         """.utf8))
         let sut = try harness.executor()
 
         // When
         let module = try await catalog.inline(spec).module
-        let returned = try await sut.run(module, entry: WorkflowCatalog.inlineSigil, beside: await catalog.modules())
+        let returned = try await sut.run(module)
 
         // Then
         #expect(returned == .string("said hi"))
@@ -734,47 +721,6 @@ struct EffectActionTests {
         #expect(fields["said"] == .string("boom"))
     }
 
-    @Test("a call resolves against the modules the catalog hands to the link")
-    func catalogSuppliesTheLinkSet() async throws {
-        // Given
-        let harness = Harness()
-        let directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("forge-spec-store-\(UUID().uuidString)")
-
-        try FileManager.default.createDirectory(
-            at: directory,
-            withIntermediateDirectories: true
-        )
-        defer { try? FileManager.default.removeItem(at: directory) }
-
-        try workflowFile("""
-        parameters: [ base: Int ]
-        returns: "Dictionary<String, Any>"
-        result: { dictionary: [ [doubled, { ref: base }] ] }
-        """, named: "callee").write(
-            to: directory.appendingPathComponent("callee.yaml"),
-            atomically: true,
-            encoding: .utf8
-        )
-
-        let catalog = try WorkflowCatalog(directory: directory)
-        let caller = try harness.frontend.workflow("""
-        returns: Any
-        body:
-          - let: called
-            value: { call: { procedure: callee, arguments: [ 21 ] } }
-        result: { ref: 'called["doubled"]' }
-        """)
-        let sut = try harness.executor()
-
-        // When — the caller leads and the catalog is the rest of the world,
-        // which is what the daemon hands to every link
-        let returned = try await sut.run(caller, beside: await catalog.modules())
-
-        // Then
-        #expect(returned == .int(21))
-    }
-
     @Test("a call of a verb that acts, or of its native directly, is a step, named by its calling statement and acting as the verb, and the native under a verb runs for the verb's step")
     func eventsBridgeWhenStepsRun() async throws {
         // Given
@@ -854,7 +800,7 @@ struct EffectActionTests {
         failing: [child_run_failed, timeout]
         body:
           - let: child
-            value: { call: { procedure: dispatch, arguments: { name: worker, inputs: { dictionary: [] } } } }
+            value: { call: { procedure: dispatch, arguments: { path: worker.yaml, inputs: { dictionary: [] } } } }
         result: done
         """)
         let sut = try harness.executor(dispatchResult: .dictionary(try Value.Dictionary(entries))) { event in

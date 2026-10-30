@@ -52,24 +52,24 @@ struct LogContextRunTests {
         body:
           - let: x
             value: { call: { procedure: shell, arguments: { command: ["/bin/echo", "ok"] } } }
-        """#, named: "echo").write(to: directory.appendingPathComponent("echo.yaml"), atomically: true, encoding: .utf8)
+        """#).write(to: directory.appendingPathComponent("echo.yaml"), atomically: true, encoding: .utf8)
         let catalog = try WorkflowCatalog(directory: directory)
         let bus = WorkflowEventBus()
         let runner = WorkflowRunner(
             catalog: catalog,
             eventBus: bus,
-            policyStore: PolicyStore(seed: ["cli:test": ["echo"]]),
+            policyStore: PolicyStore(seed: ["cli:test": ["echo.yaml"]]),
             pool: WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: Int.max),
             workRegistry: WorkRegistry(),
             tokenAuthority: TokenAuthority(),
             capabilities: CapabilitySet(
                 shell: LiveShell(),
                 agent: LiveAgent(executor: AgentExecutor(backend: StubBackend("noop"))),
-                resources: LiveResources(store: DocumentRoot(directory: nil))
+                resources: LiveResources(root: DocumentRoot(directory: nil))
             )
         )
         let (_, stream) = await bus.subscribe()
-        let workflow = try await catalog.workflow(named: "echo")
+        let workflow = try await catalog.workflow(at: "echo.yaml")
         let result = try await runner.dispatch(
             workflow, inputs: [:], principal: "cli:test", origin: .rpc,
             mode: .awaited

@@ -15,7 +15,7 @@ struct WorkflowDispatchCommand: ParsableCommand {
         commandName: "dispatch",
         abstract: "Dispatch a workflow run.",
         discussion: """
-            Runs a registered workflow by name, or an inline workflow by
+            Runs the workflow at a path under the root, or an inline workflow by
             `--spec` (JSON, one procedure; the run is named `<inline>` and
             gated by that sigil).
 
@@ -32,8 +32,8 @@ struct WorkflowDispatchCommand: ParsableCommand {
             BLOCKING vs --async vs --stream
                 `dispatch` blocks until the workflow completes and returns
                 the full result. Pass --async to return as soon as the run
-                is dispatched: { run_id, name, status: "running" } —
-                fire-and-forget; the run continues in the background and is
+                is dispatched: { run_id, name, status: "running" }.
+                Fire-and-forget: the run continues in the background and is
                 observable in the forge log.
 
                 Pass --stream to keep the connection open and print the
@@ -46,24 +46,24 @@ struct WorkflowDispatchCommand: ParsableCommand {
                 `workflow cancel`). --stream implies JSON output and is
                 mutually exclusive with --async.
 
-            Example values (`<wf>`, JSON contents, etc.) are placeholders —
-            substitute names registered in your own forge home.
+            Example values (`<path>`, JSON contents, etc.) are placeholders;
+            substitute paths under your own forge root.
 
             EXAMPLE
-                forge workflow dispatch <wf> \\
+                forge workflow dispatch <path> \\
                     --inputs '{"user_input":"..."}'
 
-                forge workflow dispatch <wf> --async \\
+                forge workflow dispatch <path> --async \\
                     --inputs '{"channel":"<channel-id>"}'
             """
     )
     
     @OptionGroup var global: GlobalOptions
     
-    @Argument(help: "Registered workflow name. Omit when using --spec.")
-    var name: String?
+    @Argument(help: "The workflow's path under the root, e.g. `bot/code-review.yaml`. Omit when using --spec.")
+    var path: String?
     
-    @Option(help: "Inline workflow JSON, one procedure; use instead of the name argument.")
+    @Option(help: "Inline workflow JSON, one procedure; use instead of the path argument.")
     var spec: String?
     
     @Option(help: "Workflow inputs as a JSON object (default: {}).")
@@ -103,7 +103,7 @@ struct WorkflowDispatchCommand: ParsableCommand {
         
         var params: [String: JSONValue] = ["async": .bool(isAsync)]
         
-        if let name { params["name"] = .string(name) }
+        if let path { params["path"] = .string(path) }
         if let spec { params["spec"] = JSONValue(objectArgument: spec, flag: "--spec") }
         
         params["inputs"] = inputs

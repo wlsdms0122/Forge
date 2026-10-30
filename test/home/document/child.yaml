@@ -1,6 +1,6 @@
 # E2E child: echoes its input back.
 procedures:
-  child:
+  main:
     access: public
     parameters: [ tag: String ]
     returns: "Dictionary<String, Any>"

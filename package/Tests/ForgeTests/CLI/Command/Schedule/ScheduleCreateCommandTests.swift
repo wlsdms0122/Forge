@@ -32,7 +32,7 @@ struct ScheduleCreateCommandTests {
         let workflow = try await catalog.inline(spec)
 
         // Then
-        #expect(workflow.name == WorkflowCatalog.inlineSigil)
+        #expect(workflow.path == WorkflowCatalog.inlineSigil)
     }
 
     // MARK: - Public

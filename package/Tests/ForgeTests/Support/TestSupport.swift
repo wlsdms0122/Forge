@@ -21,11 +21,10 @@ func commandPattern(
     try #require(try CommandPattern(tokens: tokens), sourceLocation: sourceLocation)
 }
 
-// A workflow file declaring one public procedure named after the file, with
-// the body's lines as that procedure's keys. Tests write a procedure body
-// because what they are about is the forge word inside it, not the shape of
-// the file.
-func workflowFile(_ body: String, named name: String) -> String {
+// A workflow file declaring its entry, the public procedure `main`, with the
+// body's lines as that procedure's keys. Tests write a procedure body because
+// what they are about is the forge word inside it, not the shape of the file.
+func workflowFile(_ body: String) -> String {
     let procedure = body
         .split(separator: "\n", omittingEmptySubsequences: false)
         .drop { line in line.trimmingCharacters(in: .whitespaces).isEmpty }
@@ -34,7 +33,7 @@ func workflowFile(_ body: String, named name: String) -> String {
 
     return """
     procedures:
-      \(name):
+      \(Workflow.entry):
         access: public
     \(procedure)
     """

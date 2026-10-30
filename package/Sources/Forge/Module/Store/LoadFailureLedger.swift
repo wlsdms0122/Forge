@@ -42,10 +42,9 @@ struct LoadFailureLedger {
         source: String,
         reason: String,
         mtime: Date,
-        stderrLine: String,
-        name: String? = nil
+        stderrLine: String
     ) {
-        fresh[source] = LoadFailure(path: source, reason: reason, mtime: mtime, name: name)
+        fresh[source] = LoadFailure(path: source, reason: reason, mtime: mtime)
         
         if let standing = prior[source], standing.reason == reason, standing.mtime == mtime { return }
         
