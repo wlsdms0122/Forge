@@ -52,7 +52,7 @@ struct JobCreateMethod: Sendable {
         if let rawPlan = request.params["plan"]?.arrayValue {
             for (index, item) in rawPlan.enumerated() {
                 if let string = item.stringValue {
-                    planEntries.append(.auto(desc: string, status: "todo"))
+                    planEntries.append(.auto(desc: string, status: nil))
 
                     continue
                 }
@@ -72,7 +72,7 @@ struct JobCreateMethod: Sendable {
                     throw ProtocolError("job.create: plan[\(index)].id must be an integer — omit it to auto-number")
                 }
 
-                let status = dictionary["status"]?.stringValue ?? "todo"
+                let status = dictionary["status"]?.stringValue
 
                 if let itemID {
                     planEntries.append(
@@ -102,7 +102,7 @@ struct JobCreateMethod: Sendable {
         }
 
         let status = request.params["status"]?.stringValue
-            .flatMap { value in value.isEmpty ? nil : value } ?? "open"
+            .flatMap { value in value.isEmpty ? nil : value }
 
         let id: String
 
@@ -138,7 +138,11 @@ struct JobCreateMethod: Sendable {
             )
         }
 
-        return ["job_id": .string(id), "id": .string(id), "title": .string(title), "status": .string(status)]
+        var result: [String: JSONValue] = ["job_id": .string(id), "id": .string(id), "title": .string(title)]
+
+        if let status { result["status"] = .string(status) }
+
+        return .object(result)
     }
 
     // MARK: - Private

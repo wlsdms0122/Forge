@@ -41,10 +41,11 @@ struct JobListMethod: Sendable {
                 var row: [String: JSONValue] = [
                     "id":         .string(job.id),
                     "title":      .string(job.title),
-                    "status":     .string(job.status),
                     "updated_at": .string(job.updatedAt),
                     "open":       .bool(job.isOpen(excluding: claims.id))
                 ]
+
+                if let status = job.status { row["status"] = .string(status) }
 
                 if let last = job.events.last {
                     row["last_event"] = ["ts": .string(last.ts), "kind": .string(last.kind.rawValue)]

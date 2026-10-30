@@ -162,15 +162,47 @@ struct JobStoreTests {
         #expect(job?.updatedBy == "a2", "updated_by is the accessor of the last mutation")
     }
     
-    @Test("A plan item without status also decodes")
-    func planItemDecodesWithoutStatus() throws {
+    @Test("A plan item without status stays without one")
+    func planItemWithoutStatusStaysWithout() throws {
+        // Given
         let data = Data(#"[{"id":1,"desc":"a"},{"id":2,"desc":"b","status":"doing"}]"#.utf8)
-        let items = try JSONDecoder().decode([Job.PlanItem].self, from: data)
-        #expect(items.first?.status == "todo")
-        #expect(items.last?.status == "doing")
-        let decoded = try JSONDecoder().decode([Job.PlanItem].self,
-            from: try JSONEncoder().encode(items))
-        #expect(decoded.first?.status == "todo")
+
+        // When
+        let sut = try JSONDecoder().decode([Job.PlanItem].self, from: data)
+        let decoded = try JSONDecoder().decode([Job.PlanItem].self, from: try JSONEncoder().encode(sut))
+
+        // Then
+        #expect(sut.first?.status == nil)
+        #expect(sut.last?.status == "doing")
+        #expect(decoded.first?.status == nil)
+    }
+    
+    @Test("A ticket without status stays without one")
+    func ticketWithoutStatusStaysWithout() throws {
+        // Given
+        let data = Data(#"{"id":"j","title":"t","created_at":"2026-10-30T00:00:00Z","updated_at":"2026-10-30T00:00:00Z"}"#.utf8)
+
+        // When
+        let sut = try JSONDecoder().decode(Job.self, from: data)
+        let encoded = try JSONSerialization.jsonObject(with: try JSONEncoder().encode(sut)) as? [String: Any]
+
+        // Then
+        #expect(sut.status == nil)
+        #expect(encoded?["status"] == nil)
+    }
+    
+    @Test("Updating a plan item without a status keeps the status it has")
+    func planItemUpdateWithoutStatusKeepsStatus() {
+        // Given
+        var sut = Job.Plan()
+        sut.upsert(id: 1, desc: "step", status: "doing")
+
+        // When
+        sut.upsert(id: 1, desc: "step one", status: nil)
+
+        // Then
+        #expect(sut.items.first?.status == "doing")
+        #expect(sut.items.first?.desc == "step one")
     }
     
     @Test("Records a failure event without touching the ticket status")

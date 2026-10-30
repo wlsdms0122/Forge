@@ -24,7 +24,7 @@ struct Job: Sendable, Codable {
         
         enum Entry: Sendable {
             case explicit(PlanItem)
-            case auto(desc: String, status: String)
+            case auto(desc: String, status: String?)
         }
         
         // MARK: - Property
@@ -97,14 +97,13 @@ struct Job: Sendable, Codable {
             items.append(item)
         }
         
-        mutating func append(desc: String, status: String = "todo") {
+        mutating func append(desc: String, status: String? = nil) {
             items.append(PlanItem(id: nextID, desc: desc, status: status))
         }
         
-        mutating func upsert(id: Int, desc: String?, status: String) {
+        mutating func upsert(id: Int, desc: String?, status: String?) {
             if let index = items.firstIndex(where: { item in item.id == id }) {
-                items[index].status = status
-                
+                if let status { items[index].status = status }
                 if let desc { items[index].desc = desc }
             } else {
                 items.append(PlanItem(id: id, desc: desc ?? "", status: status))
@@ -140,10 +139,10 @@ struct Job: Sendable, Codable {
         // MARK: - Property
         var id: Int
         var desc: String
-        var status: String
+        var status: String?
         
         // MARK: - Initializer
-        init(id: Int, desc: String, status: String = "todo") {
+        init(id: Int, desc: String, status: String? = nil) {
             self.id = id
             self.desc = desc
             self.status = status
@@ -154,7 +153,7 @@ struct Job: Sendable, Codable {
             
             id = try container.decode(Int.self, forKey: .id)
             desc = try container.decode(String.self, forKey: .desc)
-            status = try container.decodeIfPresent(String.self, forKey: .status) ?? "todo"
+            status = try container.decodeIfPresent(String.self, forKey: .status)
         }
         
         // MARK: - Public
@@ -254,7 +253,7 @@ struct Job: Sendable, Codable {
     // MARK: - Property
     var id: String
     var title: String
-    var status: String
+    var status: String?
     var origin: [String: JSONValue]?
     var parentJob: String?
     var brief: String
@@ -288,7 +287,7 @@ struct Job: Sendable, Codable {
     init(
         id: String,
         title: String,
-        status: String = "open",
+        status: String? = nil,
         origin: [String: JSONValue]? = nil,
         parentJob: String? = nil,
         brief: String = "",
@@ -324,7 +323,7 @@ struct Job: Sendable, Codable {
         
         id = try container.decode(String.self, forKey: .id)
         title = try container.decode(String.self, forKey: .title)
-        status = try container.decode(String.self, forKey: .status)
+        status = try container.decodeIfPresent(String.self, forKey: .status)
         origin = try container.decodeIfPresent([String: JSONValue].self, forKey: .origin)
         parentJob = try container.decodeIfPresent(String.self, forKey: .parentJob)
         brief = try container.decodeIfPresent(String.self, forKey: .brief) ?? ""

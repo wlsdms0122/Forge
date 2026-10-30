@@ -874,18 +874,18 @@ Create a work ticket.
 | `origin` | — | opaque JSON object (forge-agnostic; e.g. slack `{channel, thread_ts}`) |
 | `plan` | — | array of `{"id"?:int,"desc","status"?}` objects or plain strings; omit `id` to auto-number |
 | `parent_job` | — | parent ticket id — must exist; the child is linked into its `children` |
-| `status` | — | free string, default `"open"` |
+| `status` | — | free string; a ticket created without one has none. forge sets no status of its own, on the ticket or on a plan item |
 | `id` | — | string; auto-generated (`j-<rand>`) if omitted |
 
-**result** `{"job_id","id","title","status"}`.
+**result** `{"job_id","id","title","status"?}`.
 
 ### `job.show`
 
 **params** `{"token","id"}`. **result** `{"job":{...}}` — the full ticket
 (title, status, brief, refs, plan, comments, events, children, created/updated
 stamps) plus derived `open` (an opening event with no terminal yet) and, when
-the ticket has children, `children_detail` (`[{"id","title","status"}]`, or
-`{"id","status":"missing"}` for a dangling link). When called by a live run's
+the ticket has children, `children_detail` (`[{"id","title","status"?}]`, or
+`{"id","missing":true}` for a dangling link). When called by a live run's
 token, the daemon records the attachment as a touch event. Unknown id →
 ProtocolError `job not found: <id>`.
 
@@ -896,7 +896,7 @@ filters on the exact status string; `origin_key`+`origin_value` filter on an
 origin-object entry. **result**
 
 ```json
-{"jobs":[{"id","title","status","updated_at","open",
+{"jobs":[{"id","title","status"?,"updated_at","open",
           "last_event"?,"parent_job"?,"children"?,"origin"?}]}
 ```
 
@@ -912,11 +912,11 @@ several runs may update one ticket concurrently).
 
 **params** `{"token","id"}` plus any of: `note` (append a comment), `brief`
 (set/replace), `ref` + `ref_note`? (append a reference pointer), `item` (int
-plan-item id) + `item_status`? (default `"done"`) + `item_desc`?, `status`
+plan-item id) + `item_status`? + `item_desc`? (an existing item keeps what is not given), `status`
 (set the overall status). When called by a live run's token, the daemon
 records the attachment as a touch event.
 
-**result** `{"id","status"}`.
+**result** `{"id","status"?}`.
 
 ### `job.delete`
 

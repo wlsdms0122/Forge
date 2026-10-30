@@ -44,13 +44,16 @@ struct JobShowMethod: Sendable {
 
             for childID in job.children {
                 if let child = await store.lookup(childID) {
-                    detail.append([
+                    var row: [String: JSONValue] = [
                         "id": .string(child.id),
-                        "title": .string(child.title),
-                        "status": .string(child.status)
-                    ])
+                        "title": .string(child.title)
+                    ]
+
+                    if let status = child.status { row["status"] = .string(status) }
+
+                    detail.append(.object(row))
                 } else {
-                    detail.append(["id": .string(childID), "status": "missing"])
+                    detail.append(["id": .string(childID), "missing": true])
                 }
             }
 
