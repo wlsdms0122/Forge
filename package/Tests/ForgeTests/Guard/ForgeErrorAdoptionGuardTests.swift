@@ -44,7 +44,7 @@ struct ForgeErrorAdoptionGuardTests {
 
                 guard tokens.contains("Error") || tokens.contains("Swift.Error") else { return }
                 guard !tokens.contains(where: { token in
-                    token.hasSuffix("ForgeError") || token.hasSuffix("BackendError")
+                    token.hasSuffix("ForgeError")
                 }) else { return }
 
                 offenders.append(

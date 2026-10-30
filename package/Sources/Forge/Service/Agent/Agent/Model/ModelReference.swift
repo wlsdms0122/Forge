@@ -26,13 +26,6 @@ struct ModelReference: Sendable, Equatable {
             )
         }
 
-        guard model != "auto" else {
-            throw AgentValidationError(
-                "omit the model and colon to use the backend default;"
-                    + " ':auto' is not a model"
-            )
-        }
-
         self.provider = provider
         self.model = model
     }
@@ -56,9 +49,5 @@ struct ModelReference: Sendable, Equatable {
     }
 
     // MARK: - Public
-    func replacingModel(with translatedModel: String?) throws -> ModelReference {
-        try ModelReference(provider: provider, model: translatedModel ?? "")
-    }
-
     // MARK: - Private
 }

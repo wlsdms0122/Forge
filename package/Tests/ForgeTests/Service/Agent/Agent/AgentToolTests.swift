@@ -149,6 +149,20 @@ struct AgentToolTests {
             .allowed(argv: ["anything"]))
     }
     
+    @Test("a model left out is left to the openai-compatible endpoint")
+    func openAIModelLeftOutIsLeftToEndpoint() throws {
+        // Given
+        let sut = OpenAICompatibleTranslator()
+
+        // When
+        let named = try sut.translate(try Agent(model: "local:llama3")).value
+        let leftOut = try sut.translate(try Agent(model: "local")).value
+
+        // Then
+        #expect(named.model == "llama3")
+        #expect(leftOut.model == nil)
+    }
+    
     @Test("function tool vocabulary is owned by the openai translator")
     func openAITranslatorOwnsFunctionToolVocabulary() throws {
         // Given

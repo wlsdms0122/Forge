@@ -12,14 +12,14 @@ struct ChatCompletion: Sendable, Equatable {
     let text: String
     let toolCalls: [ChatToolCall]
     let finishReason: ChatFinishReason
-    let usage: [String: Int]?
+    let usage: AgentUsage?
 
     // MARK: - Initializer
     init(
         text: String,
         toolCalls: [ChatToolCall] = [],
         finishReason: ChatFinishReason = .unspecified,
-        usage: [String: Int]? = nil
+        usage: AgentUsage? = nil
     ) {
         self.text = text
         self.toolCalls = toolCalls

@@ -18,12 +18,6 @@ struct OpenAICompatibleTranslator: AgentTranslator {
     // MARK: - Initializer
     // MARK: - Public
     func translate(_ agent: Agent) throws -> AgentTranslation<OpenAICompatibleAgentConfiguration> {
-        guard let model = agent.model?.specifiedModel else {
-            throw AgentValidationError(
-                "an openai-compatible provider requires an explicit model ('<provider>:<model>')"
-            )
-        }
-
         let allowedTools: [AgentTool]?
 
         if agent.permissionMode == .bypass {
@@ -70,7 +64,7 @@ struct OpenAICompatibleTranslator: AgentTranslator {
 
         return AgentTranslation(
             OpenAICompatibleAgentConfiguration(
-                model: model,
+                model: agent.model?.specifiedModel,
                 workingDirectory: agent.workingDirectory,
                 environment: agent.environment.isEmpty ? nil : agent.environment,
                 commandAuthorization: commandAuthorization,

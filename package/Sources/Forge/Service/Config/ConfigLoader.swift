@@ -11,7 +11,7 @@ import TOMLKit
 enum ConfigLoader {
     struct PartialConfig {
         // MARK: - Property
-        var providers: [ProviderConfig]?
+        var providers: [PartialProvider]?
         var services: [PartialService]?
         var workflowDirectory: String?
         var scheduleDirectory: String?
@@ -31,6 +31,17 @@ enum ConfigLoader {
     struct PartialHooks {
         // MARK: - Property
         var logging: Bool?
+        
+        // MARK: - Initializer
+        // MARK: - Public
+        // MARK: - Private
+    }
+    
+    struct PartialProvider {
+        // MARK: - Property
+        var name: String
+        var kind: String?
+        var settings: [String: String] = [:]
         
         // MARK: - Initializer
         // MARK: - Public
@@ -184,17 +195,21 @@ enum ConfigLoader {
             : .builtin
         
         for provider in config.providers {
-            let description = provider.settings
-                .filter { key, _ in key != "api_key" }
-                .sorted { left, right in left.key < right.key }
-                .map { key, value in "\(key)=\(value)" }
-                .joined(separator: " ")
-            let keyState = provider.settings["api_key"] == nil ? "" : "  api_key=(set)"
+            let description: String
+            
+            switch provider.kind {
+            case let .claudeCLI(executable), let .codexCLI(executable):
+                description = "executable=\(executable)"
+            
+            case let .openAICompatible(endpoint, apiKey):
+                description = "endpoint=\(endpoint.absoluteString)"
+                    + (apiKey == nil ? "" : "  api_key=(set)")
+            }
             
             entries.append(
                 .init(
                     key: "provider.\(provider.name)",
-                    value: "kind=\(provider.kind)  \(description)\(keyState)",
+                    value: "kind=\(provider.kind.name.rawValue)  \(description)",
                     source: providersSource
                 )
             )
@@ -290,21 +305,20 @@ enum ConfigLoader {
         }
         
         if let providers = table["provider"]?.table {
-            var list: [ProviderConfig] = []
+            var list: [PartialProvider] = []
             
             for name in providers.keys {
                 guard let block = providers[name]?.table else { continue }
                 
-                var kind = ""
-                var settings: [String: String] = [:]
+                var provider = PartialProvider(name: name)
                 
                 for key in block.keys {
                     guard let value = block[key]?.string else { continue }
                     
-                    if key == "kind" { kind = value } else { settings[key] = value }
+                    if key == "kind" { provider.kind = value } else { provider.settings[key] = value }
                 }
                 
-                list.append(ProviderConfig(name: name, kind: kind, settings: settings))
+                list.append(provider)
             }
             
             partial.providers = list.sorted { left, right in left.name < right.name }
@@ -484,26 +498,30 @@ enum ConfigLoader {
     
     // MARK: - Private
     private static func resolveProviders(
-        _ fromToml: [ProviderConfig]?,
+        _ fromToml: [PartialProvider]?,
         environment: [String: String]
     ) -> [ProviderConfig] {
-        let base = fromToml ?? [
-            ProviderConfig(name: "claude", kind: "claude-cli", settings: ["executable": "claude"])
-        ]
+        guard let fromToml else {
+            return [ProviderConfig(name: "claude", kind: .claudeCLI(executable: "claude"))]
+        }
         
-        return base.map { provider in
-            let envVar = "FORGE_PROVIDER_\(provider.name.uppercased())_API_KEY"
+        return fromToml.compactMap { provider in
+            let apiKey = environment["FORGE_PROVIDER_\(provider.name.uppercased())_API_KEY"]
             
-            guard let key = environment[envVar], !key.isEmpty else { return provider }
-            
-            var settings = provider.settings
-            settings["api_key"] = key
-            
-            return ProviderConfig(
-                name: provider.name,
-                kind: provider.kind,
-                settings: settings
-            )
+            do throws(ProviderDeclarationError) {
+                return try ProviderConfig(
+                    name: provider.name,
+                    kind: provider.kind,
+                    settings: provider.settings,
+                    apiKey: apiKey?.isEmpty == false ? apiKey : nil
+                )
+            } catch {
+                FileHandle.standardError.write(
+                    Data("forge: [provider.\(provider.name)]: \(error.message); skipped\n".utf8)
+                )
+                
+                return nil
+            }
         }
     }
     

@@ -14,6 +14,28 @@ struct StreamJSONReaderTests {
     // MARK: - Property
     // MARK: - Initializer
     // MARK: - Test
+    @Test("a result's usage keeps the input apart from the cache")
+    func resultUsageKeepsInputApartFromCache() throws {
+        // Given
+        let sut = StreamJSON.Reader()
+
+        // When
+        sut.feed(
+            line: #"{"type":"result","result":"done","usage":{"input_tokens":6,"output_tokens":348,"cache_creation_input_tokens":123828,"cache_read_input_tokens":176855}}"#,
+            at: .fixture
+        )
+
+        // Then
+        let usage = try #require(sut.snapshot().usage)
+
+        #expect(usage.agentUsage == AgentUsage(
+            inputTokens: 6,
+            outputTokens: 348,
+            cacheWriteTokens: 123_828,
+            cacheReadTokens: 176_855
+        ))
+    }
+    
     @Test("tool use and result each carry their own timestamp")
     func toolUseAndToolResultGetSeparateTimestamps() {
         // Given
