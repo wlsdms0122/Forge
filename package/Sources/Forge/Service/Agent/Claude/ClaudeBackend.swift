@@ -169,9 +169,7 @@ struct ClaudeBackend: Backend {
         try Self.validateSuccessfulProtocol(parsed, turn: index)
         
         let text = parsed.finalText
-        let usage = parsed.usage.map { usage in
-            AgentUsage(providerValues: usage.asDictionary)
-        }
+        let usage = parsed.usage?.agentUsage
         claudeSession?.turnIndex = baseIndex + 1
         
         let durationMs = (ContinuousClock.now - started).milliseconds

@@ -29,6 +29,20 @@ struct CodexEventStreamTests {
     // MARK: - Property
     // MARK: - Initializer
     // MARK: - Test
+    @Test("a cache read beyond the input clamps the input at 0")
+    func cacheReadBeyondInputClampsAtZero() {
+        // Given
+        let raw = #"""
+        {"type":"turn.completed","usage":{"input_tokens":100,"cached_input_tokens":500}}
+        """#
+
+        // When
+        let parsed = CodexEventStream.parse(raw)
+
+        // Then
+        #expect(parsed.usage == AgentUsage(inputTokens: 0, cacheReadTokens: 500))
+    }
+    
     @Test("parses thread, message, usage, and tool lifecycle")
     func parsesThreadMessageUsageAndToolLifecycle() {
         // Given

@@ -149,7 +149,7 @@ struct AgentLoopBackend: Backend {
                 model: model,
                 jsonMode: jsonMode
             )
-            let roundUsage = completion.usage.map(AgentUsage.init(providerValues:))
+            let roundUsage = completion.usage
             
             if let roundUsage {
                 totalUsage = totalUsage?.adding(roundUsage) ?? roundUsage

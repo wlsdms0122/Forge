@@ -30,8 +30,22 @@ struct OpenAICompatibleBackendTests {
 
         // Then
         #expect(parsed.text == "Pong")
-        #expect(parsed.usage?["total_tokens"] == 18)
-        #expect(parsed.usage?["prompt_tokens"] == 15)
+        #expect(parsed.usage == AgentUsage(inputTokens: 15, outputTokens: 3))
+    }
+    
+    @Test("the cached share of the prompt is read apart from the input")
+    func parseReadsCachedPromptTokensApart() throws {
+        // Given
+        let json = #"""
+        {"choices":[{"message":{"role":"assistant","content":"Pong"}}],
+         "usage":{"prompt_tokens":5000,"completion_tokens":200,"prompt_tokens_details":{"cached_tokens":4000}}}
+        """#.data(using: .utf8)!
+
+        // When
+        let parsed = try OpenAICompatibleBackend.parse(json)
+
+        // Then
+        #expect(parsed.usage == AgentUsage(inputTokens: 1_000, outputTokens: 200, cacheReadTokens: 4_000))
     }
     
     @Test("throws malformed when the body is missing")
@@ -237,7 +251,7 @@ struct OpenAICompatibleBackendTests {
     func completeReturnsCompletion() async throws {
         // Given
         StubURLProtocol.handler = { request in
-            let body = #"{"choices":[{"message":{"content":"ok"}}],"usage":{"total_tokens":5}}"#
+            let body = #"{"choices":[{"message":{"content":"ok"}}],"usage":{"prompt_tokens":4,"completion_tokens":1}}"#
             let response = HTTPURLResponse(url: request.url!, statusCode: 200,
                 httpVersion: nil, headerFields: nil)!
             
@@ -250,7 +264,7 @@ struct OpenAICompatibleBackendTests {
 
         // Then
         #expect(completion.text == "ok")
-        #expect(completion.usage?["total_tokens"] == 5)
+        #expect(completion.usage == AgentUsage(inputTokens: 4, outputTokens: 1))
         #expect(completion.toolCalls.isEmpty)
     }
     
@@ -322,7 +336,7 @@ struct OpenAICompatibleBackendTests {
         // Then
         #expect(!completion.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, "response text is empty")
         print("── live ollama text: \(completion.text)")
-        print("── live ollama usage: \(completion.usage ?? [:])")
+        print("── live ollama usage: \(completion.usage?.asDictionary ?? [:])")
     }
     
     // MARK: - Private
