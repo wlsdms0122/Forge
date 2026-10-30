@@ -125,6 +125,8 @@ there issuance is delegation (§5).
 | 6 | RPC rejected for a stale or invalid token; reissue it |
 | 64 | argument parse error (`EX_USAGE`) |
 
+The exit code reports the call, not the work it started. A `workflow dispatch` whose run fails still exits 0 once the call went through; the failure is in the result (`"status":"failed"` and `error`). A `service send` the service answers with an error is the call's own answer, so it comes back as `ServiceFailed` and exits 5.
+
 ---
 
 ## 2. CLI surface

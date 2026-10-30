@@ -72,6 +72,9 @@ struct ForgeCommand: AsyncParsableCommand {
                     is not registered.
                 6   RPC rejected for a stale or invalid token. Reissue it.
                 64  Argument parse error.
+
+                The code reports the call, not the work it started: a dispatched
+                run that fails still exits 0, with the failure in the result.
             """,
         version: Version.current,
         subcommands: [
