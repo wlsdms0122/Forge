@@ -46,7 +46,7 @@ struct ServeCommand: AsyncParsableCommand {
                         `<instanceHome>/log`.
                 [pool]  maximum_concurrent_steps (default 4) — leaf-step concurrency cap.
                         maximum_active_runs (default 256) — concurrent registered-run cap.
-                [provider.<name>]   configured backends; `kind` = \(BackendKind.Name.allCases.map(\.rawValue).joined(separator: "|")).
+                [provider.<name>]   configured backends; `kind` = \(BackendKind.allCases.map(\.rawValue).joined(separator: "|")).
                         CLI kinds take `executable` (default: the CLI on PATH);
                         openai-compat requires `endpoint`. A provider without a known
                         kind or a required setting is skipped with a warning.

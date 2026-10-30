@@ -55,7 +55,7 @@ package actor Server {
         var byProvider: [String: any Backend] = [:]
         
         for provider in config.providers {
-            byProvider[provider.name] = BackendFactory.make(provider.kind)
+            byProvider[provider.name] = BackendFactory.make(provider.backend)
         }
         
         let backends = BackendRegistry(byProvider)

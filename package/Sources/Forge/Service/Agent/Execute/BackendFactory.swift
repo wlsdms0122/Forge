@@ -11,8 +11,8 @@ enum BackendFactory {
     // MARK: - Property
     // MARK: - Initializer
     // MARK: - Public
-    static func make(_ kind: BackendKind) -> any Backend {
-        switch kind {
+    static func make(_ configuration: BackendConfiguration) -> any Backend {
+        switch configuration {
         case let .claudeCLI(executable):
             return ClaudeBackend(executable: executable)
         

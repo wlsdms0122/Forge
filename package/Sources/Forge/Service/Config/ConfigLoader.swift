@@ -197,7 +197,7 @@ enum ConfigLoader {
         for provider in config.providers {
             let description: String
             
-            switch provider.kind {
+            switch provider.backend {
             case let .claudeCLI(executable), let .codexCLI(executable):
                 description = "executable=\(executable)"
             
@@ -209,7 +209,7 @@ enum ConfigLoader {
             entries.append(
                 .init(
                     key: "provider.\(provider.name)",
-                    value: "kind=\(provider.kind.name.rawValue)  \(description)",
+                    value: "kind=\(provider.backend.kind.rawValue)  \(description)",
                     source: providersSource
                 )
             )
@@ -502,7 +502,7 @@ enum ConfigLoader {
         environment: [String: String]
     ) -> [ProviderConfig] {
         guard let fromToml else {
-            return [ProviderConfig(name: "claude", kind: .claudeCLI(executable: "claude"))]
+            return [ProviderConfig(name: "claude", backend: .claudeCLI(executable: "claude"))]
         }
         
         return fromToml.compactMap { provider in
