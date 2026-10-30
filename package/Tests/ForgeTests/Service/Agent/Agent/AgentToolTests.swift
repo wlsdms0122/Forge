@@ -50,6 +50,29 @@ struct AgentToolTests {
         }
     }
     
+    @Test("a tool that is no tool is refused in the tool's words", arguments: [
+        (JSONValue.object(["mcp": .string("")]), "an mcp pattern is '*', '<server>.*' or '<server>.<tool>', got ''"),
+        (.object(["mcp": .string("github")]), "an mcp pattern is '*', '<server>.*' or '<server>.<tool>', got 'github'"),
+        (.object(["mcp": .int(1)]), "tool `mcp` takes a pattern string"),
+        (.object(["command": .array([])]), "tool `command` takes a pattern string"),
+        (.object(["claude_tool": .string("Read")]), "unknown tool 'claude_tool'"),
+        (.object([:]), "a tool dictionary has exactly one key, got 0"),
+        (.string("Bash"), "unknown tool 'Bash'"),
+        (.int(1), "a tool is a name or a dictionary of one key")
+    ])
+    func toolThatIsNoToolIsRefused(value: JSONValue, said: String) throws {
+        // Given
+        let sut = value
+
+        // When
+        let error = try #require(throws: AgentValidationError.self) {
+            try AgentToolReference.decode(sut)
+        }
+
+        // Then
+        #expect(error.message.hasPrefix(said), "\(error.message)")
+    }
+    
     @Test("omitted allowed and an empty array mean different things")
     func allowedOmissionAndExplicitEmptyRemainDifferent() throws {
         #expect(try Agent(model: "claude").allowed == nil)

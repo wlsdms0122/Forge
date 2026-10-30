@@ -21,7 +21,9 @@ struct BackendRegistry: Sendable {
         guard let provider else {
             guard byProvider.count == 1, let sole = byProvider.values.first else {
                 throw BackendNotRegistered(
-                    "invoke: 'provider' is required — \(byProvider.count) backends registered (\(byProvider.keys.sorted())); forge picks no default"
+                    "a model names no provider, and \(byProvider.count) backends are registered"
+                        + " (\(byProvider.keys.sorted().joined(separator: ", "))); name one as"
+                        + " `<provider>[:<model>]`"
                 )
             }
             
@@ -30,7 +32,7 @@ struct BackendRegistry: Sendable {
         
         guard let backend = byProvider[provider] else {
             throw BackendNotRegistered(
-                "no backend registered for provider '\(provider)' (have: \(byProvider.keys.sorted()))"
+                "no backend registered for provider '\(provider)' (have: \(byProvider.keys.sorted().joined(separator: ", ")))"
             )
         }
         

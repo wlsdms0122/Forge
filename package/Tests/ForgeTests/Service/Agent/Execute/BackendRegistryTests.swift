@@ -58,6 +58,41 @@ struct BackendRegistryTests {
         }
     }
     
+    @Test("a model that names no provider resolves to the sole backend")
+    func noProviderResolvesSoleBackend() async throws {
+        // Given
+        let sut = BackendRegistry(["claude": TaggedBackend(tag: "claude")])
+
+        // When
+        let backend = try sut.resolve(provider: nil)
+
+        // Then
+        let response = try await backend.invoke(makeInv(provider: "claude"))
+
+        #expect(response.text == "from:claude")
+    }
+    
+    @Test("a model that names no provider among several backends is refused in the model's words")
+    func noProviderAmongSeveralIsRefused() throws {
+        // Given
+        let sut = BackendRegistry([
+            "claude": TaggedBackend(tag: "claude"),
+            "codex": TaggedBackend(tag: "codex")
+        ])
+
+        // When
+        let error = try #require(throws: BackendNotRegistered.self) {
+            try sut.resolve(provider: nil)
+        }
+
+        // Then
+        #expect(
+            error.message
+                == "a model names no provider, and 2 backends are registered (claude, codex);"
+                + " name one as `<provider>[:<model>]`"
+        )
+    }
+    
     // MARK: - Private
     private func makeInv(provider: String) -> AgentInvocation {
         AgentInvocation(
