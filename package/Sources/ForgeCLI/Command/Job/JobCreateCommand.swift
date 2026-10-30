@@ -68,29 +68,11 @@ struct JobCreateCommand: ParsableCommand {
         
         if let brief { params["brief"] = .string(brief) }
         
-        if let refs {
-            guard let data = refs.data(using: .utf8),
-                let array = try? JSONSerialization.jsonObject(with: data) as? [Any],
-                let value = try? JSONValue(jsonObject: array)
-            else {
-                die("job create: --refs must be a valid JSON array", code: 4)
-            }
-            
-            params["refs"] = value
-        }
+        if let refs { params["refs"] = JSONValue(arrayArgument: refs, flag: "--refs") }
         
         if let origin { params["origin"] = JSONValue(objectArgument: origin, flag: "--origin") }
         
-        if let plan {
-            guard let data = plan.data(using: .utf8),
-                let array = try? JSONSerialization.jsonObject(with: data) as? [Any],
-                let value = try? JSONValue(jsonObject: array)
-            else {
-                die("job create: --plan must be a valid JSON array", code: 4)
-            }
-            
-            params["plan"] = value
-        }
+        if let plan { params["plan"] = JSONValue(arrayArgument: plan, flag: "--plan") }
         
         if let parentJob { params["parent_job"] = .string(parentJob) }
         if let status { params["status"] = .string(status) }
