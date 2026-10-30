@@ -423,9 +423,9 @@ forge service describe <name> [--json]
 #### `forge service register`
 
 Run the current process as a service, a long-lived **co-process**.
-forge owns the socket, the `service.register` handshake, and
-reconnect/backoff; the parent process speaks JSON over stdio and never touches
-the socket. RPC: `service.register` + `service.ack`.
+forge owns the socket and the `service.register` handshake; the parent
+process speaks JSON over stdio and never touches the socket. RPC:
+`service.register` + `service.ack`.
 
 ```
 forge service register <name> [--schema <json>]
@@ -447,10 +447,10 @@ principals (`system:*`, `admin:*`) may register any name.
 | stdout | one JSON line per incoming `service.message` frame |
 | stdin | one JSON line per ack: `{"message_id":"...","result":{...}}` or `{"message_id":"...","error":{...}}` |
 
-The daemon dropping the connection is invisible to the parent — forge
-reconnects and re-registers with exponential backoff. Exits 0 on stdin EOF.
-If the daemon restarts and rejects the token (seed rotation), the co-process
-exits **6** so the parent can respawn it with a freshly issued token.
+It connects and registers once. Any failure (connect refused, register
+rejected, connection lost) exits **1**; the parent treats that as fatal and
+exits, and the supervisor respawns the whole service with a fresh token.
+Exits 0 on stdin EOF.
 
 #### `forge service send`
 
