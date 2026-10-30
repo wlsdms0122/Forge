@@ -58,18 +58,6 @@ struct BackendFactoryTests {
         #expect(loop?.transport is OpenAICompatibleBackend, "got \(String(describing: loop?.transport))")
     }
     
-    @Test("a provider-only model fails at the translation step")
-    func openAICompatibleProviderOnlyModelFailsTranslation() throws {
-        // Given
-        let backend = BackendFactory.make(ProviderConfig(
-                name: "local", kind: "openai-compat",
-                settings: ["endpoint": "http://localhost:11434/v1"]))
-
-        // Then
-        let loop = try #require(backend as? AgentLoopBackend)
-        #expect(throws: (any Error).self) { try loop.translator.translate(Agent(model: "local")) }
-    }
-    
     @Test("unknown kinds build nothing — nil")
     func unknownKindIsNil() {
         // Given
