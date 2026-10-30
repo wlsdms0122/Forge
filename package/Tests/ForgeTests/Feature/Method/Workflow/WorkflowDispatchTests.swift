@@ -278,7 +278,7 @@ struct WorkflowDispatchTests {
             capabilities: CapabilitySet(
                 shell: LiveShell(),
                 agent: LiveAgent(executor: AgentExecutor(backend: StubBackend())),
-                resources: LiveResources(store: ResourceStore(directory: nil))
+                resources: LiveResources(store: DocumentRoot(directory: nil))
             ))
         let method = WorkflowDispatchMethod(runner: runner, catalog: catalog,
             workRegistry: registry)
@@ -325,7 +325,7 @@ struct WorkflowDispatchTests {
             capabilities: CapabilitySet(
                 shell: LiveShell(),
                 agent: LiveAgent(executor: AgentExecutor(backend: StubBackend("noop"))),
-                resources: LiveResources(store: ResourceStore(directory: nil))
+                resources: LiveResources(store: DocumentRoot(directory: nil))
             ))
         let method = WorkflowDispatchMethod(runner: runner, catalog: catalog,
             workRegistry: registry)

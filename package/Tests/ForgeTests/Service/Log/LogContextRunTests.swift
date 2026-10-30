@@ -65,7 +65,7 @@ struct LogContextRunTests {
             capabilities: CapabilitySet(
                 shell: LiveShell(),
                 agent: LiveAgent(executor: AgentExecutor(backend: StubBackend("noop"))),
-                resources: LiveResources(store: ResourceStore(directory: nil))
+                resources: LiveResources(store: DocumentRoot(directory: nil))
             )
         )
         let (_, stream) = await bus.subscribe()

@@ -73,7 +73,8 @@ instance-owned (`<instanceHome>/runtime`) and not configurable — like the sock
 
 | Table / key | Default | Meaning |
 |---|---|---|
-| `[directory]` `workflow`/`schedule`/`resource`/`policy` | `<instanceHome>/<key>` | source catalog roots; a relative value resolves against the toml's directory. |
+| `[directory]` `root` | `<instanceHome>/document` | the document root: the workflows and the files they read (prompts, scripts). A relative value resolves against the toml's directory. |
+| `[directory]` `schedule`/`policy` | `<instanceHome>/<key>` | schedule declarations and policy files; a relative value resolves against the toml's directory. |
 | `[log]` `jsonl` / `error` | `<instanceHome>/log/forge.log.jsonl` · `…/error.log` | structured + stderr logs |
 | `[log]` `maximum_bytes` | `52428800` (50 MiB) | single-file rotation threshold; ≤0 disables rotation |
 | `[pool]` `maximum_concurrent_steps` | `4` | concurrent leaf-step (invoke/shell) cap; excess queues FIFO |
@@ -366,14 +367,14 @@ the agents. Every mutation is stamped with the caller token's identity.
 
 ### `forge resource`
 
-Inspect files under `resource_directory`, the anchor for `@<path>` references in workflow prompts
-and shell command heads. The daemon's `ResourceStore` is the single gate — anchor and
-escape checks and hot reload happen there, and external tools (admin, scripts, agents)
-read resources through these RPCs instead of touching the filesystem.
+Inspect files under the document root, the paths a workflow's `resource` verb reads.
+The daemon's `DocumentRoot` is the single gate: escape checks and hot reload happen
+there, and external tools (admin, scripts, agents) read files through these RPCs
+instead of touching the filesystem.
 
 #### `forge resource list`
 
-List files in `resource_directory`. RPC: `resource.list`.
+List files in the document root. RPC: `resource.list`.
 
 ```
 forge resource list [--json]
@@ -392,7 +393,7 @@ forge resource read <path> [--max-bytes N] [--json]
 
 | Option | Meaning |
 |--------|---------|
-| `<path>` | Path relative to `resource_directory`. `..` / symlink escapes are rejected by the daemon |
+| `<path>` | Path relative to the document root. `..` / symlink escapes are rejected by the daemon |
 | `--max-bytes` | Truncation cap, default 64 KiB. Bytes beyond are dropped (a `... (truncated)` marker is appended) and `truncated=true` |
 
 Plain output: body. JSON: `{ "path", "body", "size", "truncated" }`.
@@ -927,11 +928,11 @@ ticket and unlinks it from its parent's children.
 
 **params** `{"token"}`. **result** `{"resources":[{"path","size","mtime"}]}`.
 
-`path` is relative to `resource_directory`; `mtime` is ISO8601. Sorted by path.
+`path` is relative to the document root; `mtime` is ISO8601. Sorted by path.
 
 ### `resource.read`
 
-Read one file under `resource_directory`. `..`/symlink escape is rejected by the
+Read one file under the document root. `..`/symlink escape is rejected by the
 daemon; oversize bodies are truncated and `truncated=true`.
 
 **params**
@@ -939,7 +940,7 @@ daemon; oversize bodies are truncated and `truncated=true`.
 | Field | Req | Notes |
 |-------|-----|-------|
 | `token` | ✅ | any authenticated token |
-| `path` | ✅ | relative to `resource_directory` |
+| `path` | ✅ | relative to the document root |
 | `maximum_bytes` | — | truncation cap; default 64 KiB |
 
 **result** `{"path","body","size","truncated"}`. `size` is the full
@@ -1165,7 +1166,7 @@ The error envelope is `{"type": "<ErrorType>", "message": "<text>"}` and the fie
 | `JobStoreError` | the job directory is not configured (`job.create` and job updates are disabled), or a job file is missing or unreadable |
 | `AgentValidationError` | an `invoke`'s agent cannot be built: its model, tools or `permission_mode`, or a combination its provider cannot run — fix the workflow |
 | `AgentSessionMissing` | an `agent` step ran outside an `invoke`, where no agent session is open — fix the workflow |
-| `ResourceError` | a resource cannot be given: no `resource_directory`, a path outside it or hidden, a missing or unreadable file |
+| `ResourceError` | a resource cannot be given: no root configured, a path outside it or hidden, a missing or unreadable file |
 | `ServiceFailed` | the service handling a `service.send` answered with an error; the message is the service's |
 | `TokenRejected` | token failed verification — re-issue and retry once |
 | `UnknownMethod` | the daemon does not know the method name |

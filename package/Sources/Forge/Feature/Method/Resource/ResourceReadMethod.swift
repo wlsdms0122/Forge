@@ -9,12 +9,12 @@ import Foundation
 
 struct ResourceReadMethod: Sendable {
     // MARK: - Property
-    let store: ResourceStore
+    let store: DocumentRoot
     let defaultMaxBytes: Int
 
     // MARK: - Initializer
     init(
-        store: ResourceStore,
+        store: DocumentRoot,
         defaultMaxBytes: Int = 64 * 1024
     ) {
         self.store = store

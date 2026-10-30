@@ -101,7 +101,7 @@ struct WorkflowHealthTests {
             capabilities: CapabilitySet(
                 shell: LiveShell(),
                 agent: LiveAgent(executor: AgentExecutor(backend: StubBackend("noop"))),
-                resources: LiveResources(store: ResourceStore(directory: nil))
+                resources: LiveResources(store: DocumentRoot(directory: nil))
             ))
         try await pool.register(runID: "occupier", workflowName: "other", rootID: "occupier",
             origin: .manual, principal: "t")

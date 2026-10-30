@@ -11,10 +11,10 @@ import Warp
 // The live resource seam over the daemon's jailed resource store.
 struct LiveResources: ResourceReading {
     // MARK: - Property
-    let store: ResourceStore
+    let store: DocumentRoot
 
     // MARK: - Initializer
-    init(store: ResourceStore) {
+    init(store: DocumentRoot) {
         self.store = store
     }
 

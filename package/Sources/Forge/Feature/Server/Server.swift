@@ -79,7 +79,7 @@ package actor Server {
             errorHooks: errorHooks
         )
         let catalogLocal = WorkflowCatalog(
-            directory: config.workflowDirectory,
+            directory: config.rootDirectory,
             builder: WorkflowBuilder(vocabulary: vocabulary)
         )
         let runtimeScheduleDirectory = config.runtimeDirectory.appendingPathComponent("schedule")
@@ -91,7 +91,7 @@ package actor Server {
         let fireLedger = FireLedger(
             path: config.runtimeDirectory.appendingPathComponent("fire-ledger.json")
         )
-        let resourceStore = ResourceStore(directory: config.resourceDirectory)
+        let documentRoot = DocumentRoot(directory: config.rootDirectory)
         let policyStoreLocal = PolicyStore(directory: config.policyDirectory)
         let bus = WorkflowEventBus()
         let serviceBus = ServiceBus()
@@ -115,7 +115,7 @@ package actor Server {
             capabilities: CapabilitySet(
                 shell: LiveShell(),
                 agent: LiveAgent(executor: executor),
-                resources: LiveResources(store: resourceStore)
+                resources: LiveResources(store: documentRoot)
             )
         )
         let scheduler = WorkflowScheduler(
@@ -174,7 +174,7 @@ package actor Server {
             policyStore: policyStoreLocal
         )
         let job = JobNamespace(store: jobStoreLocal, workRegistry: workRegistryLocal)
-        let resource = ResourceNamespace(store: resourceStore)
+        let resource = ResourceNamespace(store: documentRoot)
         let policy = PolicyNamespace(store: policyStoreLocal)
         let token = TokenNamespace(authority: tokenAuthorityLocal)
         let daemon = DaemonNamespace(status: daemonStatusMethod)
@@ -239,7 +239,7 @@ package actor Server {
             [
                 "runtime_directory":          config.runtimeDirectory.path,
                 "socket":                     socketPath,
-                "workflow_directory":         config.workflowDirectory?.path ?? "",
+                "root_directory":             config.rootDirectory?.path ?? "",
                 "schedule_directory":         config.scheduleDirectory?.path ?? "",
                 "runtime_schedule_directory": runtimeScheduleDirectory.path,
                 "job_directory":              jobDirectory.path,
@@ -345,7 +345,7 @@ package actor Server {
             "started_at":                 ISO8601DateFormatter().string(from: bootedAt),
             "log_jsonl":                  config.logJSONL.path,
             "error_log":                  config.errorLog.path,
-            "workflow_directory":         config.workflowDirectory?.path ?? "",
+            "root_directory":             config.rootDirectory?.path ?? "",
             "schedule_directory":         config.scheduleDirectory?.path ?? "",
             "runtime_schedule_directory": runtimeScheduleDirectory.path,
             "job_directory":              jobDirectory.path

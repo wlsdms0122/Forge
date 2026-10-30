@@ -1,5 +1,5 @@
 //
-//  ResourceStoreTests.swift
+//  DocumentRootTests.swift
 //  ForgeTests
 //
 //  Created by JSilver on 8/8/26.
@@ -9,8 +9,8 @@ import Foundation
 import Testing
 @testable import Forge
 
-@Suite("ResourceStore Tests")
-struct ResourceStoreTests {
+@Suite("DocumentRoot Tests")
+struct DocumentRootTests {
     // MARK: - Property
     private let temporary = TemporaryDirectory("resource")
     // MARK: - Initializer
@@ -26,7 +26,7 @@ struct ResourceStoreTests {
             atomically: true, encoding: .utf8)
         try "dot".write(to: base.appendingPathComponent(".DS_Store"),
             atomically: true, encoding: .utf8)
-        let store = ResourceStore(directory: base)
+        let store = DocumentRoot(directory: base)
 
         // When
         let listed = await store.all().map(\.path)
@@ -45,7 +45,7 @@ struct ResourceStoreTests {
     func traversalKeepsEscapeVocabulary() async throws {
         // Given
         let base = try makeBase(); defer { try? FileManager.default.removeItem(at: base) }
-        let store = ResourceStore(directory: base)
+        let store = DocumentRoot(directory: base)
         do {
 
         // When
@@ -66,7 +66,7 @@ struct ResourceStoreTests {
         try FileManager.default.createSymbolicLink(
             at: base.appendingPathComponent("link.md"),
             withDestinationURL: base.appendingPathComponent("real.md"))
-        let store = ResourceStore(directory: base)
+        let store = DocumentRoot(directory: base)
 
         // When
         let listed = await store.all().map(\.path)

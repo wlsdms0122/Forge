@@ -812,7 +812,7 @@ struct WorkflowRunnerTests {
             capabilities: CapabilitySet(
                 shell: LiveShell(),
                 agent: LiveAgent(executor: AgentExecutor(backend: backend ?? EchoBackend())),
-                resources: LiveResources(store: ResourceStore(directory: nil))
+                resources: LiveResources(store: DocumentRoot(directory: nil))
             )
         )
 

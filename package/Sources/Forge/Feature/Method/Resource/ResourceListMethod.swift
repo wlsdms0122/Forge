@@ -9,10 +9,10 @@ import Foundation
 
 struct ResourceListMethod: Sendable {
     // MARK: - Property
-    let store: ResourceStore
+    let store: DocumentRoot
 
     // MARK: - Initializer
-    init(store: ResourceStore) {
+    init(store: DocumentRoot) {
         self.store = store
     }
 

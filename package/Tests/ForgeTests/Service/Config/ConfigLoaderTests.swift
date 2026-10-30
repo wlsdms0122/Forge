@@ -71,14 +71,13 @@ struct ConfigLoaderTests {
         let configuration = ConfigLoader.build(file: try ConfigLoader.parse(url), tomlDirectory: directory, instanceHome: home, environment: [:])
 
         // Then
-        #expect(configuration.workflowDirectory?.path == home.appendingPathComponent("workflow").path)
+        #expect(configuration.rootDirectory?.path == home.appendingPathComponent("document").path)
         #expect(configuration.scheduleDirectory?.path == home.appendingPathComponent("schedule").path)
-        #expect(configuration.resourceDirectory?.path == home.appendingPathComponent("resource").path)
         #expect(configuration.policyDirectory?.path == home.appendingPathComponent("policy").path)
         #expect(configuration.runtimeDirectory.path == home.appendingPathComponent("runtime").path)
         #expect(configuration.logJSONL.path == home.appendingPathComponent("log/forge.log.jsonl").path)
         #expect(configuration.pool.maximumConcurrentSteps == 2)
-        #expect(!(configuration.workflowDirectory!.path.hasPrefix(directory.path)), "the catalog must not be tied to the config.toml location")
+        #expect(!(configuration.rootDirectory!.path.hasPrefix(directory.path)), "the root must not be tied to the config.toml location")
     }
     
     @Test("[directory] and [log] tables override the instance-home defaults")
@@ -89,8 +88,8 @@ struct ConfigLoaderTests {
         defer { for d in [directory, home] { try? FileManager.default.removeItem(at: d) } }
         let url = try writeTOML("""
         [directory]
-        workflow = "./wf"
-        policy   = "./pol"
+        root   = "./doc"
+        policy = "./pol"
 
         [log]
         jsonl     = "./logs/f.jsonl"
@@ -101,7 +100,7 @@ struct ConfigLoaderTests {
 
         // Then
         #expect(configuration.runtimeDirectory.path == home.appendingPathComponent("runtime").path)
-        #expect(configuration.workflowDirectory?.path == directory.appendingPathComponent("wf").path)
+        #expect(configuration.rootDirectory?.path == directory.appendingPathComponent("doc").path)
         #expect(configuration.policyDirectory?.path == directory.appendingPathComponent("pol").path)
         #expect(configuration.logJSONL.path == directory.appendingPathComponent("logs/f.jsonl").path)
         #expect(configuration.errorLog.path == directory.appendingPathComponent("logs/e.log").path)
@@ -185,11 +184,11 @@ struct ConfigLoaderTests {
         let url = try writeTOML("", in: directory)
         let configuration = ConfigLoader.build(
             file: try ConfigLoader.parse(url), tomlDirectory: directory, instanceHome: home,
-            environment: ["FORGE_WORKFLOW_DIRECTORY": "/abs/wf"])
+            environment: ["FORGE_ROOT_DIRECTORY": "/abs/doc"])
 
         // Then
-        #expect(configuration.workflowDirectory?.path == "/abs/wf")
-        #expect(configuration.resourceDirectory?.path == home.appendingPathComponent("resource").path)
+        #expect(configuration.rootDirectory?.path == "/abs/doc")
+        #expect(configuration.policyDirectory?.path == home.appendingPathComponent("policy").path)
     }
     
     // MARK: - Private
