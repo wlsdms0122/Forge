@@ -21,8 +21,8 @@ package enum Instance {
         home.appendingPathComponent("runtime.json")
     }
     
-    package static func runtimeDirectory(in home: URL) -> URL {
-        home.appendingPathComponent("runtime")
+    package static func stateDirectory(in home: URL) -> URL {
+        home.appendingPathComponent("state")
     }
     
     package static func canonicalSocket(

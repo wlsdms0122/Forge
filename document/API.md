@@ -68,8 +68,8 @@ env only fills keys that the toml leaves silent (emergency override).
 Everything is optional — each key has a built-in default, so a minimal toml only
 declares deviations, managed services, and secrets-by-env. **Path anchoring:**
 a relative path written in the toml resolves against the toml's directory;
-unspecified catalogs/logs default under `instanceHome`. The runtime dir is
-instance-owned (`<instanceHome>/runtime`) and not configurable — like the socket.
+unspecified catalogs/logs default under `instanceHome`. The state dir is
+instance-owned (`<instanceHome>/state`) and not configurable, like the socket.
 
 | Table / key | Default | Meaning |
 |---|---|---|
@@ -94,7 +94,7 @@ effective config + every key's source (`toml`/`env`/`default`).
 | `FORGE_BIN` | path to the `forge` binary (consumer-side discovery) |
 | `FORGE_INSTANCE` | instance name when `--instance` omitted — selects which daemon socket |
 | `FORGE_SOCKET` | exact socket path; overrides instance. Injected into spawned subprocesses |
-| `FORGE_RUNTIME` | daemon runtime dir injected into subprocesses for `$FORGE_RUNTIME/scratch/…` artifacts (not socket discovery) |
+| `FORGE_STATE` | daemon state dir injected into subprocesses for `$FORGE_STATE/scratch/…` artifacts (not socket discovery) |
 | `FORGE_ACCESS_TOKEN` | daemon-signed bearer token carried on every RPC — injected into workflow subprocesses at spawn, set by operators for direct use |
 
 ### Global options
@@ -319,7 +319,7 @@ Repeating triggers (`--every`/`--at`) never end (no `until` — bounded
 recurrence is not modelled; delete it when done). One-shot triggers
 (`--once`/`--after`) fire exactly once and **stay on disk** afterward — the
 declaration file is not self-deleted. Fire-state lives in a daemon-owned
-ledger (`runtime_directory/fire-ledger.json`), separate from the declaration:
+ledger (`state_directory/fire-ledger.json`), separate from the declaration:
 recording it *before* dispatch gives at-most-once (no re-fire if the daemon
 dies mid-fire). A spent one-shot created in the runtime dir is auto-GC'd by
 the daemon; a hand-authored config one shows `spent` in `list` for you to
@@ -327,11 +327,11 @@ remove.
 
 Storage is two directories — an *operational* split, not a domain tier:
 `schedule_directory/*.yaml` (git-managed, hand-authored config) and
-`runtime_directory/schedule/*.yaml` (daemon-owned, where `create` writes). `delete`/
+`state_directory/schedule/*.yaml` (daemon-owned, where `create` writes). `delete`/
 `set_enabled` act on a schedule regardless of which dir it came from; `create`
 only writes to the runtime dir. `set_enabled` never rewrites a declaration
 file — it records an override in the daemon-owned ledger
-(`runtime_directory/schedule-enabled.json`), and the override is dropped once the
+(`state_directory/schedule-enabled.json`), and the override is dropped once the
 requested value matches the file's declared `enabled` (convergence), so a
 hand-edited declaration stays authoritative.
 
@@ -811,7 +811,7 @@ Gated by the dispatch ACL on the schedule's target workflow.
 
 ### `schedule.create`
 
-Creates a schedule in `runtime_directory/schedule` (daemon-owned). Fails if the `id`
+Creates a schedule in `state_directory/schedule` (daemon-owned). Fails if the `id`
 collides, no workflow loads at the `workflow` path, the inline `spec` fails
 decode/validation, or the caller's principal is not allowed to dispatch the
 target workflow (`policy/*.yaml`, checked against its path, or

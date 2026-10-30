@@ -52,7 +52,7 @@ actor ScheduleStore {
     
     // MARK: - Property
     let configDir: URL?
-    let runtimeDirectory: URL?
+    let stateDirectory: URL?
     let stateFile: URL
     
     private var configFiles: SpecDirectory<Entry>?
@@ -81,18 +81,18 @@ actor ScheduleStore {
     }
     
     // MARK: - Initializer
-    init(configDir: URL?, runtimeDirectory: URL? = nil, stateFile: URL) {
+    init(configDir: URL?, stateDirectory: URL? = nil, stateFile: URL) {
         self.configDir = configDir
-        self.runtimeDirectory = runtimeDirectory
+        self.stateDirectory = stateDirectory
         self.stateFile = stateFile
         self.configFiles = configDir.map { directory in SpecDirectory(directory: directory, kind: "schedule") }
-        self.runtimeFiles = runtimeDirectory.map { directory in SpecDirectory(directory: directory, kind: "schedule") }
+        self.runtimeFiles = stateDirectory.map { directory in SpecDirectory(directory: directory, kind: "schedule") }
         (self.enabledIDs, self.stateFailure) = Self.loadEnabled(stateFile)
     }
     
     // MARK: - Public
     func ensureRuntimeDirectory() {
-        guard let directory = runtimeDirectory else { return }
+        guard let directory = stateDirectory else { return }
         
         do {
             try FileManager.default.createDirectory(
@@ -114,7 +114,7 @@ actor ScheduleStore {
         for runtime in [false, true] {
             guard var files = runtime ? runtimeFiles : configFiles else { continue }
             
-            let reading = files.read(skipping: runtime ? nil : runtimeDirectory, recording: &ledger) { file, data in
+            let reading = files.read(skipping: runtime ? nil : stateDirectory, recording: &ledger) { file, data in
                 try Self.entry(decoding: data, of: file, runtime: runtime)
             }
             
@@ -199,7 +199,7 @@ actor ScheduleStore {
     
     @discardableResult
     func create(_ requested: Schedule) async throws -> Schedule {
-        guard let directory = runtimeDirectory else {
+        guard let directory = stateDirectory else {
             throw ScheduleDirectoryNotConfigured("runtime schedule directory not configured — schedule.create is disabled")
         }
         

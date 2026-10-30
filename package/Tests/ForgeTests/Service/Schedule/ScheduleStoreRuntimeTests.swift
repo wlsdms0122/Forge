@@ -22,13 +22,13 @@ struct ScheduleStoreRuntimeTests {
     func createWritesToRuntimeDir() async throws {
         // Given
         let directory = try temporary.make("create-d")
-        let runtimeDirectoryectory = try temporary.make("create-e")
+        let stateDirectory = try temporary.make("create-e")
         defer {
             try? FileManager.default.removeItem(at: directory)
-            try? FileManager.default.removeItem(at: runtimeDirectoryectory)
+            try? FileManager.default.removeItem(at: stateDirectory)
         }
         
-        let store = ScheduleStore(configDir: directory, runtimeDirectory: runtimeDirectoryectory, stateFile: try temporary.file("schedule-enabled.json"))
+        let store = ScheduleStore(configDir: directory, stateDirectory: stateDirectory, stateFile: try temporary.file("schedule-enabled.json"))
         let schedule = Schedule(id: "watch-1", workflow: "slack-watch",
             trigger: .every(Interval(seconds: 600)))
 
@@ -37,7 +37,7 @@ struct ScheduleStoreRuntimeTests {
 
         // Then
         #expect(FileManager.default.fileExists(
-                atPath: runtimeDirectoryectory.appendingPathComponent("\(created.id).yaml").path))
+                atPath: stateDirectory.appendingPathComponent("\(created.id).yaml").path))
         #expect(ScheduleIDSpace.isRuntime(created.id), "create must stamp the runtime partition — got '\(created.id)'")
         let entries = await store.reload().entries
         guard let error = entries.first(where: { entry in entry.schedule.id == created.id }) else {
@@ -54,13 +54,13 @@ struct ScheduleStoreRuntimeTests {
     func createRejectsDuplicateId() async throws {
         // Given
         let directory = try temporary.make("dup-d")
-        let runtimeDirectoryectory = try temporary.make("dup-e")
+        let stateDirectory = try temporary.make("dup-e")
         defer {
             try? FileManager.default.removeItem(at: directory)
-            try? FileManager.default.removeItem(at: runtimeDirectoryectory)
+            try? FileManager.default.removeItem(at: stateDirectory)
         }
         
-        let store = ScheduleStore(configDir: directory, runtimeDirectory: runtimeDirectoryectory, stateFile: try temporary.file("schedule-enabled.json"))
+        let store = ScheduleStore(configDir: directory, stateDirectory: stateDirectory, stateFile: try temporary.file("schedule-enabled.json"))
         let schedule = Schedule(id: "dup", workflow: "wf", trigger: .every(Interval(seconds: 60)))
         try await store.create(schedule)
         do {
@@ -77,14 +77,14 @@ struct ScheduleStoreRuntimeTests {
     func createRejectsCollidedId() async throws {
         // Given
         let configDir = try temporary.make("colcr-cfg")
-        let runtimeDirectory = try temporary.make("colcr-rt")
+        let stateDirectory = try temporary.make("colcr-rt")
         defer {
             try? FileManager.default.removeItem(at: configDir)
-            try? FileManager.default.removeItem(at: runtimeDirectory)
+            try? FileManager.default.removeItem(at: stateDirectory)
         }
         for sub in ["x", "y"] {
             try FileManager.default.createDirectory(
-                at: runtimeDirectory.appendingPathComponent(sub), withIntermediateDirectories: true)
+                at: stateDirectory.appendingPathComponent(sub), withIntermediateDirectories: true)
         }
         
         let stamped = ScheduleIDSpace.stamp("dup")
@@ -92,11 +92,11 @@ struct ScheduleStoreRuntimeTests {
         workflow: b
         every: 2h
         """#
-        let runtimeFile = runtimeDirectory.appendingPathComponent("x/\(stamped).yaml")
+        let runtimeFile = stateDirectory.appendingPathComponent("x/\(stamped).yaml")
         try runtimeYAML.write(to: runtimeFile, atomically: true, encoding: .utf8)
-        try runtimeYAML.write(to: runtimeDirectory.appendingPathComponent("y/\(stamped).yaml"),
+        try runtimeYAML.write(to: stateDirectory.appendingPathComponent("y/\(stamped).yaml"),
             atomically: true, encoding: .utf8)
-        let store = ScheduleStore(configDir: configDir, runtimeDirectory: runtimeDirectory, stateFile: try temporary.file("schedule-enabled.json"))
+        let store = ScheduleStore(configDir: configDir, stateDirectory: stateDirectory, stateFile: try temporary.file("schedule-enabled.json"))
         do {
             try await store.create(Schedule(id: "dup", workflow: "c",
                     trigger: .every(Interval(seconds: 60))))
@@ -111,10 +111,10 @@ struct ScheduleStoreRuntimeTests {
     func createDoesNotClobberForeignDeclarationFile() async throws {
         // Given
         let configDir = try temporary.make("clob-cfg")
-        let runtimeDirectory = try temporary.make("clob-rt")
+        let stateDirectory = try temporary.make("clob-rt")
         defer {
             try? FileManager.default.removeItem(at: configDir)
-            try? FileManager.default.removeItem(at: runtimeDirectory)
+            try? FileManager.default.removeItem(at: stateDirectory)
         }
         
         let foreignYAML = #"""
@@ -122,10 +122,10 @@ struct ScheduleStoreRuntimeTests {
         workflow: wf
         every: 1h
         """#
-        let destFile = runtimeDirectory.appendingPathComponent(
+        let destFile = stateDirectory.appendingPathComponent(
             "\(ScheduleIDSpace.stamp("target")).yaml")
         try foreignYAML.write(to: destFile, atomically: true, encoding: .utf8)
-        let store = ScheduleStore(configDir: configDir, runtimeDirectory: runtimeDirectory, stateFile: try temporary.file("schedule-enabled.json"))
+        let store = ScheduleStore(configDir: configDir, stateDirectory: stateDirectory, stateFile: try temporary.file("schedule-enabled.json"))
         do {
             try await store.create(Schedule(id: "target", workflow: "wf",
                     trigger: .every(Interval(seconds: 60))))
@@ -144,16 +144,16 @@ struct ScheduleStoreRuntimeTests {
     func brokenFileBlocksOnlyItsOwnID() async throws {
         // Given
         let configDir = try temporary.make("unk-cfg")
-        let runtimeDirectory = try temporary.make("unk-rt")
+        let stateDirectory = try temporary.make("unk-rt")
         defer {
             try? FileManager.default.removeItem(at: configDir)
-            try? FileManager.default.removeItem(at: runtimeDirectory)
+            try? FileManager.default.removeItem(at: stateDirectory)
         }
         try "id: [broken".write(
-            to: runtimeDirectory.appendingPathComponent(
+            to: stateDirectory.appendingPathComponent(
                 "\(ScheduleIDSpace.stamp("broken")).yaml"),
             atomically: true, encoding: .utf8)
-        let store = ScheduleStore(configDir: configDir, runtimeDirectory: runtimeDirectory, stateFile: try temporary.file("schedule-enabled.json"))
+        let store = ScheduleStore(configDir: configDir, stateDirectory: stateDirectory, stateFile: try temporary.file("schedule-enabled.json"))
         do {
             try await store.create(Schedule(id: "broken", workflow: "wf",
                     trigger: .every(Interval(seconds: 60))))
@@ -171,11 +171,11 @@ struct ScheduleStoreRuntimeTests {
     func mutationOnCollidedIdSurfacesCollision() async throws {
         // Given
         let configDir = try temporary.make("colmut-cfg")
-        let runtimeDirectory = try temporary.make("colmut-rt")
+        let stateDirectory = try temporary.make("colmut-rt")
         let state = configDir.appendingPathComponent("state.json")
         defer {
             try? FileManager.default.removeItem(at: configDir)
-            try? FileManager.default.removeItem(at: runtimeDirectory)
+            try? FileManager.default.removeItem(at: stateDirectory)
         }
         for (sub, wf) in [("a", "a"), ("b", "b")] {
             let directory = configDir.appendingPathComponent(sub)
@@ -187,7 +187,7 @@ struct ScheduleStoreRuntimeTests {
             """.write(to: directory.appendingPathComponent("dup.yaml"), atomically: true, encoding: .utf8)
         }
         
-        let store = ScheduleStore(configDir: configDir, runtimeDirectory: runtimeDirectory, stateFile: state)
+        let store = ScheduleStore(configDir: configDir, stateDirectory: stateDirectory, stateFile: state)
         do {
 
         // When
@@ -211,7 +211,7 @@ struct ScheduleStoreRuntimeTests {
         // Given
         let directory = try temporary.make("noeph")
         defer { try? FileManager.default.removeItem(at: directory) }
-        let store = ScheduleStore(configDir: directory, runtimeDirectory: nil, stateFile: try temporary.file("schedule-enabled.json"))
+        let store = ScheduleStore(configDir: directory, stateDirectory: nil, stateFile: try temporary.file("schedule-enabled.json"))
         do {
             try await store.create(Schedule(id: "x", workflow: "wf",
                     trigger: .every(Interval(seconds: 60))))
@@ -225,13 +225,13 @@ struct ScheduleStoreRuntimeTests {
     func createRejectsLeadingDotID() async throws {
         // Given
         let directory = try temporary.make("dot-d")
-        let runtimeDirectoryectory = try temporary.make("dot-e")
+        let stateDirectory = try temporary.make("dot-e")
         defer {
             try? FileManager.default.removeItem(at: directory)
-            try? FileManager.default.removeItem(at: runtimeDirectoryectory)
+            try? FileManager.default.removeItem(at: stateDirectory)
         }
         
-        let store = ScheduleStore(configDir: directory, runtimeDirectory: runtimeDirectoryectory, stateFile: try temporary.file("schedule-enabled.json"))
+        let store = ScheduleStore(configDir: directory, stateDirectory: stateDirectory, stateFile: try temporary.file("schedule-enabled.json"))
         do {
             try await store.create(Schedule(id: ".hidden", workflow: "wf",
                     trigger: .every(Interval(seconds: 60))))
@@ -239,20 +239,20 @@ struct ScheduleStoreRuntimeTests {
         // Then
             Issue.record("a leading-dot id must be rejected")
         } catch {  }
-        #expect(!FileManager.default.fileExists(atPath: runtimeDirectoryectory.appendingPathComponent(".hidden.yaml").path), "rejected, yet an orphan file was left behind")
+        #expect(!FileManager.default.fileExists(atPath: stateDirectory.appendingPathComponent(".hidden.yaml").path), "rejected, yet an orphan file was left behind")
     }
 
     @Test("Delete a runtime-owned entry")
     func deleteRuntime() async throws {
         // Given
         let directory = try temporary.make("del-d")
-        let runtimeDirectoryectory = try temporary.make("del-e")
+        let stateDirectory = try temporary.make("del-e")
         defer {
             try? FileManager.default.removeItem(at: directory)
-            try? FileManager.default.removeItem(at: runtimeDirectoryectory)
+            try? FileManager.default.removeItem(at: stateDirectory)
         }
         
-        let store = ScheduleStore(configDir: directory, runtimeDirectory: runtimeDirectoryectory, stateFile: try temporary.file("schedule-enabled.json"))
+        let store = ScheduleStore(configDir: directory, stateDirectory: stateDirectory, stateFile: try temporary.file("schedule-enabled.json"))
         let created = try await store.create(Schedule(id: "tmp", workflow: "wf",
                 trigger: .every(Interval(seconds: 60))))
 
@@ -265,17 +265,17 @@ struct ScheduleStoreRuntimeTests {
         let after = await store.lookup(created.id)
         #expect(after == nil)
         #expect(!FileManager.default.fileExists(
-                atPath: runtimeDirectoryectory.appendingPathComponent("\(created.id).yaml").path))
+                atPath: stateDirectory.appendingPathComponent("\(created.id).yaml").path))
     }
 
     @Test("Config-owned entries are deleted too")
     func deleteWorksOnConfig() async throws {
         // Given
         let directory = try temporary.make("deldur-d")
-        let runtimeDirectoryectory = try temporary.make("deldur-e")
+        let stateDirectory = try temporary.make("deldur-e")
         defer {
             try? FileManager.default.removeItem(at: directory)
-            try? FileManager.default.removeItem(at: runtimeDirectoryectory)
+            try? FileManager.default.removeItem(at: stateDirectory)
         }
         try #"""
         id: config
@@ -283,7 +283,7 @@ struct ScheduleStoreRuntimeTests {
         every: 1h
         """#.write(to: directory.appendingPathComponent("config.yaml"),
             atomically: true, encoding: .utf8)
-        let store = ScheduleStore(configDir: directory, runtimeDirectory: runtimeDirectoryectory, stateFile: try temporary.file("schedule-enabled.json"))
+        let store = ScheduleStore(configDir: directory, stateDirectory: stateDirectory, stateFile: try temporary.file("schedule-enabled.json"))
 
         // When
         try await store.delete(id: "config")
@@ -296,13 +296,13 @@ struct ScheduleStoreRuntimeTests {
     }
 
     @Test("Runtime directory nested inside config is not double-counted")
-    func runtimeDirectoryNestedNotDoubleCounted() async throws {
+    func stateDirectoryNestedNotDoubleCounted() async throws {
         // Given
         let directory = try temporary.make("nested")
-        let runtimeDirectoryectory = directory.appendingPathComponent("agent-runtime")
-        try FileManager.default.createDirectory(at: runtimeDirectoryectory, withIntermediateDirectories: true)
+        let stateDirectory = directory.appendingPathComponent("agent-runtime")
+        try FileManager.default.createDirectory(at: stateDirectory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
-        let store = ScheduleStore(configDir: directory, runtimeDirectory: runtimeDirectoryectory, stateFile: try temporary.file("schedule-enabled.json"))
+        let store = ScheduleStore(configDir: directory, stateDirectory: stateDirectory, stateFile: try temporary.file("schedule-enabled.json"))
         let created = try await store.create(Schedule(id: "nested-1", workflow: "wf",
                 trigger: .every(Interval(seconds: 60))))
         let entries = await store.reload().entries
@@ -317,7 +317,7 @@ struct ScheduleStoreRuntimeTests {
     func handEditedWorkflowAndSpecRefused() async throws {
         // Given
         let directory = try temporary.make("cfg-foreign"); defer { try? FileManager.default.removeItem(at: directory) }
-        let runtimeDirectoryectory = try temporary.make("rt-foreign"); defer { try? FileManager.default.removeItem(at: runtimeDirectoryectory) }
+        let stateDirectory = try temporary.make("rt-foreign"); defer { try? FileManager.default.removeItem(at: stateDirectory) }
         try #"""
         id: he
         workflow: wf-x
@@ -329,7 +329,7 @@ struct ScheduleStoreRuntimeTests {
         workflow: wf-y
         every: 1m
         """#.write(to: directory.appendingPathComponent("ok.yaml"), atomically: true, encoding: .utf8)
-        let store = ScheduleStore(configDir: directory, runtimeDirectory: runtimeDirectoryectory, stateFile: try temporary.file("schedule-enabled.json"))
+        let store = ScheduleStore(configDir: directory, stateDirectory: stateDirectory, stateFile: try temporary.file("schedule-enabled.json"))
 
         // When
         let control = await store.lookup("ok")
@@ -344,13 +344,13 @@ struct ScheduleStoreRuntimeTests {
     func handEditedAnonymousSpecIsKeptAsWritten() async throws {
         // Given
         let directory = try temporary.make("cfg-anon"); defer { try? FileManager.default.removeItem(at: directory) }
-        let runtimeDirectoryectory = try temporary.make("rt-anon"); defer { try? FileManager.default.removeItem(at: runtimeDirectoryectory) }
+        let stateDirectory = try temporary.make("rt-anon"); defer { try? FileManager.default.removeItem(at: stateDirectory) }
         try #"""
         id: ha
         every: 1m
         spec: {}
         """#.write(to: directory.appendingPathComponent("ha.yaml"), atomically: true, encoding: .utf8)
-        let store = ScheduleStore(configDir: directory, runtimeDirectory: runtimeDirectoryectory, stateFile: try temporary.file("schedule-enabled.json"))
+        let store = ScheduleStore(configDir: directory, stateDirectory: stateDirectory, stateFile: try temporary.file("schedule-enabled.json"))
 
         // When
         let fetched = await store.lookup("ha")

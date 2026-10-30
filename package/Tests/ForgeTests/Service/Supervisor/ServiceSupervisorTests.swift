@@ -287,7 +287,7 @@ final class ServiceSupervisorTests {
     private func makeSupervisor(_ services: [ServiceConfig]) -> ServiceSupervisor {
         ServiceSupervisor(
             services: services,
-            runtimeDirectory: temporaryDirectory,
+            stateDirectory: temporaryDirectory,
             tokenAuthority: TokenAuthority()
         )
     }

@@ -37,12 +37,12 @@ actor ServiceSupervisor {
     private let stateDir: URL
     
     // MARK: - Initializer
-    init(services: [ServiceConfig], runtimeDirectory: URL, tokenAuthority: TokenAuthority) {
+    init(services: [ServiceConfig], stateDirectory: URL, tokenAuthority: TokenAuthority) {
         self.specs = Dictionary(
             uniqueKeysWithValues: services.map { service in (service.name, service) }
         )
         self.tokenAuthority = tokenAuthority
-        self.stateDir = runtimeDirectory.appendingPathComponent("services", isDirectory: true)
+        self.stateDir = stateDirectory.appendingPathComponent("services", isDirectory: true)
     }
     
     // MARK: - Public

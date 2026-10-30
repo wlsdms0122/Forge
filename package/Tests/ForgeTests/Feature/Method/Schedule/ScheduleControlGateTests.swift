@@ -86,7 +86,7 @@ struct ScheduleControlGateTests {
     
     private func seedSchedule(_ directory: URL, _ authority: TokenAuthority) async throws -> (ScheduleStore, String) {
         let store = ScheduleStore(
-            configDir: nil, runtimeDirectory: directory,
+            configDir: nil, stateDirectory: directory,
             stateFile: FileManager.default.temporaryDirectory
             .appendingPathComponent("forge-sched-enabled-\(UUID().uuidString.prefix(6)).json"))
         let create = ScheduleCreateMethod(

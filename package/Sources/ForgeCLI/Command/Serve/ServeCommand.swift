@@ -34,14 +34,14 @@ struct ServeCommand: AsyncParsableCommand {
                 env only fills keys left silent by toml (emergency override).
                 PATH ANCHORING: a relative path written in the toml resolves
                 against the toml's directory; unspecified catalogs/logs default
-                under instanceHome. runtime·socket are instance-owned.
+                under instanceHome. state·socket are instance-owned.
 
             CONFIG SCHEMA (everything optional — convention defaults shown)
                 [directory]  root (default `<instanceHome>/document`) holds the
                         workflows and the files they read; schedule · policy
                         default to `<instanceHome>/<key>`. A relative value
                         resolves against the toml's directory.
-                        (runtime is instance-owned at `<instanceHome>/runtime` —
+                        (state is instance-owned at `<instanceHome>/state`,
                         not configurable.)
                 [log]   jsonl · error · maximum_bytes (default 50 MiB). Default under
                         `<instanceHome>/log`.
@@ -60,14 +60,16 @@ struct ServeCommand: AsyncParsableCommand {
                 [hooks] logging (default true).
                 Inspect the resolved values + their source with `forge status`.
 
-            STATE FILES
+            FILES
                 <instanceHome>/forged.sock      Unix socket (RPC entry).
                 <instanceHome>/runtime.json     self-record (pid, instance, socket,
                                                resolved paths). Written on boot,
                                                deleted on clean shutdown — a
                                                down/crashed-daemon diagnostic
                                                (clients discover via instance, not this).
-                <runtime_directory>/                 jobs · scratch · service/schedule state.
+                <state_directory>/             what outlives a restart: jobs,
+                                               schedules, service pid files and
+                                               logs, the fire and enabled ledgers.
                 <log_jsonl>                    structured JSONL event log.
                 <error_log>                    stderr / traceback log.
 

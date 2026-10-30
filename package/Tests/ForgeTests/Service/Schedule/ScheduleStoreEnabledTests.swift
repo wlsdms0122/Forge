@@ -22,9 +22,9 @@ struct ScheduleStoreEnabledTests {
     func setEnabledPreservesAllOtherFields() async throws {
         // Given
         let directory = try temporary.make("toggle-cfg"); defer { try? FileManager.default.removeItem(at: directory) }
-        let runtimeDirectoryectory = try temporary.make("toggle-rt"); defer { try? FileManager.default.removeItem(at: runtimeDirectoryectory) }
-        let stateFile = runtimeDirectoryectory.appendingPathComponent("enabled-overrides.json")
-        let store = ScheduleStore(configDir: directory, runtimeDirectory: runtimeDirectoryectory, stateFile: stateFile)
+        let stateDirectory = try temporary.make("toggle-rt"); defer { try? FileManager.default.removeItem(at: stateDirectory) }
+        let stateFile = stateDirectory.appendingPathComponent("enabled-overrides.json")
+        let store = ScheduleStore(configDir: directory, stateDirectory: stateDirectory, stateFile: stateFile)
         let created = try await store.create(Schedule(
                 id: "tog", workflow: WorkflowCatalog.inlineSigil,
                 trigger: .every(Interval(seconds: 90)),
@@ -216,14 +216,14 @@ struct ScheduleStoreEnabledTests {
 
     @Test("Strings that look sexagesimal round-trip verbatim")
     func createRoundTripsSexagesimalString() async throws {
-        let runtimeDirectoryectory = try temporary.make("sexagesimal"); defer { try? FileManager.default.removeItem(at: runtimeDirectoryectory) }
+        let stateDirectory = try temporary.make("sexagesimal"); defer { try? FileManager.default.removeItem(at: stateDirectory) }
         let state = try temporary.file("schedule-enabled.json")
-        let store = ScheduleStore(configDir: nil, runtimeDirectory: runtimeDirectoryectory, stateFile: state)
+        let store = ScheduleStore(configDir: nil, stateDirectory: stateDirectory, stateFile: state)
         let created = try await store.create(Schedule(
                 id: "sg", workflow: "wf",
                 trigger: .every(Interval(seconds: 3600)),
                 inputs: ["at_time": .string("09:20"), "window": .string("09:20:00"), "n": .int(5)]))
-        let fresh = ScheduleStore(configDir: nil, runtimeDirectory: runtimeDirectoryectory, stateFile: state)
+        let fresh = ScheduleStore(configDir: nil, stateDirectory: stateDirectory, stateFile: state)
         let decoded = await fresh.lookup(created.id)
         #expect(decoded?.inputs?["at_time"] == .string("09:20"), "a time-of-day-looking string must not degrade into a sexagesimal number")
         #expect(decoded?.inputs?["window"] == .string("09:20:00"))

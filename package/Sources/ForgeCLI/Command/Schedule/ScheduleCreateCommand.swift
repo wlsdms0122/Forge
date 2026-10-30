@@ -15,7 +15,7 @@ struct ScheduleCreateCommand: ParsableCommand {
         commandName: "create",
         abstract: "Create a schedule (runtime dir).",
         discussion: """
-            Registers a schedule in the runtime dir (runtime_directory/schedule).
+            Registers a schedule in the runtime dir (state_directory/schedule).
             Fires either a workflow under the root (`--workflow <path>`) or an
             inline workflow (`--spec <json>`) on a trigger, exactly one of:
 

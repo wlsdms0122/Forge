@@ -367,7 +367,7 @@ enum ConfigLoader {
     ) -> ForgeConfig {
         let providers = resolveProviders(file.providers, environment: environment)
         let anchor = tomlDirectory ?? instanceHome
-        let runtimeDirectory = Instance.runtimeDirectory(in: instanceHome)
+        let stateDirectory = Instance.stateDirectory(in: instanceHome)
         let logDir = instanceHome.appendingPathComponent("log")
         let logJSONL = resolveURLWithDefault(
             cli: nil,
@@ -471,7 +471,7 @@ enum ConfigLoader {
         }
         
         return ForgeConfig(
-            runtimeDirectory: runtimeDirectory,
+            stateDirectory: stateDirectory,
             logJSONL: logJSONL,
             errorLog: errorLog,
             logMaximumBytes: logMaximumBytes,

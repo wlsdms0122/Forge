@@ -37,7 +37,7 @@ struct DaemonStatusMethodTests {
         let socketEntry = try #require(values.first { value in (value["key"]?.stringValue) == "socket" })
         #expect(socketEntry["value"]?.stringValue == socket)
         #expect(socketEntry["source"]?.stringValue == "instance")
-        let runtimeEntry = try #require(values.first { value in (value["key"]?.stringValue) == "runtime_directory" })
+        let runtimeEntry = try #require(values.first { value in (value["key"]?.stringValue) == "state_directory" })
         #expect(runtimeEntry["value"]?.stringValue == home.appendingPathComponent("runtime").path)
         #expect(runtimeEntry["source"]?.stringValue == "instance")
         let runtime = try #require(result["runtime"]?.objectValue)
@@ -69,16 +69,16 @@ struct DaemonStatusMethodTests {
         let method = DaemonStatusMethod(
             instance: "test",
             socketPath: "/tmp/s.sock",
-            runtimeDirectory: home.appendingPathComponent("runtime"),
+            stateDirectory: home.appendingPathComponent("runtime"),
             bootedAt: .fixture,
             configSnapshot: ConfigSnapshot(report),
             catalog: try WorkflowCatalog(directory: nil),
             scheduleStore: ScheduleStore(
                 configDir: nil,
-                runtimeDirectory: nil,
+                stateDirectory: nil,
                 stateFile: try temporary.file("enabled-\(UUID().uuidString.prefix(6)).json")),
             jobStore: JobStore(directory: nil),
-            supervisor: ServiceSupervisor(services: [], runtimeDirectory: home, tokenAuthority: authority),
+            supervisor: ServiceSupervisor(services: [], stateDirectory: home, tokenAuthority: authority),
             serviceBus: ServiceBus())
 
         // When
@@ -98,14 +98,14 @@ struct DaemonStatusMethodTests {
     private func makeMethod(_ home: URL, socket: String) throws -> (DaemonStatusMethod, TokenAuthority) {
         let authority = TokenAuthority()
         let method = DaemonStatusMethod(
-            instance: "test", socketPath: socket, runtimeDirectory: home.appendingPathComponent("runtime"),
+            instance: "test", socketPath: socket, stateDirectory: home.appendingPathComponent("runtime"),
             bootedAt: .fixture,
             configSnapshot: ConfigSnapshot((try? ConfigLoader.loadResolved(configPath: nil, instanceHome: home, environment: [:]).report)
                 ?? ConfigReport(tomlPath: nil, entries: [])),
             catalog: try WorkflowCatalog(directory: nil),
-            scheduleStore: ScheduleStore(configDir: nil, runtimeDirectory: nil, stateFile: FileManager.default.temporaryDirectory.appendingPathComponent("forge-sched-enabled-\(UUID().uuidString.prefix(6)).json")),
+            scheduleStore: ScheduleStore(configDir: nil, stateDirectory: nil, stateFile: FileManager.default.temporaryDirectory.appendingPathComponent("forge-sched-enabled-\(UUID().uuidString.prefix(6)).json")),
             jobStore: JobStore(directory: nil),
-            supervisor: ServiceSupervisor(services: [], runtimeDirectory: home, tokenAuthority: authority),
+            supervisor: ServiceSupervisor(services: [], stateDirectory: home, tokenAuthority: authority),
             serviceBus: ServiceBus())
         
         return (method, authority)

@@ -39,8 +39,8 @@ struct ConfigLoaderTests {
         #expect(concurrency.source.label == "environment (FORGE_POOL_MAXIMUM_CONCURRENT_STEPS)")
         #expect(concurrency.value == "8")
         let runtimeOverride = try ConfigLoader.loadWithSources(configPath: noToml, instanceHome: home,
-            environment: ["FORGE_RUNTIME": "/tmp/rt"])
-        #expect(runtimeOverride.entries.first { entry in entry.key == "runtime_directory" } == nil)
+            environment: ["FORGE_STATE": "/tmp/rt"])
+        #expect(runtimeOverride.entries.first { entry in entry.key == "state_directory" } == nil)
         #expect(runtimeOverride.entries.first { entry in entry.key == "socket" } == nil)
     }
     
@@ -74,7 +74,7 @@ struct ConfigLoaderTests {
         #expect(configuration.rootDirectory?.path == home.appendingPathComponent("document").path)
         #expect(configuration.scheduleDirectory?.path == home.appendingPathComponent("schedule").path)
         #expect(configuration.policyDirectory?.path == home.appendingPathComponent("policy").path)
-        #expect(configuration.runtimeDirectory.path == home.appendingPathComponent("runtime").path)
+        #expect(configuration.stateDirectory.path == home.appendingPathComponent("state").path)
         #expect(configuration.logJSONL.path == home.appendingPathComponent("log/forge.log.jsonl").path)
         #expect(configuration.pool.maximumConcurrentSteps == 2)
         #expect(!(configuration.rootDirectory!.path.hasPrefix(directory.path)), "the root must not be tied to the config.toml location")
@@ -99,7 +99,7 @@ struct ConfigLoaderTests {
         let configuration = ConfigLoader.build(file: try ConfigLoader.parse(url), tomlDirectory: directory, instanceHome: home, environment: [:])
 
         // Then
-        #expect(configuration.runtimeDirectory.path == home.appendingPathComponent("runtime").path)
+        #expect(configuration.stateDirectory.path == home.appendingPathComponent("state").path)
         #expect(configuration.rootDirectory?.path == directory.appendingPathComponent("doc").path)
         #expect(configuration.policyDirectory?.path == directory.appendingPathComponent("pol").path)
         #expect(configuration.logJSONL.path == directory.appendingPathComponent("logs/f.jsonl").path)

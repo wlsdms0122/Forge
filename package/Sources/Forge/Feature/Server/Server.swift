@@ -14,7 +14,7 @@ package actor Server {
     let catalog: WorkflowCatalog
     let scheduleStore: ScheduleStore
     let fireLedger: FireLedger
-    let runtimeScheduleDirectory: URL
+    let stateScheduleDirectory: URL
     let jobStore: JobStore
     let jobDirectory: URL
     let policyStore: PolicyStore
@@ -59,7 +59,7 @@ package actor Server {
         }
         
         let backends = BackendRegistry(byProvider)
-        let jobDirectoryLocal = config.runtimeDirectory.appendingPathComponent("jobs")
+        let jobDirectoryLocal = config.stateDirectory.appendingPathComponent("jobs")
         let jobStoreLocal = JobStore(directory: jobDirectoryLocal)
         
         var preHooks: [any PreHook] = []
@@ -82,14 +82,14 @@ package actor Server {
             directory: config.rootDirectory,
             builder: WorkflowBuilder(vocabulary: vocabulary)
         )
-        let runtimeScheduleDirectory = config.runtimeDirectory.appendingPathComponent("schedule")
+        let stateScheduleDirectory = config.stateDirectory.appendingPathComponent("schedule")
         let scheduleStore = ScheduleStore(
             configDir: config.scheduleDirectory,
-            runtimeDirectory: runtimeScheduleDirectory,
-            stateFile: config.runtimeDirectory.appendingPathComponent("schedule-enabled.json")
+            stateDirectory: stateScheduleDirectory,
+            stateFile: config.stateDirectory.appendingPathComponent("schedule-enabled.json")
         )
         let fireLedger = FireLedger(
-            path: config.runtimeDirectory.appendingPathComponent("fire-ledger.json")
+            path: config.stateDirectory.appendingPathComponent("fire-ledger.json")
         )
         let documentRoot = DocumentRoot(directory: config.rootDirectory)
         let policyStoreLocal = PolicyStore(directory: config.policyDirectory)
@@ -128,7 +128,7 @@ package actor Server {
         self.catalog = catalogLocal
         self.scheduleStore = scheduleStore
         self.fireLedger = fireLedger
-        self.runtimeScheduleDirectory = runtimeScheduleDirectory
+        self.stateScheduleDirectory = stateScheduleDirectory
         self.jobStore = jobStoreLocal
         self.jobDirectory = jobDirectoryLocal
         self.policyStore = policyStoreLocal
@@ -142,7 +142,7 @@ package actor Server {
         
         let supervisorLocal = ServiceSupervisor(
             services: config.services,
-            runtimeDirectory: config.runtimeDirectory,
+            stateDirectory: config.stateDirectory,
             tokenAuthority: tokenAuthorityLocal
         )
         self.serviceSupervisor = supervisorLocal
@@ -150,7 +150,7 @@ package actor Server {
         let daemonStatusMethod = DaemonStatusMethod(
             instance: instance,
             socketPath: socketPath,
-            runtimeDirectory: config.runtimeDirectory,
+            stateDirectory: config.stateDirectory,
             bootedAt: self.bootedAt,
             configSnapshot: configSnapshot,
             catalog: catalogLocal,
@@ -212,7 +212,7 @@ package actor Server {
         }
         
         setenv("FORGE_SOCKET", socketPath, 1)
-        setenv("FORGE_RUNTIME", config.runtimeDirectory.path, 1)
+        setenv("FORGE_STATE", config.stateDirectory.path, 1)
         
         await Log.shared.setSink(config.logJSONL)
         await Log.shared.setErrorSink(config.errorLog)
@@ -237,11 +237,11 @@ package actor Server {
         await Log.shared.append(
             "runtime.boot",
             [
-                "runtime_directory":          config.runtimeDirectory.path,
+                "state_directory":          config.stateDirectory.path,
                 "socket":                     socketPath,
                 "root_directory":             config.rootDirectory?.path ?? "",
                 "schedule_directory":         config.scheduleDirectory?.path ?? "",
-                "runtime_schedule_directory": runtimeScheduleDirectory.path,
+                "runtime_schedule_directory": stateScheduleDirectory.path,
                 "job_directory":              jobDirectory.path,
                 "policy_directory":           config.policyDirectory?.path ?? ""
             ],
@@ -347,7 +347,7 @@ package actor Server {
             "error_log":                  config.errorLog.path,
             "root_directory":             config.rootDirectory?.path ?? "",
             "schedule_directory":         config.scheduleDirectory?.path ?? "",
-            "runtime_schedule_directory": runtimeScheduleDirectory.path,
+            "runtime_schedule_directory": stateScheduleDirectory.path,
             "job_directory":              jobDirectory.path
         ]
         let url = runtimeInfoURL()

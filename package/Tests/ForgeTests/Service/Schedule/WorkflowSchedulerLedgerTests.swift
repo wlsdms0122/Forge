@@ -33,7 +33,7 @@ struct WorkflowSchedulerLedgerTests {
         let ledger = FireLedger(path: try fixture.temporary.make("outcome-led").appendingPathComponent("l.json"))
         let scheduler = WorkflowScheduler(
             catalog: catalog,
-            store: try fixture.scheduleStore(configDir: schedDir, runtimeDirectory: try fixture.temporary.make("sched-rt-a"), ids: ["ok": "wfo.yaml", "ghost": "nope"]),
+            store: try fixture.scheduleStore(configDir: schedDir, stateDirectory: try fixture.temporary.make("sched-rt-a"), ids: ["ok": "wfo.yaml", "ghost": "nope"]),
             ledger: ledger, runner: fixture.runner(catalog: catalog), tickIntervalSeconds: 1)
 
         // When
@@ -67,7 +67,7 @@ struct WorkflowSchedulerLedgerTests {
         let ledger = FireLedger(path: try fixture.temporary.make("live-led").appendingPathComponent("l.json"))
         let scheduler = WorkflowScheduler(
             catalog: catalog,
-            store: try fixture.scheduleStore(configDir: configDir, runtimeDirectory: try fixture.temporary.make("live-rt"), ids: ["keep": "wfl.yaml"]),
+            store: try fixture.scheduleStore(configDir: configDir, stateDirectory: try fixture.temporary.make("live-rt"), ids: ["keep": "wfl.yaml"]),
             ledger: ledger, runner: fixture.runner(catalog: catalog), tickIntervalSeconds: 1)
 
         // When

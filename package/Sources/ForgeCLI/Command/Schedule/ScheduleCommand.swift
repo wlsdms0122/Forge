@@ -24,7 +24,7 @@ struct ScheduleCommand: ParsableCommand {
 
                 config     schedule_directory/*.yaml — hand-authored. The daemon's
                            autonomous machinery never mutates these.
-                runtime    runtime_directory/schedule/*.yaml — created via `create`,
+                runtime    state_directory/schedule/*.yaml — created via `create`,
                            daemon-owned.
 
             `create` writes to the runtime dir. `delete` and enable/disable act

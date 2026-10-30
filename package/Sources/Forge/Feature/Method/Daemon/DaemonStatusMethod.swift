@@ -11,7 +11,7 @@ struct DaemonStatusMethod: Sendable {
     // MARK: - Property
     let instance: String
     let socketPath: String
-    let runtimeDirectory: URL
+    let stateDirectory: URL
     let bootedAt: Date
     let configSnapshot: ConfigSnapshot
     let catalog: WorkflowCatalog
@@ -27,7 +27,7 @@ struct DaemonStatusMethod: Sendable {
         
         if var values = config["values"]?.arrayValue {
             values.append(["key": "socket", "value": .string(socketPath), "source": "instance"])
-            values.append(["key": "runtime_directory", "value": .string(runtimeDirectory.path), "source": "instance"])
+            values.append(["key": "state_directory", "value": .string(stateDirectory.path), "source": "instance"])
             config["values"] = .array(values)
         }
         

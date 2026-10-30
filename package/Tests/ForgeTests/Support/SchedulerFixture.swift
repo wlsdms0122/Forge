@@ -116,7 +116,7 @@ struct SchedulerFixture {
         let seeds = scheduleYAML.mapValues(Self.declaredWorkflow)
         let store = try scheduleStore(
             configDir: scheduleDirectoryectory,
-            runtimeDirectory: try temporary.make("schedule-rt"),
+            stateDirectory: try temporary.make("schedule-rt"),
             ids: seeds)
         let path = try ledgerPath ?? temporary.file("fire-ledger.json")
         let catalog = try self.catalog(directory: workflowDirectory)
@@ -138,19 +138,19 @@ struct SchedulerFixture {
         onceYAML: String,
         onceFileName: String,
         configDir: URL,
-        runtimeDirectory: URL,
+        stateDirectory: URL,
         marker: URL,
         runtimeOwned: Bool = false
     ) async throws -> (scheduler: WorkflowScheduler, ledger: FireLedger, onceFile: URL) {
         let workflow = markerWorkflow(path: "wfonce.yaml", marker: marker, tag: "1", sleep: 0.1)
         let workflowDirectory = try temporary.make("once-wf")
         try write(workflow, to: workflowDirectory)
-        let onceFile = (runtimeOwned ? runtimeDirectory : configDir)
+        let onceFile = (runtimeOwned ? stateDirectory : configDir)
             .appendingPathComponent(onceFileName)
         try onceYAML.write(to: onceFile, atomically: true, encoding: .utf8)
         let store = try scheduleStore(
             configDir: configDir,
-            runtimeDirectory: runtimeDirectory,
+            stateDirectory: stateDirectory,
             ids: [(onceFileName as NSString).deletingPathExtension: Self.declaredWorkflow(onceYAML)])
         let ledger = FireLedger(path: try temporary.make("once-led").appendingPathComponent("l.json"))
         let catalog = try self.catalog(directory: workflowDirectory)
@@ -168,11 +168,11 @@ struct SchedulerFixture {
     }
 
     // A store that starts enabled, with (id, workflow) pre-seeded into the ledger.
-    func scheduleStore(configDir: URL?, runtimeDirectory: URL?, ids: [String: String]) throws -> ScheduleStore {
+    func scheduleStore(configDir: URL?, stateDirectory: URL?, ids: [String: String]) throws -> ScheduleStore {
         let state = try temporary.make("enabled").appendingPathComponent("schedule-enabled.json")
         try JSONSerialization.data(withJSONObject: ids).write(to: state)
 
-        return ScheduleStore(configDir: configDir, runtimeDirectory: runtimeDirectory, stateFile: state)
+        return ScheduleStore(configDir: configDir, stateDirectory: stateDirectory, stateFile: state)
     }
 
     // A path that cannot be created because its parent is a file — triggers a ledger persist failure.

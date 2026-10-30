@@ -28,7 +28,7 @@ struct WorkflowSchedulerOnceTests {
         let (scheduler, ledger, onceFile) = try await fixture.onceScheduler(
             onceYAML: "id: \(badID)\nworkflow: nope\nonce: \"2020-01-01 00:00:00\"\ntimezone: Asia/Seoul\n",
             onceFileName: "\(badID).yaml",
-            configDir: directory, runtimeDirectory: rtDir, marker: marker, runtimeOwned: true)
+            configDir: directory, stateDirectory: rtDir, marker: marker, runtimeOwned: true)
         let records = try await LogSinkCapture.capture("sched-once-denied") { capture in
             await scheduler.tickOnce()
             try await Task.sleep(for: .milliseconds(200))
@@ -58,7 +58,7 @@ struct WorkflowSchedulerOnceTests {
         let (scheduler, ledger, onceFile) = try await fixture.onceScheduler(
             onceYAML: "id: \(rtID)\nworkflow: wfonce.yaml\nonce: \"2020-01-01 00:00:00\"\ntimezone: Asia/Seoul\n",
             onceFileName: "\(rtID).yaml",
-            configDir: directory, runtimeDirectory: rtDir, marker: marker, runtimeOwned: true)
+            configDir: directory, stateDirectory: rtDir, marker: marker, runtimeOwned: true)
 
         // When
         await scheduler.tickOnce()
@@ -81,12 +81,12 @@ struct WorkflowSchedulerOnceTests {
     func onceConfigStaysAfterFire() async throws {
         // Given
         let configDir = try fixture.temporary.make("once-cfg")
-        let runtimeDirectory = try fixture.temporary.make("once-cfg-rt")
+        let stateDirectory = try fixture.temporary.make("once-cfg-rt")
         let marker = try fixture.temporary.make("once-cfg-m").appendingPathComponent("m")
         let (scheduler, ledger, onceFile) = try await fixture.onceScheduler(
             onceYAML: "id: cfg\nworkflow: wfonce.yaml\nonce: \"2020-01-01 00:00:00\"\ntimezone: Asia/Seoul\n",
             onceFileName: "cfg.yaml",
-            configDir: configDir, runtimeDirectory: runtimeDirectory, marker: marker)
+            configDir: configDir, stateDirectory: stateDirectory, marker: marker)
 
         // When
         await scheduler.tickOnce()

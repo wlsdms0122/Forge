@@ -29,7 +29,7 @@ struct CreatePolicyGateTests {
         defer { try? FileManager.default.removeItem(at: directory) }
         let authority = TokenAuthority()
         let method = ScheduleCreateMethod(
-            store: ScheduleStore(configDir: nil, runtimeDirectory: directory, stateFile: FileManager.default.temporaryDirectory.appendingPathComponent("forge-sched-enabled-\(UUID().uuidString.prefix(6)).json")),
+            store: ScheduleStore(configDir: nil, stateDirectory: directory, stateFile: FileManager.default.temporaryDirectory.appendingPathComponent("forge-sched-enabled-\(UUID().uuidString.prefix(6)).json")),
             catalog: try WorkflowCatalog(directory: nil),
             policyStore: PolicyStore(seed: ["cli:response": ["<inline>"]]))
         let token = authority.mint(TokenClaims(principal: "cli:response"))
@@ -47,7 +47,7 @@ struct CreatePolicyGateTests {
         let directory = try temporary.make("once-deny")
         defer { try? FileManager.default.removeItem(at: directory) }
         let authority = TokenAuthority()
-        let store = ScheduleStore(configDir: nil, runtimeDirectory: directory, stateFile: FileManager.default.temporaryDirectory.appendingPathComponent("forge-sched-enabled-\(UUID().uuidString.prefix(6)).json"))
+        let store = ScheduleStore(configDir: nil, stateDirectory: directory, stateFile: FileManager.default.temporaryDirectory.appendingPathComponent("forge-sched-enabled-\(UUID().uuidString.prefix(6)).json"))
         let method = ScheduleCreateMethod(
             store: store,
             catalog: try WorkflowCatalog(directory: nil),
@@ -75,7 +75,7 @@ struct CreatePolicyGateTests {
         let directory = try temporary.make("sched-deny")
         defer { try? FileManager.default.removeItem(at: directory) }
         let authority = TokenAuthority()
-        let store = ScheduleStore(configDir: nil, runtimeDirectory: directory, stateFile: FileManager.default.temporaryDirectory.appendingPathComponent("forge-sched-enabled-\(UUID().uuidString.prefix(6)).json"))
+        let store = ScheduleStore(configDir: nil, stateDirectory: directory, stateFile: FileManager.default.temporaryDirectory.appendingPathComponent("forge-sched-enabled-\(UUID().uuidString.prefix(6)).json"))
         let method = ScheduleCreateMethod(
             store: store,
             catalog: try WorkflowCatalog(directory: nil),
@@ -103,7 +103,7 @@ struct CreatePolicyGateTests {
         defer { try? FileManager.default.removeItem(at: directory) }
         let authority = TokenAuthority()
         let method = ScheduleCreateMethod(
-            store: ScheduleStore(configDir: nil, runtimeDirectory: directory, stateFile: FileManager.default.temporaryDirectory.appendingPathComponent("forge-sched-enabled-\(UUID().uuidString.prefix(6)).json")),
+            store: ScheduleStore(configDir: nil, stateDirectory: directory, stateFile: FileManager.default.temporaryDirectory.appendingPathComponent("forge-sched-enabled-\(UUID().uuidString.prefix(6)).json")),
             catalog: try WorkflowCatalog(directory: nil),
             policyStore: PolicyStore(seed: ["cli:*": ["<inline>"]]))
         let token = authority.mint(TokenClaims(principal: "cli:response"))

@@ -120,7 +120,7 @@ struct WorkflowSchedulerConcurrencyTests {
         .write(to: schedDir.appendingPathComponent("r.yaml"), atomically: true, encoding: .utf8)
         let scheduler = WorkflowScheduler(
             catalog: catalog,
-            store: try fixture.scheduleStore(configDir: schedDir, runtimeDirectory: try fixture.temporary.make("sched-rt-b"), ids: ["r": "wfr.yaml"]),
+            store: try fixture.scheduleStore(configDir: schedDir, stateDirectory: try fixture.temporary.make("sched-rt-b"), ids: ["r": "wfr.yaml"]),
             ledger: FireLedger(path: try fixture.temporary.make("den-rep-led").appendingPathComponent("l.json")),
             runner: fixture.runner(catalog: catalog),
             tickIntervalSeconds: 1

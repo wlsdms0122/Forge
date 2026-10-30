@@ -46,10 +46,10 @@ struct ScheduleStoreTests {
     func runtimeAndConfigIdSpacesCannotCollide() async throws {
         // Given
         let configDir = try temporary.make("ns-cfg")
-        let runtimeDirectory = try temporary.make("ns-rt")
+        let stateDirectory = try temporary.make("ns-rt")
         defer {
             try? FileManager.default.removeItem(at: configDir)
-            try? FileManager.default.removeItem(at: runtimeDirectory)
+            try? FileManager.default.removeItem(at: stateDirectory)
         }
         try #"""
         id: rt.squat
@@ -61,9 +61,9 @@ struct ScheduleStoreTests {
         id: plain
         workflow: b
         every: 2h
-        """#.write(to: runtimeDirectory.appendingPathComponent("plain.yaml"),
+        """#.write(to: stateDirectory.appendingPathComponent("plain.yaml"),
             atomically: true, encoding: .utf8)
-        let store = ScheduleStore(configDir: configDir, runtimeDirectory: runtimeDirectory,
+        let store = ScheduleStore(configDir: configDir, stateDirectory: stateDirectory,
             stateFile: try temporary.file("schedule-enabled.json"))
 
         // When
@@ -99,7 +99,7 @@ struct ScheduleStoreTests {
         every: 2h
         """#.write(to: configDir.appendingPathComponent("b/dup.yaml"),
             atomically: true, encoding: .utf8)
-        let store = ScheduleStore(configDir: configDir, runtimeDirectory: nil, stateFile: try temporary.file("schedule-enabled.json"))
+        let store = ScheduleStore(configDir: configDir, stateDirectory: nil, stateFile: try temporary.file("schedule-enabled.json"))
 
         // When
         let schedule = await store.lookup("dup")
