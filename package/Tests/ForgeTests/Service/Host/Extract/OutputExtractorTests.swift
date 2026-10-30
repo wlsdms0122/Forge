@@ -449,14 +449,19 @@ struct OutputExtractorTests {
         #expect(error is OutputResolutionError, "explicit null without a default should fail — this field has no default")
     }
     
-    @Test("An explicit null stays null even with a default")
-    func explicitNullWithDefaultReturnsNull() throws {
+    @Test("An explicit null takes the default")
+    func explicitNullTakesDefault() throws {
+        // Given
         let stdout = #"{"a":null}"#
-        let declarations = ["a": OutputSpec(extractor: .path(try JSONPath("$.a")), default: .null)]
+        let declarations = ["a": OutputSpec(extractor: .path(try JSONPath("$.a")), default: .string("fallback"))]
+
+        // When
         let output = try OutputExtractor.extract(stdout: stdout, declarations: declarations)
+
+        // Then
         let object = try #require(output.objectValue)
         
-        #expect(object["a"] == .null)
+        #expect(object["a"] == .string("fallback"))
     }
     
     @Test("Uses the whole match when there is no capture group")

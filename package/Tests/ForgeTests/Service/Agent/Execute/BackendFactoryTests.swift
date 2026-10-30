@@ -14,7 +14,7 @@ struct BackendFactoryTests {
     // MARK: - Property
     // MARK: - Initializer
     // MARK: - Test
-    @Test("the claude_cli kind builds a claude backend")
+    @Test("the claude-cli kind builds a claude backend")
     func claudeCliKindMakesClaudeBackend() {
         // Given
         let backend = BackendFactory.make(ProviderConfig(
@@ -24,7 +24,7 @@ struct BackendFactoryTests {
         #expect(backend is ClaudeBackend, "got \(String(describing: backend))")
     }
     
-    @Test("the openai-compatible kind builds an agent loop backend")
+    @Test("the openai-compat kind builds an agent loop backend")
     func openAICompatibleKindMakesAgentLoopBackend() {
         // Given
         let backend = BackendFactory.make(ProviderConfig(
@@ -35,7 +35,7 @@ struct BackendFactoryTests {
         #expect(backend is AgentLoopBackend, "got \(String(describing: backend))")
     }
     
-    @Test("the codex_cli kind builds a codex backend")
+    @Test("the codex-cli kind builds a codex backend")
     func codexCliKindMakesCodexBackend() {
         // Given
         let backend = BackendFactory.make(ProviderConfig(
