@@ -118,12 +118,11 @@ there issuance is delegation (§5).
 | Code | Meaning |
 |------|---------|
 | 0 | success |
-| 1 | daemon boot failure (`serve`) |
-| 2 | argument parse error |
-| 3 | configuration load failure |
-| 4 | payload validation failure (incl. missing token) |
-| 5 | RPC error returned by the daemon |
-| 6 | RPC rejected for a stale/invalid token — reissue needed |
+| 1 | the command itself failed: `serve` could not boot (a config it cannot load included), `service register` could not register or lost the daemon, `policy check` denied, `workflow check` found a failing file |
+| 4 | the request could not be formed: a missing token, a bad JSON option, conflicting flags, an unusable instance or socket path |
+| 5 | the call failed: the daemon returned an RPC error or could not be reached, or `service describe` named a service that is not registered |
+| 6 | RPC rejected for a stale or invalid token; reissue it |
+| 64 | argument parse error (`EX_USAGE`) |
 
 ---
 
