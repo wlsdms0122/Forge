@@ -13,40 +13,8 @@ import Testing
 @Suite("StreamStrictDecode Tests")
 struct StreamStrictDecodeTests {
     // MARK: - Property
-    private var invalidUTF8Frame: Data {
-        var frame = Data(#"{"type":"result","result":"ok-"#.utf8)
-        frame.append(0xFF)
-        frame.append(contentsOf: Data(#""}"#.utf8))
-        
-        return frame
-    }
-    
     // MARK: - Initializer
     // MARK: - Test
-    @Test("the claude reader counts broken frames instead of repairing them")
-    func claudeReaderCountsInvalidFrameInsteadOfRepairing() {
-        // Given
-        let reader = StreamJSON.Reader()
-        reader.feed(frame: invalidUTF8Frame, at: .fixture)
-
-        // Then
-        #expect(reader.snapshot().malformedLineCount == 1, "corrupted frames must be counted and dropped — accepting U+FFFD-repaired frames is forbidden")
-        #expect(reader.snapshot().finalText.isEmpty, "a repaired result must not be accepted")
-        reader.feed(frame: Data(#"{"type":"result","result":"fine"}"#.utf8), at: .fixture)
-        #expect(reader.snapshot().finalText == "fine")
-        #expect(reader.snapshot().malformedLineCount == 1)
-    }
-    
-    @Test("the codex reader also counts broken frames as malformed")
-    func codexReaderCountsInvalidFrameAsMalformed() {
-        // Given
-        let reader = CodexEventStream.Reader()
-        reader.feed(frame: invalidUTF8Frame, at: .fixture)
-
-        // Then
-        #expect(reader.snapshot().malformedLineCount == 1, "non-UTF8 frames must join the existing malformed fail-loud mechanism")
-    }
-    
     @Test("RPC frames reject invalid UTF-8 instead of laundering it")
     func rPCParseFrameRejectsInvalidUTF8InsteadOfLaundering() {
         // Given

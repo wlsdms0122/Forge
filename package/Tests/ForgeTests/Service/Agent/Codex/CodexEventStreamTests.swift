@@ -132,5 +132,20 @@ struct CodexEventStreamTests {
         #expect(parsed.toolEvents.first?.resultPreview == "/tmp")
     }
     
+    @Test("a broken frame is counted as malformed")
+    func invalidUTF8FrameIsMalformed() {
+        // Given
+        let sut = CodexEventStream.Reader()
+        var frame = Data(#"{"type":"result","result":"ok-"#.utf8)
+        frame.append(0xFF)
+        frame.append(contentsOf: Data(#""}"#.utf8))
+
+        // When
+        sut.feed(frame: frame, at: .fixture)
+
+        // Then
+        #expect(sut.snapshot().malformedLineCount == 1)
+    }
+    
     // MARK: - Private
 }
