@@ -72,7 +72,6 @@ struct ConfigLoaderTests {
 
         // Then
         #expect(configuration.rootDirectory?.path == home.appendingPathComponent("document").path)
-        #expect(configuration.scheduleDirectory?.path == home.appendingPathComponent("schedule").path)
         #expect(configuration.policyDirectory?.path == home.appendingPathComponent("policy").path)
         #expect(configuration.stateDirectory.path == home.appendingPathComponent("state").path)
         #expect(configuration.logJSONL.path == home.appendingPathComponent("log/forge.log.jsonl").path)
@@ -104,7 +103,6 @@ struct ConfigLoaderTests {
         #expect(configuration.policyDirectory?.path == directory.appendingPathComponent("pol").path)
         #expect(configuration.logJSONL.path == directory.appendingPathComponent("logs/f.jsonl").path)
         #expect(configuration.errorLog.path == directory.appendingPathComponent("logs/e.log").path)
-        #expect(configuration.scheduleDirectory?.path == home.appendingPathComponent("schedule").path)
         #expect(configuration.logMaximumBytes == 12345)
     }
     

@@ -36,7 +36,6 @@ struct ScheduleListMethod: Sendable {
                 "trigger":     try JSONValue(encoding: schedule.trigger),
                 "concurrency": .string(schedule.concurrency.rawValue),
                 "enabled":     .bool(schedule.enabled),
-                "runtime":     .bool(entry.runtime),
                 "inputs":      .object(schedule.inputs ?? [:]),
                 "source":      .string(entry.source)
             ]

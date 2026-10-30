@@ -24,7 +24,7 @@ struct ScheduleCreateTests {
         let authority = TokenAuthority()
         let catalog = try WorkflowCatalog(directory: nil)
         let method = ScheduleCreateMethod(
-            store: ScheduleStore(configDir: nil, stateDirectory: directory, stateFile: directory.appendingPathComponent("enabled.json")),
+            store: ScheduleStore(directory: directory, enabledFile: directory.appendingPathComponent("enabled.json")),
             catalog: catalog,
             policyStore: PolicyStore(seed: ["cli:response": ["<inline>"]]))
         let token = authority.mint(TokenClaims(principal: "cli:response"))

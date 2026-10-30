@@ -74,7 +74,7 @@ instance-owned (`<instanceHome>/state`) and not configurable, like the socket.
 | Table / key | Default | Meaning |
 |---|---|---|
 | `[directory]` `root` | `<instanceHome>/document` | the document root: the workflows and the files they read (prompts, scripts). A relative value resolves against the toml's directory. |
-| `[directory]` `schedule`/`policy` | `<instanceHome>/<key>` | schedule declarations and policy files; a relative value resolves against the toml's directory. |
+| `[directory]` `policy` | `<instanceHome>/policy` | policy files; a relative value resolves against the toml's directory. |
 | `[log]` `jsonl` / `error` | `<instanceHome>/log/forge.log.jsonl` · `…/error.log` | structured + stderr logs |
 | `[log]` `maximum_bytes` | `52428800` (50 MiB) | single-file rotation threshold; ≤0 disables rotation |
 | `[pool]` `maximum_concurrent_steps` | `4` | concurrent leaf-step (invoke/shell) cap; excess queues FIFO |
@@ -317,23 +317,17 @@ the fire time.
 
 Repeating triggers (`--every`/`--at`) never end (no `until` — bounded
 recurrence is not modelled; delete it when done). One-shot triggers
-(`--once`/`--after`) fire exactly once and **stay on disk** afterward — the
-declaration file is not self-deleted. Fire-state lives in a daemon-owned
-ledger (`state_directory/fire-ledger.json`), separate from the declaration:
+(`--once`/`--after`) fire exactly once, and the daemon removes a spent one
+once it has fired. Fire-state lives in a daemon-owned ledger
+(`state_directory/fire-ledger.json`), separate from the declaration:
 recording it *before* dispatch gives at-most-once (no re-fire if the daemon
-dies mid-fire). A spent one-shot created in the runtime dir is auto-GC'd by
-the daemon; a hand-authored config one shows `spent` in `list` for you to
-remove.
+dies mid-fire).
 
-Storage is two directories — an *operational* split, not a domain tier:
-`schedule_directory/*.yaml` (git-managed, hand-authored config) and
-`state_directory/schedule/*.yaml` (daemon-owned, where `create` writes). `delete`/
-`set_enabled` act on a schedule regardless of which dir it came from; `create`
-only writes to the runtime dir. `set_enabled` never rewrites a declaration
-file — it records an override in the daemon-owned ledger
-(`state_directory/schedule-enabled.json`), and the override is dropped once the
-requested value matches the file's declared `enabled` (convergence), so a
-hand-edited declaration stays authoritative.
+Schedules are daemon state: one file each under `state_directory/schedule/`,
+written by `create` and removed by `delete`, and a schedule's id is where its
+file sits there, without the extension. `set_enabled` records in the
+daemon-owned ledger (`state_directory/schedule-enabled.json`); a schedule is
+enabled while the ledger holds its id against the workflow it fires.
 
 | Command | RPC | Notes |
 |---------|-----|-------|
@@ -769,7 +763,7 @@ cancel its runs either.
 
 ```json
 {"schedules":[{"id","workflow","trigger","concurrency","enabled",
-               "runtime":bool,"inputs","source","next_fire_at"?,
+               "inputs","source","next_fire_at"?,
                "last_attempt_at"?,"last_outcome"?,"outcome_at"?,"reason"?,"spent"?}],
  "failures":[...],"flags":[{"kind":"schedule_denied","schedule_id","reason"?,"outcome_at"?}]}
 ```
@@ -794,13 +788,11 @@ close; the field is absent only while an attempt is in flight.
 `last_attempt_at` is the wall-clock moment of the attempt (the phase anchor
 slot is internal — after downtime catch-up the two differ). `spent` (one-shot only)
 is true when its slot was consumed and it won't fire again — an attempt
-consumes the slot even if it was denied; a denied runtime one-shot is *not*
-auto-collected (it stays listed with its flag, like a spent config one-shot,
-until a human removes it). `flags` mirrors `workflow.health` advisory
+consumes the slot even if it was denied; a denied one-shot is *not*
+removed (it stays listed with its flag until it is deleted). `flags` mirrors `workflow.health` advisory
 conventions: `schedule_denied` marks schedules whose latest slot could not
 launch, so a permanently-broken schedule is visible at a glance; it clears on
-the next successful fire. `runtime` flags origin (true = created via
-`schedule.create`). `failures` lists the schedule files left out, as
+the next successful fire. `failures` lists the schedule files left out, as
 `workflow.list` does, a part of a directory the scan could not see among
 them at path `<scan>`.
 
@@ -845,16 +837,14 @@ the schedule record as written and read again on every fire.
 | `concurrency` | — | `queue` \| `skip` \| `replace`, default `queue` |
 | `inputs` | — | object passed to the workflow on fire |
 
-Exactly one of `every` / `at` / `once` / `after`. A schedule file is read by the same trigger rules, without `after` and without the future check. **result**
-`{"id","workflow","trigger","runtime":true,"fire_at"?}` (`fire_at` present for
+Exactly one of `every` / `at` / `once` / `after`. **result**
+`{"id","workflow","trigger","fire_at"?}` (`fire_at` present for
 one-shot; `workflow` is the sigil `<inline>` when created with `spec`).
 
 ### `schedule.delete`
 
-Deletes a schedule by id — regardless of which directory it came from (no
-tier protection). Deleting a git-managed config file removes it from the
-working tree; the next deploy restores it. Gated by the dispatch ACL on the
-schedule's target workflow.
+Deletes a schedule by id. Gated by the dispatch ACL on the schedule's target
+workflow.
 
 **params** `{"token","id"}`. **result** `{"id","deleted":true}`.
 
@@ -1160,7 +1150,6 @@ The error envelope is `{"type": "<ErrorType>", "message": "<text>"}` and the fie
 | `CatalogIncomplete` | the root was not fully read, so the daemon cannot answer for a workflow path; retry after resolving |
 | `WorkflowNotFound` | no `.yaml` file at that path under the root (`workflow.dispatch`, `workflow.describe`, `schedule.create`, a `dispatch` step) |
 | `ProtocolError` | the request's envelope or payload is malformed, or an id it names is invalid, taken or missing |
-| `ScheduleDirectoryNotConfigured` | the daemon has no runtime schedule directory, so `schedule.create` is disabled |
 | `JobStoreError` | the job directory is not configured (`job.create` and job updates are disabled), or a job file is missing or unreadable |
 | `AgentValidationError` | an `invoke`'s agent cannot be built: its model, tools or `permission_mode`, or a combination its provider cannot run — fix the workflow |
 | `AgentSessionMissing` | an `agent` step ran outside an `invoke`, where no agent session is open — fix the workflow |

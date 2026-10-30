@@ -39,7 +39,7 @@ final class ServiceSupervisorTests {
         #expect(started.state == "running")
         let pid = try #require(started.pid)
         #expect(kill(pid, 0) == 0, "spawned process should be alive")
-        let pidFile = temporaryDirectory.appendingPathComponent("services/svc.pid")
+        let pidFile = temporaryDirectory.appendingPathComponent("svc.pid")
         #expect(FileManager.default.fileExists(atPath: pidFile.path))
         let stopped = try await supervisor.shutdown("svc")
         #expect(stopped.state == "stopped")
@@ -187,9 +187,7 @@ final class ServiceSupervisorTests {
         orphan.executableURL = URL(fileURLWithPath: "/bin/sh")
         orphan.arguments = ["-c", "sleep 60"]
         try orphan.run()
-        let servicesDir = temporaryDirectory.appendingPathComponent("services")
-        try FileManager.default.createDirectory(at: servicesDir, withIntermediateDirectories: true)
-        let pidFile = servicesDir.appendingPathComponent("ghost.pid")
+        let pidFile = temporaryDirectory.appendingPathComponent("ghost.pid")
         let info = ["svc": "ghost", "pid": Int(orphan.processIdentifier)] as [String: Any]
         try JSONSerialization.data(withJSONObject: info).write(to: pidFile)
         let supervisor = makeSupervisor([])
@@ -214,9 +212,7 @@ final class ServiceSupervisorTests {
         bystander.arguments = ["-c", "sleep 60"]
         try bystander.run()
         defer { bystander.terminate() }
-        let servicesDir = temporaryDirectory.appendingPathComponent("services")
-        try FileManager.default.createDirectory(at: servicesDir, withIntermediateDirectories: true)
-        let pidFile = servicesDir.appendingPathComponent("ghost.pid")
+        let pidFile = temporaryDirectory.appendingPathComponent("ghost.pid")
         let info: [String: Any] = [
             "svc": "ghost",
             "pid": Int(bystander.processIdentifier),
@@ -287,7 +283,7 @@ final class ServiceSupervisorTests {
     private func makeSupervisor(_ services: [ServiceConfig]) -> ServiceSupervisor {
         ServiceSupervisor(
             services: services,
-            stateDirectory: temporaryDirectory,
+            directory: temporaryDirectory,
             tokenAuthority: TokenAuthority()
         )
     }

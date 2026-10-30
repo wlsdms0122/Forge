@@ -38,9 +38,9 @@ struct ServeCommand: AsyncParsableCommand {
 
             CONFIG SCHEMA (everything optional — convention defaults shown)
                 [directory]  root (default `<instanceHome>/document`) holds the
-                        workflows and the files they read; schedule · policy
-                        default to `<instanceHome>/<key>`. A relative value
-                        resolves against the toml's directory.
+                        workflows and the files they read; policy defaults
+                        to `<instanceHome>/policy`. A relative value resolves
+                        against the toml's directory.
                         (state is instance-owned at `<instanceHome>/state`,
                         not configurable.)
                 [log]   jsonl · error · maximum_bytes (default 50 MiB). Default under

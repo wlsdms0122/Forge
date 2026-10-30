@@ -51,11 +51,5 @@ struct LoadFailureLedger {
         announcements.append(stderrLine)
     }
     
-    // A collision new to this observation. Its failures stand beside the
-    // ledger's, and the ledger holds its line.
-    mutating func record(collision reason: String) {
-        announcements.append(reason)
-    }
-    
     // MARK: - Private
 }

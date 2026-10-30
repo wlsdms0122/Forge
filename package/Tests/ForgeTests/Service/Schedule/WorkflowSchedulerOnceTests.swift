@@ -10,7 +10,7 @@ import Testing
 import Yams
 @testable import Forge
 
-// once schedules — whether they stay or are removed after a single fire, and the outcome on resolution failure.
+// once schedules: whether they stay or are removed after a single fire, and the outcome on resolution failure.
 @Suite("WorkflowSchedulerOnce Tests", .exclusive(.logSink), .exclusive(.standardError))
 struct WorkflowSchedulerOnceTests {
     // MARK: - Property
@@ -18,87 +18,90 @@ struct WorkflowSchedulerOnceTests {
 
     // MARK: - Initializer
     // MARK: - Test
-    @Test("A once that fails resolution is retained with a denied outcome — never GCed")
+    @Test("A once that fails resolution is retained with a denied outcome, never collected")
     func onceResolveFailureIsRetainedWithDeniedOutcome() async throws {
         // Given
         let directory = try fixture.temporary.make("once-den")
-        let rtDir = try fixture.temporary.make("once-den-rt")
         let marker = try fixture.temporary.make("once-den-m").appendingPathComponent("m")
-        let badID = ScheduleIDSpace.stamp("bad")
-        let (scheduler, ledger, onceFile) = try await fixture.onceScheduler(
-            onceYAML: "id: \(badID)\nworkflow: nope\nonce: \"2020-01-01 00:00:00\"\ntimezone: Asia/Seoul\n",
-            onceFileName: "\(badID).yaml",
-            configDir: directory, stateDirectory: rtDir, marker: marker, runtimeOwned: true)
+        let (sut, ledger, onceFile) = try await fixture.onceScheduler(
+            onceYAML: "id: bad\nworkflow: nope\nonce: \"2020-01-01 00:00:00\"\ntimezone: Asia/Seoul\n",
+            onceFileName: "bad.yaml",
+            directory: directory, marker: marker)
+
+        // When
         let records = try await LogSinkCapture.capture("sched-once-denied") { capture in
-            await scheduler.tickOnce()
+            await sut.tickOnce()
             try await Task.sleep(for: .milliseconds(200))
-            await scheduler.tickOnce()
+            await sut.tickOnce()
 
             return capture.records(kind: "schedule.denied")
         }
 
         // Then
         #expect(
-            records.contains { record in record.payload["schedule_id"] == .string(badID) },
+            records.contains { record in record.payload["schedule_id"] == .string("bad") },
             "even a once that fails resolution must leave a denied trace")
         #expect(fixture.read(marker) == "", "the workflow must not run")
-        #expect(FileManager.default.fileExists(atPath: onceFile.path), "a once exhausted as denied is not GCed — it must stay visible on the surface (list flag)")
-        let record = await ledger.snapshot()[badID]
+        #expect(FileManager.default.fileExists(atPath: onceFile.path), "a once exhausted as denied is not collected; it must stay visible on the surface (list flag)")
+        let record = await ledger.snapshot()["bad"]
         #expect(record?.state == .closed(.denied(reason: "workflow_missing")), "the ledger outcome must remain denied(reason)")
         #expect(fixture.read(marker) == "", "must not re-fire (the slot is exhausted)")
     }
 
-    @Test("A runtime-owned once cleans itself up after firing")
-    func onceRuntimeFiresThenAutoGCs() async throws {
+    @Test("A spent once written as a file is collected after firing")
+    func writtenOnceFiresThenIsCollected() async throws {
         // Given
-        let directory = try fixture.temporary.make("once-rt")
-        let rtDir = try fixture.temporary.make("once-rt-dir")
-        let marker = try fixture.temporary.make("once-rt-m").appendingPathComponent("m")
-        let rtID = ScheduleIDSpace.stamp("one")
-        let (scheduler, ledger, onceFile) = try await fixture.onceScheduler(
-            onceYAML: "id: \(rtID)\nworkflow: wfonce.yaml\nonce: \"2020-01-01 00:00:00\"\ntimezone: Asia/Seoul\n",
-            onceFileName: "\(rtID).yaml",
-            configDir: directory, stateDirectory: rtDir, marker: marker, runtimeOwned: true)
+        let directory = try fixture.temporary.make("once-file")
+        let marker = try fixture.temporary.make("once-file-m").appendingPathComponent("m")
+        let (sut, ledger, onceFile) = try await fixture.onceScheduler(
+            onceYAML: "id: one\nworkflow: wfonce.yaml\nonce: \"2020-01-01 00:00:00\"\ntimezone: Asia/Seoul\n",
+            onceFileName: "one.yaml",
+            directory: directory, marker: marker)
 
         // When
-        await scheduler.tickOnce()
+        await sut.tickOnce()
         try await Task.sleep(for: .milliseconds(400))
+        let fileAfterFire = FileManager.default.fileExists(atPath: onceFile.path)
+        let fired = await ledger.lastAttempt(id: "one")
+        await sut.tickOnce()
+        try await Task.sleep(for: .milliseconds(300))
 
         // Then
-        #expect(fixture.read(marker) == "1", "the once must fire exactly once")
-        #expect(FileManager.default.fileExists(atPath: onceFile.path), "the file must still exist right after firing (self-delete abandoned)")
-        let fired = await ledger.lastAttempt(id: rtID)
+        #expect(fileAfterFire, "the file stays right after firing; the next tick collects it")
         #expect(fired != nil, "the fire state must be recorded in the ledger")
-        await scheduler.tickOnce()
-        try await Task.sleep(for: .milliseconds(300))
-        #expect(!FileManager.default.fileExists(atPath: onceFile.path), "the daemon must auto-GC a runtime-owned exhausted once")
-        #expect(fixture.read(marker) == "1", "must not re-fire")
-        let cleared = await ledger.lastAttempt(id: rtID)
-        #expect(cleared == nil, "the ledger entry must be cleaned up with the GC")
+        #expect(!FileManager.default.fileExists(atPath: onceFile.path), "the daemon must collect a spent once")
+        #expect(fixture.read(marker) == "1", "the once must fire exactly once")
+        let cleared = await ledger.lastAttempt(id: "one")
+        #expect(cleared == nil, "the ledger entry must be cleaned up with the collection")
     }
 
-    @Test("A config-owned once remains after firing")
-    func onceConfigStaysAfterFire() async throws {
+    @Test("A spent once created through the store is collected after firing")
+    func createdOnceFiresThenIsCollected() async throws {
         // Given
-        let configDir = try fixture.temporary.make("once-cfg")
-        let stateDirectory = try fixture.temporary.make("once-cfg-rt")
-        let marker = try fixture.temporary.make("once-cfg-m").appendingPathComponent("m")
-        let (scheduler, ledger, onceFile) = try await fixture.onceScheduler(
-            onceYAML: "id: cfg\nworkflow: wfonce.yaml\nonce: \"2020-01-01 00:00:00\"\ntimezone: Asia/Seoul\n",
-            onceFileName: "cfg.yaml",
-            configDir: configDir, stateDirectory: stateDirectory, marker: marker)
+        let directory = try fixture.temporary.make("once-made")
+        let marker = try fixture.temporary.make("once-made-m").appendingPathComponent("m")
+        let (sut, ledger, store) = try await fixture.onceStage(directory: directory, marker: marker)
+        let created = try await store.create(Schedule(
+            id: "made",
+            workflow: "wfonce.yaml",
+            trigger: .once(fireAt: Date(timeIntervalSince1970: 1_577_804_400), timezone: .seoul)))
+        let onceFile = directory.appendingPathComponent("\(created.id).yaml")
 
         // When
-        await scheduler.tickOnce()
+        await sut.tickOnce()
         try await Task.sleep(for: .milliseconds(400))
-        await scheduler.tickOnce()
+        let fired = await ledger.lastAttempt(id: "made")
+        await sut.tickOnce()
         try await Task.sleep(for: .milliseconds(300))
 
         // Then
-        #expect(FileManager.default.fileExists(atPath: onceFile.path), "the daemon must not delete a config-owned exhausted once")
-        #expect(fixture.read(marker) == "1", "a config once also fires exactly once")
-        let fired = await ledger.lastAttempt(id: "cfg")
-        #expect(fired != nil, "a config once's fire state must persist in the ledger to prevent re-firing")
+        #expect(fired != nil, "the fire state must be recorded in the ledger")
+        #expect(!FileManager.default.fileExists(atPath: onceFile.path), "the daemon must collect a spent once")
+        let gone = await store.lookup("made")
+        #expect(gone == nil, "a collected once is gone from the store")
+        #expect(fixture.read(marker) == "1", "the once must fire exactly once")
+        let cleared = await ledger.lastAttempt(id: "made")
+        #expect(cleared == nil, "the ledger entry must be cleaned up with the collection")
     }
 
     @Test("A recurring schedule's resolution failure is observed as a denied event")

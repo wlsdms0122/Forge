@@ -9,7 +9,7 @@ import Foundation
 import Testing
 @testable import Forge
 
-// The contract for reading schedules from the config directory into a snapshot.
+// The contract for reading schedules from the schedule directory into a snapshot.
 @Suite("ScheduleStore Tests")
 struct ScheduleStoreTests {
     // MARK: - Property
@@ -17,7 +17,7 @@ struct ScheduleStoreTests {
 
     // MARK: - Initializer
     // MARK: - Test
-    // MARK: - config load
+    // MARK: - load
     @Test("Lookup reads the definition from disk")
     func lookupFromDisk() async throws {
         // Given
@@ -30,7 +30,7 @@ struct ScheduleStoreTests {
         """#
         try yaml.write(to: directory.appendingPathComponent("consolidate-hourly.yaml"),
             atomically: true, encoding: .utf8)
-        let store = ScheduleStore(configDir: directory, stateFile: try temporary.file("schedule-enabled.json"))
+        let store = ScheduleStore(directory: directory, enabledFile: try temporary.file("schedule-enabled.json"))
 
         // When
         let schedule = await store.lookup("consolidate-hourly")
@@ -42,72 +42,83 @@ struct ScheduleStoreTests {
         #expect(schedule?.concurrency == .queue)
     }
 
-    @Test("Runtime and config have distinct id spaces and cannot collide")
-    func runtimeAndConfigIdSpacesCannotCollide() async throws {
+    @Test("A nested file loads under its path without the extension")
+    func nestedFileLoadsUnderItsPath() async throws {
         // Given
-        let configDir = try temporary.make("ns-cfg")
-        let stateDirectory = try temporary.make("ns-rt")
-        defer {
-            try? FileManager.default.removeItem(at: configDir)
-            try? FileManager.default.removeItem(at: stateDirectory)
-        }
+        let directory = try temporary.make("nested")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try FileManager.default.createDirectory(
+            at: directory.appendingPathComponent("a"), withIntermediateDirectories: true)
         try #"""
-        id: rt.squat
-        workflow: a
+        workflow: wf
         every: 1h
-        """#.write(to: configDir.appendingPathComponent("rt.squat.yaml"),
+        """#.write(to: directory.appendingPathComponent("a/x.yaml"),
             atomically: true, encoding: .utf8)
-        try #"""
-        id: plain
-        workflow: b
-        every: 2h
-        """#.write(to: stateDirectory.appendingPathComponent("plain.yaml"),
-            atomically: true, encoding: .utf8)
-        let store = ScheduleStore(configDir: configDir, stateDirectory: stateDirectory,
-            stateFile: try temporary.file("schedule-enabled.json"))
+        let sut = ScheduleStore(directory: directory, enabledFile: try temporary.file("schedule-enabled.json"))
 
         // When
-        let squat = await store.lookup("rt.squat")
+        let schedule = await sut.lookup("a/x")
 
         // Then
-        #expect(squat == nil, "config may not use the runtime partition prefix")
-        let plain = await store.lookup("plain")
-        #expect(plain == nil, "a runtime declaration cannot live without the partition stamp")
-        let failures = await store.reload().failures
-        #expect(failures.filter { failure in failure.reason.contains("rename this config declaration") }.count == 1, "\(failures.map(\.reason))")
-        #expect(failures.filter { failure in failure.reason.contains("must start with") }.count == 1, "\(failures.map(\.reason))")
+        #expect(schedule?.id == "a/x", "the id is the file's path under the directory")
+        #expect(schedule?.workflow == "wf")
+        let basename = await sut.lookup("x")
+        #expect(basename == nil, "the basename alone does not name a nested schedule")
     }
 
-    @Test("A collision within the same space excludes both sides")
-    func sameSpaceCollisionStillExcludesBoth() async throws {
+    @Test("Files with one basename in different directories load under distinct ids")
+    func sameBasenameInDifferentDirectoriesLoadsBoth() async throws {
         // Given
-        let configDir = try temporary.make("col-cfg")
-        defer { try? FileManager.default.removeItem(at: configDir) }
-        for sub in ["a", "b"] {
-            try FileManager.default.createDirectory(
-                at: configDir.appendingPathComponent(sub), withIntermediateDirectories: true)
-        }
+        let directory = try temporary.make("same-base")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try FileManager.default.createDirectory(
+            at: directory.appendingPathComponent("a"), withIntermediateDirectories: true)
         try #"""
-        id: dup
-        workflow: a
+        workflow: top
         every: 1h
-        """#.write(to: configDir.appendingPathComponent("a/dup.yaml"),
+        """#.write(to: directory.appendingPathComponent("x.yaml"),
             atomically: true, encoding: .utf8)
         try #"""
-        id: dup
-        workflow: b
+        workflow: nested
         every: 2h
-        """#.write(to: configDir.appendingPathComponent("b/dup.yaml"),
+        """#.write(to: directory.appendingPathComponent("a/x.yaml"),
             atomically: true, encoding: .utf8)
-        let store = ScheduleStore(configDir: configDir, stateDirectory: nil, stateFile: try temporary.file("schedule-enabled.json"))
+        let sut = ScheduleStore(directory: directory, enabledFile: try temporary.file("schedule-enabled.json"))
 
         // When
-        let schedule = await store.lookup("dup")
+        let snapshot = await sut.reload()
 
         // Then
-        #expect(schedule == nil, "same id in the same partition = collision, exclude both")
-        let all = await store.reload().entries.map(\.schedule)
-        #expect(!all.contains { entry in entry.id == "dup" })
+        let byID = Dictionary(uniqueKeysWithValues: snapshot.entries.map { entry in (entry.schedule.id, entry.schedule.workflow) })
+        #expect(byID == ["x": "top", "a/x": "nested"], "both files load, each under its own path")
+        #expect(snapshot.failures.isEmpty, "distinct paths are distinct ids, so nothing is refused: \(snapshot.failures.map(\.reason))")
+    }
+
+    @Test("A nested file whose body id is its basename is refused")
+    func nestedFileWithBasenameIDIsRefused() async throws {
+        // Given
+        let directory = try temporary.make("nested-mismatch")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try FileManager.default.createDirectory(
+            at: directory.appendingPathComponent("a"), withIntermediateDirectories: true)
+        try #"""
+        id: x
+        workflow: wf
+        every: 1h
+        """#.write(to: directory.appendingPathComponent("a/x.yaml"),
+            atomically: true, encoding: .utf8)
+        let sut = ScheduleStore(directory: directory, enabledFile: try temporary.file("schedule-enabled.json"))
+
+        // When
+        let snapshot = await sut.reload()
+
+        // Then
+        #expect(snapshot.entries.isEmpty, "a body id that differs from the file's path is refused")
+        #expect(
+            snapshot.failures.contains { failure in
+                failure.path == "a/x.yaml" && failure.reason.contains("must equal the file's path")
+            },
+            "the refusal surfaces as a failure: \(snapshot.failures.map(\.reason))")
     }
 
     @Test("When id is omitted it is derived from the filename")
@@ -120,7 +131,7 @@ struct ScheduleStoreTests {
         every: 1h
         """#.write(to: directory.appendingPathComponent("derived.yaml"),
             atomically: true, encoding: .utf8)
-        let store = ScheduleStore(configDir: directory, stateFile: try temporary.file("schedule-enabled.json"))
+        let store = ScheduleStore(directory: directory, enabledFile: try temporary.file("schedule-enabled.json"))
 
         // When
         let schedule = await store.lookup("derived")
@@ -143,7 +154,7 @@ struct ScheduleStoreTests {
         timezone: Asia/Seoul
         """#.write(to: directory.appendingPathComponent("standup.yaml"),
             atomically: true, encoding: .utf8)
-        let store = ScheduleStore(configDir: directory, stateFile: try temporary.file("schedule-enabled.json"))
+        let store = ScheduleStore(directory: directory, enabledFile: try temporary.file("schedule-enabled.json"))
 
         // When
         let schedule = await store.lookup("standup")
@@ -167,7 +178,7 @@ struct ScheduleStoreTests {
           limit: 5
         """#.write(to: directory.appendingPathComponent("quick.yaml"),
             atomically: true, encoding: .utf8)
-        let store = ScheduleStore(configDir: directory, stateFile: try temporary.file("schedule-enabled.json"))
+        let store = ScheduleStore(directory: directory, enabledFile: try temporary.file("schedule-enabled.json"))
 
         // When
         let schedule = await store.lookup("quick")
@@ -189,7 +200,7 @@ struct ScheduleStoreTests {
         every: 5m
         """#.write(to: directory.appendingPathComponent("s.yaml"),
             atomically: true, encoding: .utf8)
-        let store = ScheduleStore(configDir: directory, stateFile: try temporary.file("schedule-enabled.json"))
+        let store = ScheduleStore(directory: directory, enabledFile: try temporary.file("schedule-enabled.json"))
 
         // When
         let first = await store.lookup("s")?.trigger

@@ -13,9 +13,9 @@ struct ScheduleCreateCommand: ParsableCommand {
     // MARK: - Property
     static let configuration = CommandConfiguration(
         commandName: "create",
-        abstract: "Create a schedule (runtime dir).",
+        abstract: "Create a schedule.",
         discussion: """
-            Registers a schedule in the runtime dir (state_directory/schedule).
+            Registers a schedule in state_directory/schedule.
             Fires either a workflow under the root (`--workflow <path>`) or an
             inline workflow (`--spec <json>`) on a trigger, exactly one of:
 
@@ -24,10 +24,8 @@ struct ScheduleCreateCommand: ParsableCommand {
                 --once <ts> --timezone   fire once at 'yyyy-MM-dd HH:mm:ss'
                 --after <dur>            fire once, this much from now
 
-            `--once`/`--after` are one-shot fires.
-            A one-shot stays on disk after firing — runtime-created ones are
-            auto-GC'd by the daemon; hand-authored config ones show `spent` in
-            `list` for you to remove. The target flags are mutually exclusive;
+            `--once`/`--after` are one-shot fires, removed by the daemon once
+            fired. The target flags are mutually exclusive;
             inline `spec` runs gated by the `<inline>` sigil, the same shape
             as `workflow dispatch --spec`.
 

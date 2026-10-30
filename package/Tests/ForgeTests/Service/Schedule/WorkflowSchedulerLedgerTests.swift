@@ -33,7 +33,7 @@ struct WorkflowSchedulerLedgerTests {
         let ledger = FireLedger(path: try fixture.temporary.make("outcome-led").appendingPathComponent("l.json"))
         let scheduler = WorkflowScheduler(
             catalog: catalog,
-            store: try fixture.scheduleStore(configDir: schedDir, stateDirectory: try fixture.temporary.make("sched-rt-a"), ids: ["ok": "wfo.yaml", "ghost": "nope"]),
+            store: try fixture.scheduleStore(directory: schedDir, ids: ["ok": "wfo.yaml", "ghost": "nope"]),
             ledger: ledger, runner: fixture.runner(catalog: catalog), tickIntervalSeconds: 1)
 
         // When
@@ -55,19 +55,17 @@ struct WorkflowSchedulerLedgerTests {
     @Test("Pruning survives a transient decode failure")
     func ledgerPruneSurvivesTransientDecodeFailure() async throws {
         // Given
-        let wfDir = try fixture.temporary.make("live-wf")
-        try fixture.write(fixture.markerWorkflow(
-                path: "wfl.yaml", marker: fixture.temporary.make("live-m").appendingPathComponent("m"), tag: "S", sleep: 0),
-            to: wfDir)
-        let catalog = try fixture.catalog(directory: wfDir)
-        let configDir = try fixture.temporary.make("live-cfg")
-        let schedFile = configDir.appendingPathComponent("keep.yaml")
-        let body = "id: keep\nworkflow: wfl.yaml\nonce: \"2020-01-01 00:00:00\"\ntimezone: Asia/Seoul\n"
+        // A denied once stays on disk with its ledger record, so the record's
+        // fate follows the declaration alone and not the spent-once collection.
+        let catalog = try fixture.catalog(directory: fixture.temporary.make("live-wf"))
+        let schedDir = try fixture.temporary.make("live-sched")
+        let schedFile = schedDir.appendingPathComponent("keep.yaml")
+        let body = "id: keep\nworkflow: nope\nonce: \"2020-01-01 00:00:00\"\ntimezone: Asia/Seoul\n"
         try body.write(to: schedFile, atomically: true, encoding: .utf8)
         let ledger = FireLedger(path: try fixture.temporary.make("live-led").appendingPathComponent("l.json"))
         let scheduler = WorkflowScheduler(
             catalog: catalog,
-            store: try fixture.scheduleStore(configDir: configDir, stateDirectory: try fixture.temporary.make("live-rt"), ids: ["keep": "wfl.yaml"]),
+            store: try fixture.scheduleStore(directory: schedDir, ids: ["keep": "nope"]),
             ledger: ledger, runner: fixture.runner(catalog: catalog), tickIntervalSeconds: 1)
 
         // When

@@ -14,7 +14,6 @@ package actor Server {
     let catalog: WorkflowCatalog
     let scheduleStore: ScheduleStore
     let fireLedger: FireLedger
-    let stateScheduleDirectory: URL
     let jobStore: JobStore
     let jobDirectory: URL
     let policyStore: PolicyStore
@@ -82,11 +81,9 @@ package actor Server {
             directory: config.rootDirectory,
             builder: WorkflowBuilder(vocabulary: vocabulary)
         )
-        let stateScheduleDirectory = config.stateDirectory.appendingPathComponent("schedule")
         let scheduleStore = ScheduleStore(
-            configDir: config.scheduleDirectory,
-            stateDirectory: stateScheduleDirectory,
-            stateFile: config.stateDirectory.appendingPathComponent("schedule-enabled.json")
+            directory: config.stateDirectory.appendingPathComponent("schedule"),
+            enabledFile: config.stateDirectory.appendingPathComponent("schedule-enabled.json")
         )
         let fireLedger = FireLedger(
             path: config.stateDirectory.appendingPathComponent("fire-ledger.json")
@@ -128,7 +125,6 @@ package actor Server {
         self.catalog = catalogLocal
         self.scheduleStore = scheduleStore
         self.fireLedger = fireLedger
-        self.stateScheduleDirectory = stateScheduleDirectory
         self.jobStore = jobStoreLocal
         self.jobDirectory = jobDirectoryLocal
         self.policyStore = policyStoreLocal
@@ -142,7 +138,7 @@ package actor Server {
         
         let supervisorLocal = ServiceSupervisor(
             services: config.services,
-            stateDirectory: config.stateDirectory,
+            directory: config.stateDirectory.appendingPathComponent("services", isDirectory: true),
             tokenAuthority: tokenAuthorityLocal
         )
         self.serviceSupervisor = supervisorLocal
@@ -218,7 +214,7 @@ package actor Server {
         await Log.shared.setErrorSink(config.errorLog)
         await Log.shared.setMaxBytes(config.logMaximumBytes)
         await catalog.reload()
-        await scheduleStore.ensureRuntimeDirectory()
+        await scheduleStore.ensureDirectory()
         await scheduleStore.reload()
         await jobStore.reload()
         await jobStore.closeOrphans()
@@ -237,11 +233,10 @@ package actor Server {
         await Log.shared.append(
             "runtime.boot",
             [
-                "state_directory":          config.stateDirectory.path,
+                "state_directory":            config.stateDirectory.path,
                 "socket":                     socketPath,
                 "root_directory":             config.rootDirectory?.path ?? "",
-                "schedule_directory":         config.scheduleDirectory?.path ?? "",
-                "runtime_schedule_directory": stateScheduleDirectory.path,
+                "schedule_directory":         scheduleStore.directory.path,
                 "job_directory":              jobDirectory.path,
                 "policy_directory":           config.policyDirectory?.path ?? ""
             ],
@@ -346,8 +341,7 @@ package actor Server {
             "log_jsonl":                  config.logJSONL.path,
             "error_log":                  config.errorLog.path,
             "root_directory":             config.rootDirectory?.path ?? "",
-            "schedule_directory":         config.scheduleDirectory?.path ?? "",
-            "runtime_schedule_directory": stateScheduleDirectory.path,
+            "schedule_directory":         scheduleStore.directory.path,
             "job_directory":              jobDirectory.path
         ]
         let url = runtimeInfoURL()

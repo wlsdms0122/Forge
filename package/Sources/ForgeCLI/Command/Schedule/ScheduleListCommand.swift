@@ -46,8 +46,6 @@ struct ScheduleListCommand: ParsableCommand {
             let workflow = schedule["workflow"]?.stringValue ?? "?"
             let trigger = renderTrigger(schedule["trigger"])
             let enabled = schedule["enabled"]?.boolValue ?? true
-            let runtime = schedule["runtime"]?.boolValue ?? false
-            let origin = runtime ? "runtime" : "config"
             let status: String
             
             if schedule["spent"]?.boolValue == true {
@@ -58,7 +56,7 @@ struct ScheduleListCommand: ParsableCommand {
                 status = "-"
             }
             
-            print("\(id)\t\(workflow)\t\(trigger)\t\(enabled ? "enabled" : "disabled")\t\(origin)\t\(status)")
+            print("\(id)\t\(workflow)\t\(trigger)\t\(enabled ? "enabled" : "disabled")\t\(status)")
         }
     }
     
