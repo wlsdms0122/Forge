@@ -101,10 +101,6 @@ struct WorkflowDispatchCommand: ParsableCommand {
     func run() throws {
         let client = Client(global, context: "workflow dispatch")
         
-        guard (name != nil) != (spec != nil) else {
-            die("workflow dispatch: pass exactly one of a workflow name argument or --spec", code: 4)
-        }
-        
         var params: [String: JSONValue] = ["async": .bool(isAsync)]
         
         if let name { params["name"] = .string(name) }
