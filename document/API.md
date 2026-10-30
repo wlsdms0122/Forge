@@ -217,7 +217,7 @@ filters nothing by lineage — unawaited children's events flow like any other, 
 what to display is the consumer's call.
 
 **Identity & envelope** — the bearer token carries the caller's identity. A
-workflow subprocess's injected token is a `cli:<workflow>` token; trace /
+workflow subprocess's injected token is a `cli:<workflow>` token; root /
 correlator / parameters / origin are then inherited from the parent run
 server-side and the corresponding flags are ignored (a nested run cannot forge
 its own coordinates). An operator token (`system:*`) carries no parent, so
