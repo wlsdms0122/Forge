@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct BackendNonzeroExit: BackendError, WorkFailure {
+struct BackendNonzeroExit: WorkFailure {
     // MARK: - Property
     let message: String
     let exitCode: Int32
