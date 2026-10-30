@@ -49,9 +49,5 @@ struct ModelReference: Sendable, Equatable {
     }
 
     // MARK: - Public
-    func replacingModel(with translatedModel: String?) throws -> ModelReference {
-        try ModelReference(provider: provider, model: translatedModel ?? "")
-    }
-
     // MARK: - Private
 }

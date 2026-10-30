@@ -85,11 +85,7 @@ struct CodexBackend: Backend {
             agentArguments: agentArguments,
             resume: session?.threadIdentifier
         )
-        let modelReference = try invocation.agent.model?.replacingModel(with: native.model)
-        
-        if let modelReference { invocation.executionContext.record(modelReference: modelReference) }
-        
-        let modelLabel = modelReference?.displayName
+        let modelLabel = invocation.agent.model?.displayName
         let eventLogContext = AgentEventLogContext.current
         let reader = CodexEventStream.Reader()
         let started = ContinuousClock.now
@@ -161,7 +157,6 @@ struct CodexBackend: Backend {
         
         return BackendResponse(
             text: parsed.finalText,
-            modelReference: modelReference,
             usage: turnUsage,
             toolEvents: observedToolEvents,
             stdoutLength: result.stdout.count,

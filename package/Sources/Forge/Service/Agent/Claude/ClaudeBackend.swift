@@ -95,10 +95,6 @@ struct ClaudeBackend: Backend {
             diagnostics: translated.diagnostics
         )
         
-        let modelReference = try invocation.agent.model?.replacingModel(with: native.model)
-        
-        if let modelReference { invocation.executionContext.record(modelReference: modelReference) }
-        
         let outputFormat = "stream-json"
         let extraArgs: [String] = ["--verbose"]
         let claudeSession = invocation.session as? ClaudeSession
@@ -153,7 +149,7 @@ struct ClaudeBackend: Backend {
         for (sequence, event) in toolEvents.enumerated() {
             await AgentEventLog.tool(
                 invocationID: invocation.id,
-                model: modelReference?.displayName,
+                model: invocation.agent.model?.displayName,
                 turn: index,
                 sequence: sequence,
                 name: event.name,
@@ -176,7 +172,6 @@ struct ClaudeBackend: Backend {
         
         return BackendResponse(
             text: text,
-            modelReference: modelReference,
             usage: (usage?.isEmpty ?? true) ? nil : usage,
             toolEvents: toolEvents,
             stdoutLength: result.stdout.count,
