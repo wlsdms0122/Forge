@@ -77,7 +77,32 @@ struct WorkflowDispatchTests {
         }
 
         // Then
-        #expect(error.message == "workflow.dispatch: 'name' and 'spec' are mutually exclusive — pass only one")
+        #expect(error.message == "workflow.dispatch: 'name' and 'spec' are mutually exclusive; pass only one")
+    }
+
+    @Test(
+        "A name or spec of the wrong type is refused, not read as absent",
+        arguments: [
+            (["name": "echo", "spec": "oops"], "workflow.dispatch: 'name' and 'spec' are mutually exclusive; pass only one"),
+            (["spec": "oops"], "workflow.dispatch: 'spec' is an object"),
+            (["name": 5], "workflow.dispatch: 'name' is a non-empty string"),
+            (["name": ""], "workflow.dispatch: 'name' is a non-empty string")
+        ] as [([String: JSONValue], String)]
+    )
+    func wronglyTypedProgramRefused(program: [String: JSONValue], message: String) async throws {
+        // Given
+        let (sut, authority, _) = try await makeMethod(policy: ["*": ["*"]])
+        let token = authority.mint(TokenClaims(principal: "cli:test"))
+        let claims = try #require(authority.verify(token))
+        let params = program.merging(["token": .string(token)]) { first, _ in first }
+
+        // When
+        let error = try await #require(throws: ProtocolError.self) {
+            try await sut.handle(request(params), claims: claims)
+        }
+
+        // Then
+        #expect(error.message == message)
     }
 
     @Test("An inline spec is rejected without the sigil policy")
