@@ -154,7 +154,7 @@ struct LoggingHook: PreHook, PostHook, ErrorHook {
             )
         }
         
-        return .abort
+        return .propagate
     }
     
     // MARK: - Private

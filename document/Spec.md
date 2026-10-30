@@ -229,7 +229,6 @@ count:
   path: $.total
   type: int
   default: 0
-  hint: total items
 ```
 
 Exactly one extractor:
@@ -246,7 +245,6 @@ Modifiers:
 |-------|-------|
 | `type` | `string` (default) / `int` / `float` / `bool` / `json`, coerced to it |
 | `default` | fallback value when missing. A declared `default` (even `null`) means a missing path does not fail the call; leaving `default` out makes the path mandatory, and a missing one fails the call with `extract_refused` |
-| `hint` | human description |
 
 ## A complete workflow
 

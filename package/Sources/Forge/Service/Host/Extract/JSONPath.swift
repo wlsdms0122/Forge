@@ -7,7 +7,7 @@
 
 import Foundation
 
-enum JSONPath {
+struct JSONPath: Sendable, Equatable {
     enum EvalError: ForgeError {
         case syntax(String)
         case notFound(String)
@@ -23,8 +23,7 @@ enum JSONPath {
         }
     }
     
-    enum Token: Equatable {
-        case root
+    enum Token: Sendable, Equatable {
         case field(String)
         case wildcardField
         case index(Int)
@@ -32,20 +31,11 @@ enum JSONPath {
     }
     
     // MARK: - Property
-    // MARK: - Initializer
-    // MARK: - Public
-    static func evaluate(_ expression: String, on value: JSONValue) throws -> JSONValue {
-        let tokens = try tokenize(expression)
-        var current: JSONValue = value
-        
-        for (index, token) in tokens.enumerated() {
-            current = try step(current, token: token, atIndex: index, expression: expression)
-        }
-        
-        return current
-    }
+    let expression: String
+    let tokens: [Token]
     
-    static func tokenize(_ expression: String) throws -> [Token] {
+    // MARK: - Initializer
+    init(_ expression: String) throws {
         let text = expression.trimmingCharacters(in: .whitespaces)
         
         guard !text.isEmpty else { throw EvalError.syntax("empty expression") }
@@ -105,7 +95,7 @@ enum JSONPath {
                 } else {
                     throw EvalError.syntax(
                         "unsupported index `\(inner)` in \(expression)"
-                            + " — v1 only allows integer or `*`"
+                            + " — an index is an integer or `*`"
                     )
                 }
                 
@@ -131,26 +121,34 @@ enum JSONPath {
             if previousIsWildcard && currentIsField {
                 throw EvalError.syntax(
                     "field access after a wildcard can never match — a wildcard yields an array, "
-                        + "so only `[N]`/`[*]` may follow (v1 wildcards do not map over elements): "
+                        + "so only `[N]`/`[*]` may follow: "
                         + "\(expression)"
                 )
             }
         }
         
-        return tokens
+        self.expression = expression
+        self.tokens = tokens
+    }
+    
+    // MARK: - Public
+    func evaluate(on value: JSONValue) throws -> JSONValue {
+        var current: JSONValue = value
+        
+        for (index, token) in tokens.enumerated() {
+            current = try step(current, token: token, atIndex: index)
+        }
+        
+        return current
     }
     
     // MARK: - Private
-    private static func step(
+    private func step(
         _ value: JSONValue,
         token: Token,
-        atIndex index: Int,
-        expression: String
+        atIndex index: Int
     ) throws -> JSONValue {
         switch token {
-        case .root:
-            return value
-        
         case .field(let name):
             guard case .object(let object) = value else {
                 throw EvalError.notFound(

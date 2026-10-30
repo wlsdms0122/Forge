@@ -166,18 +166,22 @@ struct WorkflowDispatchMethod: Sendable {
     private func resolveProgram(
         _ params: [String: JSONValue]
     ) async throws -> Workflow {
-        if let spec = params["spec"]?.objectValue {
+        switch (params["name"]?.stringValue, params["spec"]?.objectValue) {
+        case let (nil, spec?):
             do {
                 return try await catalog.inline(spec)
             } catch {
                 throw ProtocolError("workflow.dispatch: malformed 'spec': \(error)")
             }
-        }
 
-        if let name = params["name"]?.stringValue, !name.isEmpty {
+        case let (name?, nil) where !name.isEmpty:
             return try await catalog.workflow(named: name)
-        }
 
-        throw ProtocolError("workflow.dispatch: one of 'spec' or 'name' is required")
+        case (.some, .some):
+            throw ProtocolError("workflow.dispatch: 'name' and 'spec' are mutually exclusive — pass only one")
+
+        default:
+            throw ProtocolError("workflow.dispatch: one of 'spec' or 'name' is required")
+        }
     }
 }
