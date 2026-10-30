@@ -63,7 +63,7 @@ struct AgentExecutor: Sendable {
                 let action = await hook.onError(invocation, error)
                 
                 switch action {
-                case .abort:
+                case .propagate:
                     continue
                 
                 case .substitute(let response):
