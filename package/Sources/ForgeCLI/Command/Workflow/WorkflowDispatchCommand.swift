@@ -93,17 +93,13 @@ struct WorkflowDispatchCommand: ParsableCommand {
     @Flag(help: "Stream the run's progress as JSONL (workflow.event lines, then a workflow.result line).")
     var stream: Bool = false
     
-    @Flag(help: "Emit the full RPC response as JSON (default: readable result).")
+    @Flag(help: "Emit the result as JSON (default: readable result).")
     var json: Bool = false
     
     // MARK: - Initializer
     // MARK: - Public
     func run() throws {
         let client = Client(global, context: "workflow dispatch")
-        
-        guard (name != nil) != (spec != nil) else {
-            die("workflow dispatch: pass exactly one of a workflow name argument or --spec", code: 4)
-        }
         
         var params: [String: JSONValue] = ["async": .bool(isAsync)]
         

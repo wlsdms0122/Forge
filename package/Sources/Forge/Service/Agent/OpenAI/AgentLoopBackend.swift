@@ -115,11 +115,7 @@ struct AgentLoopBackend: Backend {
         )
         
         let model = native.model
-        let modelReference = try invocation.agent.model?.replacingModel(with: model)
-        
-        if let modelReference { invocation.executionContext.record(modelReference: modelReference) }
-        
-        let modelLabel = modelReference?.displayName
+        let modelLabel = invocation.agent.model?.displayName
         let commandAuthorization = native.commandAuthorization
         let jsonMode = false
         let tools = native.tools
@@ -149,7 +145,7 @@ struct AgentLoopBackend: Backend {
                 model: model,
                 jsonMode: jsonMode
             )
-            let roundUsage = completion.usage.map(AgentUsage.init(providerValues:))
+            let roundUsage = completion.usage
             
             if let roundUsage {
                 totalUsage = totalUsage?.adding(roundUsage) ?? roundUsage
@@ -188,7 +184,6 @@ struct AgentLoopBackend: Backend {
                 
                 return BackendResponse(
                     text: completion.text,
-                    modelReference: modelReference,
                     usage: totalUsage,
                     toolEvents: toolEvents,
                     stdoutLength: completion.text.utf8.count,

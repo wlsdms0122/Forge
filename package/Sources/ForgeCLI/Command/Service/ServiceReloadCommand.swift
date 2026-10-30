@@ -13,7 +13,7 @@ struct ServiceReloadCommand: ParsableCommand {
     // MARK: - Property
     static let configuration = CommandConfiguration(
         commandName: "reload",
-        abstract: "Re-read [service] entries from .forge/config.toml.",
+        abstract: "Re-read [service] entries from config.toml.",
         discussion: """
             Applies the current toml to the supervisor: removed services are
             stopped, added ones with auto_spawn start immediately, changed

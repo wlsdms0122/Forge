@@ -14,7 +14,7 @@ import Forge
 // result or does not return.
 struct Client {
     // MARK: - Property
-    // ServiceBridge holds the connection open itself and needs the raw seams.
+    // Read directly by the commands that open their own connection.
     let socketPath: String
     let token: String
     

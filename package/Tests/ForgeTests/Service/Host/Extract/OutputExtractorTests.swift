@@ -20,8 +20,8 @@ struct OutputExtractorTests {
         // Given
         let stdout = #"{"value1":"hello","value2":42}"#
         let declarations: [String: OutputSpec] = [
-            "v1": OutputSpec(extractor: .path("$.value1")),
-            "v2": OutputSpec(extractor: .path("$.value2"), type: .int),
+            "v1": OutputSpec(extractor: .path(try JSONPath("$.value1"))),
+            "v2": OutputSpec(extractor: .path(try JSONPath("$.value2")), type: .int),
         ]
 
         // When
@@ -39,7 +39,7 @@ struct OutputExtractorTests {
     func pathExtractsNested() throws {
         // Given
         let stdout = #"{"a":{"b":{"c":"deep"}}}"#
-        let declarations = ["x": OutputSpec(extractor: .path("$.a.b.c"))]
+        let declarations = ["x": OutputSpec(extractor: .path(try JSONPath("$.a.b.c")))]
 
         // When
         let output = try OutputExtractor.extract(stdout: stdout, declarations: declarations)
@@ -55,8 +55,8 @@ struct OutputExtractorTests {
     func pathArrayIndex() throws {
         // Given
         let stdout = #"{"arr":["x","y","z"]}"#
-        let declarations = ["first": OutputSpec(extractor: .path("$.arr[0]")),
-            "last":  OutputSpec(extractor: .path("$.arr[-1]"))]
+        let declarations = ["first": OutputSpec(extractor: .path(try JSONPath("$.arr[0]"))),
+            "last":  OutputSpec(extractor: .path(try JSONPath("$.arr[-1]")))]
 
         // When
         let output = try OutputExtractor.extract(stdout: stdout, declarations: declarations)
@@ -73,7 +73,7 @@ struct OutputExtractorTests {
     func regexExtract() throws {
         // Given
         let stdout = "X-Total: 42\nX-Other: ignored"
-        let declarations = ["count": OutputSpec(extractor: .regex(#"^X-Total:\s*(\d+)$"#), type: .int)]
+        let declarations = ["count": OutputSpec(extractor: .regex(try NSRegularExpression(pattern: #"^X-Total:\s*(\d+)$"#, options: .anchorsMatchLines)), type: .int)]
 
         // When
         let output = try OutputExtractor.extract(stdout: stdout, declarations: declarations)
@@ -110,7 +110,7 @@ struct OutputExtractorTests {
     func optionalMissingReturnsNull() throws {
         // Given
         let stdout = #"{"a":1}"#
-        let declarations = ["b": OutputSpec(extractor: .path("$.b"), default: .null)]
+        let declarations = ["b": OutputSpec(extractor: .path(try JSONPath("$.b")), default: .null)]
 
         // When
         let output = try OutputExtractor.extract(stdout: stdout, declarations: declarations)
@@ -125,7 +125,7 @@ struct OutputExtractorTests {
     func optionalMissingUsesDefault() throws {
         // Given
         let stdout = #"{"a":1}"#
-        let declarations = ["b": OutputSpec(extractor: .path("$.b"),
+        let declarations = ["b": OutputSpec(extractor: .path(try JSONPath("$.b")),
                 default: .string("fallback"))]
 
         // When
@@ -141,7 +141,7 @@ struct OutputExtractorTests {
     func defaultGoesThroughCoerceGate() throws {
         // Given
         let stdout = #"{"a":1}"#
-        let declarations = ["b": OutputSpec(extractor: .path("$.b"), type: .int,
+        let declarations = ["b": OutputSpec(extractor: .path(try JSONPath("$.b")), type: .int,
                 default: .string("0"))]
 
         // When
@@ -157,7 +157,7 @@ struct OutputExtractorTests {
     func uncoercibleDefaultFailsLoud() throws {
         // Given
         let stdout = #"{"a":1}"#
-        let declarations = ["b": OutputSpec(extractor: .path("$.b"), type: .int,
+        let declarations = ["b": OutputSpec(extractor: .path(try JSONPath("$.b")), type: .int,
                 default: .string("nope"))]
 
         // Then
@@ -172,7 +172,7 @@ struct OutputExtractorTests {
     func nullDefaultStaysAbsenceMarker() throws {
         // Given
         let stdout = #"{"a":1}"#
-        let declarations = ["b": OutputSpec(extractor: .path("$.b"), type: .int, default: .null)]
+        let declarations = ["b": OutputSpec(extractor: .path(try JSONPath("$.b")), type: .int, default: .null)]
 
         // When
         let output = try OutputExtractor.extract(stdout: stdout, declarations: declarations)
@@ -187,7 +187,7 @@ struct OutputExtractorTests {
     func requiredMissingThrows() throws {
         // Given
         let stdout = #"{"a":1}"#
-        let declarations = ["b": OutputSpec(extractor: .path("$.b"))]
+        let declarations = ["b": OutputSpec(extractor: .path(try JSONPath("$.b")))]
 
         // Then
         let error = try #require(throws: (any Error).self) {
@@ -246,7 +246,7 @@ struct OutputExtractorTests {
     func coerceIntRejectsOutOfRangeIntegralDouble() throws {
         // Given
         let stdout = #"{"n":1e20}"#
-        let declarations = ["n": OutputSpec(extractor: .path("$.n"), type: .int)]
+        let declarations = ["n": OutputSpec(extractor: .path(try JSONPath("$.n")), type: .int)]
 
         // Then
         let error = try #require(throws: (any Error).self, "An out-of-range integral double should be rejected fail-loud instead of trapping") {
@@ -290,7 +290,7 @@ struct OutputExtractorTests {
     func jSONPathNonFiniteRejected() throws {
         // Given
         for type in [OutputSpec.CoerceType.float, .json] {
-            let declarations = ["v": OutputSpec(extractor: .path("$.v"), type: type)]
+            let declarations = ["v": OutputSpec(extractor: .path(try JSONPath("$.v")), type: type)]
 
         // Then
             let error = try #require(throws: (any Error).self, "jsonpath non-finite (type=\(type)) must fail-loud") {
@@ -298,7 +298,7 @@ struct OutputExtractorTests {
             }
             
             #expect(error is OutputResolutionError, "got \(error)")
-            #expect("\(error)".contains("non-finite"), "Reason stated explicitly: \(error)")
+            #expect("\(error)".contains("is not JSON"), "Reason stated explicitly: \(error)")
         }
     }
     
@@ -306,7 +306,7 @@ struct OutputExtractorTests {
     func jsonTypePreservesStructure() throws {
         // Given
         let stdout = #"{"arr":[1,2,3]}"#
-        let declarations = ["a": OutputSpec(extractor: .path("$.arr"), type: .json)]
+        let declarations = ["a": OutputSpec(extractor: .path(try JSONPath("$.arr")), type: .json)]
 
         // When
         let output = try OutputExtractor.extract(stdout: stdout, declarations: declarations)
@@ -321,7 +321,7 @@ struct OutputExtractorTests {
     @Test("Throws when input is not JSON")
     func invalidJSONThrows() throws {
         let stdout = "not json {"
-        let declarations = ["x": OutputSpec(extractor: .path("$.x"))]
+        let declarations = ["x": OutputSpec(extractor: .path(try JSONPath("$.x")))]
         let error = try #require(throws: (any Error).self) {
             try OutputExtractor.extract(stdout: stdout, declarations: declarations)
         }
@@ -329,14 +329,10 @@ struct OutputExtractorTests {
         #expect(error is OutputResolutionError)
     }
     
-    @Test("The reserved _raw key, a path and a regex that do not parse are the workflow's defect, refused before the text is read", arguments: [
-        ("_raw", OutputSpec(extractor: .path("$")), "_raw"),
-        ("code", OutputSpec(extractor: .path("a.b")), "JSONPath syntax"),
-        ("code", OutputSpec(extractor: .regex("(")), "invalid regex")
-    ])
-    func declarationDefectsAreRefused(key: String, spec: OutputSpec, said: String) throws {
+    @Test("The reserved _raw key is the workflow's defect, refused before the text is read")
+    func reservedRawKeyIsRefused() throws {
         // Given
-        let declarations = [key: spec]
+        let declarations = ["_raw": OutputSpec(extractor: .path(try JSONPath("$")))]
 
         // When
         let error = try #require(throws: (any Error).self) {
@@ -346,7 +342,7 @@ struct OutputExtractorTests {
         // Then
         let defect = try #require(error as? OutputDeclarationError)
 
-        #expect(defect.message.contains(said), "\(defect.message)")
+        #expect(defect.message.contains("_raw"), "\(defect.message)")
     }
     
     // MARK: - Codable round-trip
@@ -361,14 +357,14 @@ struct OutputExtractorTests {
             return
         }
         
-        #expect(path == "$.foo.bar")
+        #expect(path.expression == "$.foo.bar")
         #expect(spec.type == .string)
         #expect(!spec.canOmit)
     }
     
     @Test("Full-form decoding")
     func codableFullFormDecode() throws {
-        let json = #"{"path":"$.x","type":"int","default":99,"hint":"count"}"#
+        let json = #"{"path":"$.x","type":"int","default":99}"#
         let dec = JSONDecoder()
         let spec = try dec.decode(OutputSpec.self, from: json.data(using: .utf8)!)
         guard case .path(let path) = spec.extractor else {
@@ -377,11 +373,10 @@ struct OutputExtractorTests {
             return
         }
         
-        #expect(path == "$.x")
+        #expect(path.expression == "$.x")
         #expect(spec.type == .int)
         #expect(spec.canOmit)
         #expect(spec.default == .int(99))
-        #expect(spec.hint == "count")
     }
     
     @Test("Writing a default means the field is omittable")
@@ -398,13 +393,13 @@ struct OutputExtractorTests {
         let dec = JSONDecoder()
         let result = try dec.decode(OutputSpec.self,
             from: #"{"regex":"^x=(\\d+)$","type":"int"}"#.data(using: .utf8)!)
-        guard case .regex(let path) = result.extractor else {
+        guard case .regex(let regex) = result.extractor else {
             Issue.record()
             
             return
         }
         
-        #expect(path == #"^x=(\d+)$"#)
+        #expect(regex.pattern == #"^x=(\d+)$"#)
         let decoded = try dec.decode(OutputSpec.self,
             from: #"{"line":-1}"#.data(using: .utf8)!)
         guard case .line(let lineNumber) = decoded.extractor else {
@@ -416,25 +411,37 @@ struct OutputExtractorTests {
         #expect(lineNumber == -1)
     }
     
-    @Test("Declaring more than one extractor is rejected")
-    func codableMultipleExtractorsRejected() throws {
-        let json = #"{"path":"$.a","regex":"x"}"#
-        #expect(throws: (any Error).self) { try JSONDecoder().decode(OutputSpec.self,
-                from: json.data(using: .utf8)!) }
-    }
-    
-    @Test("Short-form round trip")
-    func codableShortFormRoundTrip() throws {
-        let spec = OutputSpec(extractor: .path("$.x"))
-        let encoder = try JSONEncoder().encode(spec)
-        #expect(String(data: encoder, encoding: .utf8) == "\"$.x\"")
+    @Test("A declaration that is no extractor is refused in its own words", arguments: [
+        (#"{"count": 5}"#, "outputs.count: an extractor is a JSONPath, or a dictionary of path, regex or line"),
+        (#"{"count": {"path": "$.a", "regex": "x"}}"#, "outputs.count: declare exactly one of path, regex and line, not path and regex"),
+        (#"{"count": {"type": "int"}}"#, "outputs.count: declare exactly one of path, regex and line, not none"),
+        (#"{"count": {"path": "$.a", "hint": "total"}}"#, "outputs.count: unknown key(s) hint"),
+        (#"{"count": {"line": "first"}}"#, "outputs.count: `line` is an integer"),
+        (#"{"count": {"path": "$.a", "type": "number"}}"#, "outputs.count: `type` is one of string, int, float, bool and json"),
+        (#"{"count": "a.b"}"#, "outputs.count: JSONPath syntax: expression must start with `$`"),
+        (#"{"count": {"regex": "("}}"#, "outputs.count: `(` is no regular expression")
+    ])
+    func declarationDefectIsRefused(json: String, said: String) throws {
+        // Given
+        let sut = JSONDecoder()
+
+        // When
+        let error = try #require(throws: (any Error).self) {
+            try sut.decode([String: OutputSpec].self, from: Data(json.utf8))
+        }
+
+        // Then
+        let defect = try #require(error as? OutputDeclarationError)
+
+        #expect(defect.message.hasPrefix(said), "\(defect.message)")
+        #expect(!defect.message.contains("OutputSpec"), "\(defect.message)")
     }
     
     // MARK: - semantic corner cases
     @Test("An explicit null is treated as absence")
     func explicitNullTreatedAsMissing() throws {
         let stdout = #"{"a":null}"#
-        let declarations = ["a": OutputSpec(extractor: .path("$.a"))]
+        let declarations = ["a": OutputSpec(extractor: .path(try JSONPath("$.a")))]
         let error = try #require(throws: (any Error).self) {
             try OutputExtractor.extract(stdout: stdout, declarations: declarations)
         }
@@ -442,20 +449,25 @@ struct OutputExtractorTests {
         #expect(error is OutputResolutionError, "explicit null without a default should fail — this field has no default")
     }
     
-    @Test("An explicit null stays null even with a default")
-    func explicitNullWithDefaultReturnsNull() throws {
+    @Test("An explicit null takes the default")
+    func explicitNullTakesDefault() throws {
+        // Given
         let stdout = #"{"a":null}"#
-        let declarations = ["a": OutputSpec(extractor: .path("$.a"), default: .null)]
+        let declarations = ["a": OutputSpec(extractor: .path(try JSONPath("$.a")), default: .string("fallback"))]
+
+        // When
         let output = try OutputExtractor.extract(stdout: stdout, declarations: declarations)
+
+        // Then
         let object = try #require(output.objectValue)
         
-        #expect(object["a"] == .null)
+        #expect(object["a"] == .string("fallback"))
     }
     
     @Test("Uses the whole match when there is no capture group")
     func regexNoCaptureGroupUsesWholeMatch() throws {
         let stdout = "hello world"
-        let declarations = ["w": OutputSpec(extractor: .regex(#"\bworld\b"#))]
+        let declarations = ["w": OutputSpec(extractor: .regex(try NSRegularExpression(pattern: #"\bworld\b"#, options: .anchorsMatchLines)))]
         let output = try OutputExtractor.extract(stdout: stdout, declarations: declarations)
         let object = try #require(output.objectValue)
         

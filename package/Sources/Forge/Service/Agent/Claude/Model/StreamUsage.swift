@@ -14,21 +14,14 @@ struct StreamUsage: Sendable, Equatable {
     var cacheCreationInputTokens: Int?
     var cacheReadInputTokens: Int?
 
-    var asDictionary: [String: Int] {
-        var values: [String: Int] = [:]
-
-        if let inputTokens { values["input_tokens"] = inputTokens }
-        if let outputTokens { values["output_tokens"] = outputTokens }
-
-        if let cacheCreationInputTokens {
-            values["cache_creation_input_tokens"] = cacheCreationInputTokens
-        }
-
-        if let cacheReadInputTokens {
-            values["cache_read_input_tokens"] = cacheReadInputTokens
-        }
-
-        return values
+    // Claude counts `input_tokens` apart from the cache it reads and writes.
+    var agentUsage: AgentUsage {
+        AgentUsage(
+            inputTokens: inputTokens,
+            outputTokens: outputTokens,
+            cacheWriteTokens: cacheCreationInputTokens,
+            cacheReadTokens: cacheReadInputTokens
+        )
     }
 
     // MARK: - Initializer

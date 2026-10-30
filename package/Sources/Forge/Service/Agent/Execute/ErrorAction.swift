@@ -8,6 +8,6 @@
 import Foundation
 
 enum ErrorAction: Sendable {
-    case abort
+    case propagate
     case substitute(BackendResponse)
 }

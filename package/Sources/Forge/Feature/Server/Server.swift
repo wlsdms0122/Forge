@@ -55,13 +55,7 @@ package actor Server {
         var byProvider: [String: any Backend] = [:]
         
         for provider in config.providers {
-            if let backend = BackendFactory.make(provider) {
-                byProvider[provider.name] = backend
-            } else {
-                let warning = "forge: provider '\(provider.name)': unknown kind"
-                    + " '\(provider.kind)' or missing settings — skipped\n"
-                FileHandle.standardError.write(Data(warning.utf8))
-            }
+            byProvider[provider.name] = BackendFactory.make(provider.backend)
         }
         
         let backends = BackendRegistry(byProvider)

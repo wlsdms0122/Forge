@@ -29,6 +29,20 @@ struct CodexEventStreamTests {
     // MARK: - Property
     // MARK: - Initializer
     // MARK: - Test
+    @Test("a cache read beyond the input clamps the input at 0")
+    func cacheReadBeyondInputClampsAtZero() {
+        // Given
+        let raw = #"""
+        {"type":"turn.completed","usage":{"input_tokens":100,"cached_input_tokens":500}}
+        """#
+
+        // When
+        let parsed = CodexEventStream.parse(raw)
+
+        // Then
+        #expect(parsed.usage == AgentUsage(inputTokens: 0, cacheReadTokens: 500))
+    }
+    
     @Test("parses thread, message, usage, and tool lifecycle")
     func parsesThreadMessageUsageAndToolLifecycle() {
         // Given
@@ -116,6 +130,21 @@ struct CodexEventStreamTests {
         #expect(parsed.toolEvents.first?.name == "exec")
         #expect(parsed.toolEvents.first?.input?.contains("pwd") == true)
         #expect(parsed.toolEvents.first?.resultPreview == "/tmp")
+    }
+    
+    @Test("a broken frame is counted as malformed")
+    func invalidUTF8FrameIsMalformed() {
+        // Given
+        let sut = CodexEventStream.Reader()
+        var frame = Data(#"{"type":"result","result":"ok-"#.utf8)
+        frame.append(0xFF)
+        frame.append(contentsOf: Data(#""}"#.utf8))
+
+        // When
+        sut.feed(frame: frame, at: .fixture)
+
+        // Then
+        #expect(sut.snapshot().malformedLineCount == 1)
     }
     
     // MARK: - Private

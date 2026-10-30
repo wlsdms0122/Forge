@@ -45,9 +45,7 @@ struct LoggingHook: PreHook, PostHook, ErrorHook {
     }
     
     func after(_ invocation: AgentInvocation, _ response: BackendResponse) async {
-        let model = response.modelReference
-            ?? invocation.executionContext.modelReference
-            ?? invocation.agent.model
+        let model = invocation.agent.model
         let forge = Self.forgeContext()
         
         var responsePayload: [String: Any] = [
@@ -72,7 +70,7 @@ struct LoggingHook: PreHook, PostHook, ErrorHook {
     }
     
     func onError(_ invocation: AgentInvocation, _ error: any Error) async -> ErrorAction {
-        let model = invocation.executionContext.modelReference ?? invocation.agent.model
+        let model = invocation.agent.model
         let resolvedModel = model?.displayName ?? "default"
         let stage: String
         
@@ -154,7 +152,7 @@ struct LoggingHook: PreHook, PostHook, ErrorHook {
             )
         }
         
-        return .abort
+        return .propagate
     }
     
     // MARK: - Private

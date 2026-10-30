@@ -49,6 +49,8 @@ struct ExtractQuery: Warp.Query {
         // makes right.
         do {
             declarations = try ValueBridge.decode([String: OutputSpec].self, from: question[.outputs])
+        } catch let error as OutputDeclarationError {
+            throw error
         } catch {
             throw OutputDeclarationError("outputs: \(error)")
         }

@@ -61,23 +61,48 @@ struct WorkflowDispatchTests {
         #expect(firstID != secondID, "Two dispatches with the same wire id sharing a runID means cross-run contamination (finding J)")
     }
 
-    @Test("An inline spec with a name attached is rejected")
-    func inlineSpecWithNameRejected() async throws {
+    @Test("A name beside an inline spec is rejected")
+    func nameBesideInlineSpecRejected() async throws {
         // Given
-        let (method, authority, _) = try await makeMethod(policy: ["cli:test": ["<inline>"]])
+        let (sut, authority, _) = try await makeMethod(policy: ["*": ["*"]])
         let token = authority.mint(TokenClaims(principal: "cli:test"))
-        var named = anonSpec
-        named["name"] = "echo"
-        do {
+        let claims = try #require(authority.verify(token))
 
         // When
-            _ = try await method.handle(request(["token": .string(token), "spec": .object(named)]), claims: try #require(authority.verify(token)))
+        let error = try await #require(throws: ProtocolError.self) {
+            try await sut.handle(
+                request(["token": .string(token), "name": "echo", "spec": .object(anonSpec)]),
+                claims: claims
+            )
+        }
 
         // Then
-            Issue.record("An inline spec with a name key should be rejected")
-        } catch let error as ProtocolError {
-            #expect(error.message.contains("name"), "The error should explain the name prohibition: \(error.message)")
+        #expect(error.message == "workflow.dispatch: 'name' and 'spec' are mutually exclusive; pass only one")
+    }
+
+    @Test(
+        "A name or spec of the wrong type is refused, not read as absent",
+        arguments: [
+            (["name": "echo", "spec": "oops"], "workflow.dispatch: 'name' and 'spec' are mutually exclusive; pass only one"),
+            (["spec": "oops"], "workflow.dispatch: 'spec' is an object"),
+            (["name": 5], "workflow.dispatch: 'name' is a non-empty string"),
+            (["name": ""], "workflow.dispatch: 'name' is a non-empty string")
+        ] as [([String: JSONValue], String)]
+    )
+    func wronglyTypedProgramRefused(program: [String: JSONValue], message: String) async throws {
+        // Given
+        let (sut, authority, _) = try await makeMethod(policy: ["*": ["*"]])
+        let token = authority.mint(TokenClaims(principal: "cli:test"))
+        let claims = try #require(authority.verify(token))
+        let params = program.merging(["token": .string(token)]) { first, _ in first }
+
+        // When
+        let error = try await #require(throws: ProtocolError.self) {
+            try await sut.handle(request(params), claims: claims)
         }
+
+        // Then
+        #expect(error.message == message)
     }
 
     @Test("An inline spec is rejected without the sigil policy")

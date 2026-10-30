@@ -234,7 +234,7 @@ actor JobStore {
         by: String?,
         item: Int,
         desc: String?,
-        status: String
+        status: String?
     ) async throws {
         _ = try await update(id: id, by: by) { job in
             job.plan.upsert(id: item, desc: desc, status: status)

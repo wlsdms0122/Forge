@@ -44,10 +44,6 @@ struct WorkflowCheckCommand: AsyncParsableCommand {
     // MARK: - Initializer
     // MARK: - Public
     func run() async throws {
-        guard !paths.isEmpty else {
-            die("check: at least one file path is required (e.g. forge workflow check .forge/workflow/**/*.yaml)", code: 2)
-        }
-        
         var failed = 0
         
         for report in try await WorkflowLint().check(paths: paths) {

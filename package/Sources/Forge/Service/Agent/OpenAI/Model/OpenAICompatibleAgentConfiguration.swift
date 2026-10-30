@@ -9,7 +9,7 @@ import Foundation
 
 struct OpenAICompatibleAgentConfiguration: Sendable {
     // MARK: - Property
-    let model: String
+    let model: String?
     let workingDirectory: String?
     let environment: [String: String]?
     let commandAuthorization: CommandAuthorizationPolicy

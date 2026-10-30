@@ -13,21 +13,18 @@ struct AgentInvocation: Sendable, Equatable {
     let agent: Agent
     let prompt: String
     let session: (any BackendSession)?
-    let executionContext: AgentInvocationContext
 
     // MARK: - Initializer
     init(
         id: String,
         agent: Agent,
         prompt: String,
-        session: (any BackendSession)? = nil,
-        executionContext: AgentInvocationContext = AgentInvocationContext()
+        session: (any BackendSession)? = nil
     ) {
         self.id = id
         self.agent = agent
         self.prompt = prompt
         self.session = session
-        self.executionContext = executionContext
     }
 
     // MARK: - Public

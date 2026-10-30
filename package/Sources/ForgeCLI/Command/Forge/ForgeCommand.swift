@@ -60,12 +60,21 @@ struct ForgeCommand: AsyncParsableCommand {
 
             EXIT STATUS
                 0   Success.
-                1   Daemon boot failure (`serve`).
-                2   Argument parse error.
-                3   Configuration load failure.
-                4   Payload validation failure (incl. missing token).
-                5   RPC error returned by the daemon.
-                6   RPC rejected for a stale/invalid token — reissue needed.
+                1   The command itself failed: `serve` could not boot (config
+                    included), `service register` could not register or lost
+                    the daemon, `policy check` denied, `workflow check` found
+                    a failing file.
+                4   The request could not be formed: a missing token, a bad
+                    JSON option, conflicting flags, an unusable instance or
+                    socket path.
+                5   The call failed: the daemon returned an RPC error or could
+                    not be reached, or `service describe` named a service that
+                    is not registered.
+                6   RPC rejected for a stale or invalid token. Reissue it.
+                64  Argument parse error.
+
+                The code reports the call, not the work it started: a dispatched
+                run that fails still exits 0, with the failure in the result.
             """,
         version: Version.current,
         subcommands: [
