@@ -27,12 +27,14 @@ struct PolicyListCommand: ParsableCommand {
         let result = client.call("policy.list")
         
         if json {
-            printJSON(result)
+            result.printJSON()
             
             return
         }
         
-        let policy = (result["policy"] as? [String: [String]]) ?? [:]
+        let policy = (result["policy"]?.objectValue ?? [:]).mapValues { workflows in
+            workflows.arrayValue?.compactMap(\.stringValue) ?? []
+        }
         
         if policy.isEmpty {
             print("(empty)")

@@ -7,6 +7,7 @@
 
 import ArgumentParser
 import Foundation
+import Forge
 
 struct ServiceRunCommand: ParsableCommand {
     // MARK: - Property
@@ -35,7 +36,7 @@ struct ServiceRunCommand: ParsableCommand {
     func run() throws {
         let client = Client(global, context: "service run")
         
-        printResult(client.call("service.run", ["name": name]), json: json)
+        client.call("service.run", ["name": .string(name)]).printResult(json: json)
     }
     
     // MARK: - Private

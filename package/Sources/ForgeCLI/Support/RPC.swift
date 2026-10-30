@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Forge
 
 enum RPC {
     // MARK: - Property
@@ -13,37 +14,40 @@ enum RPC {
     // MARK: - Public
     static func requestLine(
         method: String,
-        params: [String: Any],
+        params: [String: JSONValue],
         idPrefix: String = "fc"
     ) -> Data? {
-        let request: [String: Any] = [
-            "id": "\(idPrefix)-\(UUID().uuidString.prefix(8))",
-            "method": method,
-            "params": params
+        let request: JSONValue = [
+            "id": .string("\(idPrefix)-\(UUID().uuidString.prefix(8))"),
+            "method": .string(method),
+            "params": .object(params)
         ]
         
         return try? JSONSerialization.data(
-            withJSONObject: request,
+            withJSONObject: request.jsonObject,
             options: [.withoutEscapingSlashes]
         )
     }
     
     static func parseFrame(_ frame: Data) -> RPCResult {
-        guard let object = try? JSONSerialization.jsonObject(with: frame) as? [String: Any] else {
+        guard
+            let object = try? JSONSerialization.jsonObject(with: frame) as? [String: Any],
+            let response = try? JSONValue(jsonObject: object)
+        else {
             return .err(type: "ClientError", message: "malformed daemon response")
         }
         
-        if let error = object["error"] as? [String: Any] {
+        if let error = response["error"]?.objectValue {
             return .err(
-                type: (error["type"] as? String) ?? "RPCError",
-                message: (error["message"] as? String) ?? "rpc error"
+                type: error["type"]?.stringValue ?? "RPCError",
+                message: error["message"]?.stringValue ?? "rpc error"
             )
         }
         
-        return .ok((object["result"] as? [String: Any]) ?? [:])
+        return .ok(.object(response["result"]?.objectValue ?? [:]))
     }
     
-    static func call(socketPath: String, method: String, params: [String: Any]) -> RPCResult {
+    static func call(socketPath: String, method: String, params: [String: JSONValue]) -> RPCResult {
         guard let requestData = requestLine(method: method, params: params) else {
             return .err(type: "ClientError", message: "encode request failed")
         }

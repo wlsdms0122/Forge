@@ -7,25 +7,26 @@
 
 import ArgumentParser
 import Foundation
+import Forge
 
 struct ServiceSendCommand: ParsableCommand {
     // MARK: - Property
     static let configuration = CommandConfiguration(
         commandName: "send",
-        abstract: "Send a JSON payload to a service handler.",
+        abstract: "Send a JSON payload to a registered service.",
         discussion: """
-            Hands a payload to a registered external service handler
+            Hands a payload to a registered service
             (e.g. `slack`). The payload schema is service-specific — see
             `forge service describe <name>`.
 
             IDENTITY
                 The bearer token (FORGE_ACCESS_TOKEN or --token) carries the
-                caller's identity. principal / workflow_id / origin /
+                caller's identity. principal / run_id / origin /
                 correlator are derived server-side from the token — not
                 spoofable.
 
             BLOCKING vs --async
-                `send` blocks until the handler acks and returns its result.
+                `send` blocks until the service acks and returns its result.
                 Pass --async to return as soon as the work is dispatched
                 ({ message_id, status: "dispatched" }) without waiting.
                 Whether to wait is the caller's business — a `wait` key in
@@ -39,7 +40,7 @@ struct ServiceSendCommand: ParsableCommand {
     
     @OptionGroup var global: GlobalOptions
     
-    @Argument(help: "Service handler name (e.g. `slack`).")
+    @Argument(help: "Service name (e.g. `slack`).")
     var name: String
     
     @Option(help: "JSON object payload. Service-specific schema.")
@@ -60,8 +61,8 @@ struct ServiceSendCommand: ParsableCommand {
         let client = Client(global, context: "service send")
         
         guard let payloadData = payload.data(using: .utf8),
-            let payloadAny = try? JSONSerialization.jsonObject(with: payloadData),
-            let payloadObject = payloadAny as? [String: Any]
+            let payloadAny = try? JSONSerialization.jsonObject(with: payloadData) as? [String: Any],
+            let payloadObject = try? JSONValue(jsonObject: payloadAny)
         else {
             die("service send: --payload must be a JSON object", code: 4)
         }
@@ -70,15 +71,15 @@ struct ServiceSendCommand: ParsableCommand {
             die("service send: control whether to wait with the --async flag, not a payload field (omit --async to block until completion)", code: 4)
         }
         
-        let params: [String: Any] = [
-            "service": name,
+        let params: [String: JSONValue] = [
+            "service": .string(name),
             "payload": payloadObject,
-            "async": isAsync
+            "async": .bool(isAsync)
         ]
         
-        printResult(client.call("session.send", params), json: json)
+        client.call("service.send", params).printResult(json: json)
         
-        ForgeCommand.exit()
+        Self.exit()
     }
     
     // MARK: - Private

@@ -7,6 +7,7 @@
 
 import ArgumentParser
 import Foundation
+import Forge
 
 struct ScheduleCreateCommand: ParsableCommand {
     // MARK: - Property
@@ -16,8 +17,7 @@ struct ScheduleCreateCommand: ParsableCommand {
         discussion: """
             Registers a schedule in the runtime dir (runtime_directory/schedule).
             Fires either a registered workflow (`--workflow <name>`) or an
-            anonymous inline workflow (`--spec <json>`) on a trigger —
-            exactly one of:
+            inline workflow (`--spec <json>`) on a trigger, exactly one of:
 
                 --every <dur>            repeat forever, every interval
                 --at <HH:mm> --timezone  repeat on a wall-clock (combine --days)
@@ -28,8 +28,8 @@ struct ScheduleCreateCommand: ParsableCommand {
             A one-shot stays on disk after firing — runtime-created ones are
             auto-GC'd by the daemon; hand-authored config ones show `spent` in
             `list` for you to remove. The target flags are mutually exclusive;
-            inline `spec` rejects a `name` key and runs gated by the `<inline>`
-            sigil — identical shape to `workflow dispatch --spec`.
+            inline `spec` runs gated by the `<inline>` sigil, the same shape
+            as `workflow dispatch --spec`.
 
             Creation is policy-gated: your principal must be allowed to
             dispatch the target workflow directly (policy/*.yaml), or the
@@ -46,8 +46,11 @@ struct ScheduleCreateCommand: ParsableCommand {
 
             EXAMPLE — inline spec, one-shot in 30 minutes:
                 forge schedule create --after 30m --spec '{
-                  "steps": [{"id":"send","shell":{"command":["forge","service","send","slack",
-                    "--payload","{\\"kind\\":\\"slack.thread\\",\\"target\\":\\"<permalink>\\",\\"text\\":\\"<message>\\"}"]}}]
+                  "failing": ["nonzero_exit", "timeout"],
+                  "body": [{"value": {"call": {"procedure": "shell", "arguments": {"command": [
+                    "forge", "service", "send", "slack", "--payload",
+                    "{\\"kind\\":\\"slack.thread\\",\\"target\\":\\"<permalink>\\",\\"text\\":\\"<message>\\"}"
+                  ]}}}}]
                 }'
             """
     )
@@ -57,7 +60,7 @@ struct ScheduleCreateCommand: ParsableCommand {
     @Option(help: "Registered workflow name. Omit when using --spec.")
     var workflow: String?
     
-    @Option(help: "Inline anonymous workflow JSON — use instead of --workflow.")
+    @Option(help: "Inline workflow JSON, one procedure; use instead of --workflow.")
     var spec: String?
     
     @Option(help: "Repeat every interval (30s 5m 1h 2d).")
@@ -95,28 +98,31 @@ struct ScheduleCreateCommand: ParsableCommand {
     func run() throws {
         let client = Client(global, context: "schedule create")
         
-        var params: [String: Any] = [:]
+        var params: [String: JSONValue] = [:]
         
-        if let every { params["every"] = every }
-        if let at { params["at"] = at }
-        if let once { params["once"] = once }
-        if let after { params["after"] = after }
-        if let timezone { params["timezone"] = timezone }
+        if let every { params["every"] = .string(every) }
+        if let at { params["at"] = .string(at) }
+        if let once { params["once"] = .string(once) }
+        if let after { params["after"] = .string(after) }
+        if let timezone { params["timezone"] = .string(timezone) }
         
         if let days {
-            params["days"] = days
-                .split(separator: ",")
-                .map { day in day.trimmingCharacters(in: .whitespaces) }
-                .filter { day in !day.isEmpty }
+            params["days"] = .array(
+                days
+                    .split(separator: ",")
+                    .map { day in day.trimmingCharacters(in: .whitespaces) }
+                    .filter { day in !day.isEmpty }
+                    .map(JSONValue.string)
+            )
         }
         
-        if let workflow { params["workflow"] = workflow }
-        if let spec { params["spec"] = parseJSONObjectArg(spec, flag: "--spec") }
-        if let id { params["id"] = id }
-        if let inputs { params["inputs"] = parseJSONObjectArg(inputs, flag: "--inputs") }
-        if let concurrency { params["concurrency"] = concurrency }
+        if let workflow { params["workflow"] = .string(workflow) }
+        if let spec { params["spec"] = JSONValue(objectArgument: spec, flag: "--spec") }
+        if let id { params["id"] = .string(id) }
+        if let inputs { params["inputs"] = JSONValue(objectArgument: inputs, flag: "--inputs") }
+        if let concurrency { params["concurrency"] = .string(concurrency) }
         
-        printResult(client.call("schedule.create", params), json: json)
+        client.call("schedule.create", params).printResult(json: json)
     }
     
     // MARK: - Private

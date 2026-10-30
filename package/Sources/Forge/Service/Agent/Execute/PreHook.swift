@@ -10,5 +10,5 @@ import Foundation
 protocol PreHook: Sendable {
     var name: String { get }
 
-    func before(_ invocation: Invocation) async throws -> Invocation
+    func before(_ invocation: AgentInvocation) async throws -> AgentInvocation
 }

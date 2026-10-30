@@ -7,18 +7,18 @@
 
 @testable import Forge
 
-/// A backend that returns the received prompt prefixed with `echo:`.
-///
-/// How the prompt was assembled can be read back from the result string, so tests that
-/// check resolution and substitution can observe their input without standing up a
-/// dedicated backend.
+// A backend that returns the received prompt prefixed with `echo:`.
+//
+// How the prompt was assembled can be read back from the result string, so tests that
+// check resolution and substitution can observe their input without standing up a
+// dedicated backend.
 struct EchoBackend: Backend {
     // MARK: - Property
     let prompts = OrderedCollector<String>()
 
     // MARK: - Initializer
     // MARK: - Public
-    func invoke(_ invocation: Invocation) async throws -> BackendResponse {
+    func invoke(_ invocation: AgentInvocation) async throws -> BackendResponse {
         prompts.append(invocation.prompt)
 
         return BackendResponse(

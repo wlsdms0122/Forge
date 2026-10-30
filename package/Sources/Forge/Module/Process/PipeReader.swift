@@ -7,12 +7,12 @@
 
 import Foundation
 
-/// Sole owner of one pipe: it creates the descriptor pair, lends the write end to a child,
-/// and reclaims both. The read fd is touched by this type's source queue and nothing else,
-/// so reading and finishing cannot race over the same descriptor.
+// Sole owner of one pipe: it creates the descriptor pair, lends the write end to a child,
+// and reclaims both. The read fd is touched by this type's source queue and nothing else,
+// so reading and finishing cannot race over the same descriptor.
 final class PipeReader: @unchecked Sendable {
     // MARK: - Property
-    /// The write end handed to the child. `closeOnDealloc` is off, so closing it is this type's job.
+    // The write end handed to the child. `closeOnDealloc` is off, so closing it is this type's job.
     let writingHandle: FileHandle
     
     private let readingDescriptor: Int32
@@ -25,8 +25,8 @@ final class PipeReader: @unchecked Sendable {
     private var writingClosed = false
     
     // MARK: - Initializer
-    /// `onChunk` is called on this reader's private serial queue, in arrival order, and blocks
-    /// further reading while it runs — it is the only composition point, so keep it cheap.
+    // `onChunk` is called on this reader's private serial queue, in arrival order, and blocks
+    // further reading while it runs — it is the only composition point, so keep it cheap.
     init(onChunk: (@Sendable (Data) -> Void)? = nil) throws {
         var descriptors: [Int32] = [-1, -1]
         
@@ -72,7 +72,7 @@ final class PipeReader: @unchecked Sendable {
     }
     
     // MARK: - Public
-    /// Closes the parent's copy once the child has inherited the write end. Without this, EOF never arrives.
+    // Closes the parent's copy once the child has inherited the write end. Without this, EOF never arrives.
     func closeWriteEnd() {
         lock.lock()
         
@@ -86,7 +86,7 @@ final class PipeReader: @unchecked Sendable {
         close(writingDescriptor)
     }
     
-    /// Ends reading and returns every byte collected so far. Repeated calls return the same value.
+    // Ends reading and returns every byte collected so far. Repeated calls return the same value.
     @discardableResult
     func finish() -> Data {
         closeWriteEnd()
@@ -102,7 +102,7 @@ final class PipeReader: @unchecked Sendable {
     }
     
     // MARK: - Private
-    /// Drains whatever is readable. Returns whether the stream has ended.
+    // Drains whatever is readable. Returns whether the stream has ended.
     private func drain() -> Bool {
         var chunk = Data()
         var bytes = [UInt8](repeating: 0, count: 65536)
@@ -150,18 +150,5 @@ final class PipeReader: @unchecked Sendable {
         // Releasing a source that was never cancelled makes libdispatch kill the process.
         closeWriteEnd()
         source.cancel()
-    }
-}
-
-enum PipeReaderError: ForgeError, CustomStringConvertible {
-    case creationFailed(errno: Int32)
-    
-    var message: String { description }
-    
-    var description: String {
-        switch self {
-        case .creationFailed(let code):
-            return "failed to create pipe (errno=\(code))"
-        }
     }
 }

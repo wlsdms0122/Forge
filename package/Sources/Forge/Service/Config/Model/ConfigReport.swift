@@ -36,20 +36,18 @@ package struct ConfigReport: Sendable {
     }
     
     // MARK: - Public
-    package func asJSONDict() -> [String: Any] {
-        var values: [[String: Any]] = []
-        
-        for entry in entries {
-            values.append([
-                "key": entry.key,
-                "value": entry.value,
-                "source": entry.source.label
-            ])
+    package var fields: [String: JSONValue] {
+        let values: [JSONValue] = entries.map { entry in
+            [
+                "key": .string(entry.key),
+                "value": .string(entry.value),
+                "source": .string(entry.source.label)
+            ]
         }
         
         return [
-            "toml": tomlPath as Any? ?? NSNull(),
-            "values": values
+            "toml": tomlPath.map(JSONValue.string) ?? .null,
+            "values": .array(values)
         ]
     }
     

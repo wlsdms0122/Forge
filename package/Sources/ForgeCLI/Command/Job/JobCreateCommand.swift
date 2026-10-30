@@ -7,6 +7,7 @@
 
 import ArgumentParser
 import Foundation
+import Forge
 
 struct JobCreateCommand: ParsableCommand {
     // MARK: - Property
@@ -40,7 +41,7 @@ struct JobCreateCommand: ParsableCommand {
     @Option(help: "Reference pointers JSON: [{\"ref\":\"brain-id|path|url\",\"note\":\"why\"}] or [\"ref\", ...]. Knowledge already consulted / worth consulting.")
     var refs: String?
     
-    @Option(help: "Origin as an opaque JSON map (forge-agnostic; e.g. slack: {channel, thread_ts}).")
+    @Option(help: "Origin as an opaque JSON object (forge-agnostic; e.g. slack: {channel, thread_ts}).")
     var origin: String?
     
     @Option(help: "Plan JSON array: [{\"id\"?:int,\"desc\":\"...\",\"status\"?:\"...\"}] or [\"desc\", ...]. id is an integer — omit to auto-number from 1.")
@@ -63,39 +64,39 @@ struct JobCreateCommand: ParsableCommand {
     func run() throws {
         let client = Client(global, context: "job create")
         
-        var params: [String: Any] = ["title": title]
+        var params: [String: JSONValue] = ["title": .string(title)]
         
-        if let brief { params["brief"] = brief }
+        if let brief { params["brief"] = .string(brief) }
         
         if let refs {
             guard let data = refs.data(using: .utf8),
-                let array = try? JSONSerialization.jsonObject(with: data),
-                array is [Any]
+                let array = try? JSONSerialization.jsonObject(with: data) as? [Any],
+                let value = try? JSONValue(jsonObject: array)
             else {
                 die("job create: --refs must be a valid JSON array", code: 4)
             }
             
-            params["refs"] = array
+            params["refs"] = value
         }
         
-        if let origin { params["origin"] = parseJSONObjectArg(origin, flag: "--origin") }
+        if let origin { params["origin"] = JSONValue(objectArgument: origin, flag: "--origin") }
         
         if let plan {
             guard let data = plan.data(using: .utf8),
-                let array = try? JSONSerialization.jsonObject(with: data),
-                array is [Any]
+                let array = try? JSONSerialization.jsonObject(with: data) as? [Any],
+                let value = try? JSONValue(jsonObject: array)
             else {
                 die("job create: --plan must be a valid JSON array", code: 4)
             }
             
-            params["plan"] = array
+            params["plan"] = value
         }
         
-        if let parentJob { params["parent_job"] = parentJob }
-        if let status { params["status"] = status }
-        if let id { params["id"] = id }
+        if let parentJob { params["parent_job"] = .string(parentJob) }
+        if let status { params["status"] = .string(status) }
+        if let id { params["id"] = .string(id) }
         
-        printResult(client.call("job.create", params), json: json)
+        client.call("job.create", params).printResult(json: json)
     }
     
     // MARK: - Private

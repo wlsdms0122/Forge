@@ -27,15 +27,15 @@ struct TokenIssueCommand: ParsableCommand {
     // MARK: - Public
     func run() throws {
         let client = Client(global, context: "token issue")
-        let result = client.call("token.issue", ["principal": principal])
+        let result = client.call("token.issue", ["principal": .string(principal)])
         
         if json {
-            printJSON(result)
+            result.printJSON()
         } else {
-            print((result["token"] as? String) ?? "")
+            print(result["token"]?.stringValue ?? "")
         }
         
-        ForgeCommand.exit()
+        Self.exit()
     }
     
     // MARK: - Private

@@ -65,7 +65,7 @@ actor UnixSocketServer {
         let fd = socket(AF_UNIX, SOCK_STREAM, 0)
         
         guard fd >= 0 else {
-            throw ProtocolError("socket() failed: errno=\(errno)")
+            throw SocketError("socket() failed: errno=\(errno)")
         }
         
         var address = sockaddr_un()
@@ -76,7 +76,7 @@ actor UnixSocketServer {
         guard pathBytes.count < MemoryLayout.size(ofValue: address.sun_path) else {
             close(fd)
             
-            throw ProtocolError("socket path too long: \(path)")
+            throw SocketError("socket path too long: \(path)")
         }
         
         withUnsafeMutablePointer(to: &address.sun_path) { pointer in
@@ -102,14 +102,14 @@ actor UnixSocketServer {
             let bindErrno = errno
             close(fd)
             
-            throw ProtocolError("bind() failed: errno=\(bindErrno)")
+            throw SocketError("bind() failed: errno=\(bindErrno)")
         }
         
         guard listen(fd, 32) == 0 else {
             let listenErrno = errno
             close(fd)
             
-            throw ProtocolError("listen() failed: errno=\(listenErrno)")
+            throw SocketError("listen() failed: errno=\(listenErrno)")
         }
         
         self.listenFD = fd

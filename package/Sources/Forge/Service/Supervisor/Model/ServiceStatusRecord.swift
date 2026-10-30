@@ -17,23 +17,23 @@ struct ServiceStatusRecord: Sendable {
     let lastExitCode: Int32?
     let autoSpawn: Bool
 
-    var dict: [String: Any] {
-        var dictionary: [String: Any] = [
-            "name":       name,
-            "state":      state,
-            "auto_spawn": autoSpawn,
-            "crashes":    consecutiveCrashes,
+    var fields: [String: JSONValue] {
+        var object: [String: JSONValue] = [
+            "name":       .string(name),
+            "state":      .string(state),
+            "auto_spawn": .bool(autoSpawn),
+            "crashes":    .int(consecutiveCrashes)
         ]
 
-        if let pid { dictionary["pid"] = Int(pid) }
+        if let pid { object["pid"] = .int(Int(pid)) }
 
         if let startedAt {
-            dictionary["started_at"] = ISO8601DateFormatter().string(from: startedAt)
+            object["started_at"] = .string(ISO8601DateFormatter().string(from: startedAt))
         }
 
-        if let lastExitCode { dictionary["last_exit_code"] = Int(lastExitCode) }
+        if let lastExitCode { object["last_exit_code"] = .int(Int(lastExitCode)) }
 
-        return dictionary
+        return object
     }
 
     // MARK: - Initializer
