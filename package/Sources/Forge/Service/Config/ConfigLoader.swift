@@ -13,9 +13,8 @@ enum ConfigLoader {
         // MARK: - Property
         var providers: [PartialProvider]?
         var services: [PartialService]?
-        var workflowDirectory: String?
+        var rootDirectory: String?
         var scheduleDirectory: String?
-        var resourceDirectory: String?
         var policyDirectory: String?
         var logJSONL: String?
         var errorLog: String?
@@ -133,9 +132,9 @@ enum ConfigLoader {
         
         entries.append(
             .init(
-                key: "workflow_directory",
-                value: config.workflowDirectory?.path ?? "(unset)",
-                source: source(toml: fromFile.workflowDirectory, environmentName: "FORGE_WORKFLOW_DIRECTORY")
+                key: "root_directory",
+                value: config.rootDirectory?.path ?? "(unset)",
+                source: source(toml: fromFile.rootDirectory, environmentName: "FORGE_ROOT_DIRECTORY")
             )
         )
         entries.append(
@@ -143,13 +142,6 @@ enum ConfigLoader {
                 key: "schedule_directory",
                 value: config.scheduleDirectory?.path ?? "(unset)",
                 source: source(toml: fromFile.scheduleDirectory, environmentName: "FORGE_SCHEDULE_DIRECTORY")
-            )
-        )
-        entries.append(
-            .init(
-                key: "resource_directory",
-                value: config.resourceDirectory?.path ?? "(unset)",
-                source: source(toml: fromFile.resourceDirectory, environmentName: "FORGE_RESOURCE_DIRECTORY")
             )
         )
         entries.append(
@@ -280,9 +272,8 @@ enum ConfigLoader {
         var partial = PartialConfig()
         
         if let directory = table["directory"]?.table {
-            if let value = directory["workflow"]?.string { partial.workflowDirectory = value }
+            if let value = directory["root"]?.string { partial.rootDirectory = value }
             if let value = directory["schedule"]?.string { partial.scheduleDirectory = value }
-            if let value = directory["resource"]?.string { partial.resourceDirectory = value }
             if let value = directory["policy"]?.string { partial.policyDirectory = value }
         }
         
@@ -413,9 +404,8 @@ enum ConfigLoader {
             )
         }
         
-        let workflowDirectory = catalogDir("FORGE_WORKFLOW_DIRECTORY", file.workflowDirectory, "workflow")
+        let rootDirectory = catalogDir("FORGE_ROOT_DIRECTORY", file.rootDirectory, "document")
         let scheduleDirectory = catalogDir("FORGE_SCHEDULE_DIRECTORY", file.scheduleDirectory, "schedule")
-        let resourceDirectory = catalogDir("FORGE_RESOURCE_DIRECTORY", file.resourceDirectory, "resource")
         let policyDirectory = catalogDir("FORGE_POLICY_DIRECTORY", file.policyDirectory, "policy")
         
         let defaultHooks = ForgeConfig.HookToggles()
@@ -486,9 +476,8 @@ enum ConfigLoader {
             errorLog: errorLog,
             logMaximumBytes: logMaximumBytes,
             providers: providers,
-            workflowDirectory: workflowDirectory,
+            rootDirectory: rootDirectory,
             scheduleDirectory: scheduleDirectory,
-            resourceDirectory: resourceDirectory,
             policyDirectory: policyDirectory,
             services: services,
             hooks: hooks,

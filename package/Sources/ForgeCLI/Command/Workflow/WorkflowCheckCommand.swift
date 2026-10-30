@@ -15,18 +15,15 @@ struct WorkflowCheckCommand: AsyncParsableCommand {
         commandName: "check",
         abstract: "Check workflow YAML file(s) the way the daemon reads them. Runs without a daemon.",
         discussion: """
-            Reads the files as the daemon's catalog reads its own at a reload:
-            together through the YAML front end, each leaning on Forge's library
-            and on the others, loaded, held to Forge's convention, and built
-            against the library, the natives, std and the files that build. A
-            file that calls another workflow by name is checked with that
-            workflow's file. Designed for CI / pre-commit hooks.
+            Reads each file as the daemon reads one under its root: through
+            the YAML front end leaning on Forge's library, loaded, held to
+            Forge's convention, and built against the library, the natives and
+            std. Designed for CI / pre-commit hooks.
 
             Catches:
               - malformed YAML, a notation the front end cannot read
               - a document the load refuses
-              - a file that does not declare one procedure named after it,
-                or takes a name the library, std or the notation gives
+              - a file that does not declare a public procedure `main`
               - a file the build refuses
               - ${ in a plain string, which ships as text
 
@@ -34,7 +31,7 @@ struct WorkflowCheckCommand: AsyncParsableCommand {
             the shell expands globs.
 
             EXAMPLE
-                forge workflow check .forge/workflow/**/*.yaml
+                forge workflow check .forge/document/**/*.yaml
             """
     )
     

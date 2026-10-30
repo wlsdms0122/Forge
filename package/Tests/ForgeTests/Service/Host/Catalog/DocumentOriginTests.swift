@@ -24,7 +24,7 @@ struct DocumentOriginTests {
         body:
           - var: kept
             value: null
-        """, named: "loaded"))
+        """))
 
         // When
         let error = #expect(throws: (any Error).self) {
@@ -43,12 +43,12 @@ struct DocumentOriginTests {
         let (document, sut) = try Self.spent(workflowFile("""
         returns: Int
         result: hi
-        """, named: "built"))
+        """))
         let module = try Loader().load(document)
 
         // When
         let error = await #expect(throws: (any Error).self) {
-            _ = try await WorkflowBuilder.shipped.get().compiled([module])
+            _ = try await WorkflowBuilder.shipped.get().image(of: module)
         }
 
         // Then
@@ -74,7 +74,7 @@ struct DocumentOriginTests {
                     - var: kept
                       value: null
                   result: hi
-        """, named: "loaded"))
+        """))
 
         // When
         let error = #expect(throws: (any Error).self) {
@@ -99,12 +99,12 @@ struct DocumentOriginTests {
             arguments:
               timeout: soon
               command: [ls]
-        """, named: "built"))
+        """))
         let module = try Loader().load(document)
 
         // When
         let error = await #expect(throws: (any Error).self) {
-            _ = try await WorkflowBuilder.shipped.get().compiled([module])
+            _ = try await WorkflowBuilder.shipped.get().image(of: module)
         }
 
         // Then
@@ -121,7 +121,7 @@ struct DocumentOriginTests {
         body:
           - value: { ref: missing }
         result: hi
-        """, named: "loaded"))
+        """))
 
         // When
         let error = #expect(throws: (any Error).self) {
@@ -137,10 +137,10 @@ struct DocumentOriginTests {
     @Test("a place past what the text wrote reads at the nearest spot it wrote, and says so")
     func aPlacePastTheTextIsTheNearest() throws {
         // Given
-        let (_, sut) = try Self.spent(workflowFile("result: 1", named: "short"))
+        let (_, sut) = try Self.spent(workflowFile("result: 1"))
         let refusal = ValidationError(
             "refused",
-            at: Place([.key("procedures"), .key("short"), .key("nowhere")], in: Place.Document(identity: sut.identity))
+            at: Place([.key("procedures"), .key("main"), .key("nowhere")], in: Place.Document(identity: sut.identity))
         )
 
         // When
@@ -157,8 +157,8 @@ struct DocumentOriginTests {
         body:
           - var: kept
             value: null
-        """, named: "loaded"))
-        let (_, sut) = try Self.spent(workflowFile("result: 1", named: "other"))
+        """))
+        let (_, sut) = try Self.spent(workflowFile("result: 1"))
 
         // When
         let error = #expect(throws: (any Error).self) {

@@ -215,7 +215,7 @@ struct ScheduleCreateMethod: Sendable {
 
         switch (nameParam, specParam) {
         case let (name?, nil):
-            _ = try await catalog.workflow(named: name)
+            _ = try await catalog.workflow(at: name)
 
             return (name, nil)
 
@@ -237,7 +237,7 @@ struct ScheduleCreateMethod: Sendable {
 
         case (nil, nil):
             throw ProtocolError(
-                "\(context): one of 'workflow' (registered name) or 'spec' (inline workflow JSON) is required")
+                "\(context): one of 'workflow' (its path under the root) or 'spec' (inline workflow JSON) is required")
         }
     }
 }

@@ -86,7 +86,7 @@ struct WorkflowHealthTests {
         body:
           - let: x
             value: { call: { procedure: shell, arguments: { command: ["/bin/echo", "ok"] } } }
-        """#, named: "echo3").write(
+        """#).write(
             to: directory.appendingPathComponent("echo3.yaml"), atomically: true, encoding: .utf8)
         let pool = WorkflowPool(maximumConcurrentSteps: 1, maximumActiveRuns: 1)
 
@@ -101,11 +101,11 @@ struct WorkflowHealthTests {
             capabilities: CapabilitySet(
                 shell: LiveShell(),
                 agent: LiveAgent(executor: AgentExecutor(backend: StubBackend("noop"))),
-                resources: LiveResources(store: ResourceStore(directory: nil))
+                resources: LiveResources(root: DocumentRoot(directory: nil))
             ))
         try await pool.register(runID: "occupier", workflowName: "other", rootID: "occupier",
             origin: .manual, principal: "t")
-        let workflow = try await catalog.workflow(named: "echo3")
+        let workflow = try await catalog.workflow(at: "echo3.yaml")
         do {
             _ = try await runner.dispatch(
                 workflow, inputs: [:], principal: "cli:t",

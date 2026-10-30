@@ -72,8 +72,8 @@ struct WorkflowLintTests {
         #expect(report.ok, "\(report.issues)")
     }
 
-    @Test("files checked together lean on each other, so a call to another workflow by name reads with that workflow's file")
-    func filesCheckedTogetherLeanOnEachOther() async throws {
+    @Test("files checked together are each read alone, so a call to another file's procedure is refused")
+    func filesCheckedTogetherAreEachReadAlone() async throws {
         // Given
         let directory = try temporary.make("lint-together")
         let caller = directory.appendingPathComponent("caller.yaml")
@@ -82,20 +82,27 @@ struct WorkflowLintTests {
         try workflowFile("""
         returns: Int
         result: { call: { procedure: callee, arguments: { base: 1 } } }
-        """, named: "caller").write(to: caller, atomically: true, encoding: .utf8)
-        try workflowFile("""
-        parameters: [ base: Int ]
-        returns: Int
-        result: { ref: base }
-        """, named: "callee").write(to: callee, atomically: true, encoding: .utf8)
+        """).write(to: caller, atomically: true, encoding: .utf8)
+        try """
+        procedures:
+          main:
+            access: public
+            returns: Int
+            result: 1
+          callee:
+            access: public
+            parameters: [ base: Int ]
+            returns: Int
+            result: { ref: base }
+        """.write(to: callee, atomically: true, encoding: .utf8)
+        let sut = try WorkflowLint(builder: WorkflowBuilder.shipped.get())
 
         // When
-        let together = try await WorkflowLint(builder: WorkflowBuilder.shipped.get()).check(paths: [caller.path, callee.path])
-        let alone = try await WorkflowLint(builder: WorkflowBuilder.shipped.get()).check(paths: [caller.path])
+        let together = await sut.check(paths: [caller.path, callee.path])
 
         // Then
-        #expect(together.map(\.ok) == [true, true])
-        #expect(alone.first?.refusal?.contains("'callee' is not declared by a document this text leans on") == true)
+        #expect(together.map(\.ok) == [false, true])
+        #expect(together.first?.refusal?.contains("'callee' is not declared by a document this text leans on") == true)
     }
 
     @Test("a file that loads and does not build fails the check, as the daemon leaves it out of its catalog")
@@ -115,7 +122,7 @@ struct WorkflowLintTests {
         let directory = try temporary.make("lint-\(name)")
         let file = directory.appendingPathComponent("\(name).yaml")
 
-        try workflowFile(yaml, named: name).write(to: file, atomically: true, encoding: .utf8)
+        try workflowFile(yaml).write(to: file, atomically: true, encoding: .utf8)
 
         return try #require(try await WorkflowLint(builder: WorkflowBuilder.shipped.get()).check(paths: [file.path]).first)
     }

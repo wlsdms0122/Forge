@@ -16,19 +16,19 @@ struct PolicyCheckCommand: ParsableCommand {
         discussion: """
             forge policy check <principal> <workflow>
 
-            Example values are placeholders — substitute your own principal
-            (from `forge policy list`) and workflow name.
+            Example values are placeholders; substitute your own principal
+            (from `forge policy list`) and workflow path.
 
-            Example: forge policy check <principal> <wf>
+            Example: forge policy check <principal> <path>
             """
     )
     
     @OptionGroup var global: GlobalOptions
     
-    @Argument(help: "Caller principal (e.g. `cli:response`).")
+    @Argument(help: "Caller principal (e.g. `cli:bot/response.yaml`).")
     var principal: String
     
-    @Argument(help: "Target workflow name.")
+    @Argument(help: "Target workflow, by its path under the root.")
     var workflow: String
     
     @Flag(help: "Emit JSON instead of plain text.")

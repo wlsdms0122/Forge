@@ -1,7 +1,7 @@
 # Agent seams: invoke turns, in-session continuity, and share_session
 # inheritance.
 procedures:
-  converse:
+  main:
     access: public
     returns: "Dictionary<String, Any>"
     failing: anything

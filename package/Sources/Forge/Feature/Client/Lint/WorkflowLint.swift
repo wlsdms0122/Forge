@@ -23,8 +23,8 @@ package struct WorkflowLint: Sendable {
     }
 
     // MARK: - Public
-    // The files admitted as the daemon admits its catalog's at a reload,
-    // read through the catalog itself, with what it records for each, and
+    // The files admitted as the daemon admits one under its root, read
+    // through the catalog itself, with what it records for each, and
     // the authoring issues the catalog has no rule for. One report per path
     // in the order given.
     package func check(paths: [String]) async -> [Report] {

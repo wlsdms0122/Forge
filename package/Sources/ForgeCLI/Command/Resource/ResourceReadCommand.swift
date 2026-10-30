@@ -18,7 +18,7 @@ struct ResourceReadCommand: ParsableCommand {
     
     @OptionGroup var global: GlobalOptions
     
-    @Argument(help: "Path relative to resource_directory.")
+    @Argument(help: "Path relative to the document root.")
     var path: String
     
     @Option(help: "Truncation cap in bytes — bytes beyond are dropped and truncated=true.")

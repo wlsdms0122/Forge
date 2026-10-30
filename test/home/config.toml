@@ -2,8 +2,7 @@
 # to a throwaway instance home and replaces __AGENT_STUB__ with the absolute
 # path of E2E/agent-stub before booting the daemon under test.
 [directory]
-workflow = "workflow"
-resource = "resource"
+root = "document"
 policy = "policy"
 
 [log]

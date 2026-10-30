@@ -92,7 +92,7 @@ struct ForgeVocabularyTests {
         returns: String
         failing: [nonzero_exit, timeout]
         result: { call: { procedure: shell, arguments: { timeout: 30, command: [ls] } } }
-        """, named: "listing"))
+        """))
 
         // Then
         guard case let .dictionary(held) = document else {
@@ -115,14 +115,14 @@ struct ForgeVocabularyTests {
         returns: String
         failing: [nonzero_exit, timeout]
         result: { call: { procedure: Forge.Native.shell, arguments: [ [ls], null, null, null, null ] } }
-        """, named: "raw"))
+        """))
         let document = try BinaryEncoding().value(from: spent.document)
         let sut = DocumentOrigin(identity: try Identity.of(document), origin: spent.origin)
         let module = try Loader().load(document)
 
         // When
         let error = await #expect(throws: (any Error).self) {
-            _ = try await builder.compiled([module])
+            _ = try await builder.image(of: module)
         }
 
         // Then

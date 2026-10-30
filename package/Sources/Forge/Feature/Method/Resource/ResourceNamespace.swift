@@ -14,7 +14,7 @@ struct ResourceNamespace: Sendable {
 
     // MARK: - Initializer
     init(
-        store: ResourceStore
+        store: DocumentRoot
     ) {
         let list = ResourceListMethod(store: store)
         let read = ResourceReadMethod(store: store)

@@ -29,16 +29,15 @@ struct WorkflowDescribeTests {
             value: { call: { procedure: shell, arguments: { command: ["/bin/echo", { ref: msg }] } } }
         returns: "Dictionary<String, Any>"
         result: { dictionary: [ [v, { ref: x }] ] }
-        """#, named: "echo").write(to: directory.appendingPathComponent("echo.yaml"),
+        """#).write(to: directory.appendingPathComponent("echo.yaml"),
             atomically: true, encoding: .utf8)
         let token = authority.mint(TokenClaims(principal: "system:admin"))
 
         // When
-        let result = try await method.handle(request(["token": .string(token), "name": "echo"]))
+        let result = try await method.handle(request(["token": .string(token), "path": "echo.yaml"]))
 
         // Then
-        #expect(result["name"]?.stringValue == "echo")
-        #expect(result["source"]?.stringValue == "echo.yaml")
+        #expect(result["path"]?.stringValue == "echo.yaml")
         let inputs = result["inputs"]?.objectValue ?? [:]
         let message = inputs["msg"]?.objectValue ?? [:]
         #expect(message["type"]?.stringValue == "String")
@@ -57,13 +56,13 @@ struct WorkflowDescribeTests {
         parameters: [ who: { type: String, hint: whom to greet }, loud: { type: Bool, default: false } ]
         returns: String
         result: { format: "hello, ${who}", with: { who: { ref: who } } }
-        """#, named: "greet").write(to: directory.appendingPathComponent("greet.yaml"),
+        """#).write(to: directory.appendingPathComponent("greet.yaml"),
             atomically: true, encoding: .utf8)
         let token = authority.mint(TokenClaims(principal: "system:admin"))
         let list = WorkflowListMethod(catalog: method.catalog)
 
         // When
-        let described = try await method.handle(request(["token": .string(token), "name": "greet"]))
+        let described = try await method.handle(request(["token": .string(token), "path": "greet.yaml"]))
         let listed = try await list.handle(RPCRequest(id: "r-list", method: "workflow.list", params: ["token": .string(token)]))
 
         // Then
@@ -73,6 +72,7 @@ struct WorkflowDescribeTests {
         #expect((inputs["loud"]?.objectValue)?["hint"] == nil)
         #expect((inputs["loud"]?.objectValue)?["type"]?.stringValue == "Bool?", "a default makes an input one a caller may leave out")
         let workflows = listed["workflows"]?.arrayValue ?? []
+        #expect(workflows.first?["path"]?.stringValue == "greet.yaml")
         #expect(workflows.first?["description"]?.stringValue == "Says hello.")
     }
 
@@ -86,22 +86,22 @@ struct WorkflowDescribeTests {
         body:
           - let: x
             value: { call: { procedure: shell, arguments: { command: ["/bin/true"] } } }
-        """#, named: "noop").write(to: directory.appendingPathComponent("noop.yaml"),
+        """#).write(to: directory.appendingPathComponent("noop.yaml"),
             atomically: true, encoding: .utf8)
         let token = authority.mint(TokenClaims(principal: "system:admin"))
 
         // When
-        let result = try await method.handle(request(["token": .string(token), "name": "noop"]))
+        let result = try await method.handle(request(["token": .string(token), "path": "noop.yaml"]))
 
         // Then
         #expect((result["inputs"]?.objectValue)?.isEmpty == true)
         #expect(result["returns"]?.stringValue == "Null")
     }
     
-    @Test("Throws when the name parameter is missing")
-    func missingNameParamThrows() async throws {
+    @Test("Throws when the path parameter is missing")
+    func missingPathParamThrows() async throws {
         // Given
-        let (method, authority, directory) = try await makeMethod("missing-name")
+        let (method, authority, directory) = try await makeMethod("missing-path")
         defer { try? FileManager.default.removeItem(at: directory) }
         let token = authority.mint(TokenClaims(principal: "system:admin"))
         do {
@@ -112,7 +112,7 @@ struct WorkflowDescribeTests {
         // Then
             Issue.record("expected ProtocolError")
         } catch let error as ProtocolError {
-            #expect(error.message.contains("name"), Comment(rawValue: error.message))
+            #expect(error.message.contains("path"), Comment(rawValue: error.message))
         }
     }
     
@@ -125,7 +125,7 @@ struct WorkflowDescribeTests {
         do {
 
         // When
-            _ = try await method.handle(request(["token": .string(token), "name": "nope"]))
+            _ = try await method.handle(request(["token": .string(token), "path": "nope.yaml"]))
 
         // Then
             Issue.record("expected WorkflowNotFound")
@@ -148,7 +148,7 @@ struct WorkflowDescribeTests {
         do {
 
         // When
-            _ = try await method.handle(request(["token": .string(token), "name": "broken"]))
+            _ = try await method.handle(request(["token": .string(token), "path": "broken.yaml"]))
 
         // Then
             Issue.record("expected WorkflowValidationError")

@@ -15,10 +15,10 @@ import Foundation
 // (does the policy run correctly). Those twenty lines are the same in every test, so they
 // are set up once here. The stage's lifetime is owned by the temporary directory.
 struct SchedulerFixture {
-    // A spec-format workflow fixture — the file basename is its identity, so it carries name and body together.
+    // A workflow fixture: the path under the root is its identity, so it carries path and body together.
     struct WorkflowFixture {
         // MARK: - Property
-        let name: String
+        let path: String
         let yaml: String
 
         // MARK: - Initializer
@@ -37,7 +37,7 @@ struct SchedulerFixture {
     // MARK: - Public
     // A workflow that leaves its tag in a marker file when run. Who ran, and when, is read from the file contents.
     func markerWorkflow(
-        name: String,
+        path: String,
         marker: URL,
         tag: String,
         sleep: Double,
@@ -50,7 +50,7 @@ struct SchedulerFixture {
         }
 
         return WorkflowFixture(
-            name: name,
+            path: path,
             yaml: """
             failing: [nonzero_exit, timeout]
             body:
@@ -61,8 +61,8 @@ struct SchedulerFixture {
     }
 
     func write(_ workflow: WorkflowFixture, to directory: URL) throws {
-        try workflowFile(workflow.yaml, named: workflow.name).write(
-            to: directory.appendingPathComponent("\(workflow.name).yaml"),
+        try workflowFile(workflow.yaml).write(
+            to: directory.appendingPathComponent(workflow.path),
             atomically: true, encoding: .utf8)
     }
 
@@ -89,7 +89,7 @@ struct SchedulerFixture {
             capabilities: CapabilitySet(
                 shell: LiveShell(),
                 agent: LiveAgent(executor: AgentExecutor(backend: StubBackend("noop"))),
-                resources: LiveResources(store: ResourceStore(directory: nil))
+                resources: LiveResources(root: DocumentRoot(directory: nil))
             )
         )
     }
@@ -142,7 +142,7 @@ struct SchedulerFixture {
         marker: URL,
         runtimeOwned: Bool = false
     ) async throws -> (scheduler: WorkflowScheduler, ledger: FireLedger, onceFile: URL) {
-        let workflow = markerWorkflow(name: "wfonce", marker: marker, tag: "1", sleep: 0.1)
+        let workflow = markerWorkflow(path: "wfonce.yaml", marker: marker, tag: "1", sleep: 0.1)
         let workflowDirectory = try temporary.make("once-wf")
         try write(workflow, to: workflowDirectory)
         let onceFile = (runtimeOwned ? runtimeDirectory : configDir)

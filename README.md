@@ -33,14 +33,15 @@ review, and trust to mean exactly what it says.
 ### Workflow
 
 A workflow is one YAML file, a Warp program written in the notation of the
-Warp YAML front end. It declares one procedure named after the file: its
+Warp YAML front end, under the document root. Its path relative to the
+root is its identity, and a run starts from its procedure `main`: its
 parameters are the workflow's inputs, what it returns is its result, and
 `failing` says what it may fail with.
 
 ```yaml
-# review.yaml: identity comes from the basename
+# bot/review.yaml
 procedures:
-  review:
+  main:
     description: Review a diff and answer with a verdict.
     access: public
     parameters:
@@ -63,10 +64,10 @@ procedures:
     result: { dictionary: [ [verdict, { ref: verdict }] ] }
 ```
 
-A directory of these files is a *catalog*. The daemon reads every file
-leaning on Forge's library and on the other files, builds each against
-what builds, and reports a file that does not load or build on its own:
-one bad file blocks only its own name, never the catalog.
+The workflows under the root are its *catalog*. Each file is a program of
+its own: the daemon reads it leaning on Forge's library alone, builds it,
+and reports a file that does not load, has no public `main` or does not
+build: one bad file blocks only itself, never the catalog.
 
 ### Verbs
 
@@ -126,7 +127,7 @@ into something live. A string is text. A reference is a `{ ref: }` object.
 The two interpolation surfaces that do exist (`format` templates and
 resource file bodies) are closed over the bindings they are handed.
 
-The payoff is mechanical: `forge workflow check` reads a whole catalog the
+The payoff is mechanical: `forge workflow check` reads workflow files the
 way the daemon does, with no daemon and no run, because the program's
 meaning is entirely in its text.
 
@@ -160,9 +161,9 @@ Three things stay apart:
 A workflow's parameters are its inputs. A caller hands them by name, an
 Optional one may be left out and is handed null, and a default is the
 declaration's, settled first in the body. What the procedure returns is its
-whole public surface. Calling another workflow in the same run is a call
-against its signature; `dispatch` asks the daemon for an isolated run, with
-its own run id, policy principal and lifetime.
+whole public surface. Another workflow is started with `dispatch`, which
+asks the daemon for an isolated run, with its own run id, policy principal
+and lifetime.
 
 ### The language owns structure; Forge owns the world
 
@@ -182,7 +183,7 @@ the same dialogue:
 
 ```yaml
 procedures:
-  compose:
+  main:
     description: Produce Block Kit JSON that passes validation, or give up loudly.
     access: public
     parameters: [ request: { type: String, hint: what the message says } ]
@@ -247,7 +248,7 @@ Unix socket underneath.
 forge serve --instance dev           # the daemon (one per instance)
 forge workflow list                  # catalog, with per-file failures
 forge workflow check <file>...       # read as the daemon reads, no daemon needed
-forge workflow dispatch <name> --input key=value
+forge workflow dispatch <path> --input key=value
 forge status
 ```
 

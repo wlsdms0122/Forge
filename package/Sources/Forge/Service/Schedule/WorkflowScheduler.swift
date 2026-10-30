@@ -212,7 +212,7 @@ actor WorkflowScheduler {
         let target: Workflow
         
         switch await Self.resolveFireTarget(
-            name: schedule.workflow,
+            path: schedule.workflow,
             spec: schedule.spec,
             catalog: catalog
         ) {
@@ -271,7 +271,7 @@ actor WorkflowScheduler {
             let target: Workflow
             
             switch await Self.resolveFireTarget(
-                name: schedule.workflow,
+                path: schedule.workflow,
                 spec: schedule.spec,
                 catalog: catalogLocal
             ) {
@@ -301,7 +301,7 @@ actor WorkflowScheduler {
     }
     
     private static func resolveFireTarget(
-        name: String,
+        path: String,
         spec: [String: JSONValue]?,
         catalog: WorkflowCatalog
     ) async -> FireResolution {
@@ -313,7 +313,7 @@ actor WorkflowScheduler {
             }
         }
     
-        switch await catalog.resolve(name) {
+        switch await catalog.resolve(path) {
         case .found(let workflow):
             return .resolved(workflow)
     
@@ -324,7 +324,7 @@ actor WorkflowScheduler {
             return .denied(reason: "workflow_unobserved", detail: reason)
     
         case .missing:
-            return .denied(reason: "workflow_missing", detail: "unknown workflow '\(name)'")
+            return .denied(reason: "workflow_missing", detail: "unknown workflow '\(path)'")
         }
     }
     
@@ -363,7 +363,7 @@ actor WorkflowScheduler {
             "schedule.fired",
             LogPayload([
                 "schedule_id":  id,
-                "workflow":    target.name,
+                "workflow":    target.path,
                 "run_id": runID,
                 "principal":   principal,
             ]),
@@ -385,7 +385,7 @@ actor WorkflowScheduler {
                 "schedule.denied",
                 LogPayload([
                     "schedule_id":  id,
-                    "workflow":    target.name,
+                    "workflow":    target.path,
                     "run_id": runID,
                     "principal":   principal,
                     "stage":       "dispatch",

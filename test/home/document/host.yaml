@@ -1,6 +1,6 @@
 # Host seams: shell and resource in one pass.
 procedures:
-  host:
+  main:
     access: public
     parameters: [ name: { type: String, default: e2e } ]
     returns: "Dictionary<String, Any>"

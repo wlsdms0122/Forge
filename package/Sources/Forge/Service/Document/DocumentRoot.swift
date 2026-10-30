@@ -1,5 +1,5 @@
 //
-//  ResourceStore.swift
+//  DocumentRoot.swift
 //  Forge
 //
 //  Created by JSilver on 8/8/26.
@@ -7,7 +7,7 @@
 
 import Foundation
 
-actor ResourceStore {
+actor DocumentRoot {
     struct Entry: Sendable {
         // MARK: - Property
         let path: String
@@ -31,7 +31,7 @@ actor ResourceStore {
     func resolve(_ relativePath: String) throws -> URL {
         guard let base = directory else {
             throw ResourceError(
-                "resource '@\(relativePath)' requested but resource_directory not configured"
+                "resource '\(relativePath)' requested but root_directory not configured"
             )
         }
         
@@ -125,7 +125,7 @@ actor ResourceStore {
         let basePath = base.path
         
         guard target.path == basePath || target.path.hasPrefix(basePath + "/") else {
-            throw ResourceError("resource path '\(relativePath)' escapes resource_directory")
+            throw ResourceError("resource path '\(relativePath)' escapes root_directory")
         }
         
         guard FileManager.default.fileExists(atPath: target.path) else {
@@ -138,7 +138,7 @@ actor ResourceStore {
         
         guard real.path == realBasePath || real.path.hasPrefix(realBasePath + "/") else {
             throw ResourceError(
-                "resource path '\(relativePath)' resolves outside resource_directory via symlink"
+                "resource path '\(relativePath)' resolves outside root_directory via symlink"
             )
         }
         

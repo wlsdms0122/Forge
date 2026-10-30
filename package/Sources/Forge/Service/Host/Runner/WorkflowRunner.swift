@@ -50,7 +50,7 @@ actor WorkflowRunner {
     static func newRunID() -> String { "wf-\(UUID().uuidString.prefix(8))" }
 
     // The one dispatch door: policy, pool registration and log adoption happen
-    // here for every caller — RPC, scheduler and child steps alike.
+    // here for every caller (RPC, scheduler and child steps alike).
     func dispatch(
         _ workflow: Workflow,
         inputs: [String: Warp.Value],
@@ -64,11 +64,11 @@ actor WorkflowRunner {
         runID: String? = nil,
         mode: DispatchMode
     ) async throws -> WorkflowRunResult {
-        let name = workflow.name
+        let path = workflow.path
 
         try await DispatchAuthorization.requireDispatch(
             principal: principal,
-            workflow: name,
+            workflow: path,
             policyStore: policyStore,
             context: "dispatch"
         )
@@ -77,7 +77,7 @@ actor WorkflowRunner {
 
         try await pool.register(
             runID: runID,
-            workflowName: name,
+            workflowName: path,
             rootID: rootID ?? runID,
             origin: origin,
             principal: principal
@@ -110,7 +110,7 @@ actor WorkflowRunner {
     }
 
     // MARK: - Private
-    // Every run enters through `dispatch` — pool admission and identity live
+    // Every run enters through `dispatch`: pool admission and identity live
     // there, once; this frame owns tokens, registry and event framing.
     private func run(
         _ workflow: Workflow,
@@ -121,20 +121,20 @@ actor WorkflowRunner {
         correlator: String? = nil,
         runID: String? = nil
     ) async -> WorkflowRunResult {
-        let name = workflow.name
+        let path = workflow.path
         let runID = runID ?? Self.newRunID()
         let context = WorkflowExecutionContext(
             runID: runID,
-            workflowName: name,
+            workflowName: path,
             origin: origin
         )
-        let principal = principal ?? "cli:\(name)"
+        let principal = principal ?? "cli:\(path)"
         let claims = TokenClaims(principal: principal, runID: runID)
         let token = tokenAuthority.mint(claims)
 
         await workRegistry.register(WorkRecord(
             runID: runID,
-            workflowName: name,
+            workflowName: path,
             principal: principal,
             origin: origin,
             rootID: LogContext.rootID,
@@ -183,13 +183,13 @@ actor WorkflowRunner {
         origin: DispatchOrigin,
         runID: String
     ) async -> WorkflowRunResult {
-        let name = workflow.name
+        let path = workflow.path
         let started = ContinuousClock.now
 
         await eventBus.publish(WorkflowEvent(
             kind: .workflowStarted,
             runID: runID,
-            workflowName: name,
+            workflowName: path,
             origin: origin,
             parameters: LogContext.parameters,
             inputs: inputs.isEmpty ? nil : try? inputs.mapValues(ValueBridge.json)
@@ -198,13 +198,11 @@ actor WorkflowRunner {
         let eventBus = self.eventBus
 
         do {
-            // Linking is inside the do-block on purpose: a workflow naming a
-            // sibling that has left the catalog is a run that failed, and it
-            // reports through the same ledger a failed step does. The catalog
-            // links the module beside every workflow that built, and the name
-            // this run was asked for is the entry.
-            let entry = try Name(name)
-            let image = try await catalog.image(running: workflow.module, entry: entry)
+            // Building is inside the do-block on purpose: an inline spec that
+            // does not build is a run that failed, and it reports through the
+            // same ledger a failed step does.
+            let entry = try Name(Workflow.entry)
+            let image = try await catalog.image(of: workflow)
             let environment = ForgeEnvironment(
                 capabilities: capabilities,
                 dispatcher: self,
@@ -214,7 +212,7 @@ actor WorkflowRunner {
                 origin: origin,
                 bridge: EventBridge(
                     runID: runID,
-                    workflowName: name,
+                    workflowName: path,
                     verbs: catalog.vocabulary.verbs,
                     publish: { event in await eventBus.publish(event) }
                 )
@@ -233,7 +231,7 @@ actor WorkflowRunner {
             await eventBus.publish(WorkflowEvent(
                 kind: .workflowCompleted,
                 runID: runID,
-                workflowName: name,
+                workflowName: path,
                 origin: origin,
                 output: output,
                 durationMs: duration
@@ -241,7 +239,7 @@ actor WorkflowRunner {
 
             return WorkflowRunResult(
                 runID: runID,
-                workflowName: name,
+                workflowName: path,
                 outcome: .returned(returned),
                 durationMs: duration
             )
@@ -258,7 +256,7 @@ actor WorkflowRunner {
             await eventBus.publish(WorkflowEvent(
                 kind: .workflowFailed,
                 runID: runID,
-                workflowName: name,
+                workflowName: path,
                 origin: origin,
                 errorType: failure.type,
                 errorMessage: failure.message,
@@ -267,7 +265,7 @@ actor WorkflowRunner {
 
             return WorkflowRunResult(
                 runID: runID,
-                workflowName: name,
+                workflowName: path,
                 outcome: .failed(.init(kind: Self.failureKind(of: error), object: failure)),
                 durationMs: duration
             )
@@ -332,8 +330,8 @@ actor WorkflowRunner {
 // A `dispatch` step lands here: resolved against the daemon catalog, then
 // walked through the same dispatch door as any RPC caller.
 extension WorkflowRunner: RunDispatching {
-    func dispatch(name: String, inputs: [String: Warp.Value]) async throws -> Warp.Value {
-        let workflow = try await catalog.workflow(named: name)
+    func dispatch(path: String, inputs: [String: Warp.Value]) async throws -> Warp.Value {
+        let workflow = try await catalog.workflow(at: path)
 
         let parentName = WorkflowExecutionState.context?.workflowName ?? "unknown"
 
@@ -358,7 +356,7 @@ extension WorkflowRunner: RunDispatching {
             return value
 
         case let .failed(failure):
-            let summary = "dispatch '\(name)' failed: \(failure.object.type) — \(failure.object.message)"
+            let summary = "dispatch '\(path)' failed: \(failure.object.type): \(failure.object.message)"
 
             switch failure.kind {
             case .work:
@@ -369,7 +367,7 @@ extension WorkflowRunner: RunDispatching {
 
             case .cancelled:
                 throw ChildRunCancelled(
-                    "dispatch '\(name)' cancelled: \(failure.object.message)"
+                    "dispatch '\(path)' cancelled: \(failure.object.message)"
                 )
             }
         }

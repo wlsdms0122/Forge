@@ -28,7 +28,7 @@ struct WorkflowDispatchStreamMethod: Sendable {
 
         try await DispatchAuthorization.requireDispatch(
             principal: prepared.principal,
-            workflow: prepared.workflow.name,
+            workflow: prepared.workflow.path,
             policyStore: dispatchMethod.runner.policyStore,
             context: "dispatch"
         )
@@ -40,7 +40,7 @@ struct WorkflowDispatchStreamMethod: Sendable {
             "id": .string(request.id),
             "result": [
                 "run_id": .string(prepared.runID),
-                "name":        .string(prepared.workflow.name),
+                "path":        .string(prepared.workflow.path),
                 "status":      "streaming"
             ]
         ]
@@ -62,7 +62,7 @@ struct WorkflowDispatchStreamMethod: Sendable {
                 await Log.shared.append(
                     "dispatch.failed",
                     LogPayload([
-                        "workflow":    prepared.workflow.name,
+                        "workflow":    prepared.workflow.path,
                         "run_id": prepared.runID,
                         "principal":   prepared.principal,
                         "error":       String(describing: error),
@@ -118,7 +118,7 @@ struct WorkflowDispatchStreamMethod: Sendable {
         case .failure(let error):
             resultValue = [
                 "run_id": .string(prepared.runID),
-                "name":        .string(prepared.workflow.name),
+                "path":        .string(prepared.workflow.path),
                 "status":      "failed",
                 "error":       ErrorObject(error).jsonValue
             ]

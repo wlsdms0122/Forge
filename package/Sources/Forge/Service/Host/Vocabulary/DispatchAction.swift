@@ -8,20 +8,20 @@
 import Foundation
 import Warp
 
-// Asks the daemon for an isolated run of a catalog workflow: its own lifetime,
+// Asks the daemon for an isolated run of a workflow under the root: its own lifetime,
 // policy check and slot, where a `call` stays inside this run. The daemon
 // settles the inputs against the target's signature.
 struct DispatchAction: ForgeAction {
     enum Parameters: Int, ParameterSet {
-        case name
+        case path
         case inputs
         case timeout
 
         // MARK: - Property
         var declared: Parameter {
             switch self {
-            case .name:
-                Parameter(name: "name", type: .string)
+            case .path:
+                Parameter(name: "path", type: .string)
 
             case .inputs:
                 Parameter(name: "inputs", type: .dictionary(key: .string, value: .any))
@@ -47,11 +47,11 @@ struct DispatchAction: ForgeAction {
     // MARK: - Initializer
     // MARK: - Public
     func act(_ invocation: Invocation<Self>, in environment: ForgeEnvironment) async throws -> Warp.Value {
-        let name = ValueBridge.text(invocation[.name])
+        let path = ValueBridge.text(invocation[.path])
         let inputs = try ValueBridge.fields(invocation[.inputs])
 
         return try await Deadline(seconds: ValueBridge.number(invocation[.timeout])).run {
-            try await environment.dispatcher.dispatch(name: name, inputs: inputs)
+            try await environment.dispatcher.dispatch(path: path, inputs: inputs)
         }
     }
 

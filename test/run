@@ -123,37 +123,36 @@ def main():
 
         # Status speaks the current config vocabulary.
         status = harness.forge("status")
-        check("workflow_directory" in status, "status speaks the config vocabulary", status)
+        check("root_directory" in status, "status speaks the config vocabulary", status)
         check(version in status, "status reports the daemon's version", status)
 
         # The catalog loaded whole.
         listed = harness.forge("workflow", "list")
-        for name in ["kernel", "child", "host", "converse", "parent", "forbidden"]:
+        for name in ["kernel.yaml", "child.yaml", "host.yaml", "converse.yaml", "parent.yaml", "forbidden.yaml"]:
             check(name in listed, f"workflow list carries '{name}'", listed)
         check("Kernel language tour" in listed, "workflow list carries a description", listed)
 
-        # The authoring gate reads files straight from the kit, together, as
-        # the kernel fixture calls the child by name.
+        # The authoring gate reads files straight from the kit, each alone.
         checked = harness.forge(
             "workflow", "check",
-            os.path.join(KIT, "home/workflow/kernel.yaml"),
-            os.path.join(KIT, "home/workflow/child.yaml"),
+            os.path.join(KIT, "home/document/kernel.yaml"),
+            os.path.join(KIT, "home/document/child.yaml"),
         )
-        check("kernel" in checked, "workflow check accepts the kernel fixture", checked)
+        check("kernel.yaml" in checked, "workflow check accepts the kernel fixture", checked)
 
-        described = harness.forge("workflow", "describe", "kernel")
+        described = harness.forge("workflow", "describe", "kernel.yaml")
         check("who" in described, "workflow describe shows the signature", described)
         check("whom the tour greets" in described, "workflow describe shows an input's hint", described)
 
         # Kernel tour — every control-flow feature in one dispatch.
-        kernel = harness.forge("workflow", "dispatch", "kernel")
+        kernel = harness.forge("workflow", "dispatch", "kernel.yaml")
         for expected in ["hello, world", "took-a", "0:one", "1:two",
-                         "rescued", "child:from-use", "kept-as-data"]:
+                         "rescued", "helper:from-use", "kept-as-data"]:
             check(expected in kernel, f"kernel run yields '{expected}'", kernel)
 
         # Host seams — shell output, resource rendering and locating, and the
         # failure-as-value catch contract.
-        host = harness.forge("workflow", "dispatch", "host")
+        host = harness.forge("workflow", "dispatch", "host.yaml")
         check("shell:e2e" in host, "shell step answers", host)
         check("hello, e2e — from a resource file" in host, "resource content renders", host)
         check("stamp:e2e" in host, "a located resource script runs", host)
@@ -161,7 +160,7 @@ def main():
 
         # Agent seams — the stub reports turn mode and session id, so continuity
         # and share_session inheritance are visible from the outside.
-        agent = harness.forge("workflow", "dispatch", "converse")
+        agent = harness.forge("workflow", "dispatch", "converse.yaml")
         sessions = stub_sessions(agent)
         check("stub[new:" in agent, "first agent turn opens a session", agent)
         check(len(sessions) == 3, "three agent turns answered", agent)
@@ -170,11 +169,11 @@ def main():
               "later turns resume instead of reopening", agent)
 
         # Cross-run dispatch through the policy gate.
-        parent = harness.forge("workflow", "dispatch", "parent")
+        parent = harness.forge("workflow", "dispatch", "parent.yaml")
         check("child:from-dispatch" in parent, "dispatch chain reaches the child", parent)
 
         # Policy denial fails the run and is not swallowed by catch.
-        denied = harness.forge("workflow", "dispatch", "forbidden")
+        denied = harness.forge("workflow", "dispatch", "forbidden.yaml")
         check("status: failed" in denied, "denied dispatch fails the run", denied)
         check("PolicyDenied" in denied, "denial names the policy gate", denied)
         check("should-not-swallow" not in denied, "catch does not swallow the denial", denied)
@@ -197,7 +196,7 @@ def main():
         harness.forge("job", "delete", "j-e2e")
 
         # Schedules — create far in the future, toggle, delete; nothing fires.
-        scheduled = harness.forge("schedule", "create", "--workflow", "kernel",
+        scheduled = harness.forge("schedule", "create", "--workflow", "kernel.yaml",
                                   "--id", "e2e-once", "--once", "2039-01-01 00:00:00",
                                   "--timezone", "Asia/Seoul")
         schedule_id = next((word for word in scheduled.split() if word.endswith("e2e-once")),
@@ -213,7 +212,7 @@ def main():
         token = issued.split()[-1] if issued.split() else ""
         check(bool(token), "token issue answers", issued)
         as_issued = harness.forge("workflow", "list", token=token)
-        check("kernel" in as_issued, "an issued token can speak", as_issued)
+        check("kernel.yaml" in as_issued, "an issued token can speak", as_issued)
 
         # Managed service — the supervisor spawned the heartbeat stub.
         check("heartbeat=running" in harness.forge("status"),

@@ -128,12 +128,12 @@ struct WorkflowDispatchMethod: Sendable {
         } else {
             try await DispatchAuthorization.requireDispatch(
                 principal: principal,
-                workflow: prepared.workflow.name,
+                workflow: prepared.workflow.path,
                 policyStore: runner.policyStore,
                 context: "dispatch"
             )
 
-            let workflowName = prepared.workflow.name
+            let path = prepared.workflow.path
             let selfLocal = self
 
             Task.detached {
@@ -143,7 +143,7 @@ struct WorkflowDispatchMethod: Sendable {
                     await Log.shared.append(
                         "dispatch.failed",
                         LogPayload([
-                            "workflow":    workflowName,
+                            "workflow":    path,
                             "run_id": runID,
                             "principal":   principal,
                             "error":       String(describing: error),
@@ -156,7 +156,7 @@ struct WorkflowDispatchMethod: Sendable {
 
             return [
                 "run_id": .string(runID),
-                "name":        .string(workflowName),
+                "path":        .string(path),
                 "status":      "running"
             ]
         }
@@ -166,7 +166,7 @@ struct WorkflowDispatchMethod: Sendable {
     private func resolveProgram(
         _ params: [String: JSONValue]
     ) async throws -> Workflow {
-        switch (params["name"], params["spec"]) {
+        switch (params["path"], params["spec"]) {
         case let (nil, spec?):
             guard let spec = spec.objectValue else {
                 throw ProtocolError("workflow.dispatch: 'spec' is an object")
@@ -178,18 +178,18 @@ struct WorkflowDispatchMethod: Sendable {
                 throw ProtocolError("workflow.dispatch: malformed 'spec': \(error)")
             }
 
-        case let (name?, nil):
-            guard let name = name.stringValue, !name.isEmpty else {
-                throw ProtocolError("workflow.dispatch: 'name' is a non-empty string")
+        case let (path?, nil):
+            guard let path = path.stringValue, !path.isEmpty else {
+                throw ProtocolError("workflow.dispatch: 'path' is a non-empty string")
             }
             
-            return try await catalog.workflow(named: name)
+            return try await catalog.workflow(at: path)
 
         case (.some, .some):
-            throw ProtocolError("workflow.dispatch: 'name' and 'spec' are mutually exclusive; pass only one")
+            throw ProtocolError("workflow.dispatch: 'path' and 'spec' are mutually exclusive; pass only one")
 
         case (nil, nil):
-            throw ProtocolError("workflow.dispatch: one of 'spec' or 'name' is required")
+            throw ProtocolError("workflow.dispatch: one of 'spec' or 'path' is required")
         }
     }
 }

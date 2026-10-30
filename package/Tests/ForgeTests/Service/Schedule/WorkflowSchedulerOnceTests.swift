@@ -56,7 +56,7 @@ struct WorkflowSchedulerOnceTests {
         let marker = try fixture.temporary.make("once-rt-m").appendingPathComponent("m")
         let rtID = ScheduleIDSpace.stamp("one")
         let (scheduler, ledger, onceFile) = try await fixture.onceScheduler(
-            onceYAML: "id: \(rtID)\nworkflow: wfonce\nonce: \"2020-01-01 00:00:00\"\ntimezone: Asia/Seoul\n",
+            onceYAML: "id: \(rtID)\nworkflow: wfonce.yaml\nonce: \"2020-01-01 00:00:00\"\ntimezone: Asia/Seoul\n",
             onceFileName: "\(rtID).yaml",
             configDir: directory, runtimeDirectory: rtDir, marker: marker, runtimeOwned: true)
 
@@ -84,7 +84,7 @@ struct WorkflowSchedulerOnceTests {
         let runtimeDirectory = try fixture.temporary.make("once-cfg-rt")
         let marker = try fixture.temporary.make("once-cfg-m").appendingPathComponent("m")
         let (scheduler, ledger, onceFile) = try await fixture.onceScheduler(
-            onceYAML: "id: cfg\nworkflow: wfonce\nonce: \"2020-01-01 00:00:00\"\ntimezone: Asia/Seoul\n",
+            onceYAML: "id: cfg\nworkflow: wfonce.yaml\nonce: \"2020-01-01 00:00:00\"\ntimezone: Asia/Seoul\n",
             onceFileName: "cfg.yaml",
             configDir: configDir, runtimeDirectory: runtimeDirectory, marker: marker)
 

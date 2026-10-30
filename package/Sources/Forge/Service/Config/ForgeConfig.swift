@@ -42,9 +42,8 @@ struct ForgeConfig: Sendable {
     let errorLog: URL
     let logMaximumBytes: Int
     let providers: [ProviderConfig]
-    let workflowDirectory: URL?
+    let rootDirectory: URL?
     let scheduleDirectory: URL?
-    let resourceDirectory: URL?
     let policyDirectory: URL?
     let services: [ServiceConfig]
     let hooks: HookToggles
@@ -57,9 +56,8 @@ struct ForgeConfig: Sendable {
         errorLog: URL,
         logMaximumBytes: Int = 50 * 1024 * 1024,
         providers: [ProviderConfig] = [],
-        workflowDirectory: URL? = nil,
+        rootDirectory: URL? = nil,
         scheduleDirectory: URL? = nil,
-        resourceDirectory: URL? = nil,
         policyDirectory: URL? = nil,
         services: [ServiceConfig] = [],
         hooks: HookToggles = HookToggles(),
@@ -70,9 +68,8 @@ struct ForgeConfig: Sendable {
         self.errorLog = errorLog
         self.logMaximumBytes = logMaximumBytes
         self.providers = providers
-        self.workflowDirectory = workflowDirectory
+        self.rootDirectory = rootDirectory
         self.scheduleDirectory = scheduleDirectory
-        self.resourceDirectory = resourceDirectory
         self.policyDirectory = policyDirectory
         self.services = services
         self.hooks = hooks

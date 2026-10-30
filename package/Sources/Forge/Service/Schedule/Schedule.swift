@@ -57,7 +57,7 @@ struct Schedule: Sendable, Codable {
         self.id = try container.decodeIfPresent(String.self, forKey: .id) ?? ""
         self.spec = try container.decodeIfPresent([String: JSONValue].self, forKey: .spec)
         
-        // A schedule runs a workflow by name or an inline spec, which runs as
+        // A schedule runs a workflow by its path or an inline spec, which runs as
         // the inline sigil, so a file writes one of the two.
         if spec == nil {
             self.workflow = try container.decode(String.self, forKey: .workflow)

@@ -18,21 +18,14 @@ struct WorkflowDescribeMethod: Sendable {
 
     // MARK: - Public
     func handle(_ request: RPCRequest) async throws -> JSONValue {
-        guard let name = request.params["name"]?.stringValue, !name.isEmpty else {
-            throw ProtocolError("workflow.describe: 'name' (string) required")
+        guard let path = request.params["path"]?.stringValue, !path.isEmpty else {
+            throw ProtocolError("workflow.describe: 'path' (string) required")
         }
 
-        let workflow = try await catalog.workflow(named: name)
-        let entries = await catalog.reload().entries
-
-        guard let source = entries.first(where: { entry in entry.workflow.name == name })?.source else {
-            throw WorkflowNotFound("workflow not found: \(name)")
-        }
-
+        let workflow = try await catalog.workflow(at: path)
         let contract = workflow.contract
         var result: [String: JSONValue] = [
-            "name":    .string(workflow.name),
-            "source":  .string(source),
+            "path":    .string(workflow.path),
             "inputs":  .object(Self.inputs(of: contract)),
             "returns": .string(contract.returns)
         ]

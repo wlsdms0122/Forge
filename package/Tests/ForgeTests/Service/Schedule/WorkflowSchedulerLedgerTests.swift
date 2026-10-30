@@ -21,19 +21,19 @@ struct WorkflowSchedulerLedgerTests {
     func ledgerRecordsSlotOutcomes() async throws {
         // Given
         let marker = try fixture.temporary.make("outcome").appendingPathComponent("m")
-        let workflow = fixture.markerWorkflow(name: "wfo", marker: marker, tag: "S", sleep: 2.5)
+        let workflow = fixture.markerWorkflow(path: "wfo.yaml", marker: marker, tag: "S", sleep: 2.5)
         let wfDir = try fixture.temporary.make("outcome-wf")
         try fixture.write(workflow, to: wfDir)
         let catalog = try fixture.catalog(directory: wfDir)
         let schedDir = try fixture.temporary.make("outcome-sched")
-        try "id: ok\nworkflow: wfo\nevery: 1s\nconcurrency: skip\n"
+        try "id: ok\nworkflow: wfo.yaml\nevery: 1s\nconcurrency: skip\n"
         .write(to: schedDir.appendingPathComponent("ok.yaml"), atomically: true, encoding: .utf8)
         try "id: ghost\nworkflow: nope\nevery: 1s\n"
         .write(to: schedDir.appendingPathComponent("ghost.yaml"), atomically: true, encoding: .utf8)
         let ledger = FireLedger(path: try fixture.temporary.make("outcome-led").appendingPathComponent("l.json"))
         let scheduler = WorkflowScheduler(
             catalog: catalog,
-            store: try fixture.scheduleStore(configDir: schedDir, runtimeDirectory: try fixture.temporary.make("sched-rt-a"), ids: ["ok": "wfo", "ghost": "nope"]),
+            store: try fixture.scheduleStore(configDir: schedDir, runtimeDirectory: try fixture.temporary.make("sched-rt-a"), ids: ["ok": "wfo.yaml", "ghost": "nope"]),
             ledger: ledger, runner: fixture.runner(catalog: catalog), tickIntervalSeconds: 1)
 
         // When
@@ -57,17 +57,17 @@ struct WorkflowSchedulerLedgerTests {
         // Given
         let wfDir = try fixture.temporary.make("live-wf")
         try fixture.write(fixture.markerWorkflow(
-                name: "wfl", marker: fixture.temporary.make("live-m").appendingPathComponent("m"), tag: "S", sleep: 0),
+                path: "wfl.yaml", marker: fixture.temporary.make("live-m").appendingPathComponent("m"), tag: "S", sleep: 0),
             to: wfDir)
         let catalog = try fixture.catalog(directory: wfDir)
         let configDir = try fixture.temporary.make("live-cfg")
         let schedFile = configDir.appendingPathComponent("keep.yaml")
-        let body = "id: keep\nworkflow: wfl\nonce: \"2020-01-01 00:00:00\"\ntimezone: Asia/Seoul\n"
+        let body = "id: keep\nworkflow: wfl.yaml\nonce: \"2020-01-01 00:00:00\"\ntimezone: Asia/Seoul\n"
         try body.write(to: schedFile, atomically: true, encoding: .utf8)
         let ledger = FireLedger(path: try fixture.temporary.make("live-led").appendingPathComponent("l.json"))
         let scheduler = WorkflowScheduler(
             catalog: catalog,
-            store: try fixture.scheduleStore(configDir: configDir, runtimeDirectory: try fixture.temporary.make("live-rt"), ids: ["keep": "wfl"]),
+            store: try fixture.scheduleStore(configDir: configDir, runtimeDirectory: try fixture.temporary.make("live-rt"), ids: ["keep": "wfl.yaml"]),
             ledger: ledger, runner: fixture.runner(catalog: catalog), tickIntervalSeconds: 1)
 
         // When
@@ -128,10 +128,10 @@ struct WorkflowSchedulerLedgerTests {
     func fireDeferredWhenPersistFails() async throws {
         // Given
         let marker = try fixture.temporary.make("persist-fail-m").appendingPathComponent("m")
-        let workflow = fixture.markerWorkflow(name: "wfp", marker: marker, tag: "p", sleep: 0.1)
+        let workflow = fixture.markerWorkflow(path: "wfp.yaml", marker: marker, tag: "p", sleep: 0.1)
         let scheduler = try await fixture.scheduler(
             workflows: [workflow],
-            scheduleYAML: ["o": "id: o\nworkflow: wfp\nonce: \"2020-01-01 00:00:00\"\ntimezone: Asia/Seoul\n"],
+            scheduleYAML: ["o": "id: o\nworkflow: wfp.yaml\nonce: \"2020-01-01 00:00:00\"\ntimezone: Asia/Seoul\n"],
             ledgerPath: try fixture.unwritableLedgerPath("fire"))
 
         // When
@@ -150,8 +150,8 @@ struct WorkflowSchedulerLedgerTests {
         try Data("x".utf8).write(to: blocker)
         let ledgerPath = blocker.appendingPathComponent("sub").appendingPathComponent("l.json")
         let marker = try fixture.temporary.make("restart-m").appendingPathComponent("m")
-        let workflow = fixture.markerWorkflow(name: "wfr", marker: marker, tag: "o", sleep: 0.1)
-        let onceYAML = "id: o\nworkflow: wfr\nonce: \"2020-01-01 00:00:00\"\ntimezone: Asia/Seoul\n"
+        let workflow = fixture.markerWorkflow(path: "wfr.yaml", marker: marker, tag: "o", sleep: 0.1)
+        let onceYAML = "id: o\nworkflow: wfr.yaml\nonce: \"2020-01-01 00:00:00\"\ntimezone: Asia/Seoul\n"
         let schedA = try await fixture.scheduler(
             workflows: [workflow], scheduleYAML: ["o": onceYAML], ledgerPath: ledgerPath)
 
@@ -219,7 +219,7 @@ struct WorkflowSchedulerLedgerTests {
     func fastForwardAnchorIsDurable() async throws {
         // Given
         let marker = try fixture.temporary.make("ff").appendingPathComponent("m")
-        let workflow = fixture.markerWorkflow(name: "wfff", marker: marker, tag: "x", sleep: 0)
+        let workflow = fixture.markerWorkflow(path: "wfff.yaml", marker: marker, tag: "x", sleep: 0)
         let ledgerPath = try fixture.temporary.make("ff-ledger").appendingPathComponent("fire-ledger.json")
         let now = Date()
         try JSONSerialization
@@ -227,7 +227,7 @@ struct WorkflowSchedulerLedgerTests {
         .write(to: ledgerPath)
         let scheduler = try await fixture.scheduler(
             workflows: [workflow],
-            scheduleYAML: ["ff": "id: ff\nworkflow: wfff\nevery: 1s\n"],
+            scheduleYAML: ["ff": "id: ff\nworkflow: wfff.yaml\nevery: 1s\n"],
             ledgerPath: ledgerPath)
 
         // When

@@ -43,7 +43,7 @@ struct WorkflowRunResult: Sendable {
         get throws {
             var object: [String: JSONValue] = [
                 "run_id": .string(runID),
-                "name": .string(workflowName),
+                "path": .string(workflowName),
                 "duration_ms": .int(durationMs)
             ]
 
