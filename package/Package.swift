@@ -29,7 +29,8 @@ let package = Package(
                 .product(name: "WarpYAML", package: "warp-frontend-yaml"),
                 .product(name: "TOMLKit", package: "TOMLKit"),
                 .product(name: "Yams", package: "Yams")
-            ]
+            ],
+            plugins: ["PackageVersion"]
         ),
         .executableTarget(
             name: "ForgeCLI",
