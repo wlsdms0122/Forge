@@ -38,6 +38,12 @@ let package = Package(
                 .product(name: "ArgumentParser", package: "swift-argument-parser")
             ]
         ),
+        .executableTarget(
+            name: "PackageVersionTool",
+            dependencies: [
+                .product(name: "TOMLKit", package: "TOMLKit")
+            ]
+        ),
         .testTarget(
             name: "ForgeTests",
             dependencies: [
