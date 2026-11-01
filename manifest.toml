@@ -1,0 +1,17 @@
+# The specification is `open-package spec`
+
+[open-package]
+version = "1.0.0"
+
+[package]
+name = "forge"
+version = "0.1.0"
+description = "A daemon that runs workflows written in Warp: shell work, LLM agent sessions and dispatch between workflows, behind one CLI"
+requires = ["swift", "bash", "python3"]
+
+# `build` is what this package is for: the `forge` binary, at .build/forge.
+[command]
+build = "tool/build.sh"
+test = "swift test --package-path package"
+e2e = "tool/build.sh && test/run .build/forge"
+embed-library = "tool/embed-library.sh"

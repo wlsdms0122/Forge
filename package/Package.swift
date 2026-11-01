@@ -10,7 +10,7 @@ let package = Package(
     ],
     products: [
         .library(name: "Forge", targets: ["Forge"]),
-        .executable(name: "ForgeCLI", targets: ["ForgeCLI"]),
+        .executable(name: "forge", targets: ["ForgeCLI"]),
     ],
     dependencies: [
         .package(url: "https://github.com/wlsdms0122/warp-runtime-swift.git", exact: "0.1.0"),
