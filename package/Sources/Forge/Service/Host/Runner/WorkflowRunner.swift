@@ -246,10 +246,19 @@ actor WorkflowRunner {
         } catch {
             // A run's task cancelled (a schedule dropped, the daemon stopping,
             // a client gone) is a cancelled run, whichever child of the
-            // cancel signal's group throws first.
-            let error = error is CancellationError
-                ? RunCancelled("run '\(runID)' was cancelled")
-                : error
+            // cancel signal's group throws first. An argument refused with no
+            // trace was refused at the entry, before any statement ran: the
+            // inputs the caller handed do not fit `main`.
+            let error: any Error = switch error {
+            case is CancellationError:
+                RunCancelled("run '\(runID)' was cancelled")
+
+            case let refused as ArgumentError where refused.trace == nil:
+                InputValidationError(refused.message)
+
+            default:
+                error
+            }
             let duration = (ContinuousClock.now - started).milliseconds
             let failure = ErrorObject(failure: error)
 
@@ -306,7 +315,12 @@ actor WorkflowRunner {
         var arguments: [Name: Warp.Value] = [:]
 
         for (name, value) in inputs {
-            arguments[try Name(name)] = value
+            // A key that cannot be a name is one `main` cannot declare.
+            guard let parameter = try? Name(name) else {
+                throw InputValidationError("entry 'main' declares no parameter '\(name)'")
+            }
+
+            arguments[parameter] = value
         }
 
         for parameter in signature?.parameters ?? [] where arguments[parameter.name] == nil {
