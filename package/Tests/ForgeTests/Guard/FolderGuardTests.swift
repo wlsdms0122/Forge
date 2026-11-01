@@ -20,6 +20,8 @@ struct FolderGuardTests {
         let roots = [
             package.sources.appendingPathComponent("Forge"),
             package.sources.appendingPathComponent("ForgeCLI"),
+            package.sources.appendingPathComponent("PackageVersionTool"),
+            package.root.appendingPathComponent("Plugins/PackageVersion"),
             package.tests.appendingPathComponent("ForgeTests")
         ]
         var folders: [URL] = []
