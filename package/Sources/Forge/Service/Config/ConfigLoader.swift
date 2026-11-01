@@ -260,91 +260,52 @@ enum ConfigLoader {
     
     static func parse(_ url: URL) throws -> PartialConfig {
         let raw = try String(contentsOf: url, encoding: .utf8)
-        let table = try TOMLTable(string: raw)
+        let file: ConfigTable
+        
+        do {
+            file = ConfigTable(try TOMLTable(string: raw))
+        } catch {
+            throw ConfigError("config \(url.path): \(error)")
+        }
+        
         var partial = PartialConfig()
         
-        if let directory = table["directory"]?.table {
-            if let value = directory["working"]?.string { partial.workingDirectory = value }
-            if let value = directory["policy"]?.string { partial.policyDirectory = value }
+        try file.admit(["directory", "log", "hooks", "pool", "provider", "service"])
+        
+        if let directory = try file.table("directory") {
+            try directory.admit(["working", "policy"])
+            
+            partial.workingDirectory = try directory.string("working")
+            partial.policyDirectory = try directory.string("policy")
         }
         
-        if let log = table["log"]?.table {
-            if let value = log["jsonl"]?.string { partial.logJSONL = value }
-            if let value = log["error"]?.string { partial.errorLog = value }
-            if let value = log["maximum_bytes"]?.int { partial.logMaximumBytes = value }
+        if let log = try file.table("log") {
+            try log.admit(["jsonl", "error", "maximum_bytes"])
+            
+            partial.logJSONL = try log.string("jsonl")
+            partial.errorLog = try log.string("error")
+            partial.logMaximumBytes = try log.int("maximum_bytes")
         }
         
-        if let hooks = table["hooks"]?.table {
-            if let value = hooks["logging"]?.bool { partial.hooks.logging = value }
+        if let hooks = try file.table("hooks") {
+            try hooks.admit(["logging"])
+            
+            partial.hooks.logging = try hooks.bool("logging")
         }
         
-        if let pool = table["pool"]?.table {
-            if let value = pool["maximum_concurrent_steps"]?.int {
-                partial.pool.maximumConcurrentSteps = value
-            }
+        if let pool = try file.table("pool") {
+            try pool.admit(["maximum_concurrent_steps", "maximum_active_runs"])
             
-            if let value = pool["maximum_active_runs"]?.int { partial.pool.maximumActiveRuns = value }
+            partial.pool.maximumConcurrentSteps = try pool.int("maximum_concurrent_steps")
+            partial.pool.maximumActiveRuns = try pool.int("maximum_active_runs")
         }
         
-        if let providers = table["provider"]?.table {
-            var list: [PartialProvider] = []
-            
-            for name in providers.keys {
-                guard let block = providers[name]?.table else { continue }
-                
-                var provider = PartialProvider(name: name)
-                
-                for key in block.keys {
-                    guard let value = block[key]?.string else { continue }
-                    
-                    if key == "kind" { provider.kind = value } else { provider.settings[key] = value }
-                }
-                
-                list.append(provider)
-            }
-            
-            partial.providers = list.sorted { left, right in left.name < right.name }
+        if let providers = try file.table("provider") {
+            partial.providers = try providers.tables().map { name, block in try provider(name, block) }
         }
         
-        if let services = table["service"]?.table {
-            var list: [PartialService] = []
-            
-            for name in services.keys {
-                guard let block = services[name]?.table else { continue }
-                
-                var service = PartialService(name: name)
-                
-                if let array = block["command"]?.array {
-                    let strings = array.compactMap { element in element.string }
-                    service.command = strings.count == array.count ? strings : []
-                }
-                
-                if let value = block["working_directory"]?.string { service.workingDirectory = value }
-                if let value = block["auto_spawn"]?.bool { service.autoSpawn = value }
-                if let value = block["log_file"]?.string { service.logFile = value }
-                
-                if let value = block["restart_backoff_initial_milliseconds"]?.int {
-                    service.backoffInitialMilliseconds = value
-                }
-                
-                if let value = block["restart_backoff_maximum_milliseconds"]?.int {
-                    service.backoffMaximumMilliseconds = value
-                }
-                
-                if let value = block["restart_crash_loop_limit"]?.int {
-                    service.crashLoopLimit = value
-                }
-                
-                if let environmentTable = block["environment"]?.table {
-                    for key in environmentTable.keys {
-                        if let value = environmentTable[key]?.string { service.environment[key] = value }
-                    }
-                }
-                
-                list.append(service)
-            }
-            
-            partial.services = list.sorted { left, right in left.name < right.name }
+        if let services = try file.table("service") {
+            partial.services = try services.tables().map { name, block in try service(name, block) }
         }
         
         return partial
@@ -475,6 +436,48 @@ enum ConfigLoader {
     }
     
     // MARK: - Private
+    // Every key but `kind` is a setting, which the provider's kind admits.
+    private static func provider(_ name: String, _ block: ConfigTable) throws -> PartialProvider {
+        var provider = PartialProvider(name: name)
+        
+        for key in block.keys {
+            let value = try block.string(key)
+            
+            if key == "kind" { provider.kind = value } else { provider.settings[key] = value }
+        }
+        
+        return provider
+    }
+    
+    private static func service(_ name: String, _ block: ConfigTable) throws -> PartialService {
+        try block.admit([
+            "command",
+            "working_directory",
+            "environment",
+            "auto_spawn",
+            "log_file",
+            "restart_backoff_initial_milliseconds",
+            "restart_backoff_maximum_milliseconds",
+            "restart_crash_loop_limit"
+        ])
+        
+        var service = PartialService(name: name)
+        
+        service.command = try block.strings("command") ?? []
+        service.workingDirectory = try block.string("working_directory")
+        service.autoSpawn = try block.bool("auto_spawn")
+        service.logFile = try block.string("log_file")
+        service.backoffInitialMilliseconds = try block.int("restart_backoff_initial_milliseconds")
+        service.backoffMaximumMilliseconds = try block.int("restart_backoff_maximum_milliseconds")
+        service.crashLoopLimit = try block.int("restart_crash_loop_limit")
+        
+        if let environment = try block.table("environment") {
+            for key in environment.keys { service.environment[key] = try environment.string(key) }
+        }
+        
+        return service
+    }
+    
     private static func resolveProviders(
         _ fromToml: [PartialProvider]?,
         environment: [String: String]
