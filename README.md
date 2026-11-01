@@ -64,10 +64,12 @@ procedures:
     result: { dictionary: [ [verdict, { ref: verdict }] ] }
 ```
 
-The workflows under the root are its *catalog*. Each file is a program of
-its own: the daemon reads it leaning on Forge's library alone, builds it,
-and reports a file that does not load, has no public `main` or does not
-build: one bad file blocks only itself, never the catalog.
+Each file is a program of its own. The daemon keeps no list of them: when a
+run, a `dispatch` or a schedule names a path, it reads that one file
+leaning on Forge's library alone and builds it, and builds it again only
+where the file changed. A file that does not load, has no public `main` or
+does not build is refused to whoever named it, and nothing else under the
+root is touched.
 
 ### Verbs
 
@@ -110,7 +112,7 @@ own fields (a shell failure: `exit_code`, `stderr`, `stdout`).
 ### Session
 
 Each named instance (`--instance dev`) is its own daemon: socket, config,
-token, catalog, schedules. An agent conversation is a session: `invoke`
+token, state, schedules. An agent conversation is a session: `invoke`
 opens one LLM session around a body, and each `agent` call in it is one
 turn, so a validate-and-retry loop *continues the same dialogue* instead of
 starting over, and the model remembers what it already produced.
@@ -136,9 +138,9 @@ meaning is entirely in its text.
 Unknown keys, a name nothing declares, a call that does not fit its
 procedure's signature, a type that does not hold, a failure the
 declaration does not admit: the front end, the load or the build refuses
-each when the catalog is read, before any run exists. There are no legacy
-spellings and no fallback reading. A workflow in the catalog is one that
-built; what remains for runtime is the world, not the text.
+each when the file is read, before its run starts. There are no legacy
+spellings and no fallback reading. A workflow that runs is one that built;
+what remains for runtime is the world, not the text.
 
 ### Failures are loud and classified
 
@@ -246,7 +248,7 @@ Unix socket underneath.
 
 ```sh
 forge serve --instance dev           # the daemon (one per instance)
-forge workflow list                  # catalog, with per-file failures
+forge workflow describe <path>       # a workflow's description and inputs
 forge workflow check <file>...       # read as the daemon reads, no daemon needed
 forge workflow dispatch <path> --input key=value
 forge status
