@@ -76,11 +76,17 @@ enum ConfigLoader {
     // MARK: - Property
     // MARK: - Initializer
     // MARK: - Public
-    static func resolveConfigPath(_ explicit: String?, instanceHome: URL) -> URL? {
+    // A file the caller named is the one read, so a name with no file behind
+    // it is refused; with none named, the instance's own is read if it is there.
+    static func resolveConfigPath(_ explicit: String?, instanceHome: URL) throws -> URL? {
         if let explicit {
             let url = URL(fileURLWithPath: explicit)
             
-            return FileManager.default.fileExists(atPath: url.path) ? url : nil
+            guard FileManager.default.fileExists(atPath: url.path) else {
+                throw ConfigError("config \(url.path): no such file")
+            }
+            
+            return url
         }
         
         let candidate = instanceHome.appendingPathComponent("config.toml")
@@ -90,7 +96,7 @@ enum ConfigLoader {
     
     static func load(configPath: String? = nil, instanceHome: URL) throws -> ForgeConfig {
         let environment = ProcessInfo.processInfo.environment
-        let tomlURL = resolveConfigPath(configPath, instanceHome: instanceHome)
+        let tomlURL = try resolveConfigPath(configPath, instanceHome: instanceHome)
         let fromFile = try tomlURL.map { url in try parse(url) } ?? PartialConfig()
         
         return build(
@@ -114,7 +120,7 @@ enum ConfigLoader {
         instanceHome: URL,
         environment: [String: String] = ProcessInfo.processInfo.environment
     ) throws -> (config: ForgeConfig, report: ConfigReport) {
-        let tomlURL = resolveConfigPath(configPath, instanceHome: instanceHome)
+        let tomlURL = try resolveConfigPath(configPath, instanceHome: instanceHome)
         let fromFile = try tomlURL.map { url in try parse(url) } ?? PartialConfig()
         let config = build(
             file: fromFile,
