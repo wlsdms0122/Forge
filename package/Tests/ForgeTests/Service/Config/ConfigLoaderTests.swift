@@ -19,26 +19,25 @@ struct ConfigLoaderTests {
     @Test("An invalid numeric env var is reported with builtin source, not env")
     func invalidEnvNumericReportsBuiltinNotEnv() throws {
         // Given
-        let noToml = "/nonexistent-forge-config-\(UUID().uuidString).toml"
         let home = try temporary.make("home")
         defer { try? FileManager.default.removeItem(at: home) }
-        let invalidEnvironment = try ConfigLoader.loadWithSources(configPath: noToml, instanceHome: home,
+        let invalidEnvironment = try ConfigLoader.loadWithSources(configPath: nil, instanceHome: home,
             environment: ["FORGE_LOG_MAXIMUM_BYTES": "abc"])
 
         // Then
         let maxBytes = try #require(invalidEnvironment.entries.first { entry in entry.key == "log_maximum_bytes" })
         #expect(maxBytes.source.label == "default", "invalid env falsely reported as source=env")
         #expect(maxBytes.value == String(50 * 1024 * 1024))
-        let zeroConcurrency = try ConfigLoader.loadWithSources(configPath: noToml, instanceHome: home,
+        let zeroConcurrency = try ConfigLoader.loadWithSources(configPath: nil, instanceHome: home,
             environment: ["FORGE_POOL_MAXIMUM_CONCURRENT_STEPS": "0"])
         let zeroed = try #require(zeroConcurrency.entries.first { entry in entry.key == "pool.maximum_concurrent_steps" })
         #expect(zeroed.source.label == "default", "0 fails the >0 gate so builtin applies, yet source=env is falsely reported")
-        let validConcurrency = try ConfigLoader.loadWithSources(configPath: noToml, instanceHome: home,
+        let validConcurrency = try ConfigLoader.loadWithSources(configPath: nil, instanceHome: home,
             environment: ["FORGE_POOL_MAXIMUM_CONCURRENT_STEPS": "8"])
         let concurrency = try #require(validConcurrency.entries.first { entry in entry.key == "pool.maximum_concurrent_steps" })
         #expect(concurrency.source.label == "environment (FORGE_POOL_MAXIMUM_CONCURRENT_STEPS)")
         #expect(concurrency.value == "8")
-        let runtimeOverride = try ConfigLoader.loadWithSources(configPath: noToml, instanceHome: home,
+        let runtimeOverride = try ConfigLoader.loadWithSources(configPath: nil, instanceHome: home,
             environment: ["FORGE_STATE": "/tmp/rt"])
         #expect(runtimeOverride.entries.first { entry in entry.key == "state_directory" } == nil)
         #expect(runtimeOverride.entries.first { entry in entry.key == "socket" } == nil)
@@ -253,6 +252,35 @@ struct ConfigLoaderTests {
 
         // Then
         #expect(refusal?.message.hasPrefix("config \(url.path): ") == true, "\(refusal?.message ?? "")")
+    }
+
+    @Test("A config path named with no file behind it is refused")
+    func aNamedConfigPathWithNoFileIsRefused() throws {
+        // Given
+        let directory = try temporary.make("missing")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let path = directory.appendingPathComponent("absent.toml").path
+
+        // When
+        let refusal = #expect(throws: ConfigError.self) {
+            try ConfigLoader.load(configPath: path, instanceHome: directory)
+        }
+
+        // Then
+        #expect(refusal?.message == "config \(path): no such file")
+    }
+
+    @Test("With no config path named, an instance home with no config.toml takes the defaults")
+    func noNamedPathAndNoFileTakesTheDefaults() throws {
+        // Given
+        let directory = try temporary.make("absent-home")
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        // When
+        let sut = try ConfigLoader.resolveConfigPath(nil, instanceHome: directory)
+
+        // Then
+        #expect(sut == nil)
     }
 
     // MARK: - Private

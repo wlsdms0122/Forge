@@ -86,7 +86,7 @@ implements, `Forge.Native.<verb>`, which takes its arguments by position.
 
 Everything else is the language's: `let` and `var`, `set`, conditionals,
 `cases`, loops, `each`, fan-out through `Standard.Concurrent.allKeyed`,
-calls to another workflow, and expressions (`{ ref: x }`, operator mappings
+calls to the file's own procedures, and expressions (`{ ref: x }`, operator mappings
 such as `{ of: x, plus: 1 }`, `format` templates, dictionary literals). A bare
 string is always literal text, and `format` is closed over the bindings it
 declares under `with`. The front end's README documents the notation.
@@ -250,7 +250,7 @@ Unix socket underneath.
 forge serve --instance dev           # the daemon (one per instance)
 forge workflow describe <path>       # a workflow's description and inputs
 forge workflow check <file>...       # read as the daemon reads, no daemon needed
-forge workflow dispatch <path> --input key=value
+forge workflow dispatch <path> --inputs '{"key": "value"}'
 forge status
 ```
 

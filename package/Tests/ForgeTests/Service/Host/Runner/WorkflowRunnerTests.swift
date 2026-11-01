@@ -187,6 +187,38 @@ struct WorkflowRunnerTests {
         #expect(sut.failure?.object.type == "aborted")
     }
 
+    @Test(
+        "inputs that do not fit main fail the run with InputValidationError",
+        arguments: [
+            ([:], "was given nothing for 'tag'"),
+            (["tag": .int(1)], "'tag'"),
+            (["tag": .string("x"), "extra": .string("y")], "declares no parameter 'extra'"),
+            (["tag": .string("x"), "": .string("y")], "declares no parameter ''")
+        ] as [([String: Warp.Value], String)]
+    )
+    func unfitInputsFailWithInputValidationError(
+        inputs: [String: Warp.Value],
+        message: String
+    ) async throws {
+        // Given
+        let harness = try makeRunner(workflows: [
+            "tagged.yaml": """
+            parameters: [ tag: String ]
+            returns: String
+            result: { ref: tag }
+            """
+        ])
+        let workflow = try await harness.reader.workflow(at: "tagged.yaml")
+
+        // When
+        let sut = try await harness.dispatch(workflow, inputs: inputs)
+
+        // Then
+        #expect(sut.failure?.kind == .fault)
+        #expect(sut.failure?.object.type == "InputValidationError")
+        #expect(sut.failure?.object.message.contains(message) == true)
+    }
+
     @Test("dispatch runs a child spec under the working directory as a new run and returns the value it returns")
     func dispatchRunsChildSpec() async throws {
         // Given
@@ -366,6 +398,50 @@ struct WorkflowRunnerTests {
         #expect(result.failure?.kind == .fault)
         #expect(result.failure?.object.type == "ChildRunFaulted")
         #expect(result.failure?.object.message.contains("UnwritableValue") == true)
+    }
+
+    @Test("a child refusing the inputs a parent hands it faults the parent past its catch")
+    func dispatchOfUnfitInputsFaults() async throws {
+        // Given
+        let harness = try makeRunner(
+            workflows: [
+                "parent.yaml": """
+                returns: String
+                failing: [timeout]
+                body:
+                  - var: got
+                    type: String
+                    value: none
+                  - let: guarded
+                    value:
+                      try:
+                        body:
+                          - let: call
+                            value: { call: { procedure: dispatch, arguments: { path: child.yaml } } }
+                          - set: got
+                            value: called
+                        catch:
+                          - set: got
+                            value: caught
+                result: { ref: got }
+                """,
+                "child.yaml": """
+                parameters: [ tag: String ]
+                returns: String
+                result: { ref: tag }
+                """
+            ],
+            policy: ["cli:parent.yaml": ["parent.yaml", "child.yaml"]]
+        )
+        let workflow = try await harness.reader.workflow(at: "parent.yaml")
+
+        // When
+        let result = try await harness.dispatch(workflow)
+
+        // Then
+        #expect(result.failure?.kind == .fault)
+        #expect(result.failure?.object.type == "ChildRunFaulted")
+        #expect(result.failure?.object.message.contains("InputValidationError") == true)
     }
 
     @Test("when policy blocks it, dispatch fails and is not swallowed even by catch")

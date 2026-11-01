@@ -62,6 +62,9 @@ The daemon resolves `config.toml` with this precedence — clients are never inv
 ```
 
 env only fills keys that the toml leaves silent (emergency override).
+A `--config` path with no file behind it is a `ConfigError`
+(`config <path>: no such file`); with no `--config`, `<instanceHome>/config.toml`
+is read if it is there and the defaults apply if it is not.
 
 ### Config file (`config.toml`)
 
@@ -1114,7 +1117,7 @@ The error envelope is `{"type": "<ErrorType>", "message": "<text>"}` and the fie
 
 | Type | Meaning |
 |------|---------|
-| `ConfigError` | `config.toml` is not TOML, has a key the loader does not read, or a value of another type than its key takes (`service.reload`; `serve` exits with it). Fix the file; a retry meets the same refusal |
+| `ConfigError` | the `--config` file is not there, or `config.toml` is not TOML, has a key the loader does not read, or a value of another type than its key takes (`service.reload`; `serve` exits with it). Fix the file; a retry meets the same refusal |
 | `BackendTimeout` | a backend call exceeded its timeout — retry candidate |
 | `BackendNonzeroExit` | a backend exited non-zero (also carries `exit_code`, `stderr`, `stdout`); a `catch` reads it as `nonzero_exit` |
 | `BackendUnavailable` | a backend could not be reached (e.g. an OpenAI-compatible endpoint refused or errored) |
@@ -1138,5 +1141,6 @@ The error envelope is `{"type": "<ErrorType>", "message": "<text>"}` and the fie
 | `DaemonShuttingDown` | the daemon is draining for shutdown: it starts no new run (`workflow.dispatch`, a schedule's fire) and no service (`service.run`, `service.restart`) |
 | `RunCapExceeded` | run cap saturation (backpressure) — retry later is meaningful |
 | `RunCancelled` | the run was cancelled (`workflow.cancel`, or the daemon shutting down) |
+| `InputValidationError` | a run's inputs do not fit what its `main` declares: a name it does not declare, nothing for a parameter that is not Optional, or a value of another type. The run fails before any statement runs; a `dispatch` step whose child refuses its inputs faults, past any `catch` |
 | `InternalError` | a failure neither Forge nor the language names (an error of the system); the message is its text |
 | `ChildRunFailed` | a `dispatch` step's child run completed as failed — message carries the child's error type; a `catch` reads it as `child_run_failed` |

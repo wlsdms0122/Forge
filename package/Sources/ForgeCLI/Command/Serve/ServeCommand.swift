@@ -21,22 +21,24 @@ struct ServeCommand: AsyncParsableCommand {
             subprocesses) talk to it via line-delimited JSON-RPC over a
             Unix socket.
 
-            SOCKET DISCOVERY (clients compute the same path — config-free)
+            SOCKET DISCOVERY (clients compute the same path, config-free)
                 serve binds <instanceHome>/forged.sock, where instanceHome =
                 <XDG_CONFIG_HOME|~/.config>/forge/<instance> and instance =
                 --instance > FORGE_INSTANCE > "default". The socket is determined
-                purely by the instance — NOT a config key, not overridable; config
+                purely by the instance: NOT a config key, not overridable; config
                 (`--config`) only locates the daemon's settings/data. Refuses to
                 start if a live daemon already holds the socket.
 
-            CONFIG PRECEDENCE (serve only — clients never read config)
+            CONFIG PRECEDENCE (serve only; clients never read config)
                 --config flag > <instanceHome>/config.toml > FORGE_* env > defaults.
+                A --config path with no file behind it fails serve; with no
+                --config, <instanceHome>/config.toml is read if it is there.
                 env only fills keys left silent by toml (emergency override).
                 PATH ANCHORING: a relative path written in the toml resolves
                 against the toml's directory; unspecified directories/logs default
                 under instanceHome. state·socket are instance-owned.
 
-            CONFIG SCHEMA (everything optional — convention defaults shown)
+            CONFIG SCHEMA (everything optional; convention defaults shown)
                 [directory]  working (default `<instanceHome>/document`) is
                         where a relative workflow or file path resolves; an
                         absolute path is used as written. policy defaults
@@ -46,8 +48,8 @@ struct ServeCommand: AsyncParsableCommand {
                         not configurable.)
                 [log]   jsonl · error · maximum_bytes (default 50 MiB). Default under
                         `<instanceHome>/log`.
-                [pool]  maximum_concurrent_steps (default 4) — leaf-step concurrency cap.
-                        maximum_active_runs (default 256) — concurrent registered-run cap.
+                [pool]  maximum_concurrent_steps (default 4): leaf-step concurrency cap.
+                        maximum_active_runs (default 256): concurrent registered-run cap.
                 [provider.<name>]   configured backends; `kind` = \(BackendKind.allCases.map(\.rawValue).joined(separator: "|")).
                         CLI kinds take `executable` (default: the CLI on PATH);
                         openai-compat requires `endpoint`. A provider without a known
@@ -68,7 +70,7 @@ struct ServeCommand: AsyncParsableCommand {
                 <instanceHome>/forged.sock      Unix socket (RPC entry).
                 <instanceHome>/runtime.json     self-record (pid, instance, socket,
                                                resolved paths). Written on boot,
-                                               deleted on clean shutdown — a
+                                               deleted on clean shutdown: a
                                                down/crashed-daemon diagnostic
                                                (clients discover via instance, not this).
                 <state_directory>/             what outlives a restart: jobs,
@@ -78,8 +80,8 @@ struct ServeCommand: AsyncParsableCommand {
                 <error_log>                    stderr / traceback log.
 
             RPC METHODS
-                Every method — its params, result shape, and the token it
-                demands — is written in document/API.md §"RPC methods". The
+                Every method, its params, result shape, and the token it
+                demands, is written in document/API.md (4. RPC methods). The
                 client subcommands (`forge workflow`, `schedule`, `job`,
                 `resource`, `policy`, `token`, `service`, `status`) cover
                 the same surface from a terminal.
@@ -90,18 +92,18 @@ struct ServeCommand: AsyncParsableCommand {
             EXIT STATUS
                 0   Clean shutdown.
                 1   Boot failure (config load, socket bind, etc.).
-                2   Argument parse error.
+                64  Argument parse error.
             """
     )
     
     @Option(
         name: [.short, .long],
-        help: "Path to config.toml (default: <instanceHome>/config.toml)."
+        help: "Path to config.toml; it must exist (default: <instanceHome>/config.toml, read if present)."
     )
     var config: String?
     
     @Option(
-        help: "Instance name — binds the socket at <XDG_CONFIG_HOME|~/.config>/forge/<name>/ (default: default)."
+        help: "Instance name; binds the socket at <XDG_CONFIG_HOME|~/.config>/forge/<name>/ (default: default)."
     )
     var instance: String?
     
