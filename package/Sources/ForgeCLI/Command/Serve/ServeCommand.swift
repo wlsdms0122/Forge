@@ -51,7 +51,8 @@ struct ServeCommand: AsyncParsableCommand {
                 [provider.<name>]   configured backends; `kind` = \(BackendKind.allCases.map(\.rawValue).joined(separator: "|")).
                         CLI kinds take `executable` (default: the CLI on PATH);
                         openai-compat requires `endpoint`. A provider without a known
-                        kind or a required setting is skipped with a warning.
+                        kind or a required setting, or with a setting its kind
+                        does not read, is skipped with a warning.
                         Silent → a single `claude` (claude-cli) default. Declaring any
                         drops that default, so list `claude` explicitly alongside others.
                         Secrets via env FORGE_PROVIDER_<NAME>_API_KEY only.
@@ -59,6 +60,8 @@ struct ServeCommand: AsyncParsableCommand {
                         command (argv, required) · working_directory · environment · auto_spawn · log_file ·
                         restart_backoff_initial_milliseconds · restart_backoff_maximum_milliseconds · restart_crash_loop_limit.
                 [hooks] logging (default true).
+                A key outside this schema, or a value of another type than its
+                key takes, fails serve (and `service reload`) naming the table.
                 Inspect the resolved values + their source with `forge status`.
 
             FILES
