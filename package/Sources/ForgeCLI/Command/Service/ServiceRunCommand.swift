@@ -16,7 +16,7 @@ struct ServiceRunCommand: ParsableCommand {
         abstract: "Start a managed service (declared in config.toml).",
         discussion: """
             Spawns the service process under the daemon's supervisor.
-            Idempotent — running services are left alone. A service that hit
+            Idempotent: running services are left alone. A service that hit
             its crash loop limit (state `failed`) is given a fresh start.
             Only services declared in `[service.<name>]` can be run; for a
             new entry, edit the toml and `forge service reload` first.

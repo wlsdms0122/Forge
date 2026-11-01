@@ -15,13 +15,13 @@ struct ServiceRegisterCommand: ParsableCommand {
         commandName: "register",
         abstract: "Register the current process as a service (dumb pipe co-process).",
         discussion: """
-            Long-lived co-process — the stdio↔socket adapter a managed
+            Long-lived co-process: the stdio↔socket adapter a managed
             service runs so it never touches the socket itself. It connects
             and registers exactly once; resilience is not its job. The
             daemon's supervisor owns every restart decision: any failure
             here (connect refused, register rejected, connection lost) is a
             fail-fast exit(1), which the parent service should treat as
-            fatal — exit, and let the supervisor respawn the whole service.
+            fatal: it exits, and the supervisor respawns the whole service.
             The bearer token comes from FORGE_ACCESS_TOKEN / --token (a
             supervisor-minted, spawn-scoped token).
 

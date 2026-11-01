@@ -16,7 +16,8 @@ struct ServiceRestartCommand: ParsableCommand {
         abstract: "Stop and start a managed service.",
         discussion: """
             The restarted process picks up the current `[service.<name>]`
-            spec — pair with `forge service reload` to apply config changes.
+            spec, so a restart after `forge service reload` applies config
+            changes.
             """
     )
     

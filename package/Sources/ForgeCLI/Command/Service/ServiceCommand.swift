@@ -12,10 +12,10 @@ struct ServiceCommand: ParsableCommand {
     // MARK: - Property
     static let configuration = CommandConfiguration(
         commandName: "service",
-        abstract: "Manage, inspect, and call managed services.",
+        abstract: "Control managed services, and inspect, register and call registered services.",
         discussion: """
             A service (e.g. `slack`) is a process that implements a capability
-            forge itself does not. forge is the supervisor: services are
+            forge itself does not. forge supervises managed services: they are
             declared in `config.toml` `[service.<name>]`, spawned by the
             daemon (auto_spawn or `run`), monitored, and restarted with
             backoff when they crash.

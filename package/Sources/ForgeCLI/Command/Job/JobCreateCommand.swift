@@ -19,7 +19,7 @@ struct JobCreateCommand: ParsableCommand {
             the task without re-reading the source thread, and --refs with
             knowledge pointers already consulted. Pass --origin to bind the ticket
             to its source context (e.g. a slack thread). A ticket can be created
-            now and picked up later — creation and dispatch are separate acts.
+            now and picked up later by a separate dispatch.
 
             EXAMPLE:
                 forge job create --title "refactor X" \\
@@ -44,7 +44,7 @@ struct JobCreateCommand: ParsableCommand {
     @Option(help: "Origin as an opaque JSON object (forge-agnostic; e.g. slack: {channel, thread_ts}).")
     var origin: String?
     
-    @Option(help: "Plan JSON array: [{\"id\"?:int,\"desc\":\"...\",\"status\"?:\"...\"}] or [\"desc\", ...]. id is an integer — omit to auto-number from 1.")
+    @Option(help: "Plan JSON array: [{\"id\"?:int,\"desc\":\"...\",\"status\"?:\"...\"}] or [\"desc\", ...]. id is an integer; omit it to auto-number from 1.")
     var plan: String?
     
     @Option(name: .customLong("parent-job"), help: "Parent job id (epic/sub-ticket hierarchy).")

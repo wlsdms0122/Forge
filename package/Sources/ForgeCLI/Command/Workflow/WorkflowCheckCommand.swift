@@ -47,7 +47,7 @@ struct WorkflowCheckCommand: AsyncParsableCommand {
             let path = report.path
             
             if let readError = report.readError {
-                print("✗ \(path): cannot read — \(readError)")
+                print("✗ \(path): cannot read: \(readError)")
                 failed += 1
             } else if let refusal = report.refusal {
                 print("✗ \(path): refused")
@@ -56,7 +56,7 @@ struct WorkflowCheckCommand: AsyncParsableCommand {
             } else if report.issues.isEmpty {
                 print("✓ \(path)")
             } else {
-                print("✗ \(path) — \(report.issues.count) issue(s)")
+                print("✗ \(path): \(report.issues.count) issue(s)")
                 
                 for issue in report.issues {
                     print("    \(issue)")

@@ -14,23 +14,23 @@ struct ForgeCommand: AsyncParsableCommand {
     // MARK: - Property
     static let configuration = CommandConfiguration(
         commandName: "forge",
-        abstract: "Forge — LLM invocation daemon and its client, in one binary.",
+        abstract: "Forge: LLM invocation daemon and its client, in one binary.",
         discussion: """
             forge has two faces in one executable:
 
-                forge serve   run the daemon — LLM backends, workflow
-                              execution, schedules, the ACL gate for nested
+                forge serve   run the daemon: LLM backends, workflow
+                              execution, schedules, the ACL gate for every
                               dispatch. long-running.
-                forge workflow / schedule / service /
-                forge status / policy / token
+                forge workflow / schedule / job / resource /
+                forge service / status / policy / token
                               client subcommands. speak line-delimited
-                              JSON-RPC over the daemon's Unix socket — the
+                              JSON-RPC over the daemon's Unix socket, the
                               single surface for using forge. nothing else
                               opens the socket directly.
 
             The client side serves both workflow subprocesses (LLM agents,
             shell steps) and operators at a terminal. Every RPC carries a
-            daemon-signed bearer token, supplied as input — the `--token`
+            daemon-signed bearer token, supplied as input: the `--token`
             option or the FORGE_ACCESS_TOKEN environment variable. forge
             never mints one on your behalf: a workflow subprocess receives
             FORGE_ACCESS_TOKEN at spawn, an operator obtains one explicitly
@@ -48,7 +48,7 @@ struct ForgeCommand: AsyncParsableCommand {
 
             ENVIRONMENT
                 FORGE_INSTANCE          default instance name when --instance is
-                                        omitted — selects which daemon socket.
+                                        omitted; selects which daemon socket.
                 FORGE_SOCKET            exact socket path for a client to connect
                                         (skips instance derivation). Injected into
                                         spawned subprocesses by the daemon.

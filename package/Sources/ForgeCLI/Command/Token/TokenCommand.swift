@@ -15,12 +15,12 @@ struct TokenCommand: ParsableCommand {
         abstract: "Issue a daemon-signed bearer token.",
         discussion: """
             The daemon signs tokens with a random seed minted at boot and
-            kept only in memory — a restart invalidates every token, and
+            kept only in memory. A restart invalidates every token, and
             clients re-issue on rejection.
 
             `token issue` is a normal authenticated RPC: it requires a token
             (FORGE_ACCESS_TOKEN / --token) like every other call, and only
-            mints under attenuation — an admin-tier presenter (system:admin /
+            mints under attenuation: an admin-tier presenter (system:admin /
             admin:<user>) may delegate, anything else may not. A workflow
             subprocess only ever holds a cli:* token, so an LLM cannot escalate.
 
