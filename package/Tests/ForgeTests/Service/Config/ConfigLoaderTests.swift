@@ -189,6 +189,72 @@ struct ConfigLoaderTests {
         #expect(configuration.policyDirectory?.path == home.appendingPathComponent("policy").path)
     }
     
+    @Test(
+        "A key the loader does not read is refused, naming the table and the keys it reads",
+        arguments: [
+            ("[directory]\nroot = \"doc\"", "config [directory]: unknown key 'root'; known keys: policy, working"),
+            ("[pool]\nmaximum = 3\nsteps = 2", "config [pool]: unknown keys 'maximum', 'steps'"),
+            ("[service.bot]\ncommand = [\"x\"]\ncwd = \"/\"", "config [service.bot]: unknown key 'cwd'"),
+            ("[logs]\njsonl = \"x\"", "config top level: unknown key 'logs'")
+        ]
+    )
+    func anUnknownKeyIsRefused(toml: String, message: String) throws {
+        // Given
+        let directory = try temporary.make("unknown")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = try writeTOML(toml, in: directory)
+
+        // When
+        let refusal = #expect(throws: ConfigError.self) { try ConfigLoader.parse(url) }
+
+        // Then
+        #expect(refusal?.message.hasPrefix(message) == true, "\(refusal?.message ?? "")")
+    }
+
+    @Test(
+        "A value of another type than its key takes is refused, not dropped",
+        arguments: [
+            ("[log]\nmaximum_bytes = \"10\"", "config [log]: 'maximum_bytes' must be integer, given string"),
+            ("[directory]\nworking = 3", "config [directory]: 'working' must be string, given integer"),
+            ("directory = \"doc\"", "config top level: 'directory' must be table, given string"),
+            ("[service.bot]\ncommand = [\"a\", 1]", "config [service.bot]: 'command' must be an array of strings"),
+            (
+                "[service.bot]\ncommand = [\"a\"]\n[service.bot.environment]\nLEVEL = 3",
+                "config [service.bot.environment]: 'LEVEL' must be string, given integer"
+            ),
+            (
+                "[provider.claude]\nkind = \"claude-cli\"\ntimeout = 30",
+                "config [provider.claude]: 'timeout' must be string, given integer"
+            )
+        ]
+    )
+    func aMistypedValueIsRefused(toml: String, message: String) throws {
+        // Given
+        let directory = try temporary.make("mistyped")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = try writeTOML(toml, in: directory)
+
+        // When
+        let refusal = #expect(throws: ConfigError.self) { try ConfigLoader.parse(url) }
+
+        // Then
+        #expect(refusal?.message == message)
+    }
+
+    @Test("A file that is not TOML is refused as config")
+    func aFileThatIsNotTOMLIsRefused() throws {
+        // Given
+        let directory = try temporary.make("syntax")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = try writeTOML("[directory\nworking = 1", in: directory)
+
+        // When
+        let refusal = #expect(throws: ConfigError.self) { try ConfigLoader.parse(url) }
+
+        // Then
+        #expect(refusal?.message.hasPrefix("config \(url.path): ") == true, "\(refusal?.message ?? "")")
+    }
+
     // MARK: - Private
     
     private func writeTOML(_ body: String, in directory: URL) throws -> URL {

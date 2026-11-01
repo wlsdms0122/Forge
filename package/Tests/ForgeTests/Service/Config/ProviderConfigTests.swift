@@ -43,7 +43,13 @@ struct ProviderConfigTests {
         arguments: [
             (nil, [:], "'kind' is required, one of claude-cli, codex-cli, openai-compat"),
             ("made-up", [:], "kind 'made-up' is not one of claude-cli, codex-cli, openai-compat"),
-            ("openai-compat", [:], "openai-compat requires 'endpoint', the base URL")
+            ("openai-compat", [:], "openai-compat requires 'endpoint', the base URL"),
+            ("claude-cli", ["exectuable": "/opt/claude"], "claude-cli does not read 'exectuable'; it reads executable"),
+            (
+                "openai-compat",
+                ["endpoint": "http://127.0.0.1:8080", "executable": "x"],
+                "openai-compat does not read 'executable'; it reads endpoint"
+            )
         ] as [(String?, [String: String], String)]
     )
     func undecodableDeclarationIsRefused(

@@ -34,6 +34,19 @@ struct ProviderConfig: Sendable, Equatable {
             throw ProviderDeclarationError("kind '\(kind)' is not one of \(names)")
         }
         
+        let read: [String] = switch backendKind {
+        case .claudeCLI, .codexCLI: ["executable"]
+        case .openAICompatible: ["endpoint"]
+        }
+        let unknown = settings.keys.filter { key in !read.contains(key) }.sorted()
+        
+        guard unknown.isEmpty else {
+            throw ProviderDeclarationError(
+                "\(kind) does not read \(unknown.map { key in "'\(key)'" }.joined(separator: ", "))"
+                    + "; it reads \(read.joined(separator: ", "))"
+            )
+        }
+        
         self.name = name
         
         switch backendKind {
