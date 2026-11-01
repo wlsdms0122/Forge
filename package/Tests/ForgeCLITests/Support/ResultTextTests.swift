@@ -1,6 +1,6 @@
 //
 //  ResultTextTests.swift
-//  ForgeTests
+//  ForgeCLITests
 //
 //  Created by JSilver on 8/8/26.
 //
