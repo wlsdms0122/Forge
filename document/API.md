@@ -71,6 +71,13 @@ a relative path written in the toml resolves against the toml's directory;
 unspecified directories/logs default under `instanceHome`. The state dir is
 instance-owned (`<instanceHome>/state`) and not configurable, like the socket.
 
+Every value the file writes is read or refused. A key outside the table below,
+or a value of another type than its key takes, fails `serve` and
+`service reload` with a `ConfigError` that names the table, e.g.
+`config [directory]: unknown key 'root'; known keys: policy, working`. A
+provider's keys besides `kind` are its settings, string values, and a setting
+its kind does not read skips the provider as a missing one does.
+
 | Table / key | Default | Meaning |
 |---|---|---|
 | `[directory]` `working` | `<instanceHome>/document` | the working directory: a relative workflow or file path (prompts, scripts) resolves under it, an absolute one is used as written. A relative value resolves against the toml's directory. |
@@ -79,7 +86,7 @@ instance-owned (`<instanceHome>/state`) and not configurable, like the socket.
 | `[log]` `maximum_bytes` | `52428800` (50 MiB) | single-file rotation threshold; ≤0 disables rotation |
 | `[pool]` `maximum_concurrent_steps` | `4` | concurrent leaf-step (invoke/shell) cap; excess queues FIFO |
 | `[pool]` `maximum_active_runs` | `256` | concurrent registered-run cap |
-| `[provider.<name>]` `kind` (+ settings) | one `claude` (claude-cli) | backend instances. `kind` = `claude-cli` \| `codex-cli` \| `openai-compat`. CLI kinds accept `executable` (default: the CLI's name on `PATH`); `openai-compat` requires `endpoint`, the base URL, and an Agent reference without a model leaves the choice to the endpoint. A provider without a known `kind` or a required setting is skipped with a warning on stderr. Declaring any drops the built-in claude default, so list it explicitly alongside others. API keys via `FORGE_PROVIDER_<NAME>_API_KEY` env only. |
+| `[provider.<name>]` `kind` (+ settings) | one `claude` (claude-cli) | backend instances. `kind` = `claude-cli` \| `codex-cli` \| `openai-compat`. CLI kinds accept `executable` (default: the CLI's name on `PATH`); `openai-compat` requires `endpoint`, the base URL, and an Agent reference without a model leaves the choice to the endpoint. A provider without a known `kind` or a required setting, or with a setting its kind does not read, is skipped with a warning on stderr. Declaring any drops the built-in claude default, so list it explicitly alongside others. API keys via `FORGE_PROVIDER_<NAME>_API_KEY` env only. |
 | `[service.<name>]` `command` (+ `working_directory`/`environment`/`auto_spawn`/`log_file`/`restart_*`) | — (must declare) | managed child processes forge spawns/supervises (§3 of `forge serve -h`) |
 | `[hooks]` `logging` | `true` | structured event logging |
 
@@ -1107,6 +1114,7 @@ The error envelope is `{"type": "<ErrorType>", "message": "<text>"}` and the fie
 
 | Type | Meaning |
 |------|---------|
+| `ConfigError` | `config.toml` is not TOML, has a key the loader does not read, or a value of another type than its key takes (`service.reload`; `serve` exits with it). Fix the file; a retry meets the same refusal |
 | `BackendTimeout` | a backend call exceeded its timeout — retry candidate |
 | `BackendNonzeroExit` | a backend exited non-zero (also carries `exit_code`, `stderr`, `stdout`); a `catch` reads it as `nonzero_exit` |
 | `BackendUnavailable` | a backend could not be reached (e.g. an OpenAI-compatible endpoint refused or errored) |
