@@ -53,10 +53,10 @@ struct LogContextRunTests {
           - let: x
             value: { call: { procedure: shell, arguments: { command: ["/bin/echo", "ok"] } } }
         """#).write(to: directory.appendingPathComponent("echo.yaml"), atomically: true, encoding: .utf8)
-        let catalog = try WorkflowCatalog(directory: directory)
+        let reader = try WorkflowReader(directory: directory)
         let bus = WorkflowEventBus()
         let runner = WorkflowRunner(
-            catalog: catalog,
+            workflows: reader,
             eventBus: bus,
             policyStore: PolicyStore(seed: ["cli:test": ["echo.yaml"]]),
             pool: WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: Int.max),
@@ -69,7 +69,7 @@ struct LogContextRunTests {
             )
         )
         let (_, stream) = await bus.subscribe()
-        let workflow = try await catalog.workflow(at: "echo.yaml")
+        let workflow = try await reader.workflow(at: "echo.yaml")
         let result = try await runner.dispatch(
             workflow, inputs: [:], principal: "cli:test", origin: .rpc,
             mode: .awaited

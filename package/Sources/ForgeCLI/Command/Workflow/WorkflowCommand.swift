@@ -16,7 +16,6 @@ struct WorkflowCommand: ParsableCommand {
         abstract: "Dispatch and inspect workflow runs.",
         subcommands: [
             WorkflowDispatchCommand.self,
-            WorkflowListCommand.self,
             WorkflowDescribeCommand.self,
             WorkflowActiveCommand.self,
             WorkflowHealthCommand.self,

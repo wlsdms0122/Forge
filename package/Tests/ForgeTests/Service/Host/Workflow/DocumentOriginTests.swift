@@ -174,7 +174,7 @@ struct DocumentOriginTests {
     // MARK: - Public
     // MARK: - Private
     // A text spent by the vocabulary's front end, its document decoded, and
-    // the origin the catalog keeps for it.
+    // the origin the builder keeps for it.
     private static func spent(_ text: String) throws -> (document: Value, origin: DocumentOrigin) {
         let spent = try ForgeVocabulary.shipped.get().frontend.document(from: text)
         let document = try BinaryEncoding().value(from: spent.document)

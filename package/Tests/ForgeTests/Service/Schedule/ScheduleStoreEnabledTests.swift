@@ -24,7 +24,7 @@ struct ScheduleStoreEnabledTests {
         let directory = try temporary.make("toggle"); defer { try? FileManager.default.removeItem(at: directory) }
         let store = ScheduleStore(directory: directory, enabledFile: try temporary.file("schedule-enabled.json"))
         let created = try await store.create(Schedule(
-                id: "tog", workflow: WorkflowCatalog.inlineSigil,
+                id: "tog", workflow: Workflow.inlineSigil,
                 trigger: .every(Interval(seconds: 90)),
                 concurrency: .skip,
                 enabled: true,
@@ -35,14 +35,14 @@ struct ScheduleStoreEnabledTests {
         try await store.setEnabled(
             id: created.id,
             enabled: false,
-            authorizedWorkflow: WorkflowCatalog.inlineSigil
+            authorizedWorkflow: Workflow.inlineSigil
         )
         let fetched = await store.lookup(created.id)
 
         // Then
         let after = try #require(fetched)
         #expect(after.enabled == false, "enabled must be toggled via the ledger stamp")
-        #expect(after.workflow == WorkflowCatalog.inlineSigil)
+        #expect(after.workflow == Workflow.inlineSigil)
         #expect(after.trigger == .every(Interval(seconds: 90)))
         #expect(after.concurrency == .skip, "concurrency preserved (a field that would be lost under re-serialization drift)")
         #expect(after.inputs?["scope"] == .string("quick"))
@@ -259,13 +259,13 @@ struct ScheduleStoreEnabledTests {
 
     @Test("withEnabled is a copy that preserves the other fields")
     func withEnabledIsFieldPreservingCopy() {
-        let schedule = Schedule(id: "a", workflow: WorkflowCatalog.inlineSigil, trigger: .every(Interval(seconds: 30)),
+        let schedule = Schedule(id: "a", workflow: Workflow.inlineSigil, trigger: .every(Interval(seconds: 30)),
             concurrency: .replace, enabled: true,
             inputs: ["x": .int(1)], spec: ["result": "s"])
         let disabled = schedule.withEnabled(false)
         #expect(disabled.enabled == false)
         #expect(disabled.id == "a")
-        #expect(disabled.workflow == WorkflowCatalog.inlineSigil)
+        #expect(disabled.workflow == Workflow.inlineSigil)
         #expect(disabled.trigger == .every(Interval(seconds: 30)))
         #expect(disabled.concurrency == .replace)
         #expect(disabled.inputs?["x"] == .int(1))

@@ -10,17 +10,17 @@ import Foundation
 struct ScheduleCreateMethod: Sendable {
     // MARK: - Property
     let store: ScheduleStore
-    let catalog: WorkflowCatalog
+    let workflows: WorkflowReader
     let policyStore: PolicyStore
 
     // MARK: - Initializer
     init(
         store: ScheduleStore,
-        catalog: WorkflowCatalog,
+        workflows: WorkflowReader,
         policyStore: PolicyStore
     ) {
         self.store = store
-        self.catalog = catalog
+        self.workflows = workflows
         self.policyStore = policyStore
     }
 
@@ -86,7 +86,7 @@ struct ScheduleCreateMethod: Sendable {
         let (workflowName, specJSON) = try await Self.resolveDispatchTarget(
             params: request.params,
             context: "schedule.create",
-            catalog: catalog
+            workflows: workflows
         )
 
         try await DispatchAuthorization.requireDispatch(
@@ -206,7 +206,7 @@ struct ScheduleCreateMethod: Sendable {
     private static func resolveDispatchTarget(
         params: [String: JSONValue],
         context: String,
-        catalog: WorkflowCatalog
+        workflows: WorkflowReader
     ) async throws -> (name: String, spec: [String: JSONValue]?) {
         let nameParam = params["workflow"]?.stringValue
             .flatMap { value in value.isEmpty ? nil : value }
@@ -214,7 +214,7 @@ struct ScheduleCreateMethod: Sendable {
 
         switch (nameParam, specParam) {
         case let (name?, nil):
-            _ = try await catalog.workflow(at: name)
+            _ = try await workflows.workflow(at: name)
 
             return (name, nil)
 
@@ -223,12 +223,12 @@ struct ScheduleCreateMethod: Sendable {
                 // An inline spec is one procedure, the same shape workflow.dispatch
                 // admits, checked here so a schedule cannot be stored carrying
                 // something that will not load when it fires.
-                _ = try await catalog.inline(spec)
+                _ = try await workflows.inline(spec)
             } catch {
                 throw ProtocolError("\(context): malformed 'spec': \(error)")
             }
 
-            return (WorkflowCatalog.inlineSigil, spec)
+            return (Workflow.inlineSigil, spec)
 
         case (.some, .some):
             throw ProtocolError(

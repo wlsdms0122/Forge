@@ -46,7 +46,7 @@ struct WorkflowDescribeTests {
         #expect(result["returns"]?.stringValue == "Dictionary<String, Any>")
     }
     
-    @Test("Describe and list answer the description and each input's hint the file writes beside them")
+    @Test("Describe answers the description and each input's hint the file writes beside them")
     func answersTheProseBesideTheDeclaration() async throws {
         // Given
         let (method, authority, directory) = try await makeMethod("prose")
@@ -59,11 +59,9 @@ struct WorkflowDescribeTests {
         """#).write(to: directory.appendingPathComponent("greet.yaml"),
             atomically: true, encoding: .utf8)
         let token = authority.mint(TokenClaims(principal: "system:admin"))
-        let list = WorkflowListMethod(catalog: method.catalog)
 
         // When
         let described = try await method.handle(request(["token": .string(token), "path": "greet.yaml"]))
-        let listed = try await list.handle(RPCRequest(id: "r-list", method: "workflow.list", params: ["token": .string(token)]))
 
         // Then
         #expect(described["description"]?.stringValue == "Says hello.")
@@ -71,9 +69,6 @@ struct WorkflowDescribeTests {
         #expect((inputs["who"]?.objectValue)?["hint"]?.stringValue == "whom to greet")
         #expect((inputs["loud"]?.objectValue)?["hint"] == nil)
         #expect((inputs["loud"]?.objectValue)?["type"]?.stringValue == "Bool?", "a default makes an input one a caller may leave out")
-        let workflows = listed["workflows"]?.arrayValue ?? []
-        #expect(workflows.first?["path"]?.stringValue == "greet.yaml")
-        #expect(workflows.first?["description"]?.stringValue == "Says hello.")
     }
 
     @Test("A workflow with no parameters answers empty inputs and returns Null")
@@ -163,10 +158,10 @@ struct WorkflowDescribeTests {
     
     -> (WorkflowDescribeMethod, TokenAuthority, URL) {
         let directory = try temporary.make(test)
-        let catalog = try WorkflowCatalog(directory: directory)
+        let reader = try WorkflowReader(directory: directory)
         let authority = TokenAuthority()
         
-        return (WorkflowDescribeMethod(catalog: catalog), authority, directory)
+        return (WorkflowDescribeMethod(workflows: reader), authority, directory)
     }
     
     private func request(_ params: [String: JSONValue]) -> RPCRequest {

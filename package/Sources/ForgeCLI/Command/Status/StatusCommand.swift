@@ -78,7 +78,6 @@ struct StatusCommand: ParsableCommand {
         if let runtime = result["runtime"]?.objectValue {
             print("\nruntime:")
             
-            if let workflows = runtime["workflows"] { print("  workflows: \(workflows.plainText)") }
             
             if let schedules = runtime["schedules"]?.objectValue {
                 let enabled = schedules["enabled"]?.plainText ?? "0"

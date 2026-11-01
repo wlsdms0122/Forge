@@ -30,7 +30,7 @@ struct CreatePolicyGateTests {
         let authority = TokenAuthority()
         let method = ScheduleCreateMethod(
             store: ScheduleStore(directory: directory, enabledFile: FileManager.default.temporaryDirectory.appendingPathComponent("forge-sched-enabled-\(UUID().uuidString.prefix(6)).json")),
-            catalog: try WorkflowCatalog(directory: nil),
+            workflows: try WorkflowReader(directory: nil),
             policyStore: PolicyStore(seed: ["cli:response": ["<inline>"]]))
         let token = authority.mint(TokenClaims(principal: "cli:response"))
         let result = try await method.handle(RPCRequest(
@@ -50,7 +50,7 @@ struct CreatePolicyGateTests {
         let store = ScheduleStore(directory: directory, enabledFile: FileManager.default.temporaryDirectory.appendingPathComponent("forge-sched-enabled-\(UUID().uuidString.prefix(6)).json"))
         let method = ScheduleCreateMethod(
             store: store,
-            catalog: try WorkflowCatalog(directory: nil),
+            workflows: try WorkflowReader(directory: nil),
             policyStore: PolicyStore(seed: ["cli:response": ["worker"]]))
         let token = authority.mint(TokenClaims(principal: "cli:<inline>"))
         do {
@@ -78,7 +78,7 @@ struct CreatePolicyGateTests {
         let store = ScheduleStore(directory: directory, enabledFile: FileManager.default.temporaryDirectory.appendingPathComponent("forge-sched-enabled-\(UUID().uuidString.prefix(6)).json"))
         let method = ScheduleCreateMethod(
             store: store,
-            catalog: try WorkflowCatalog(directory: nil),
+            workflows: try WorkflowReader(directory: nil),
             policyStore: PolicyStore(seed: ["system:*": ["*"]]))
         let token = authority.mint(TokenClaims(principal: "cli:response"))
         do {
@@ -104,7 +104,7 @@ struct CreatePolicyGateTests {
         let authority = TokenAuthority()
         let method = ScheduleCreateMethod(
             store: ScheduleStore(directory: directory, enabledFile: FileManager.default.temporaryDirectory.appendingPathComponent("forge-sched-enabled-\(UUID().uuidString.prefix(6)).json")),
-            catalog: try WorkflowCatalog(directory: nil),
+            workflows: try WorkflowReader(directory: nil),
             policyStore: PolicyStore(seed: ["cli:*": ["<inline>"]]))
         let token = authority.mint(TokenClaims(principal: "cli:response"))
         let result = try await method.handle(RPCRequest(

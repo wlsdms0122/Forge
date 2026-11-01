@@ -24,7 +24,7 @@ struct WorkflowSchedulerLedgerTests {
         let workflow = fixture.markerWorkflow(path: "wfo.yaml", marker: marker, tag: "S", sleep: 2.5)
         let wfDir = try fixture.temporary.make("outcome-wf")
         try fixture.write(workflow, to: wfDir)
-        let catalog = try fixture.catalog(directory: wfDir)
+        let reader = try fixture.reader(directory: wfDir)
         let schedDir = try fixture.temporary.make("outcome-sched")
         try "id: ok\nworkflow: wfo.yaml\nevery: 1s\nconcurrency: skip\n"
         .write(to: schedDir.appendingPathComponent("ok.yaml"), atomically: true, encoding: .utf8)
@@ -32,9 +32,9 @@ struct WorkflowSchedulerLedgerTests {
         .write(to: schedDir.appendingPathComponent("ghost.yaml"), atomically: true, encoding: .utf8)
         let ledger = FireLedger(path: try fixture.temporary.make("outcome-led").appendingPathComponent("l.json"))
         let scheduler = WorkflowScheduler(
-            catalog: catalog,
+            workflows: reader,
             store: try fixture.scheduleStore(directory: schedDir, ids: ["ok": "wfo.yaml", "ghost": "nope"]),
-            ledger: ledger, runner: fixture.runner(catalog: catalog), tickIntervalSeconds: 1)
+            ledger: ledger, runner: fixture.runner(workflows: reader), tickIntervalSeconds: 1)
 
         // When
         await scheduler.tickOnce()
@@ -57,16 +57,16 @@ struct WorkflowSchedulerLedgerTests {
         // Given
         // A denied once stays on disk with its ledger record, so the record's
         // fate follows the declaration alone and not the spent-once collection.
-        let catalog = try fixture.catalog(directory: fixture.temporary.make("live-wf"))
+        let reader = try fixture.reader(directory: fixture.temporary.make("live-wf"))
         let schedDir = try fixture.temporary.make("live-sched")
         let schedFile = schedDir.appendingPathComponent("keep.yaml")
         let body = "id: keep\nworkflow: nope\nonce: \"2020-01-01 00:00:00\"\ntimezone: Asia/Seoul\n"
         try body.write(to: schedFile, atomically: true, encoding: .utf8)
         let ledger = FireLedger(path: try fixture.temporary.make("live-led").appendingPathComponent("l.json"))
         let scheduler = WorkflowScheduler(
-            catalog: catalog,
+            workflows: reader,
             store: try fixture.scheduleStore(directory: schedDir, ids: ["keep": "nope"]),
-            ledger: ledger, runner: fixture.runner(catalog: catalog), tickIntervalSeconds: 1)
+            ledger: ledger, runner: fixture.runner(workflows: reader), tickIntervalSeconds: 1)
 
         // When
         await scheduler.tickOnce()

@@ -39,7 +39,7 @@ struct WorkflowDispatchTests {
 
         // Then
         #expect(result["status"]?.stringValue == "ok")
-        #expect(result["path"]?.stringValue == WorkflowCatalog.inlineSigil, "The result path of an inline run is fixed to the sigil")
+        #expect(result["path"]?.stringValue == Workflow.inlineSigil, "The result path of an inline run is fixed to the sigil")
     }
 
     @Test("Run id is freshly minted — the wire id is not borrowed")
@@ -118,7 +118,7 @@ struct WorkflowDispatchTests {
         // Then
             Issue.record("Should be rejected without an <inline> policy")
         } catch let error as PolicyDenied {
-            #expect(error.message.contains(WorkflowCatalog.inlineSigil), "The denial reason should include the sigil: \(error.message)")
+            #expect(error.message.contains(Workflow.inlineSigil), "The denial reason should include the sigil: \(error.message)")
         }
     }
 
@@ -166,7 +166,7 @@ struct WorkflowDispatchTests {
             "body": [["let": "x", "value": ["format": 5]]],
         ]
         let refusal = await #expect(throws: WorkflowValidationError.self) {
-            try await WorkflowCatalog(directory: nil).inline(badSpec)
+            try await WorkflowReader(directory: nil).inline(badSpec)
         }
 
         // When
@@ -217,6 +217,22 @@ struct WorkflowDispatchTests {
         #expect(result["path"]?.stringValue == "echo.yaml")
     }
 
+    @Test("A path that climbs out of an allowed folder is refused, though the file it lands on exists")
+    func pathClimbingOutOfAnAllowedFolderRefused() async throws {
+        // Given
+        let (method, authority, _) = try await makeMethod(policy: ["cli:x": ["a/*"]])
+        let token = authority.mint(TokenClaims(principal: "cli:x"))
+        let claims = try #require(authority.verify(token))
+
+        // When
+        let error = try await #require(throws: ResourceError.self) {
+            try await method.handle(request(["token": .string(token), "path": "a/../echo.yaml"]), claims: claims)
+        }
+
+        // Then
+        #expect(error.message.contains("'a/../echo.yaml'"), Comment(rawValue: error.message))
+    }
+
     @Test("Rejected when neither path nor spec is given")
     func missingPathAndSpecRejected() async throws {
         // Given
@@ -265,11 +281,11 @@ struct WorkflowDispatchTests {
         defer { try? FileManager.default.removeItem(at: directory) }
         try echoWorkflowYAML.write(
             to: directory.appendingPathComponent("echo2.yaml"), atomically: true, encoding: .utf8)
-        let catalog = try WorkflowCatalog(directory: directory)
+        let reader = try WorkflowReader(directory: directory)
         let authority = TokenAuthority()
         let registry = WorkRegistry()
         let runner = WorkflowRunner(
-            catalog: catalog,
+            workflows: reader,
             eventBus: WorkflowEventBus(),
             policyStore: PolicyStore(seed: ["*": ["*"]]),
             pool: WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: Int.max),
@@ -280,7 +296,7 @@ struct WorkflowDispatchTests {
                 agent: LiveAgent(executor: AgentExecutor(backend: StubBackend())),
                 resources: LiveResources(root: DocumentRoot(directory: nil))
             ))
-        let method = WorkflowDispatchMethod(runner: runner, catalog: catalog,
+        let method = WorkflowDispatchMethod(runner: runner, workflows: reader,
             workRegistry: registry)
         let stale = authority.mint(TokenClaims(principal: "cli:gone", runID: "wf-gone"))
         do {
@@ -312,11 +328,11 @@ struct WorkflowDispatchTests {
     -> (WorkflowDispatchMethod, TokenAuthority, WorkRegistry) {
         let directory = try temporary.make("wf")
         try echoWorkflowYAML.write(to: directory.appendingPathComponent("echo.yaml"), atomically: true, encoding: .utf8)
-        let catalog = try WorkflowCatalog(directory: directory)
+        let reader = try WorkflowReader(directory: directory)
         let authority = TokenAuthority()
         let registry = WorkRegistry()
         let runner = WorkflowRunner(
-            catalog: catalog,
+            workflows: reader,
             eventBus: WorkflowEventBus(),
             policyStore: PolicyStore(seed: policy),
             pool: WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: Int.max),
@@ -327,7 +343,7 @@ struct WorkflowDispatchTests {
                 agent: LiveAgent(executor: AgentExecutor(backend: StubBackend("noop"))),
                 resources: LiveResources(root: DocumentRoot(directory: nil))
             ))
-        let method = WorkflowDispatchMethod(runner: runner, catalog: catalog,
+        let method = WorkflowDispatchMethod(runner: runner, workflows: reader,
             workRegistry: registry)
 
         return (method, authority, registry)

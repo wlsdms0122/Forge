@@ -105,7 +105,7 @@ struct WorkflowLintTests {
         #expect(together.first?.refusal?.contains("'callee' is not declared by a document this text leans on") == true)
     }
 
-    @Test("a file that loads and does not build fails the check, as the daemon leaves it out of its catalog")
+    @Test("a file that loads and does not build fails the check, as the daemon refuses to read it")
     func aFileTheBuildRefusesFails() async throws {
         // Given
         let report = try await check(named: "unbuilt", yaml: """

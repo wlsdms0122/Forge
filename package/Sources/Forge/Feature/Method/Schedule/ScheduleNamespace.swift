@@ -16,12 +16,12 @@ struct ScheduleNamespace: Sendable {
     init(
         store: ScheduleStore,
         ledger: FireLedger,
-        catalog: WorkflowCatalog,
+        workflows: WorkflowReader,
         policyStore: PolicyStore
     ) {
         let list = ScheduleListMethod(store: store, ledger: ledger)
         let setEnabled = ScheduleSetEnabledMethod(store: store, policyStore: policyStore)
-        let create = ScheduleCreateMethod(store: store, catalog: catalog, policyStore: policyStore)
+        let create = ScheduleCreateMethod(store: store, workflows: workflows, policyStore: policyStore)
         let delete = ScheduleDeleteMethod(store: store, policyStore: policyStore)
 
         self.methods = [

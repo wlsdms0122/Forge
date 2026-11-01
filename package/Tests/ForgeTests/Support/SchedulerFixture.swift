@@ -10,7 +10,7 @@ import Foundation
 
 // The stage that scheduler tests set up.
 //
-// Running a scheduler at all requires a workflow catalog, schedule definitions, a fire
+// Running a scheduler at all requires a workflow reader, schedule definitions, a fire
 // ledger, and a runner, so a test spends twenty lines before reaching its actual concern
 // (does the policy run correctly). Those twenty lines are the same in every test, so they
 // are set up once here. The stage's lifetime is owned by the temporary directory.
@@ -74,13 +74,13 @@ struct SchedulerFixture {
         (try? String(contentsOf: marker, encoding: .utf8)) ?? ""
     }
 
-    func catalog(directory: URL?) throws -> WorkflowCatalog {
-        try WorkflowCatalog(directory: directory)
+    func reader(directory: URL?) throws -> WorkflowReader {
+        try WorkflowReader(directory: directory)
     }
 
-    func runner(catalog: WorkflowCatalog) -> WorkflowRunner {
+    func runner(workflows: WorkflowReader) -> WorkflowRunner {
         WorkflowRunner(
-            catalog: catalog,
+            workflows: workflows,
             eventBus: WorkflowEventBus(),
             policyStore: PolicyStore(seed: ["*": ["*"]]),
             pool: WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: Int.max),
@@ -116,17 +116,13 @@ struct SchedulerFixture {
         let seeds = scheduleYAML.mapValues(Self.declaredWorkflow)
         let store = try scheduleStore(directory: scheduleDirectory, ids: seeds)
         let path = try ledgerPath ?? temporary.file("fire-ledger.json")
-        let catalog = try self.catalog(directory: workflowDirectory)
-
-        // Read before the first tick, as the daemon reads its catalog before
-        // its scheduler starts.
-        await catalog.reload()
+        let reader = try self.reader(directory: workflowDirectory)
 
         return WorkflowScheduler(
-            catalog: catalog,
+            workflows: reader,
             store: store,
             ledger: FireLedger(path: path),
-            runner: runner(catalog: catalog),
+            runner: runner(workflows: reader),
             tickIntervalSeconds: 1
         )
     }
@@ -148,7 +144,7 @@ struct SchedulerFixture {
         return (stage.scheduler, stage.ledger, onceFile)
     }
 
-    // A scheduler over `directory` whose catalog holds `wfonce.yaml`, a workflow that leaves "1" in `marker`.
+    // A scheduler over `directory` whose workflow root holds `wfonce.yaml`, a workflow that leaves "1" in `marker`.
     func onceStage(
         directory: URL,
         marker: URL,
@@ -159,14 +155,12 @@ struct SchedulerFixture {
         try write(workflow, to: workflowDirectory)
         let store = try scheduleStore(directory: directory, ids: ids)
         let ledger = FireLedger(path: try temporary.make("once-led").appendingPathComponent("l.json"))
-        let catalog = try self.catalog(directory: workflowDirectory)
-
-        await catalog.reload()
+        let reader = try self.reader(directory: workflowDirectory)
         let scheduler = WorkflowScheduler(
-            catalog: catalog,
+            workflows: reader,
             store: store,
             ledger: ledger,
-            runner: runner(catalog: catalog),
+            runner: runner(workflows: reader),
             tickIntervalSeconds: 1
         )
 

@@ -9,11 +9,11 @@ import Foundation
 
 struct WorkflowDescribeMethod: Sendable {
     // MARK: - Property
-    let catalog: WorkflowCatalog
+    let workflows: WorkflowReader
 
     // MARK: - Initializer
-    init(catalog: WorkflowCatalog) {
-        self.catalog = catalog
+    init(workflows: WorkflowReader) {
+        self.workflows = workflows
     }
 
     // MARK: - Public
@@ -22,7 +22,7 @@ struct WorkflowDescribeMethod: Sendable {
             throw ProtocolError("workflow.describe: 'path' (string) required")
         }
 
-        let workflow = try await catalog.workflow(at: path)
+        let workflow = try await workflows.workflow(at: path)
         let contract = workflow.contract
         var result: [String: JSONValue] = [
             "path":    .string(workflow.path),

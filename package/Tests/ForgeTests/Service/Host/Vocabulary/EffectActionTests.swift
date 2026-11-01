@@ -576,12 +576,12 @@ struct EffectActionTests {
     @Test("an invalid inline spec is refused when it is read, before it runs")
     func inlineRejectsWhenSpecIsMalformed() async throws {
         // Given — the inline door reads one procedure in the YAML notation
-        let catalog = try WorkflowCatalog(directory: nil)
+        let reader = try WorkflowReader(directory: nil)
         let spec: [String: JSONValue] = ["returns": "String", "result": "ok", "fallbck": "typo"]
 
         // When / Then
         await #expect(throws: (any Error).self) {
-            try await catalog.inline(spec)
+            try await reader.inline(spec)
         }
     }
 
@@ -589,7 +589,7 @@ struct EffectActionTests {
     func inlineLeansOnTheLibrary() async throws {
         // Given
         let harness = Harness()
-        let catalog = try WorkflowCatalog(directory: nil)
+        let reader = try WorkflowReader(directory: nil)
         let spec = try YAMLSpec.decode([String: JSONValue].self, from: Data("""
         returns: String
         failing: [nonzero_exit, timeout]
@@ -601,7 +601,7 @@ struct EffectActionTests {
         let sut = try harness.executor()
 
         // When
-        let module = try await catalog.inline(spec).module
+        let module = try await reader.inline(spec).module
         let returned = try await sut.run(module)
 
         // Then

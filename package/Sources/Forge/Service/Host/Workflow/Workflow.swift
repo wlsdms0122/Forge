@@ -9,13 +9,17 @@ import Foundation
 import Warp
 import WarpYAML
 
-// A workflow the catalog hands out: its path under the root, or the inline
+// A workflow as a daemon runs it: its path under the root, or the inline
 // sigil in its place, the prose its file writes beside its entry,
 // the contract a caller fills in, and the module the host runs.
 struct Workflow: Sendable {
     // MARK: - Property
     // The procedure a run starts from.
     static let entry = "main"
+
+    // What stands in an inline spec's path. No path under the root is read
+    // under this spelling, so a policy entry for it grants inline specs only.
+    static let inlineSigil = "<inline>"
 
     let path: String
     let description: String?

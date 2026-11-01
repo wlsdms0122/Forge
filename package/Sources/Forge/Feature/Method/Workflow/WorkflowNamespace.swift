@@ -15,16 +15,15 @@ struct WorkflowNamespace: Sendable {
     // MARK: - Initializer
     init(
         runner: WorkflowRunner,
-        catalog: WorkflowCatalog,
+        workflows: WorkflowReader,
         workRegistry: WorkRegistry,
         pool: WorkflowPool,
         policyStore: PolicyStore,
         eventBus: WorkflowEventBus
     ) {
-        let dispatch = WorkflowDispatchMethod(runner: runner, catalog: catalog, workRegistry: workRegistry)
+        let dispatch = WorkflowDispatchMethod(runner: runner, workflows: workflows, workRegistry: workRegistry)
         let dispatchStream = WorkflowDispatchStreamMethod(dispatchMethod: dispatch, eventBus: eventBus)
-        let list = WorkflowListMethod(catalog: catalog)
-        let describe = WorkflowDescribeMethod(catalog: catalog)
+        let describe = WorkflowDescribeMethod(workflows: workflows)
         let listActive = WorkflowListActiveMethod(pool: pool)
         let health = WorkflowHealthMethod(pool: pool)
         let cancel = WorkflowCancelMethod(pool: pool, policyStore: policyStore)
@@ -35,9 +34,6 @@ struct WorkflowNamespace: Sendable {
             }),
             RPCMethod("workflow.dispatch_stream", .streaming(.token) { request, claims, sink in
                 try await dispatchStream.handle(request, claims: claims, sink: sink)
-            }),
-            RPCMethod("workflow.list", .unary(.token) { request, _ in
-                try await list.handle(request)
             }),
             RPCMethod("workflow.describe", .unary(.token) { request, _ in
                 try await describe.handle(request)
