@@ -19,7 +19,9 @@ struct ForgeErrorAdoptionGuardTests {
     func everyDeclaredErrorTypeAdoptsForgeError() throws {
         // Given
         let package = try PackageSource()
-        let files = try package.swiftFiles(in: package.sources)
+        // The binary's own targets, whose errors a client meets.
+        let files = try package.swiftFiles(in: package.sources.appendingPathComponent("Forge"))
+            + package.swiftFiles(in: package.sources.appendingPathComponent("ForgeCLI"))
         #expect(files.count > 30, "if no sources could be read, this guard is meaningless rather than passing")
         let declaration = try NSRegularExpression(
             pattern: #"(?:struct|enum|final class|class)\s+(\w+)\s*:\s*([^\{\n]*)"#)
