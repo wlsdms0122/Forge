@@ -15,7 +15,7 @@ import Foundation
 // (does the policy run correctly). Those twenty lines are the same in every test, so they
 // are set up once here. The stage's lifetime is owned by the temporary directory.
 struct SchedulerFixture {
-    // A workflow fixture: the path under the root is its identity, so it carries path and body together.
+    // A workflow fixture: its path is its identity, so it carries path and body together.
     struct WorkflowFixture {
         // MARK: - Property
         let path: String
@@ -89,7 +89,7 @@ struct SchedulerFixture {
             capabilities: CapabilitySet(
                 shell: LiveShell(),
                 agent: LiveAgent(executor: AgentExecutor(backend: StubBackend("noop"))),
-                resources: LiveResources(root: DocumentRoot(directory: nil))
+                resources: LiveResources(workingDirectory: WorkingDirectory(directory: nil))
             )
         )
     }

@@ -9,16 +9,16 @@ import Foundation
 
 struct ResourceListMethod: Sendable {
     // MARK: - Property
-    let store: DocumentRoot
+    let workingDirectory: WorkingDirectory
 
     // MARK: - Initializer
-    init(store: DocumentRoot) {
-        self.store = store
+    init(workingDirectory: WorkingDirectory) {
+        self.workingDirectory = workingDirectory
     }
 
     // MARK: - Public
     func handle(_ request: RPCRequest) async throws -> JSONValue {
-        let entries = await store.all()
+        let entries = await workingDirectory.all()
         let rows: [JSONValue] = entries.map { entry in
             [
                 "path": .string(entry.path),

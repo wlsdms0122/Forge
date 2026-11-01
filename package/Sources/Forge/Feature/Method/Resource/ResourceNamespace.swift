@@ -14,10 +14,10 @@ struct ResourceNamespace: Sendable {
 
     // MARK: - Initializer
     init(
-        store: DocumentRoot
+        workingDirectory: WorkingDirectory
     ) {
-        let list = ResourceListMethod(store: store)
-        let read = ResourceReadMethod(store: store)
+        let list = ResourceListMethod(workingDirectory: workingDirectory)
+        let read = ResourceReadMethod(workingDirectory: workingDirectory)
 
         self.methods = [
             RPCMethod("resource.list", .unary(.token) { request, _ in

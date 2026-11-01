@@ -81,11 +81,11 @@ enum Library {
                 arguments: [ { ref: prompt } ]
         
           dispatch:
-            description: Runs the workflow at a path under the root as a run of its own, with its own policy check, slot and ledger, and returns the value the workflow returns.
+            description: Runs the workflow at a path as a run of its own, with its own policy check, slot and ledger, and returns the value the workflow returns.
             access: public
             isolated: true
             parameters:
-              - path: { type: String, hint: "the workflow to run, by its path under the root" }
+              - path: { type: String, hint: "the workflow to run: an absolute path, or one under the working directory" }
               - inputs: { type: "Dictionary<String, Any>", default: {}, hint: "its inputs by name" }
               - timeout: { type: Double?, hint: "seconds before the child fails with timeout" }
             returns: Any
@@ -100,7 +100,7 @@ enum Library {
             access: public
             isolated: true
             parameters:
-              - content: { type: String, hint: "the file, relative to the document root" }
+              - content: { type: String, hint: "the file: an absolute path, or one under the working directory" }
               - inputs: { type: "Dictionary<String, Any>", default: {}, hint: "what ${name} in the file stands for" }
             returns: String
             result:
@@ -113,7 +113,7 @@ enum Library {
             access: public
             isolated: true
             parameters:
-              - path: { type: String, hint: "the file, relative to the document root" }
+              - path: { type: String, hint: "the file: an absolute path, or one under the working directory" }
             returns: String
             result:
               call:

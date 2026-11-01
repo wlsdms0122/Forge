@@ -73,7 +73,7 @@ instance-owned (`<instanceHome>/state`) and not configurable, like the socket.
 
 | Table / key | Default | Meaning |
 |---|---|---|
-| `[directory]` `root` | `<instanceHome>/document` | the document root: the workflows and the files they read (prompts, scripts). A relative value resolves against the toml's directory. |
+| `[directory]` `working` | `<instanceHome>/document` | the working directory: a relative workflow or file path (prompts, scripts) resolves under it, an absolute one is used as written. A relative value resolves against the toml's directory. |
 | `[directory]` `policy` | `<instanceHome>/policy` | policy files; a relative value resolves against the toml's directory. |
 | `[log]` `jsonl` / `error` | `<instanceHome>/log/forge.log.jsonl` · `…/error.log` | structured + stderr logs |
 | `[log]` `maximum_bytes` | `52428800` (50 MiB) | single-file rotation threshold; ≤0 disables rotation |
@@ -156,8 +156,8 @@ Dispatch and inspect workflow runs.
 
 Hot reload applies content edits within the workflow schema understood by
 the running daemon; it is not a schema-migration mechanism. A breaking workflow
-key change must be deployed as one generation: stop every daemon reading that
-root, install the matching binary and workflows, then restart. Forge intentionally
+key change must be deployed as one generation: stop every daemon reading those
+workflows, install the matching binary and workflows, then restart. Forge intentionally
 does not retain legacy decoder keys solely to bridge a mixed-generation process.
 
 #### `forge workflow dispatch`
@@ -174,7 +174,7 @@ forge workflow dispatch [<path>] [--spec <spec>] [--inputs <json>]
 
 | Option | Meaning |
 |--------|---------|
-| `<path>` | the workflow's path under the root (positional), e.g. `bot/review.yaml`. Omit when using `--spec` |
+| `<path>` | the workflow's path (positional), absolute or under the working directory, e.g. `bot/review.yaml`. Omit when using `--spec` |
 | `--spec` | inline workflow JSON, one procedure; use instead of the path argument. The run goes by `<inline>` and is gated by that sigil |
 | `--inputs` | workflow inputs, JSON object (default `{}`) |
 | `--parameters` | caller passthrough, JSON object — rides the log envelope only |
@@ -272,7 +272,7 @@ counterpart.**
 forge workflow check <path>...
 ```
 
-Reads each file the way the daemon reads one under its root: through the
+Reads each file the way the daemon reads one: through the
 YAML front end leaning on Forge's library, loaded, held to the file
 convention (a public procedure `main`), and built against the library, the
 natives and std. What the daemon records for a file is what the check prints, so a
@@ -346,14 +346,13 @@ the agents. Every mutation is stamped with the caller token's identity.
 
 ### `forge resource`
 
-Inspect files under the document root, the paths a workflow's `resource` verb reads.
-The daemon's `DocumentRoot` is the single gate: escape checks and hot reload happen
-there, and external tools (admin, scripts, agents) read files through these RPCs
+Inspect files under the working directory. The daemon hands out only relative
+paths with no hidden part and no link leading out of the directory, and external tools (admin, scripts, agents) read files through these RPCs
 instead of touching the filesystem.
 
 #### `forge resource list`
 
-List files in the document root. RPC: `resource.list`.
+List files under the working directory. RPC: `resource.list`.
 
 ```
 forge resource list [--json]
@@ -372,7 +371,7 @@ forge resource read <path> [--max-bytes N] [--json]
 
 | Option | Meaning |
 |--------|---------|
-| `<path>` | Path relative to the document root. `..` / symlink escapes are rejected by the daemon |
+| `<path>` | Path relative to the working directory. An absolute path, a `..` part, a hidden part and a link leading out are rejected by the daemon |
 | `--max-bytes` | Truncation cap, default 64 KiB. Bytes beyond are dropped (a `... (truncated)` marker is appended) and `truncated=true` |
 
 Plain output: body. JSON: `{ "path", "body", "size", "truncated" }`.
@@ -583,7 +582,7 @@ calls and nested calls from inside a workflow are distinguished by the **token**
 | Field | Req | Notes |
 |-------|-----|-------|
 | `token` | ✅ | identity derived from claims; caller cannot set `principal` |
-| `path` | △ | the workflow's path under the root, exclusive with `spec` |
+| `path` | △ | the workflow's path, absolute or under the working directory, exclusive with `spec` |
 | `spec` | △ | inline workflow JSON, one procedure; the run goes by `<inline>` in place of a path |
 | `inputs` | — | object, default `{}` |
 | `async` | — | bool, default `false` |
@@ -778,7 +777,7 @@ target workflow (`policy/*.yaml`, checked against its path, or
 `<inline>` for a spec). The principal is not stored; fires run as
 `system:schedule:<id>` — authorization is a creation-time concern only.
 
-Fire target via `workflow` (a path under the root) or `spec` (inline), the same
+Fire target via `workflow` (a path) or `spec` (inline), the same
 rules as `workflow.dispatch`: mutually exclusive, and `spec` runs under the
 `<inline>` sigil. A schedule file writes one of the two; a file writing both
 is a load failure. At create time the spec is
@@ -793,7 +792,7 @@ the schedule record as written and read again on every fire.
 | Field | Req | Notes |
 |-------|-----|-------|
 | `token` | ✅ | any authenticated token |
-| `workflow` | △ | the workflow's path under the root, exclusive with `spec` |
+| `workflow` | △ | the workflow's path, absolute or under the working directory, exclusive with `spec` |
 | `spec` | △ | inline workflow JSON, one procedure; runs as `<inline>` |
 | `every` | △ | interval duration (`"30s" "5m" "1h" "2d"`) — repeating |
 | `at` | △ | wall-clock `"HH:mm"` (24h) — repeating; requires `timezone` |
@@ -884,19 +883,19 @@ ticket and unlinks it from its parent's children.
 
 **params** `{"token"}`. **result** `{"resources":[{"path","size","mtime"}]}`.
 
-`path` is relative to the document root; `mtime` is ISO8601. Sorted by path.
+`path` is relative to the working directory; `mtime` is ISO8601. Sorted by path.
 
 ### `resource.read`
 
-Read one file under the document root. `..`/symlink escape is rejected by the
-daemon; oversize bodies are truncated and `truncated=true`.
+Read one file under the working directory. An absolute path, a `..` part, a
+hidden part and a link leading out are rejected by the daemon; oversize bodies are truncated and `truncated=true`.
 
 **params**
 
 | Field | Req | Notes |
 |-------|-----|-------|
 | `token` | ✅ | any authenticated token |
-| `path` | ✅ | relative to the document root |
+| `path` | ✅ | relative to the working directory |
 | `maximum_bytes` | — | truncation cap; default 64 KiB |
 
 **result** `{"path","body","size","truncated"}`. `size` is the full
@@ -1115,12 +1114,12 @@ The error envelope is `{"type": "<ErrorType>", "message": "<text>"}` and the fie
 | `BackendProtocolViolation` | a CLI backend's successful turn broke its stream: malformed frames, no terminal result, or neither text nor a tool call |
 | `IncompleteCompletion` | an agent turn ended without completing (a `finish_reason` such as `length` or `content_filter`), so its answer is a fragment |
 | `BackendNotRegistered` | an `invoke` names a provider no backend is registered for, or names none while there is not exactly one backend |
-| `WorkflowNotFound` | no file at that path under the root (`workflow.dispatch`, `workflow.describe`, `schedule.create`, a `dispatch` step) |
+| `WorkflowNotFound` | no file at that path (`workflow.dispatch`, `workflow.describe`, `schedule.create`, a `dispatch` step) |
 | `ProtocolError` | the request's envelope or payload is malformed, or an id it names is invalid, taken or missing |
 | `JobStoreError` | the job directory is not configured (`job.create` and job updates are disabled), or a job file is missing or unreadable |
 | `AgentValidationError` | an `invoke`'s agent cannot be built: its model, tools or `permission_mode`, or a combination its provider cannot run — fix the workflow |
 | `AgentSessionMissing` | an `agent` step ran outside an `invoke`, where no agent session is open — fix the workflow |
-| `ResourceError` | a file under the root cannot be given: no root configured, a path outside it or hidden, a workflow path with an empty, `.` or `..` part or spelled `<inline>`, a missing or unreadable resource |
+| `ResourceError` | a file cannot be given: a path with an empty, `.` or `..` part, a relative path with no working directory configured, a workflow path spelled `<inline>`, a `resource.read` path that is absolute, hidden or led out by a link, a missing or unreadable file |
 | `ServiceFailed` | the service handling a `service.send` answered with an error; the message is the service's |
 | `TokenRejected` | token failed verification — re-issue and retry once |
 | `UnknownMethod` | the daemon does not know the method name |

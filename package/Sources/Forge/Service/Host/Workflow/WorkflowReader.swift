@@ -11,7 +11,7 @@ import WarpSyntax
 import WarpYAML
 
 // The workflows a daemon runs, read when one is named. A workflow is the
-// file at a path under the root, built over the vocabulary when it is asked
+// file at a path, built over the vocabulary when it is asked
 // for and built again only where the file changed since; an inline spec is
 // one procedure handed in place of a path.
 actor WorkflowReader {
@@ -30,35 +30,26 @@ actor WorkflowReader {
     // What the workflows are written over, which every run of one links.
     let vocabulary: ForgeVocabulary
 
-    private let root: DocumentRoot
+    private let workingDirectory: WorkingDirectory
     private let builder: WorkflowBuilder
     private var built: [String: Entry] = [:]
 
     // MARK: - Initializer
-    init(root: DocumentRoot, builder: WorkflowBuilder) {
-        self.root = root
+    init(workingDirectory: WorkingDirectory, builder: WorkflowBuilder) {
+        self.workingDirectory = workingDirectory
         self.vocabulary = builder.vocabulary
         self.builder = builder
     }
 
     // MARK: - Public
-    // The workflow at this path under the root. The path is its identity,
-    // which a policy matches, so it names the file one way only.
+    // The workflow at this path. The path is its identity, which a policy
+    // matches.
     func workflow(at path: String) async throws -> Workflow {
-        let parts = path.split(separator: "/", omittingEmptySubsequences: false)
-
-        guard parts.allSatisfy({ part in !part.isEmpty && part != "." && part != ".." }) else {
-            throw ResourceError(
-                "workflow path '\(path)' has an empty, '.' or '..' part;"
-                    + " a workflow is named by its path under the root"
-            )
-        }
-
         guard path != Workflow.inlineSigil else {
-            throw ResourceError("'\(path)' names an inline spec, not a file under the root")
+            throw ResourceError("'\(path)' names an inline spec, not a file")
         }
 
-        guard let url = try await root.file(at: path) else {
+        guard let url = try await workingDirectory.file(at: path) else {
             built[path] = nil
 
             throw WorkflowNotFound("workflow not found: \(path)")
@@ -109,7 +100,7 @@ actor WorkflowReader {
         )
     }
 
-    // The image a run of this workflow runs: for a file under the root, the
+    // The image a run of this workflow runs: for a file, the
     // one built when it was read; for an inline spec, its module built alone.
     func image(of workflow: Workflow) async throws -> Image {
         if let entry = built[workflow.path], entry.workflow.module.identity == workflow.module.identity {

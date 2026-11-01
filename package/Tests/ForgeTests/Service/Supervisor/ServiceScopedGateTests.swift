@@ -210,7 +210,7 @@ struct ServiceScopedGateTests {
             capabilities: CapabilitySet(
                 shell: LiveShell(),
                 agent: LiveAgent(executor: AgentExecutor(backend: StubBackend("noop"))),
-                resources: LiveResources(root: DocumentRoot(directory: nil))
+                resources: LiveResources(workingDirectory: WorkingDirectory(directory: nil))
             ))
         let dispatchMethod = WorkflowDispatchMethod(runner: runner, workflows: reader,
             workRegistry: WorkRegistry())

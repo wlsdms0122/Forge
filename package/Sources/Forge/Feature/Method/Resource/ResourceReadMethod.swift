@@ -9,15 +9,15 @@ import Foundation
 
 struct ResourceReadMethod: Sendable {
     // MARK: - Property
-    let store: DocumentRoot
+    let workingDirectory: WorkingDirectory
     let defaultMaxBytes: Int
 
     // MARK: - Initializer
     init(
-        store: DocumentRoot,
+        workingDirectory: WorkingDirectory,
         defaultMaxBytes: Int = 64 * 1024
     ) {
-        self.store = store
+        self.workingDirectory = workingDirectory
         self.defaultMaxBytes = defaultMaxBytes
     }
 
@@ -35,7 +35,7 @@ struct ResourceReadMethod: Sendable {
             cap = defaultMaxBytes
         }
 
-        let body = try await store.read(path)
+        let body = try await workingDirectory.readInside(path)
         let truncated = body.utf8.count > cap
         let payload = truncated
             ? String(decoding: body.utf8.prefix(cap), as: UTF8.self) + "\n... (truncated)"

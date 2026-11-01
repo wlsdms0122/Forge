@@ -13,7 +13,7 @@ enum ConfigLoader {
         // MARK: - Property
         var providers: [PartialProvider]?
         var services: [PartialService]?
-        var rootDirectory: String?
+        var workingDirectory: String?
         var policyDirectory: String?
         var logJSONL: String?
         var errorLog: String?
@@ -131,9 +131,9 @@ enum ConfigLoader {
         
         entries.append(
             .init(
-                key: "root_directory",
-                value: config.rootDirectory?.path ?? "(unset)",
-                source: source(toml: fromFile.rootDirectory, environmentName: "FORGE_ROOT_DIRECTORY")
+                key: "working_directory",
+                value: config.workingDirectory?.path ?? "(unset)",
+                source: source(toml: fromFile.workingDirectory, environmentName: "FORGE_WORKING_DIRECTORY")
             )
         )
         entries.append(
@@ -264,7 +264,7 @@ enum ConfigLoader {
         var partial = PartialConfig()
         
         if let directory = table["directory"]?.table {
-            if let value = directory["root"]?.string { partial.rootDirectory = value }
+            if let value = directory["working"]?.string { partial.workingDirectory = value }
             if let value = directory["policy"]?.string { partial.policyDirectory = value }
         }
         
@@ -395,7 +395,7 @@ enum ConfigLoader {
             )
         }
         
-        let rootDirectory = directory("FORGE_ROOT_DIRECTORY", file.rootDirectory, "document")
+        let workingDirectory = directory("FORGE_WORKING_DIRECTORY", file.workingDirectory, "document")
         let policyDirectory = directory("FORGE_POLICY_DIRECTORY", file.policyDirectory, "policy")
         
         let defaultHooks = ForgeConfig.HookToggles()
@@ -466,7 +466,7 @@ enum ConfigLoader {
             errorLog: errorLog,
             logMaximumBytes: logMaximumBytes,
             providers: providers,
-            rootDirectory: rootDirectory,
+            workingDirectory: workingDirectory,
             policyDirectory: policyDirectory,
             services: services,
             hooks: hooks,

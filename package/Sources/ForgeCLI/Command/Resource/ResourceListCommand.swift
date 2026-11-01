@@ -12,7 +12,7 @@ struct ResourceListCommand: ParsableCommand {
     // MARK: - Property
     static let configuration = CommandConfiguration(
         commandName: "list",
-        abstract: "List files under the document root."
+        abstract: "List files under the working directory."
     )
     
     @OptionGroup var global: GlobalOptions

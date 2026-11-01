@@ -10,12 +10,13 @@ native procedures the daemon lends a run.
 
 ## The file
 
-A workflow is a file under the document root (`[directory] root`), written
-in the YAML notation, and its path relative to the root is its identity:
-`workflow dispatch bot/review.yaml`, a `dispatch` verb, a schedule and a
-policy entry all name it so. A path names its file one way only, so one
-with an empty, `.` or `..` part is refused. The root also holds the files a
-workflow reads beside it, prompts and scripts. The daemon keeps no list of
+A workflow is a file written in the YAML notation, and its path is its
+identity: `workflow dispatch bot/review.yaml`, a `dispatch` verb, a schedule
+and a policy entry all name it so. An absolute path names its file as
+written; a relative one names the file under the working directory
+(`[directory] working`). The files a workflow reads, prompts and scripts,
+are named the same way. A policy matches the path as written, so a path
+with an empty, `.` or `..` part is refused. The daemon keeps no list of
 workflows: a file is read when something names its path, and it is a
 workflow when it builds.
 
@@ -162,7 +163,7 @@ are `exit_code`, `stderr` and `stdout`.
 `dispatch(path: String, inputs: Dictionary<String, Any>, timeout: Double?) -> Any`,
 failing `child_run_failed`, `timeout`. `inputs` defaults to an empty dictionary.
 
-Runs the workflow at `path` under the root as a run of its own, with its own policy
+Runs the workflow at `path` as a run of its own, with its own policy
 check, slot and ledger, and returns the value the child returns, as it is.
 The value reads as `Any`, so a parent reads a part of it through a cast. A child that fails at its work fails with `child_run_failed`, which a
 catch may take. A child the policy refuses, or one that faults or is
@@ -173,7 +174,7 @@ cancelled, fails the parent past any catch.
 `resource(content: String, inputs: Dictionary<String, Any>) -> String`.
 `inputs` defaults to an empty dictionary.
 
-Reads the file `content`, relative to the document root, and
+Reads the file at the path `content` and
 renders it as a template over `inputs`: `${name}` stands for the input of that
 name and `$${` writes `${`. A null input is written `null`, as the language's
 `format` writes it, and a name the inputs do not hold is refused. An input
@@ -183,7 +184,7 @@ that must not be null is declared without `?`.
 
 `locate(path: String) -> String`.
 
-The absolute path of the file `path` under the document root, which is not read.
+The absolute path of the file at `path`, which is not read.
 
 ### `Forge.run`
 
