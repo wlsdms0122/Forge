@@ -44,6 +44,11 @@ let package = Package(
                 .product(name: "TOMLKit", package: "TOMLKit")
             ]
         ),
+        .plugin(
+            name: "PackageVersion",
+            capability: .buildTool(),
+            dependencies: ["PackageVersionTool"]
+        ),
         .testTarget(
             name: "ForgeTests",
             dependencies: [
