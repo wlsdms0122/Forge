@@ -33,8 +33,8 @@ review, and trust to mean exactly what it says.
 ### Workflow
 
 A workflow is one YAML file, a Warp program written in the notation of the
-Warp YAML front end, under the document root. Its path relative to the
-root is its identity, and a run starts from its procedure `main`: its
+Warp YAML front end. Its path is its identity: an absolute path as
+written, or one relative to the working directory. A run starts from its procedure `main`: its
 parameters are the workflow's inputs, what it returns is its result, and
 `failing` says what it may fail with.
 
@@ -68,8 +68,8 @@ Each file is a program of its own. The daemon keeps no list of them: when a
 run, a `dispatch` or a schedule names a path, it reads that one file
 leaning on Forge's library alone and builds it, and builds it again only
 where the file changed. A file that does not load, has no public `main` or
-does not build is refused to whoever named it, and nothing else under the
-root is touched.
+does not build is refused to whoever named it, and no other file is
+touched.
 
 ### Verbs
 
