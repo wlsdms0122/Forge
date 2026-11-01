@@ -25,7 +25,8 @@ A workflow file is a program of its own. It declares the procedure `main`,
 beside it, which `main` calls by name. The file is read leaning on the
 library alone and built against the library, the natives under it and the
 standard vocabulary; a file that does not load, has no public `main` or does
-not build is listed with its refusal and runs nothing. A file is read again
+not build is refused to whoever names it, with `WorkflowValidationError` and
+the reason, and runs nothing. A file is read again
 when it changes. A workflow starts another workflow with `dispatch`, as a
 run of its own.
 
@@ -132,8 +133,13 @@ the body returns is what `invoke` returns, so the body writes its `returns`.
 `model` is `<provider>[:<model>]`; left out, the one registered backend runs
 with its own model, and with more than one `invoke` fails with
 `BackendNotRegistered`. `allowed` is the list of tools to expose,
-each a name or a dictionary of `command` to a pattern; left out, the backend's own
-setting stands, and `[]` exposes none. `cwd` and `permission_mode` left out are
+each a name or a dictionary of one key to a pattern; left out, the backend's own
+setting stands, and `[]` exposes none. A name is `files.read`, `files.write`,
+`web`, `delegate` or `schedule`. A dictionary is `{ command: <pattern> }` or
+`{ mcp: <pattern> }`, where an mcp pattern is `*`, `<server>.*` or
+`<server>.<tool>`. Any other tool fails with `AgentValidationError`.
+`permission_mode` is `bypass`, `safe` or `restrict`, and any other value fails
+with `AgentValidationError`. `cwd` and `permission_mode` left out are
 unset; an empty string is refused. `share_session: true` reuses the session of
 an enclosing `invoke` where there is one. A session still open after `timeout`
 seconds fails with `timeout`.
@@ -165,6 +171,8 @@ failing `child_run_failed`, `timeout`. `inputs` defaults to an empty dictionary.
 
 Runs the workflow at `path` as a run of its own, with its own policy
 check, slot and ledger, and returns the value the child returns, as it is.
+The child is checked against the policy as `cli:<this workflow's path>`, and
+shares this run's root and `parameters`.
 The value reads as `Any`, so a parent reads a part of it through a cast. A child that fails at its work fails with `child_run_failed`, which a
 catch may take. A child the policy refuses, or one that faults or is
 cancelled, fails the parent past any catch.
@@ -184,7 +192,8 @@ that must not be null is declared without `?`.
 
 `locate(path: String) -> String`.
 
-The absolute path of the file at `path`, which is not read.
+The absolute path of the file at `path`, which is not read. A path with no
+file behind it fails the run with `ResourceError`.
 
 ### `Forge.run`
 
@@ -197,6 +206,10 @@ This run's id, and the id of the run that started the chain.
 `origin() -> Forge.Origin`, where `Forge.Origin` is `{ kind: String, id: String? }`.
 
 What started this run, and the id of the schedule or caller where there is one.
+`kind` is `rpc` for a `workflow.dispatch` call, or the `origin` the caller
+hands; `schedule`, with the schedule id, for a schedule fire; `workflow`, with
+the parent run id, for a dispatch sent from a run's subprocess; and `manual`,
+with no id, for a run a `dispatch` step started.
 
 ## Concurrency
 
@@ -239,7 +252,7 @@ Exactly one extractor:
 | Field | Notes |
 |-------|-------|
 | `path` | JSONPath subset (`$`, `$.field`, `$.a.b`, `$.arr[0]`, `$.arr[-1]`, `$.arr[*]`, `$.obj.*`) |
-| `regex` | first capture group; multi-line OK |
+| `regex` | the first capture group, or the whole match when the pattern has none; multi-line OK |
 | `line` | 0-indexed (negative counts from end) |
 
 Modifiers:
@@ -256,7 +269,7 @@ outside the run.
 
 ```yaml runnable
 procedures:
-  tour:
+  main:
     access: public
     parameters: [ who: { type: String, default: world } ]
     returns: "Dictionary<String, Any>"
