@@ -22,7 +22,8 @@ struct FolderGuardTests {
             package.sources.appendingPathComponent("ForgeCLI"),
             package.sources.appendingPathComponent("PackageVersionTool"),
             package.root.appendingPathComponent("Plugins/PackageVersion"),
-            package.tests.appendingPathComponent("ForgeTests")
+            package.tests.appendingPathComponent("ForgeTests"),
+            package.tests.appendingPathComponent("ForgeCLITests")
         ]
         var folders: [URL] = []
 
