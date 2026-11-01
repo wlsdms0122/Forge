@@ -37,8 +37,9 @@ struct ServeCommand: AsyncParsableCommand {
                 under instanceHome. state·socket are instance-owned.
 
             CONFIG SCHEMA (everything optional — convention defaults shown)
-                [directory]  root (default `<instanceHome>/document`) holds the
-                        workflows and the files they read; policy defaults
+                [directory]  working (default `<instanceHome>/document`) is
+                        where a relative workflow or file path resolves; an
+                        absolute path is used as written. policy defaults
                         to `<instanceHome>/policy`. A relative value resolves
                         against the toml's directory.
                         (state is instance-owned at `<instanceHome>/state`,

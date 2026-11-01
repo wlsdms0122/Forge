@@ -28,7 +28,7 @@ struct PolicyCheckCommand: ParsableCommand {
     @Argument(help: "Caller principal (e.g. `cli:bot/response.yaml`).")
     var principal: String
     
-    @Argument(help: "Target workflow, by its path under the root.")
+    @Argument(help: "Target workflow, by its path as dispatched.")
     var workflow: String
     
     @Flag(help: "Emit JSON instead of plain text.")

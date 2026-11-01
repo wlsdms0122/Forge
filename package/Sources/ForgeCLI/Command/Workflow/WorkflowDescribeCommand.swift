@@ -25,7 +25,7 @@ struct WorkflowDescribeCommand: ParsableCommand {
     
     @OptionGroup var global: GlobalOptions
     
-    @Argument(help: "The workflow's path under the root.")
+    @Argument(help: "The workflow's path, absolute or under the working directory.")
     var path: String
     
     @Flag(help: "Emit JSON.")

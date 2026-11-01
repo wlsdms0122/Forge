@@ -16,7 +16,7 @@ struct ScheduleCreateCommand: ParsableCommand {
         abstract: "Create a schedule.",
         discussion: """
             Registers a schedule in state_directory/schedule.
-            Fires either a workflow under the root (`--workflow <path>`) or an
+            Fires either a workflow at a path (`--workflow <path>`) or an
             inline workflow (`--spec <json>`) on a trigger, exactly one of:
 
                 --every <dur>            repeat forever, every interval
@@ -38,7 +38,7 @@ struct ScheduleCreateCommand: ParsableCommand {
             Example values (`<path>`, channel IDs, JSON contents) are
             placeholders; substitute your own.
 
-            EXAMPLE: a workflow under the root, repeating:
+            EXAMPLE: a workflow at a path, repeating:
                 forge schedule create --workflow <path> \\
                     --every 1h --inputs '{"channel":"<channel-id>"}'
 
@@ -55,7 +55,7 @@ struct ScheduleCreateCommand: ParsableCommand {
     
     @OptionGroup var global: GlobalOptions
     
-    @Option(help: "The workflow's path under the root. Omit when using --spec.")
+    @Option(help: "The workflow's path, absolute or under the working directory. Omit when using --spec.")
     var workflow: String?
     
     @Option(help: "Inline workflow JSON, one procedure; use instead of --workflow.")

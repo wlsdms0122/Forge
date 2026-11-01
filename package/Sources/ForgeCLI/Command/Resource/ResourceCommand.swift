@@ -12,11 +12,12 @@ struct ResourceCommand: ParsableCommand {
     // MARK: - Property
     static let configuration = CommandConfiguration(
         commandName: "resource",
-        abstract: "List or read files under the document root.",
+        abstract: "List or read files under the working directory.",
         discussion: """
-            Single gate over the document root. External tools (admin, scripts, agents) read
+            Single gate over the working directory. External tools (admin, scripts, agents) read
             resources through the daemon instead of touching the filesystem directly, so
-            anchor/escape checks and hot reload are enforced in one place.
+            the reach (relative paths only, no hidden part, no link leading out)
+            is enforced in one place.
             """,
         subcommands: [ResourceListCommand.self, ResourceReadCommand.self]
     )

@@ -15,7 +15,7 @@ struct WorkflowDispatchCommand: ParsableCommand {
         commandName: "dispatch",
         abstract: "Dispatch a workflow run.",
         discussion: """
-            Runs the workflow at a path under the root, or an inline workflow by
+            Runs the workflow at a path, or an inline workflow by
             `--spec` (JSON, one procedure; the run is named `<inline>` and
             gated by that sigil).
 
@@ -47,7 +47,7 @@ struct WorkflowDispatchCommand: ParsableCommand {
                 mutually exclusive with --async.
 
             Example values (`<path>`, JSON contents, etc.) are placeholders;
-            substitute paths under your own forge root.
+            substitute paths of your own.
 
             EXAMPLE
                 forge workflow dispatch <path> \\
@@ -60,7 +60,7 @@ struct WorkflowDispatchCommand: ParsableCommand {
     
     @OptionGroup var global: GlobalOptions
     
-    @Argument(help: "The workflow's path under the root, e.g. `bot/code-review.yaml`. Omit when using --spec.")
+    @Argument(help: "The workflow's path, absolute or under the working directory, e.g. `bot/code-review.yaml`. Omit when using --spec.")
     var path: String?
     
     @Option(help: "Inline workflow JSON, one procedure; use instead of the path argument.")
