@@ -211,7 +211,7 @@ struct WorkflowReaderTests {
         #expect(answer == .int(42))
     }
 
-    @Test("A broken file or a data file in the root does not affect reading a workflow beside it")
+    @Test("A broken file or a data file in the working directory does not affect reading a workflow beside it")
     func otherFilesInTheRootDoNotAffectAWorkflow() async throws {
         // Given
         let directory = try temporary.make("wf-neighbours")

@@ -123,10 +123,10 @@ def main():
 
         # Status speaks the current config vocabulary.
         status = harness.forge("status")
-        check("root_directory" in status, "status speaks the config vocabulary", status)
+        check("working_directory" in status, "status speaks the config vocabulary", status)
         check(version in status, "status reports the daemon's version", status)
 
-        # Every fixture reads at its path under the root.
+        # Every fixture reads at its path under the working directory.
         for name in ["kernel.yaml", "child.yaml", "host.yaml", "converse.yaml", "parent.yaml", "forbidden.yaml"]:
             read = harness.forge("workflow", "describe", name, expect_success=False)
             check(read.startswith(name), f"workflow describe reads '{name}'", read)

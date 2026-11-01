@@ -30,13 +30,13 @@ actor WorkflowReader {
     // What the workflows are written over, which every run of one links.
     let vocabulary: ForgeVocabulary
 
-    private let root: DocumentRoot
+    private let workingDirectory: WorkingDirectory
     private let builder: WorkflowBuilder
     private var built: [String: Entry] = [:]
 
     // MARK: - Initializer
-    init(root: DocumentRoot, builder: WorkflowBuilder) {
-        self.root = root
+    init(workingDirectory: WorkingDirectory, builder: WorkflowBuilder) {
+        self.workingDirectory = workingDirectory
         self.vocabulary = builder.vocabulary
         self.builder = builder
     }
@@ -58,7 +58,7 @@ actor WorkflowReader {
             throw ResourceError("'\(path)' names an inline spec, not a file under the root")
         }
 
-        guard let url = try await root.file(at: path) else {
+        guard let url = try await workingDirectory.file(at: path) else {
             built[path] = nil
 
             throw WorkflowNotFound("workflow not found: \(path)")

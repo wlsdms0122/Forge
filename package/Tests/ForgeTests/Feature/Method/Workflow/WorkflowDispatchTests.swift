@@ -203,7 +203,7 @@ struct WorkflowDispatchTests {
     }
 
     // MARK: - path
-    @Test("A path under the root dispatches as-is")
+    @Test("A path under the working directory dispatches as-is")
     func pathUnderTheRootDispatches() async throws {
         // Given
         let (method, authority, _) = try await makeMethod(policy: ["cli:test": ["echo.yaml"]])
@@ -294,7 +294,7 @@ struct WorkflowDispatchTests {
             capabilities: CapabilitySet(
                 shell: LiveShell(),
                 agent: LiveAgent(executor: AgentExecutor(backend: StubBackend())),
-                resources: LiveResources(root: DocumentRoot(directory: nil))
+                resources: LiveResources(workingDirectory: WorkingDirectory(directory: nil))
             ))
         let method = WorkflowDispatchMethod(runner: runner, workflows: reader,
             workRegistry: registry)
@@ -341,7 +341,7 @@ struct WorkflowDispatchTests {
             capabilities: CapabilitySet(
                 shell: LiveShell(),
                 agent: LiveAgent(executor: AgentExecutor(backend: StubBackend("noop"))),
-                resources: LiveResources(root: DocumentRoot(directory: nil))
+                resources: LiveResources(workingDirectory: WorkingDirectory(directory: nil))
             ))
         let method = WorkflowDispatchMethod(runner: runner, workflows: reader,
             workRegistry: registry)

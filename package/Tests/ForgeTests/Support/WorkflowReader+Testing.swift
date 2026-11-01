@@ -9,8 +9,8 @@ import Foundation
 @testable import Forge
 
 extension WorkflowReader {
-    // A reader of this root, built by the suites' one builder.
+    // A reader of this working directory, built by the suites' one builder.
     init(directory: URL?) throws {
-        self.init(root: DocumentRoot(directory: directory), builder: try WorkflowBuilder.shipped.get())
+        self.init(workingDirectory: WorkingDirectory(directory: directory), builder: try WorkflowBuilder.shipped.get())
     }
 }

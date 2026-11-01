@@ -1,5 +1,5 @@
 //
-//  DocumentRootTests.swift
+//  WorkingDirectoryTests.swift
 //  ForgeTests
 //
 //  Created by JSilver on 8/8/26.
@@ -9,8 +9,8 @@ import Foundation
 import Testing
 @testable import Forge
 
-@Suite("DocumentRoot Tests")
-struct DocumentRootTests {
+@Suite("WorkingDirectory Tests")
+struct WorkingDirectoryTests {
     // MARK: - Property
     private let temporary = TemporaryDirectory("resource")
     // MARK: - Initializer
@@ -26,7 +26,7 @@ struct DocumentRootTests {
             atomically: true, encoding: .utf8)
         try "dot".write(to: base.appendingPathComponent(".DS_Store"),
             atomically: true, encoding: .utf8)
-        let store = DocumentRoot(directory: base)
+        let store = WorkingDirectory(directory: base)
 
         // When
         let listed = await store.all().map(\.path)
@@ -45,7 +45,7 @@ struct DocumentRootTests {
     func traversalKeepsEscapeVocabulary() async throws {
         // Given
         let base = try makeBase(); defer { try? FileManager.default.removeItem(at: base) }
-        let store = DocumentRoot(directory: base)
+        let store = WorkingDirectory(directory: base)
         do {
 
         // When
@@ -66,7 +66,7 @@ struct DocumentRootTests {
         try FileManager.default.createSymbolicLink(
             at: base.appendingPathComponent("link.md"),
             withDestinationURL: base.appendingPathComponent("real.md"))
-        let store = DocumentRoot(directory: base)
+        let store = WorkingDirectory(directory: base)
 
         // When
         let listed = await store.all().map(\.path)

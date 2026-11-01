@@ -1,5 +1,5 @@
 //
-//  DocumentRoot.swift
+//  WorkingDirectory.swift
 //  Forge
 //
 //  Created by JSilver on 8/8/26.
@@ -7,7 +7,7 @@
 
 import Foundation
 
-actor DocumentRoot {
+actor WorkingDirectory {
     struct Entry: Sendable {
         // MARK: - Property
         let path: String
@@ -41,7 +41,7 @@ actor DocumentRoot {
     func file(at relativePath: String) throws -> URL? {
         guard let base = directory else {
             throw ResourceError(
-                "resource '\(relativePath)' requested but root_directory not configured"
+                "resource '\(relativePath)' requested but working_directory not configured"
             )
         }
         
@@ -135,7 +135,7 @@ actor DocumentRoot {
         let basePath = base.path
         
         guard target.path == basePath || target.path.hasPrefix(basePath + "/") else {
-            throw ResourceError("resource path '\(relativePath)' escapes root_directory")
+            throw ResourceError("resource path '\(relativePath)' escapes working_directory")
         }
         
         guard
@@ -151,7 +151,7 @@ actor DocumentRoot {
         
         guard real.path == realBasePath || real.path.hasPrefix(realBasePath + "/") else {
             throw ResourceError(
-                "resource path '\(relativePath)' resolves outside root_directory via symlink"
+                "resource path '\(relativePath)' resolves outside working_directory via symlink"
             )
         }
         

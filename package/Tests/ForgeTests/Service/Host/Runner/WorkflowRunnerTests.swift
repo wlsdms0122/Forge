@@ -187,7 +187,7 @@ struct WorkflowRunnerTests {
         #expect(sut.failure?.object.type == "aborted")
     }
 
-    @Test("dispatch runs a child spec under the root as a new run and returns the value it returns")
+    @Test("dispatch runs a child spec under the working directory as a new run and returns the value it returns")
     func dispatchRunsChildSpec() async throws {
         // Given
         let harness = try makeRunner(
@@ -822,7 +822,7 @@ struct WorkflowRunnerTests {
             capabilities: CapabilitySet(
                 shell: LiveShell(),
                 agent: LiveAgent(executor: AgentExecutor(backend: backend ?? EchoBackend())),
-                resources: LiveResources(root: DocumentRoot(directory: nil))
+                resources: LiveResources(workingDirectory: WorkingDirectory(directory: nil))
             )
         )
 
