@@ -7,7 +7,8 @@
 
 import Foundation
 
-// A resource that cannot be given: no root configured, outside it, hidden, missing or unreadable.
+// A resource that cannot be given: a path written two ways, no working directory
+// for a relative one, outside it, hidden, missing or unreadable.
 struct ResourceError: ForgeError {
     // MARK: - Property
     let message: String

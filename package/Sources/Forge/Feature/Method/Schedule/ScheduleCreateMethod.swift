@@ -236,7 +236,7 @@ struct ScheduleCreateMethod: Sendable {
 
         case (nil, nil):
             throw ProtocolError(
-                "\(context): one of 'workflow' (its path under the root) or 'spec' (inline workflow JSON) is required")
+                "\(context): one of 'workflow' (its path) or 'spec' (inline workflow JSON) is required")
         }
     }
 }

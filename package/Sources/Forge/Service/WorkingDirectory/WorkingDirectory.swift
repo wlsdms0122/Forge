@@ -7,103 +7,91 @@
 
 import Foundation
 
+// Where a daemon resolves the paths it is handed. An absolute path names its
+// file as written; a relative one names the file under the directory.
 actor WorkingDirectory {
     struct Entry: Sendable {
         // MARK: - Property
         let path: String
         let size: Int
         let mtime: Date
-        
+
         // MARK: - Initializer
         // MARK: - Public
         // MARK: - Private
     }
-    
+
     // MARK: - Property
     let directory: URL?
-    
+
     // MARK: - Initializer
     init(directory: URL?) {
         self.directory = directory?.standardizedFileURL
     }
-    
+
     // MARK: - Public
-    func resolve(_ relativePath: String) throws -> URL {
-        guard let url = try file(at: relativePath) else {
-            throw ResourceError("resource not found: \(relativePath)")
+    // The file this path names, or nil where no file is there, a directory
+    // among them.
+    func file(at path: String) throws -> URL? {
+        let url = try url(of: path)
+
+        return isFile(url) ? url : nil
+    }
+
+    func resolve(_ path: String) throws -> URL {
+        guard let url = try file(at: path) else {
+            throw ResourceError("resource not found: \(path)")
         }
-        
+
         return url
     }
-    
-    // The file at this path under the root, or nil where no file is there,
-    // a directory among them. A path the root does not admit is refused.
-    func file(at relativePath: String) throws -> URL? {
-        guard let base = directory else {
-            throw ResourceError(
-                "resource '\(relativePath)' requested but working_directory not configured"
-            )
-        }
-        
-        return try admit(relativePath, base: base)
+
+    func read(_ path: String) throws -> String {
+        try text(of: resolve(path), at: path)
     }
-    
-    func read(_ relativePath: String) throws -> String {
-        let url = try resolve(relativePath)
-        
-        do {
-            return try String(contentsOf: url, encoding: .utf8)
-        } catch {
-            throw ResourceError("resource read failed (\(relativePath)): \(error)")
+
+    // A file the directory hands out as its own: named relative to it, no
+    // hidden part, and not led out of it by a link.
+    func readInside(_ path: String) throws -> String {
+        guard let url = try fileInside(at: path) else {
+            throw ResourceError("resource not found: \(path)")
         }
+
+        return try text(of: url, at: path)
     }
-    
+
+    // Every file `readInside` reads.
     func all() -> [Entry] {
         guard
             let base = directory,
-            FileManager.default.fileExists(atPath: base.path)
-        else {
-            return []
-        }
-        
-        guard
             let enumerator = FileManager.default.enumerator(
                 at: base,
-                includingPropertiesForKeys: [
-                    .isRegularFileKey,
-                    .fileSizeKey,
-                    .contentModificationDateKey
-                ],
+                includingPropertiesForKeys: [.fileSizeKey, .contentModificationDateKey],
                 options: [.skipsPackageDescendants]
             )
         else {
             return []
         }
-        
+
         let basePath = base.path
         var entries: [Entry] = []
-        
+
         for case let url as URL in enumerator {
-            let standardized = url.standardizedFileURL
-            let full = standardized.path
-            
+            let full = url.standardizedFileURL.path
+
             guard full.hasPrefix(basePath + "/") else { continue }
-            
+
             let relativePath = String(full.dropFirst(basePath.count + 1))
-            
-            guard (try? admit(relativePath, base: base)) != nil else { continue }
-            
-            let real = standardized.resolvingSymlinksInPath()
-            
+
             guard
-                let values = try? real.resourceValues(
-                    forKeys: [.isRegularFileKey, .fileSizeKey, .contentModificationDateKey]
-                ),
-                values.isRegularFile == true
+                let file = try? fileInside(at: relativePath),
+                let values = try? file.resolvingSymlinksInPath().resourceValues(
+                    forKeys: [.fileSizeKey, .contentModificationDateKey]
+                )
             else {
                 continue
             }
-            
+
             entries.append(
                 Entry(
                     path: relativePath,
@@ -112,49 +100,66 @@ actor WorkingDirectory {
                 )
             )
         }
-        
+
         entries.sort { left, right in left.path < right.path }
-        
+
         return entries
     }
-    
+
     // MARK: - Private
-    private func admit(_ relativePath: String, base: URL) throws -> URL? {
-        guard
-            !relativePath.split(separator: "/").contains(where: { component in
-                component.hasPrefix(".") && component != "." && component != ".."
-            })
-        else {
-            throw ResourceError(
-                "resource path '\(relativePath)' has a hidden component"
-                    + "; hidden files are not resources"
-            )
+    // A policy matches a workflow by the prefix of its path as written, so a
+    // path never steps back or in place: `bot/../brain/x.yaml` would pass a
+    // grant on `bot/*`.
+    private func url(of path: String) throws -> URL {
+        let absolute = path.hasPrefix("/")
+        let parts = path.split(separator: "/", omittingEmptySubsequences: false).dropFirst(absolute ? 1 : 0)
+
+        guard parts.allSatisfy({ part in !part.isEmpty && part != "." && part != ".." }) else {
+            throw ResourceError("path '\(path)' has an empty, '.' or '..' part; a policy matches the path as written")
         }
-        
-        let target = URL(fileURLWithPath: relativePath, relativeTo: base).standardizedFileURL
-        let basePath = base.path
-        
-        guard target.path == basePath || target.path.hasPrefix(basePath + "/") else {
-            throw ResourceError("resource path '\(relativePath)' escapes working_directory")
+
+        if absolute { return URL(fileURLWithPath: path) }
+
+        guard let directory else {
+            throw ResourceError("relative path '\(path)' given but working_directory not configured")
         }
-        
-        guard
-            let values = try? target.resolvingSymlinksInPath().resourceValues(forKeys: [.isRegularFileKey]),
-            values.isRegularFile == true
-        else {
-            return nil
+
+        return directory.appendingPathComponent(path)
+    }
+
+    private func fileInside(at path: String) throws -> URL? {
+        guard !path.hasPrefix("/") else {
+            throw ResourceError("resource path '\(path)' is absolute; a resource is named under the working directory")
         }
-        
-        let real = target.resolvingSymlinksInPath()
-        let realBase = base.resolvingSymlinksInPath()
-        let realBasePath = realBase.path
-        
-        guard real.path == realBasePath || real.path.hasPrefix(realBasePath + "/") else {
-            throw ResourceError(
-                "resource path '\(relativePath)' resolves outside working_directory via symlink"
-            )
+
+        let url = try url(of: path)
+
+        guard !path.split(separator: "/").contains(where: { part in part.hasPrefix(".") }) else {
+            throw ResourceError("resource path '\(path)' has a hidden component; hidden files are not resources")
         }
-        
-        return target
+
+        guard isFile(url), let directory else { return nil }
+
+        let realBase = directory.resolvingSymlinksInPath().path
+
+        guard url.resolvingSymlinksInPath().path.hasPrefix(realBase + "/") else {
+            throw ResourceError("resource path '\(path)' resolves outside the working directory via symlink")
+        }
+
+        return url
+    }
+
+    private func isFile(_ url: URL) -> Bool {
+        let values = try? url.resolvingSymlinksInPath().resourceValues(forKeys: [.isRegularFileKey])
+
+        return values?.isRegularFile == true
+    }
+
+    private func text(of url: URL, at path: String) throws -> String {
+        do {
+            return try String(contentsOf: url, encoding: .utf8)
+        } catch {
+            throw ResourceError("resource read failed (\(path)): \(error)")
+        }
     }
 }

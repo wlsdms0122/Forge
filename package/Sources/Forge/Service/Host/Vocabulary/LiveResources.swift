@@ -8,7 +8,7 @@
 import Foundation
 import Warp
 
-// The live resource seam over the daemon's document root.
+// The live resource seam over the daemon's working directory.
 struct LiveResources: ResourceReading {
     // MARK: - Property
     let workingDirectory: WorkingDirectory
@@ -19,21 +19,15 @@ struct LiveResources: ResourceReading {
     }
 
     // MARK: - Public
-    func read(_ relative: String) async throws -> String {
-        try await workingDirectory.read(relative)
+    func read(_ path: String) async throws -> String {
+        try await workingDirectory.read(path)
     }
 
     // A located file must exist: a path is a promise the caller will act on
     // (usually exec), and a dangling one fails here, at the resource seam,
     // not as a confusing spawn error downstream.
-    func locate(_ relative: String) async throws -> String {
-        let url = try await workingDirectory.resolve(relative)
-
-        guard FileManager.default.fileExists(atPath: url.path) else {
-            throw ResourceError("resource '\(relative)' does not exist")
-        }
-
-        return url.path
+    func locate(_ path: String) async throws -> String {
+        try await workingDirectory.resolve(path).path
     }
 
     // MARK: - Private

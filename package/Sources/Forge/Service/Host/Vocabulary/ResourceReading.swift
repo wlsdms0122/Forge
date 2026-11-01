@@ -8,6 +8,6 @@
 import Foundation
 
 protocol ResourceReading: Sendable {
-    func read(_ relative: String) async throws -> String
-    func locate(_ relative: String) async throws -> String
+    func read(_ path: String) async throws -> String
+    func locate(_ path: String) async throws -> String
 }

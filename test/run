@@ -150,6 +150,14 @@ def main():
                          "rescued", "helper:from-use", "kept-as-data"]:
             check(expected in kernel, f"kernel run yields '{expected}'", kernel)
 
+        # An absolute path names its file as written, outside the working
+        # directory too.
+        outside = os.path.join(harness.root, "outside")
+        os.makedirs(outside)
+        shutil.copy(os.path.join(harness.home, "document", "kernel.yaml"), outside)
+        absolute = harness.forge("workflow", "dispatch", os.path.join(outside, "kernel.yaml"))
+        check("hello, world" in absolute, "a workflow outside the working directory runs", absolute)
+
         # Host seams — shell output, resource rendering and locating, and the
         # failure-as-value catch contract.
         host = harness.forge("workflow", "dispatch", "host.yaml")
@@ -183,6 +191,10 @@ def main():
         check("cli:parent" in policy, "policy list shows principals", policy)
         resource = harness.forge("resource", "read", "greeting.txt")
         check("${name}" in resource, "resource read returns the raw template", resource)
+        outside_read = harness.forge("resource", "read", os.path.join(outside, "kernel.yaml"),
+                                     expect_success=False)
+        check("is absolute" in outside_read, "resource read stays inside the working directory",
+              outside_read)
 
         # Jobs — create, read, annotate, delete.
         created = harness.forge("job", "create", "--id", "j-e2e",

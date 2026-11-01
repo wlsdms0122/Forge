@@ -8,7 +8,7 @@
 import Foundation
 import Warp
 
-// Asks the daemon for an isolated run of a workflow under the root: its own lifetime,
+// Asks the daemon for an isolated run of a workflow: its own lifetime,
 // policy check and slot, where a `call` stays inside this run. The daemon
 // settles the inputs against the target's signature.
 struct DispatchAction: ForgeAction {

@@ -35,7 +35,7 @@ struct ResourceReadMethod: Sendable {
             cap = defaultMaxBytes
         }
 
-        let body = try await workingDirectory.read(path)
+        let body = try await workingDirectory.readInside(path)
         let truncated = body.utf8.count > cap
         let payload = truncated
             ? String(decoding: body.utf8.prefix(cap), as: UTF8.self) + "\n... (truncated)"

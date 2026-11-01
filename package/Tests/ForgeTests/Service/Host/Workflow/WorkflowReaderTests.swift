@@ -300,25 +300,23 @@ struct WorkflowReaderTests {
     }
 
     // MARK: - Admission
-    @Test("A path that escapes the root is refused and not read")
-    func aPathThatEscapesTheRootIsRefused() async throws {
+    @Test("An absolute path names its file as written, outside the working directory too")
+    func anAbsolutePathIsReadAsWritten() async throws {
         // Given
-        let outside = try temporary.make("wf-escape")
-        let directory = try temporary.make("wf-escape/root")
+        let outside = try temporary.make("wf-absolute")
+        let directory = try temporary.make("wf-absolute/working")
         try writeWorkflow(answerBody, named: "x", in: outside)
         let sut = try WorkflowReader(directory: directory)
 
         // When
-        let refusal = await #expect(throws: ResourceError.self) {
-            try await sut.workflow(at: "../x.yaml")
-        }
+        let answer = try await run(sut, at: outside.appendingPathComponent("x.yaml").path)
 
         // Then
-        #expect(refusal?.message.contains("'../x.yaml'") == true)
+        #expect(answer == .int(42))
     }
 
-    @Test("A path with a hidden component is refused and not read")
-    func aHiddenPathIsRefused() async throws {
+    @Test("A path with a hidden component is read like any other")
+    func aHiddenPathIsRead() async throws {
         // Given
         let directory = try temporary.make("wf-hidden")
         let hidden = directory.appendingPathComponent(".private")
@@ -327,17 +325,15 @@ struct WorkflowReaderTests {
         let sut = try WorkflowReader(directory: directory)
 
         // When
-        let refusal = await #expect(throws: ResourceError.self) {
-            try await sut.workflow(at: ".private/x.yaml")
-        }
+        let answer = try await run(sut, at: ".private/x.yaml")
 
         // Then
-        #expect(refusal?.message.contains("hidden component") == true)
+        #expect(answer == .int(42))
     }
 
     @Test(
         "A path with an empty, '.' or '..' part is refused though the file it lands on exists and builds",
-        arguments: ["a/../b.yaml", "./b.yaml", "a/./b.yaml", "a//b.yaml", "/b.yaml"]
+        arguments: ["a/../b.yaml", "./b.yaml", "a/./b.yaml", "a//b.yaml", "//b.yaml", "../b.yaml"]
     )
     func aPathWithADotPartIsRefused(path: String) async throws {
         // Given

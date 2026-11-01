@@ -15,68 +15,119 @@ struct WorkingDirectoryTests {
     private let temporary = TemporaryDirectory("resource")
     // MARK: - Initializer
     // MARK: - Test
-    @Test("read and list share one membership rule — what is visible and what is readable never diverge")
-    func readAndListShareOneMembershipRule() async throws {
+    @Test("readInside and all share one rule, so what is listed is what is read")
+    func readInsideAndAllShareOneRule() async throws {
         // Given
         let base = try makeBase(); defer { try? FileManager.default.removeItem(at: base) }
-        try "visible".write(to: base.appendingPathComponent("a.md"), atomically: true, encoding: .utf8)
-        try FileManager.default.createDirectory(
-            at: base.appendingPathComponent(".hidden"), withIntermediateDirectories: true)
-        try "shadow".write(to: base.appendingPathComponent(".hidden/x.md"),
-            atomically: true, encoding: .utf8)
-        try "dot".write(to: base.appendingPathComponent(".DS_Store"),
-            atomically: true, encoding: .utf8)
-        let store = WorkingDirectory(directory: base)
+        try write("visible", to: "a.md", in: base)
+        try write("shadow", to: ".hidden/x.md", in: base)
+        try write("dot", to: ".DS_Store", in: base)
+        let sut = WorkingDirectory(directory: base)
 
         // When
-        let listed = await store.all().map(\.path)
+        let listed = await sut.all().map(\.path)
+        let refusal = await #expect(throws: ResourceError.self) {
+            try await sut.readInside(".hidden/x.md")
+        }
 
         // Then
         #expect(listed == ["a.md"])
-        let content = try await store.read("a.md")
-        #expect(content == "visible")
-        do {
-            _ = try await store.read(".hidden/x.md")
-            Issue.record("a hidden component must be refused by read too (same predicate as list)")
-        } catch { #expect("\(error)".contains("hidden"), "\(error)") }
+        #expect(try await sut.readInside("a.md") == "visible")
+        #expect(refusal?.message.contains("hidden component") == true)
     }
-    
-    @Test("Path escape is rejected in escape vocabulary")
-    func traversalKeepsEscapeVocabulary() async throws {
+
+    @Test("read takes a path as a shell does: absolute as written, relative under the directory, hidden parts too")
+    func readResolvesAsWritten() async throws {
         // Given
         let base = try makeBase(); defer { try? FileManager.default.removeItem(at: base) }
-        let store = WorkingDirectory(directory: base)
-        do {
+        let outside = try makeBase(); defer { try? FileManager.default.removeItem(at: outside) }
+        try write("shadow", to: ".hidden/x.md", in: base)
+        try write("elsewhere", to: "y.md", in: outside)
+        let sut = WorkingDirectory(directory: base)
 
         // When
-            _ = try await store.read("../../etc/hosts")
+        let hidden = try await sut.read(".hidden/x.md")
+        let absolute = try await sut.read(outside.appendingPathComponent("y.md").path)
 
         // Then
-            Issue.record("an escaping path must be refused")
-        } catch {
-            #expect("\(error)".contains("escapes"), "`..` is an escape, not hiding — must be refused in escape vocabulary: \(error)")
-        }
+        #expect(hidden == "shadow")
+        #expect(absolute == "elsewhere")
     }
-    
-    @Test("A symlink pointing inside the base is open to both list and read")
-    func symlinkLeafInsideBaseIsListedAndReadable() async throws {
+
+    @Test("readInside refuses an absolute path, even one under the directory")
+    func readInsideRefusesAnAbsolutePath() async throws {
         // Given
         let base = try makeBase(); defer { try? FileManager.default.removeItem(at: base) }
-        try "real".write(to: base.appendingPathComponent("real.md"), atomically: true, encoding: .utf8)
+        try write("visible", to: "a.md", in: base)
+        let sut = WorkingDirectory(directory: base)
+
+        // When
+        let refusal = await #expect(throws: ResourceError.self) {
+            try await sut.readInside(base.appendingPathComponent("a.md").path)
+        }
+
+        // Then
+        #expect(refusal?.message.contains("is absolute") == true)
+    }
+
+    @Test("A path with a '..' part is refused by read and readInside", arguments: ["../x.md", "a/../a.md"])
+    func aClimbingPathIsRefused(path: String) async throws {
+        // Given
+        let base = try makeBase(); defer { try? FileManager.default.removeItem(at: base) }
+        try write("visible", to: "a.md", in: base)
+        let sut = WorkingDirectory(directory: base)
+
+        // When
+        let read = await #expect(throws: ResourceError.self) { try await sut.read(path) }
+        let inside = await #expect(throws: ResourceError.self) { try await sut.readInside(path) }
+
+        // Then
+        #expect(read?.message.contains("'..' part") == true)
+        #expect(inside?.message.contains("'..' part") == true)
+    }
+
+    @Test("A symlink pointing inside the directory is listed and read")
+    func symlinkInsideIsListedAndRead() async throws {
+        // Given
+        let base = try makeBase(); defer { try? FileManager.default.removeItem(at: base) }
+        try write("real", to: "real.md", in: base)
         try FileManager.default.createSymbolicLink(
             at: base.appendingPathComponent("link.md"),
-            withDestinationURL: base.appendingPathComponent("real.md"))
-        let store = WorkingDirectory(directory: base)
+            withDestinationURL: base.appendingPathComponent("real.md")
+        )
+        let sut = WorkingDirectory(directory: base)
 
         // When
-        let listed = await store.all().map(\.path)
+        let listed = await sut.all().map(\.path)
 
         // Then
-        #expect(listed.contains("link.md"), "a symlink leaf pointing inside base is readable, so it must appear in list too: \(listed)")
-        let content = try await store.read("link.md")
-        #expect(content == "real")
+        #expect(listed.contains("link.md"))
+        #expect(try await sut.readInside("link.md") == "real")
     }
-    
+
+    @Test("A symlink leading out of the directory is not listed and refused by readInside")
+    func symlinkOutIsRefusedInside() async throws {
+        // Given
+        let base = try makeBase(); defer { try? FileManager.default.removeItem(at: base) }
+        let outside = try makeBase(); defer { try? FileManager.default.removeItem(at: outside) }
+        try write("elsewhere", to: "y.md", in: outside)
+        try FileManager.default.createSymbolicLink(
+            at: base.appendingPathComponent("link.md"),
+            withDestinationURL: outside.appendingPathComponent("y.md")
+        )
+        let sut = WorkingDirectory(directory: base)
+
+        // When
+        let listed = await sut.all().map(\.path)
+        let refusal = await #expect(throws: ResourceError.self) {
+            try await sut.readInside("link.md")
+        }
+
+        // Then
+        #expect(listed.isEmpty)
+        #expect(refusal?.message.contains("outside the working directory") == true)
+    }
+
     // MARK: - Private
     private func makeBase() throws -> URL {
         let directory = FileManager.default.temporaryDirectory
@@ -84,5 +135,15 @@ struct WorkingDirectoryTests {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         
         return directory
+    }
+
+    private func write(_ text: String, to path: String, in base: URL) throws {
+        let url = base.appendingPathComponent(path)
+
+        try FileManager.default.createDirectory(
+            at: url.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try text.write(to: url, atomically: true, encoding: .utf8)
     }
 }
