@@ -71,7 +71,7 @@ struct Schedule: Sendable, Codable {
                 )
             }
             
-            self.workflow = WorkflowCatalog.inlineSigil
+            self.workflow = Workflow.inlineSigil
         }
         
         self.trigger = try Trigger(from: decoder)

@@ -41,7 +41,6 @@ struct DaemonStatusMethodTests {
         #expect(stateEntry["value"]?.stringValue == home.appendingPathComponent("state").path)
         #expect(stateEntry["source"]?.stringValue == "instance")
         let runtime = try #require(result["runtime"]?.objectValue)
-        #expect(runtime["workflows"]?.intValue == 0)
         #expect(runtime["jobs"]?.intValue == 0)
     }
     
@@ -72,7 +71,6 @@ struct DaemonStatusMethodTests {
             stateDirectory: Instance.stateDirectory(in: home),
             bootedAt: .fixture,
             configSnapshot: ConfigSnapshot(report),
-            catalog: try WorkflowCatalog(directory: nil),
             scheduleStore: ScheduleStore(directory: home.appendingPathComponent("schedule"), enabledFile: try temporary.file("enabled-\(UUID().uuidString.prefix(6)).json")),
             jobStore: JobStore(directory: nil),
             supervisor: ServiceSupervisor(services: [], directory: home, tokenAuthority: authority),
@@ -99,7 +97,6 @@ struct DaemonStatusMethodTests {
             bootedAt: .fixture,
             configSnapshot: ConfigSnapshot((try? ConfigLoader.loadResolved(configPath: nil, instanceHome: home, environment: [:]).report)
                 ?? ConfigReport(tomlPath: nil, entries: [])),
-            catalog: try WorkflowCatalog(directory: nil),
             scheduleStore: ScheduleStore(directory: home.appendingPathComponent("schedule"), enabledFile: FileManager.default.temporaryDirectory.appendingPathComponent("forge-sched-enabled-\(UUID().uuidString.prefix(6)).json")),
             jobStore: JobStore(directory: nil),
             supervisor: ServiceSupervisor(services: [], directory: home, tokenAuthority: authority),

@@ -90,9 +90,9 @@ struct WorkflowHealthTests {
             to: directory.appendingPathComponent("echo3.yaml"), atomically: true, encoding: .utf8)
         let pool = WorkflowPool(maximumConcurrentSteps: 1, maximumActiveRuns: 1)
 
-        let catalog = try WorkflowCatalog(directory: directory)
+        let reader = try WorkflowReader(directory: directory)
         let runner = WorkflowRunner(
-            catalog: catalog,
+            workflows: reader,
             eventBus: WorkflowEventBus(),
             policyStore: PolicyStore(seed: ["*": ["*"]]),
             pool: pool,
@@ -105,7 +105,7 @@ struct WorkflowHealthTests {
             ))
         try await pool.register(runID: "occupier", workflowName: "other", rootID: "occupier",
             origin: .manual, principal: "t")
-        let workflow = try await catalog.workflow(at: "echo3.yaml")
+        let workflow = try await reader.workflow(at: "echo3.yaml")
         do {
             _ = try await runner.dispatch(
                 workflow, inputs: [:], principal: "cli:t",

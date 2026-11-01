@@ -68,7 +68,7 @@ env only fills keys that the toml leaves silent (emergency override).
 Everything is optional — each key has a built-in default, so a minimal toml only
 declares deviations, managed services, and secrets-by-env. **Path anchoring:**
 a relative path written in the toml resolves against the toml's directory;
-unspecified catalogs/logs default under `instanceHome`. The state dir is
+unspecified directories/logs default under `instanceHome`. The state dir is
 instance-owned (`<instanceHome>/state`) and not configurable, like the socket.
 
 | Table / key | Default | Meaning |
@@ -100,7 +100,7 @@ effective config + every key's source (`toml`/`env`/`default`).
 ### Global options
 
 Every client subcommand accepts these, placed **after** the leaf subcommand
-(`forge workflow list --instance prod`):
+(`forge workflow describe bot/review.yaml --instance prod`):
 
 | Option | Meaning |
 |--------|---------|
@@ -225,18 +225,6 @@ correlator / parameters / origin are then inherited from the parent run
 server-side and the corresponding flags are ignored (a nested run cannot forge
 its own coordinates). An operator token (`system:*`) carries no parent, so
 those flags apply.
-
-#### `forge workflow list`
-
-List the workflows under the root, one path per line with its description; a
-trailing `FAILED (N):` block lists the `.yaml` files left out, each with
-its refusal: one that could not be read, one the front end, the load or the
-file convention refused, and one the build refused
-(`build: …`). RPC: `workflow.list`.
-
-```
-forge workflow list [--json]
-```
 
 #### `forge workflow describe`
 
@@ -477,7 +465,7 @@ may not use `reload` (global control).
 
 Print the daemon's identity (instance, version, socket, pid, uptime), its effective
 `ForgeConfig` with each value's source (toml / env / default), and runtime counts
-(workflows, schedules, jobs, services). RPC: `daemon.status` (token-free). If the
+(schedules, jobs, services). RPC: `daemon.status` (token-free). If the
 socket is dead, falls back to reading `runtime.json` for a "not running / crashed"
 diagnostic.
 
@@ -556,7 +544,6 @@ attenuation from the presenter's principal — §5.
 |--------|------|-----------|-----|
 | `workflow.dispatch` | token | no | `workflow dispatch` |
 | `workflow.dispatch_stream` | token | **yes** | `workflow dispatch --stream` |
-| `workflow.list` | token | no | `workflow list` |
 | `workflow.describe` | token | no | `workflow describe` |
 | `workflow.list_active` | token | no | `workflow active` |
 | `workflow.health` | token | no | `workflow health` |
@@ -679,25 +666,6 @@ mapping the blocking path's RPC error envelope uses. If the client disconnects
 mid-run the run continues (same semantics as `async=true`); interruption is
 `workflow.cancel`'s job.
 
-### `workflow.list`
-
-**params** `{"token"}`. **result**
-
-```json
-{"workflows":[{"path","description"?}],
- "failures":[{"path","reason","mtime"}]}
-```
-
-`workflows` are the `*.yaml` files under the root that loaded and built, by
-path; `description` is what `main` writes under `description:`, where it
-writes one. `failures` lists the `*.yaml` files left out, each with its
-refusal: a file the front end or the load refuses, one that declares no
-public `main`, and one that does not build against the library (its reason
-starts `build:`). A part of the root the
-scan could not see, a directory it could not enter or a file whose metadata
-it could not read, is an entry at path `<scan>` naming it. Always present
-(may be empty); admin surfaces broken workflows without grep'ing stderr.
-
 ### `workflow.describe`
 
 **params** `{"token","path"}`. **result**
@@ -792,9 +760,9 @@ consumes the slot even if it was denied; a denied one-shot is *not*
 removed (it stays listed with its flag until it is deleted). `flags` mirrors `workflow.health` advisory
 conventions: `schedule_denied` marks schedules whose latest slot could not
 launch, so a permanently-broken schedule is visible at a glance; it clears on
-the next successful fire. `failures` lists the schedule files left out, as
-`workflow.list` does, a part of a directory the scan could not see among
-them at path `<scan>`.
+the next successful fire. `failures` lists the schedule files left out, each with
+its refusal, a part of a directory the scan could not see among them at path
+`<scan>`.
 
 ### `schedule.set_enabled`
 
@@ -940,7 +908,7 @@ marker line.
 **params** `{"token"}`. **result**
 `{"policy":{"<principal-pattern>":["<workflow-pattern>"]},"failures":[{"path","reason","mtime"}]}` —
 `failures` lists policy files that couldn't be loaded (same convention as
-`workflow.list`).
+`schedule.list`).
 
 ### `policy.check`
 
@@ -1147,13 +1115,12 @@ The error envelope is `{"type": "<ErrorType>", "message": "<text>"}` and the fie
 | `BackendProtocolViolation` | a CLI backend's successful turn broke its stream: malformed frames, no terminal result, or neither text nor a tool call |
 | `IncompleteCompletion` | an agent turn ended without completing (a `finish_reason` such as `length` or `content_filter`), so its answer is a fragment |
 | `BackendNotRegistered` | an `invoke` names a provider no backend is registered for, or names none while there is not exactly one backend |
-| `CatalogIncomplete` | the root was not fully read, so the daemon cannot answer for a workflow path; retry after resolving |
-| `WorkflowNotFound` | no `.yaml` file at that path under the root (`workflow.dispatch`, `workflow.describe`, `schedule.create`, a `dispatch` step) |
+| `WorkflowNotFound` | no file at that path under the root (`workflow.dispatch`, `workflow.describe`, `schedule.create`, a `dispatch` step) |
 | `ProtocolError` | the request's envelope or payload is malformed, or an id it names is invalid, taken or missing |
 | `JobStoreError` | the job directory is not configured (`job.create` and job updates are disabled), or a job file is missing or unreadable |
 | `AgentValidationError` | an `invoke`'s agent cannot be built: its model, tools or `permission_mode`, or a combination its provider cannot run — fix the workflow |
 | `AgentSessionMissing` | an `agent` step ran outside an `invoke`, where no agent session is open — fix the workflow |
-| `ResourceError` | a resource cannot be given: no root configured, a path outside it or hidden, a missing or unreadable file |
+| `ResourceError` | a file under the root cannot be given: no root configured, a path outside it or hidden, a workflow path with an empty, `.` or `..` part or spelled `<inline>`, a missing or unreadable resource |
 | `ServiceFailed` | the service handling a `service.send` answered with an error; the message is the service's |
 | `TokenRejected` | token failed verification — re-issue and retry once |
 | `UnknownMethod` | the daemon does not know the method name |

@@ -16,7 +16,7 @@ import Warp
 // log before a run begins.
 actor WorkflowRunner {
     // MARK: - Property
-    let catalog: WorkflowCatalog
+    let workflows: WorkflowReader
     let eventBus: WorkflowEventBus
     let policyStore: PolicyStore
     let pool: WorkflowPool
@@ -27,7 +27,7 @@ actor WorkflowRunner {
 
     // MARK: - Initializer
     init(
-        catalog: WorkflowCatalog,
+        workflows: WorkflowReader,
         eventBus: WorkflowEventBus,
         policyStore: PolicyStore,
         pool: WorkflowPool,
@@ -36,7 +36,7 @@ actor WorkflowRunner {
         jobStore: JobStore? = nil,
         capabilities: CapabilitySet
     ) {
-        self.catalog = catalog
+        self.workflows = workflows
         self.eventBus = eventBus
         self.policyStore = policyStore
         self.pool = pool
@@ -202,7 +202,7 @@ actor WorkflowRunner {
             // does not build is a run that failed, and it reports through the
             // same ledger a failed step does.
             let entry = try Name(Workflow.entry)
-            let image = try await catalog.image(of: workflow)
+            let image = try await workflows.image(of: workflow)
             let environment = ForgeEnvironment(
                 capabilities: capabilities,
                 dispatcher: self,
@@ -213,7 +213,7 @@ actor WorkflowRunner {
                 bridge: EventBridge(
                     runID: runID,
                     workflowName: path,
-                    verbs: catalog.vocabulary.verbs,
+                    verbs: workflows.vocabulary.verbs,
                     publish: { event in await eventBus.publish(event) }
                 )
             )
@@ -327,11 +327,11 @@ actor WorkflowRunner {
     }
 }
 
-// A `dispatch` step lands here: resolved against the daemon catalog, then
+// A `dispatch` step lands here: the workflow read at its path, then
 // walked through the same dispatch door as any RPC caller.
 extension WorkflowRunner: RunDispatching {
     func dispatch(path: String, inputs: [String: Warp.Value]) async throws -> Warp.Value {
-        let workflow = try await catalog.workflow(at: path)
+        let workflow = try await workflows.workflow(at: path)
 
         let parentName = WorkflowExecutionState.context?.workflowName ?? "unknown"
 

@@ -29,6 +29,16 @@ actor DocumentRoot {
     
     // MARK: - Public
     func resolve(_ relativePath: String) throws -> URL {
+        guard let url = try file(at: relativePath) else {
+            throw ResourceError("resource not found: \(relativePath)")
+        }
+        
+        return url
+    }
+    
+    // The file at this path under the root, or nil where no file is there,
+    // a directory among them. A path the root does not admit is refused.
+    func file(at relativePath: String) throws -> URL? {
         guard let base = directory else {
             throw ResourceError(
                 "resource '\(relativePath)' requested but root_directory not configured"
@@ -109,7 +119,7 @@ actor DocumentRoot {
     }
     
     // MARK: - Private
-    private func admit(_ relativePath: String, base: URL) throws -> URL {
+    private func admit(_ relativePath: String, base: URL) throws -> URL? {
         guard
             !relativePath.split(separator: "/").contains(where: { component in
                 component.hasPrefix(".") && component != "." && component != ".."
@@ -117,7 +127,7 @@ actor DocumentRoot {
         else {
             throw ResourceError(
                 "resource path '\(relativePath)' has a hidden component"
-                    + " — hidden files are not resources"
+                    + "; hidden files are not resources"
             )
         }
         
@@ -128,8 +138,11 @@ actor DocumentRoot {
             throw ResourceError("resource path '\(relativePath)' escapes root_directory")
         }
         
-        guard FileManager.default.fileExists(atPath: target.path) else {
-            throw ResourceError("resource not found: \(relativePath)")
+        guard
+            let values = try? target.resolvingSymlinksInPath().resourceValues(forKeys: [.isRegularFileKey]),
+            values.isRegularFile == true
+        else {
+            return nil
         }
         
         let real = target.resolvingSymlinksInPath()

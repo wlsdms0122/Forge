@@ -144,10 +144,10 @@ struct AsyncDispatchTests {
     }
 
     private func makeMethod(policy: [String: [String]]) throws -> (WorkflowDispatchMethod, TokenAuthority) {
-        let catalog = try WorkflowCatalog(directory: nil)
+        let reader = try WorkflowReader(directory: nil)
         let bus = WorkflowEventBus()
         let authority = TokenAuthority()
-        let runner = WorkflowRunner(catalog: catalog,
+        let runner = WorkflowRunner(workflows: reader,
             eventBus: bus,
             policyStore: PolicyStore(seed: policy),
             pool: WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: Int.max),
@@ -158,7 +158,7 @@ struct AsyncDispatchTests {
                 agent: LiveAgent(executor: AgentExecutor(backend: StubBackend("noop"))),
                 resources: LiveResources(root: DocumentRoot(directory: nil))
             ))
-        let method = WorkflowDispatchMethod(runner: runner, catalog: catalog,
+        let method = WorkflowDispatchMethod(runner: runner, workflows: reader,
             workRegistry: WorkRegistry())
 
         return (method, authority)

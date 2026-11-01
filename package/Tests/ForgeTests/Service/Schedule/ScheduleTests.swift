@@ -23,7 +23,7 @@ struct ScheduleTests {
         let sut = try JSONDecoder().decode(Schedule.self, from: Data(json.utf8))
 
         // Then
-        #expect(sut.workflow == WorkflowCatalog.inlineSigil)
+        #expect(sut.workflow == Workflow.inlineSigil)
         #expect(sut.spec == ["body": []])
     }
 
@@ -52,7 +52,7 @@ struct ScheduleTests {
         // Given
         let sut = Schedule(
             id: "s",
-            workflow: WorkflowCatalog.inlineSigil,
+            workflow: Workflow.inlineSigil,
             trigger: .every(Interval(seconds: 60)),
             spec: ["body": []]
         )
@@ -62,7 +62,7 @@ struct ScheduleTests {
 
         // Then
         #expect(written.objectValue?["workflow"] == nil)
-        #expect(try JSONDecoder().decode(Schedule.self, from: JSONEncoder().encode(sut)).workflow == WorkflowCatalog.inlineSigil)
+        #expect(try JSONDecoder().decode(Schedule.self, from: JSONEncoder().encode(sut)).workflow == Workflow.inlineSigil)
     }
 
     // MARK: - Public

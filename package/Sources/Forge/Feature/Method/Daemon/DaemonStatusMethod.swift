@@ -14,7 +14,6 @@ struct DaemonStatusMethod: Sendable {
     let stateDirectory: URL
     let bootedAt: Date
     let configSnapshot: ConfigSnapshot
-    let catalog: WorkflowCatalog
     let scheduleStore: ScheduleStore
     let jobStore: JobStore
     let supervisor: ServiceSupervisor
@@ -34,7 +33,6 @@ struct DaemonStatusMethod: Sendable {
         let schedules = await scheduleStore.all()
         let services = await supervisor.statuses()
         let registered = Set(await serviceBus.listing().map(\.0))
-        let workflowCount = await catalog.reload().entries.count
         let jobCount = await jobStore.all().count
         
         let daemon: JSONValue = [
@@ -47,7 +45,6 @@ struct DaemonStatusMethod: Sendable {
         ]
         
         let runtime: JSONValue = [
-            "workflows": .int(workflowCount),
             "schedules": [
                 "total": .int(schedules.count),
                 "enabled": .int(schedules.filter { schedule in schedule.enabled }.count)

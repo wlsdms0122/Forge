@@ -22,17 +22,17 @@ struct ScheduleCreateTests {
         let directory = try temporary.make("refused")
         defer { try? FileManager.default.removeItem(at: directory) }
         let authority = TokenAuthority()
-        let catalog = try WorkflowCatalog(directory: nil)
+        let reader = try WorkflowReader(directory: nil)
         let method = ScheduleCreateMethod(
             store: ScheduleStore(directory: directory, enabledFile: directory.appendingPathComponent("enabled.json")),
-            catalog: catalog,
+            workflows: reader,
             policyStore: PolicyStore(seed: ["cli:response": ["<inline>"]]))
         let token = authority.mint(TokenClaims(principal: "cli:response"))
         let badSpec: [String: JSONValue] = [
             "body": [["let": "x", "value": ["format": 5]]],
         ]
         let refusal = await #expect(throws: WorkflowValidationError.self) {
-            try await catalog.inline(badSpec)
+            try await reader.inline(badSpec)
         }
 
         // When

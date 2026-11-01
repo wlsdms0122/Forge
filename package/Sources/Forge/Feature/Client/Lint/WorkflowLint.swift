@@ -23,38 +23,51 @@ package struct WorkflowLint: Sendable {
     }
 
     // MARK: - Public
-    // The files admitted as the daemon admits one under its root, read
-    // through the catalog itself, with what it records for each, and
-    // the authoring issues the catalog has no rule for. One report per path
-    // in the order given.
+    // The files built the way the daemon builds one it is asked for, with
+    // what refuses each, and the authoring issues the build has no rule
+    // for. One report per path in the order given.
     package func check(paths: [String]) async -> [Report] {
-        var read: [(path: String, data: Data)] = []
-        var unread: [String: String] = [:]
+        var reports: [Report] = []
 
         for path in paths {
+            let data: Data
+
             do {
-                read.append((path, try Data(contentsOf: URL(fileURLWithPath: path))))
+                data = try Data(contentsOf: URL(fileURLWithPath: path))
             } catch {
-                unread[path] = error.localizedDescription
+                reports.append(Report(path: path, readError: error.localizedDescription, refusal: nil, issues: []))
+
+                continue
             }
+
+            reports.append(
+                Report(
+                    path: path,
+                    readError: nil,
+                    refusal: await refusal(of: data, at: path),
+                    issues: Self.staleTemplateIssues(data: data)
+                )
+            )
         }
 
-        let snapshot = await WorkflowCatalog(directory: nil, builder: builder).reload(of: read.map(\.path))
-        let refusals = Dictionary(
-            snapshot.failures.map { failure in (failure.path, failure.reason) },
-            uniquingKeysWith: { first, _ in first }
-        )
-        let issues = Dictionary(
-            read.map { file in (file.path, Self.staleTemplateIssues(data: file.data)) },
-            uniquingKeysWith: { first, _ in first }
-        )
-
-        return paths.map { path in
-            Report(path: path, readError: unread[path], refusal: refusals[path], issues: issues[path] ?? [])
-        }
+        return reports
     }
 
     // MARK: - Private
+    private func refusal(of data: Data, at path: String) async -> String? {
+        guard let text = String(data: data, encoding: .utf8) else { return "the file is not UTF-8 text" }
+
+        do {
+            _ = try await builder.workflow(at: path, text: text)
+
+            return nil
+        } catch let refusal as WorkflowValidationError {
+            return refusal.message
+        } catch {
+            return "\(error)"
+        }
+    }
+
     // A string in a workflow is a literal, so a `${...}` inside one ships as
     // text. The language takes it as text on purpose (data may carry `${`),
     // and the authored file is where an interpolation written as a plain

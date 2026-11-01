@@ -21,7 +21,7 @@ actor WorkflowScheduler {
     // MARK: - Property
     static let pendingCloseGraceSeconds: TimeInterval = 60
     
-    let catalog: WorkflowCatalog
+    let workflows: WorkflowReader
     let store: ScheduleStore
     let ledger: FireLedger
     let runner: WorkflowRunner
@@ -35,13 +35,13 @@ actor WorkflowScheduler {
     
     // MARK: - Initializer
     init(
-        catalog: WorkflowCatalog,
+        workflows: WorkflowReader,
         store: ScheduleStore,
         ledger: FireLedger,
         runner: WorkflowRunner,
         tickIntervalSeconds: Int = 5
     ) {
-        self.catalog = catalog
+        self.workflows = workflows
         self.store = store
         self.ledger = ledger
         self.runner = runner
@@ -212,7 +212,7 @@ actor WorkflowScheduler {
         switch await Self.resolveFireTarget(
             path: schedule.workflow,
             spec: schedule.spec,
-            catalog: catalog
+            workflows: workflows
         ) {
         case .resolved(let resolved):
             target = resolved
@@ -262,7 +262,7 @@ actor WorkflowScheduler {
     
     private func fireOnce(_ schedule: Schedule) {
         let runnerLocal = runner
-        let catalogLocal = catalog
+        let workflowsLocal = workflows
         let ledgerLocal = ledger
         
         Task.detached {
@@ -271,7 +271,7 @@ actor WorkflowScheduler {
             switch await Self.resolveFireTarget(
                 path: schedule.workflow,
                 spec: schedule.spec,
-                catalog: catalogLocal
+                workflows: workflowsLocal
             ) {
             case .resolved(let resolved):
                 target = resolved
@@ -301,28 +301,22 @@ actor WorkflowScheduler {
     private static func resolveFireTarget(
         path: String,
         spec: [String: JSONValue]?,
-        catalog: WorkflowCatalog
+        workflows: WorkflowReader
     ) async -> FireResolution {
         if let spec {
             do {
-                return .resolved(try await catalog.inline(spec))
+                return .resolved(try await workflows.inline(spec))
             } catch {
                 return .denied(reason: "spec_decode", detail: String(describing: error))
             }
         }
     
-        switch await catalog.resolve(path) {
-        case .found(let workflow):
-            return .resolved(workflow)
-    
-        case .invalid(let reason):
-            return .denied(reason: "workflow_invalid", detail: reason)
-    
-        case .unobserved(let reason):
-            return .denied(reason: "workflow_unobserved", detail: reason)
-    
-        case .missing:
-            return .denied(reason: "workflow_missing", detail: "unknown workflow '\(path)'")
+        do {
+            return .resolved(try await workflows.workflow(at: path))
+        } catch let missing as WorkflowNotFound {
+            return .denied(reason: "workflow_missing", detail: missing.message)
+        } catch {
+            return .denied(reason: "workflow_invalid", detail: String(describing: error))
         }
     }
     

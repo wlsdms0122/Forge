@@ -14,7 +14,7 @@ import WarpYAML
 extension YAMLFrontend {
     // Most Forge tests are about a verb, not about the file a workflow is
     // written in, so they write one procedure's keys and this declares it as
-    // the entry and loads it the way the catalog does.
+    // the entry and loads it the way the reader does.
     func workflow(_ text: String) throws -> Warp.Module {
         let document = try decoded(from: workflowFile(text))
 

@@ -239,8 +239,8 @@ struct ScheduleStoreCreateTests {
         let spec = try #require(schedule.spec)
 
         #expect(spec == [:])
-        #expect(schedule.workflow == WorkflowCatalog.inlineSigil)
-        _ = try await WorkflowCatalog(directory: nil).inline(spec)
+        #expect(schedule.workflow == Workflow.inlineSigil)
+        _ = try await WorkflowReader(directory: nil).inline(spec)
     }
 
     @Test("A broken file surfaces as a failure while the other files load")

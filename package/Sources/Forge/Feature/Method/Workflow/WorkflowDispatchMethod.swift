@@ -30,17 +30,17 @@ struct WorkflowDispatchMethod: Sendable {
 
     // MARK: - Property
     let runner: WorkflowRunner
-    let catalog: WorkflowCatalog
+    let workflows: WorkflowReader
     let workRegistry: WorkRegistry
 
     // MARK: - Initializer
     init(
         runner: WorkflowRunner,
-        catalog: WorkflowCatalog,
+        workflows: WorkflowReader,
         workRegistry: WorkRegistry
     ) {
         self.runner = runner
-        self.catalog = catalog
+        self.workflows = workflows
         self.workRegistry = workRegistry
     }
 
@@ -173,7 +173,7 @@ struct WorkflowDispatchMethod: Sendable {
             }
             
             do {
-                return try await catalog.inline(spec)
+                return try await workflows.inline(spec)
             } catch {
                 throw ProtocolError("workflow.dispatch: malformed 'spec': \(error)")
             }
@@ -183,7 +183,7 @@ struct WorkflowDispatchMethod: Sendable {
                 throw ProtocolError("workflow.dispatch: 'path' is a non-empty string")
             }
             
-            return try await catalog.workflow(at: path)
+            return try await workflows.workflow(at: path)
 
         case (.some, .some):
             throw ProtocolError("workflow.dispatch: 'path' and 'spec' are mutually exclusive; pass only one")

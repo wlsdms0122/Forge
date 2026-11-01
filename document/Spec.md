@@ -10,11 +10,14 @@ native procedures the daemon lends a run.
 
 ## The file
 
-A workflow is a `.yaml` file under the document root (`[directory] root`),
-and its path relative to the root is its identity: `workflow dispatch
-bot/review.yaml`, a `dispatch` verb, a schedule and a policy entry all name
-it so. The root holds the files a workflow reads beside it, prompts and
-scripts, and every `.yaml` file in it is read as a workflow.
+A workflow is a file under the document root (`[directory] root`), written
+in the YAML notation, and its path relative to the root is its identity:
+`workflow dispatch bot/review.yaml`, a `dispatch` verb, a schedule and a
+policy entry all name it so. A path names its file one way only, so one
+with an empty, `.` or `..` part is refused. The root also holds the files a
+workflow reads beside it, prompts and scripts. The daemon keeps no list of
+workflows: a file is read when something names its path, and it is a
+workflow when it builds.
 
 A workflow file is a program of its own. It declares the procedure `main`,
 `access: public`, which a run starts from, and may declare other procedures
@@ -28,7 +31,8 @@ run of its own.
 An inline spec, handed to `workflow.dispatch` or `schedule.create` in place
 of a path, is one procedure written as an object in the same notation, with
 no name. It is read the way a file is, as that file's `main`, and runs under
-the name `<inline>`.
+the name `<inline>`. No file is read under that spelling, so a policy entry
+for `<inline>` grants inline specs only.
 
 - **Inputs** are the procedure's parameters. A caller hands them by name. An
   input of an optional type (`String?`) may be left out, and the daemon hands
@@ -51,8 +55,8 @@ parameters: [ who: { type: String, default: world } ]
 ```
 
 A workflow's `description:` and each input's `hint:` are prose the front end
-hands back beside the document: `workflow list` prints the description, and
-`workflow describe` prints it and each input's hint.
+hands back beside the document: `workflow describe` prints the description
+and each input's hint.
 
 ```yaml
 procedures:

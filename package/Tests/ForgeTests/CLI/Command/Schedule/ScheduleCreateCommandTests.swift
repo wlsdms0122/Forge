@@ -26,13 +26,13 @@ struct ScheduleCreateCommandTests {
             try JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any]
         )
         let spec = try #require(try JSONValue(jsonObject: object).objectValue)
-        let catalog = try WorkflowCatalog(directory: nil)
+        let reader = try WorkflowReader(directory: nil)
 
         // When
-        let workflow = try await catalog.inline(spec)
+        let workflow = try await reader.inline(spec)
 
         // Then
-        #expect(workflow.path == WorkflowCatalog.inlineSigil)
+        #expect(workflow.path == Workflow.inlineSigil)
     }
 
     // MARK: - Public

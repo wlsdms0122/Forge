@@ -20,14 +20,14 @@ struct WorkflowRunnerTests {
     @Test("runs a procedure and returns a result with the value it returns")
     func runReturnsItsValue() async throws {
         // Given
-        let harness = try makeRunner(catalog: [
+        let harness = try makeRunner(workflows: [
             "hello.yaml": """
             parameters: [ msg: String ]
             returns: "Dictionary<String, Any>"
             result: { dictionary: [ [text, { format: "hi ${msg}", with: { msg: { ref: msg } } }] ] }
             """
         ])
-        let workflow = try await harness.catalog.workflow(at: "hello.yaml")
+        let workflow = try await harness.reader.workflow(at: "hello.yaml")
 
         // When
         let result = try await harness.dispatch(
@@ -56,8 +56,8 @@ struct WorkflowRunnerTests {
     )
     func runResultIsTheReturnedValue(source: String, expected: JSONValue) async throws {
         // Given
-        let harness = try makeRunner(catalog: ["plain.yaml": source])
-        let workflow = try await harness.catalog.workflow(at: "plain.yaml")
+        let harness = try makeRunner(workflows: ["plain.yaml": source])
+        let workflow = try await harness.reader.workflow(at: "plain.yaml")
 
         // When
         let result = try await harness.dispatch(workflow)
@@ -82,8 +82,8 @@ struct WorkflowRunnerTests {
     )
     func unwritableReturnFailsTheRun(source: String, message: String) async throws {
         // Given
-        let harness = try makeRunner(catalog: ["plain.yaml": source])
-        let workflow = try await harness.catalog.workflow(at: "plain.yaml")
+        let harness = try makeRunner(workflows: ["plain.yaml": source])
+        let workflow = try await harness.reader.workflow(at: "plain.yaml")
 
         // When
         let result = try await harness.dispatch(workflow)
@@ -97,7 +97,7 @@ struct WorkflowRunnerTests {
     @Test("a shell step runs over the live seam")
     func shellStepRunsThroughLiveSeam() async throws {
         // Given
-        let harness = try makeRunner(catalog: [
+        let harness = try makeRunner(workflows: [
             "say.yaml": """
             returns: "Dictionary<String, Any>"
             failing: [nonzero_exit, timeout]
@@ -107,7 +107,7 @@ struct WorkflowRunnerTests {
             result: { dictionary: [ [out, { ref: say }] ] }
             """
         ])
-        let workflow = try await harness.catalog.workflow(at: "say.yaml")
+        let workflow = try await harness.reader.workflow(at: "say.yaml")
 
         // When
         let result = try await harness.dispatch(workflow)
@@ -124,7 +124,7 @@ struct WorkflowRunnerTests {
     @Test("invoke/agent steps run over the agent seam")
     func agentStepRunsThroughLiveSeam() async throws {
         // Given
-        let harness = try makeRunner(catalog: [
+        let harness = try makeRunner(workflows: [
             "ask.yaml": """
             returns: "Dictionary<String, Any>"
             failing: anything
@@ -137,7 +137,7 @@ struct WorkflowRunnerTests {
             result: { dictionary: [ [reply, { ref: session }] ] }
             """
         ])
-        let workflow = try await harness.catalog.workflow(at: "ask.yaml")
+        let workflow = try await harness.reader.workflow(at: "ask.yaml")
 
         // When
         let result = try await harness.dispatch(workflow)
@@ -150,14 +150,14 @@ struct WorkflowRunnerTests {
     @Test("a run ending in abort is reported as a work failure")
     func abortedRunMapsToWorkFailure() async throws {
         // Given
-        let harness = try makeRunner(catalog: [
+        let harness = try makeRunner(workflows: [
             "boom.yaml": """
             failing: [aborted]
             body:
               - value: { abort: "boom reason" }
             """
         ])
-        let workflow = try await harness.catalog.workflow(at: "boom.yaml")
+        let workflow = try await harness.reader.workflow(at: "boom.yaml")
 
         // When
         let result = try await harness.dispatch(workflow)
@@ -171,14 +171,14 @@ struct WorkflowRunnerTests {
     @Test("a run ending in a failure of the language reports the language's name for it")
     func languageFailureKeepsItsName() async throws {
         // Given
-        let harness = try makeRunner(catalog: [
+        let harness = try makeRunner(workflows: [
             "boom.yaml": """
             failing: [aborted]
             body:
               - value: { abort: "boom reason" }
             """
         ])
-        let workflow = try await harness.catalog.workflow(at: "boom.yaml")
+        let workflow = try await harness.reader.workflow(at: "boom.yaml")
 
         // When
         let sut = try await harness.dispatch(workflow)
@@ -187,11 +187,11 @@ struct WorkflowRunnerTests {
         #expect(sut.failure?.object.type == "aborted")
     }
 
-    @Test("dispatch runs a child spec from the catalog as a new run and returns the value it returns")
+    @Test("dispatch runs a child spec under the root as a new run and returns the value it returns")
     func dispatchRunsChildSpec() async throws {
         // Given
         let harness = try makeRunner(
-            catalog: [
+            workflows: [
                 "parent.yaml": """
                 returns: Any
                 failing: [child_run_failed, timeout]
@@ -208,7 +208,7 @@ struct WorkflowRunnerTests {
             ],
             policy: ["cli:parent.yaml": ["parent.yaml", "child.yaml"]]
         )
-        let workflow = try await harness.catalog.workflow(at: "parent.yaml")
+        let workflow = try await harness.reader.workflow(at: "parent.yaml")
 
         // When
         let result = try await harness.dispatch(workflow)
@@ -222,7 +222,7 @@ struct WorkflowRunnerTests {
     func dispatchHandsAChildDictionaryToACast() async throws {
         // Given
         let harness = try makeRunner(
-            catalog: [
+            workflows: [
                 "parent.yaml": """
                 returns: String
                 failing: [child_run_failed, timeout, cast_refused]
@@ -240,7 +240,7 @@ struct WorkflowRunnerTests {
             ],
             policy: ["cli:parent.yaml": ["parent.yaml", "child.yaml"]]
         )
-        let workflow = try await harness.catalog.workflow(at: "parent.yaml")
+        let workflow = try await harness.reader.workflow(at: "parent.yaml")
 
         // When
         let result = try await harness.dispatch(workflow)
@@ -254,7 +254,7 @@ struct WorkflowRunnerTests {
     func dispatchHandsAChildStructAsItself() async throws {
         // Given
         let harness = try makeRunner(
-            catalog: [
+            workflows: [
                 "parent.yaml": """
                 types:
                   Point: { struct: { x: Int } }
@@ -282,7 +282,7 @@ struct WorkflowRunnerTests {
             ],
             policy: ["cli:parent.yaml": ["parent.yaml", "child.yaml"]]
         )
-        let workflow = try await harness.catalog.workflow(at: "parent.yaml")
+        let workflow = try await harness.reader.workflow(at: "parent.yaml")
 
         // When
         let result = try await harness.dispatch(workflow)
@@ -295,7 +295,7 @@ struct WorkflowRunnerTests {
     func dispatchHandsAParentStructAsItself() async throws {
         // Given
         let harness = try makeRunner(
-            catalog: [
+            workflows: [
                 "parent.yaml": """
                 types:
                   Point: { struct: { x: Int } }
@@ -327,7 +327,7 @@ struct WorkflowRunnerTests {
             ],
             policy: ["cli:parent.yaml": ["parent.yaml", "child.yaml"]]
         )
-        let workflow = try await harness.catalog.workflow(at: "parent.yaml")
+        let workflow = try await harness.reader.workflow(at: "parent.yaml")
 
         // When
         let result = try await harness.dispatch(workflow)
@@ -341,7 +341,7 @@ struct WorkflowRunnerTests {
     func dispatchOfAnUnwritableChildFaults() async throws {
         // Given
         let harness = try makeRunner(
-            catalog: [
+            workflows: [
                 "parent.yaml": """
                 returns: Any
                 failing: [child_run_failed, timeout]
@@ -357,7 +357,7 @@ struct WorkflowRunnerTests {
             ],
             policy: ["cli:parent.yaml": ["parent.yaml", "child.yaml"]]
         )
-        let workflow = try await harness.catalog.workflow(at: "parent.yaml")
+        let workflow = try await harness.reader.workflow(at: "parent.yaml")
 
         // When
         let result = try await harness.dispatch(workflow)
@@ -372,7 +372,7 @@ struct WorkflowRunnerTests {
     func policyDenialPunchesThroughCatch() async throws {
         // Given
         let harness = try makeRunner(
-            catalog: [
+            workflows: [
                 "parent.yaml": """
                 body:
                   - var: absorbed
@@ -394,7 +394,7 @@ struct WorkflowRunnerTests {
             ],
             policy: ["cli:parent.yaml": ["parent.yaml"]]
         )
-        let workflow = try await harness.catalog.workflow(at: "parent.yaml")
+        let workflow = try await harness.reader.workflow(at: "parent.yaml")
 
         // When
         let result = try await harness.dispatch(workflow)
@@ -407,7 +407,7 @@ struct WorkflowRunnerTests {
     func childWorkFailureAbsorbedByParentCatch() async throws {
         // Given
         let harness = try makeRunner(
-            catalog: [
+            workflows: [
                 "parent.yaml": """
                 returns: "Dictionary<String, Any>"
                 body:
@@ -432,7 +432,7 @@ struct WorkflowRunnerTests {
             ],
             policy: ["cli:parent.yaml": ["parent.yaml", "boom.yaml"]]
         )
-        let workflow = try await harness.catalog.workflow(at: "parent.yaml")
+        let workflow = try await harness.reader.workflow(at: "parent.yaml")
 
         // When
         let result = try await harness.dispatch(workflow)
@@ -446,7 +446,7 @@ struct WorkflowRunnerTests {
     func runLevelEventsPublishedForParentAndChild() async throws {
         // Given
         let harness = try makeRunner(
-            catalog: [
+            workflows: [
                 "parent.yaml": """
                 failing: [child_run_failed, timeout]
                 body:
@@ -460,7 +460,7 @@ struct WorkflowRunnerTests {
             policy: ["cli:parent.yaml": ["parent.yaml", "child.yaml"]]
         )
         let (_, stream) = await harness.eventBus.subscribe()
-        let workflow = try await harness.catalog.workflow(at: "parent.yaml")
+        let workflow = try await harness.reader.workflow(at: "parent.yaml")
 
         // When
         let result = try await harness.dispatch(workflow)
@@ -486,9 +486,9 @@ struct WorkflowRunnerTests {
     )
     func completedEventCarriesTheOutput(source: String, expected: JSONValue) async throws {
         // Given
-        let harness = try makeRunner(catalog: ["plain.yaml": source])
+        let harness = try makeRunner(workflows: ["plain.yaml": source])
         let (_, stream) = await harness.eventBus.subscribe()
-        let workflow = try await harness.catalog.workflow(at: "plain.yaml")
+        let workflow = try await harness.reader.workflow(at: "plain.yaml")
 
         // When
         _ = try await harness.dispatch(workflow)
@@ -513,9 +513,9 @@ struct WorkflowRunnerTests {
     )
     func completedEventPreviewsTheOutput(source: String, preview: String, length: Int) async throws {
         // Given
-        let harness = try makeRunner(catalog: ["plain.yaml": source])
+        let harness = try makeRunner(workflows: ["plain.yaml": source])
         let (_, stream) = await harness.eventBus.subscribe()
-        let workflow = try await harness.catalog.workflow(at: "plain.yaml")
+        let workflow = try await harness.reader.workflow(at: "plain.yaml")
 
         // When
         _ = try await harness.dispatch(workflow)
@@ -534,7 +534,7 @@ struct WorkflowRunnerTests {
     @Test("parallel pieces do not inherit the outer agent session")
     func parallelChildrenDoNotInheritAgentSession() async throws {
         // Given
-        let harness = try makeRunner(catalog: [
+        let harness = try makeRunner(workflows: [
             "fan.yaml": """
             failing: anything
             body:
@@ -554,7 +554,7 @@ struct WorkflowRunnerTests {
                                     - [t1, { closure: { returns: String, result: { agent: hello } } }]
             """
         ])
-        let workflow = try await harness.catalog.workflow(at: "fan.yaml")
+        let workflow = try await harness.reader.workflow(at: "fan.yaml")
 
         // When
         let result = try await harness.dispatch(workflow)
@@ -566,14 +566,14 @@ struct WorkflowRunnerTests {
     @Test("directly driven runs are also registered in the pool, so cancellation reaches them")
     func directRunRegistersInPoolForCancel() async throws {
         // Given
-        let harness = try makeRunner(catalog: [
+        let harness = try makeRunner(workflows: [
             "slow.yaml": """
             failing: [nonzero_exit, timeout]
             body:
               - value: { call: { procedure: shell, arguments: { command: ["/bin/sleep", "10"] } } }
             """
         ])
-        let workflow = try await harness.catalog.workflow(at: "slow.yaml")
+        let workflow = try await harness.reader.workflow(at: "slow.yaml")
         let started = ContinuousClock.now
         let harnessLocal = harness
         let task = Task {
@@ -598,7 +598,7 @@ struct WorkflowRunnerTests {
     func taskCancelledRunReportsRunCancelled() async throws {
         // Given
         let harness = try makeRunner(
-            catalog: [
+            workflows: [
                 "ask.yaml": """
                 returns: "Dictionary<String, Any>"
                 failing: anything
@@ -613,7 +613,7 @@ struct WorkflowRunnerTests {
             ],
             backend: SleepingBackend()
         )
-        let workflow = try await harness.catalog.workflow(at: "ask.yaml")
+        let workflow = try await harness.reader.workflow(at: "ask.yaml")
         let started = ContinuousClock.now
         let harnessLocal = harness
         let task = Task {
@@ -638,7 +638,7 @@ struct WorkflowRunnerTests {
     func cancellationErrorReportsRunCancelled() async throws {
         // Given
         let harness = try makeRunner(
-            catalog: [
+            workflows: [
                 "ask.yaml": """
                 returns: "Dictionary<String, Any>"
                 failing: anything
@@ -653,7 +653,7 @@ struct WorkflowRunnerTests {
             ],
             backend: CancelledBackend()
         )
-        let workflow = try await harness.catalog.workflow(at: "ask.yaml")
+        let workflow = try await harness.reader.workflow(at: "ask.yaml")
 
         // When
         let result = try await harness.dispatch(workflow)
@@ -668,7 +668,7 @@ struct WorkflowRunnerTests {
         // Given
         let recorder = AgentRecorder()
         let harness = try makeRunner(
-            catalog: [
+            workflows: [
                 "nullcwd.yaml": """
                 parameters: [ dir: String? ]
                 failing: anything
@@ -691,9 +691,9 @@ struct WorkflowRunnerTests {
         )
 
         // When
-        let nullcwd = try await harness.catalog.workflow(at: "nullcwd.yaml")
+        let nullcwd = try await harness.reader.workflow(at: "nullcwd.yaml")
         let nullResult = try await harness.dispatch(nullcwd)
-        let emptymode = try await harness.catalog.workflow(at: "emptymode.yaml")
+        let emptymode = try await harness.reader.workflow(at: "emptymode.yaml")
         let emptyResult = try await harness.dispatch(emptymode)
 
         // Then — null stays "unset" as-is, while an empty string is an explicit rejection
@@ -706,7 +706,7 @@ struct WorkflowRunnerTests {
     func stepSlotsSerializeShells() async throws {
         // Given
         let harness = try makeRunner(
-            catalog: [
+            workflows: [
                 "fanshell.yaml": """
                 failing: [concurrent_failed]
                 body:
@@ -721,7 +721,7 @@ struct WorkflowRunnerTests {
             ],
             pool: WorkflowPool(maximumConcurrentSteps: 1, maximumActiveRuns: Int.max)
         )
-        let workflow = try await harness.catalog.workflow(at: "fanshell.yaml")
+        let workflow = try await harness.reader.workflow(at: "fanshell.yaml")
         let started = ContinuousClock.now
 
         // When
@@ -767,7 +767,7 @@ struct WorkflowRunnerTests {
     private struct Harness {
         // MARK: - Property
         let runner: WorkflowRunner
-        let catalog: WorkflowCatalog
+        let reader: WorkflowReader
         let eventBus: WorkflowEventBus
         let pool: WorkflowPool
 
@@ -792,12 +792,12 @@ struct WorkflowRunnerTests {
     }
 
     private func makeRunner(
-        catalog sources: [String: String],
+        workflows sources: [String: String],
         policy: [String: [String]] = ["*": ["*"]],
         backend: (any Backend)? = nil,
         pool: WorkflowPool? = nil
     ) throws -> Harness {
-        let directory = try temporary.make("catalog")
+        let directory = try temporary.make("workflows")
 
         for (path, yaml) in sources {
             // A source declaring types beside its procedure is a whole file.
@@ -808,12 +808,12 @@ struct WorkflowRunnerTests {
             )
         }
 
-        let catalog = try WorkflowCatalog(directory: directory)
+        let reader = try WorkflowReader(directory: directory)
         let eventBus = WorkflowEventBus()
         let poolLocal = pool
             ?? WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: Int.max)
         let runner = WorkflowRunner(
-            catalog: catalog,
+            workflows: reader,
             eventBus: eventBus,
             policyStore: PolicyStore(seed: policy),
             pool: poolLocal,
@@ -826,6 +826,6 @@ struct WorkflowRunnerTests {
             )
         )
 
-        return Harness(runner: runner, catalog: catalog, eventBus: eventBus, pool: poolLocal)
+        return Harness(runner: runner, reader: reader, eventBus: eventBus, pool: poolLocal)
     }
 }

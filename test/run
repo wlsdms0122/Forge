@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # The release e2e gate. Boots a real daemon from the binary under test against
-# the in-repo instance home (stub agent, stub service, tiny catalog), then walks
+# the in-repo instance home (stub agent, stub service, a few workflows), then walks
 # every user-facing feature shallowly — does it answer, not does it think.
 #
 # Usage, from the repository root:
@@ -126,11 +126,10 @@ def main():
         check("root_directory" in status, "status speaks the config vocabulary", status)
         check(version in status, "status reports the daemon's version", status)
 
-        # The catalog loaded whole.
-        listed = harness.forge("workflow", "list")
+        # Every fixture reads at its path under the root.
         for name in ["kernel.yaml", "child.yaml", "host.yaml", "converse.yaml", "parent.yaml", "forbidden.yaml"]:
-            check(name in listed, f"workflow list carries '{name}'", listed)
-        check("Kernel language tour" in listed, "workflow list carries a description", listed)
+            read = harness.forge("workflow", "describe", name, expect_success=False)
+            check(read.startswith(name), f"workflow describe reads '{name}'", read)
 
         # The authoring gate reads files straight from the kit, each alone.
         checked = harness.forge(
@@ -143,6 +142,7 @@ def main():
         described = harness.forge("workflow", "describe", "kernel.yaml")
         check("who" in described, "workflow describe shows the signature", described)
         check("whom the tour greets" in described, "workflow describe shows an input's hint", described)
+        check("Kernel language tour" in described, "workflow describe shows the description", described)
 
         # Kernel tour — every control-flow feature in one dispatch.
         kernel = harness.forge("workflow", "dispatch", "kernel.yaml")
@@ -211,7 +211,7 @@ def main():
         issued = harness.forge("token", "issue", "admin:e2e")
         token = issued.split()[-1] if issued.split() else ""
         check(bool(token), "token issue answers", issued)
-        as_issued = harness.forge("workflow", "list", token=token)
+        as_issued = harness.forge("workflow", "describe", "kernel.yaml", token=token)
         check("kernel.yaml" in as_issued, "an issued token can speak", as_issued)
 
         # Managed service — the supervisor spawned the heartbeat stub.

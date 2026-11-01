@@ -33,7 +33,7 @@ struct ServeCommand: AsyncParsableCommand {
                 --config flag > <instanceHome>/config.toml > FORGE_* env > defaults.
                 env only fills keys left silent by toml (emergency override).
                 PATH ANCHORING: a relative path written in the toml resolves
-                against the toml's directory; unspecified catalogs/logs default
+                against the toml's directory; unspecified directories/logs default
                 under instanceHome. state·socket are instance-owned.
 
             CONFIG SCHEMA (everything optional — convention defaults shown)

@@ -176,7 +176,7 @@ struct DocumentTests {
 
     // MARK: - Public
     // MARK: - Private
-    // Loaded and built the way the catalog does it, including Forge's own rule
+    // Loaded and built the way the reader does it, including Forge's own rule
     // on top of the language, one procedure per file, so an example the daemon
     // would refuse cannot pass here.
     private static func image(of written: String) async throws -> (Image, Warp.Name) {

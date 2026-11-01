@@ -384,7 +384,7 @@ enum ConfigLoader {
             builtin: 50 * 1024 * 1024
         ).value
         
-        func catalogDir(_ environmentName: String, _ toml: String?, _ name: String) -> URL {
+        func directory(_ environmentName: String, _ toml: String?, _ name: String) -> URL {
             resolveURLWithDefault(
                 cli: nil,
                 environmentName: environmentName,
@@ -395,8 +395,8 @@ enum ConfigLoader {
             )
         }
         
-        let rootDirectory = catalogDir("FORGE_ROOT_DIRECTORY", file.rootDirectory, "document")
-        let policyDirectory = catalogDir("FORGE_POLICY_DIRECTORY", file.policyDirectory, "policy")
+        let rootDirectory = directory("FORGE_ROOT_DIRECTORY", file.rootDirectory, "document")
+        let policyDirectory = directory("FORGE_POLICY_DIRECTORY", file.policyDirectory, "policy")
         
         let defaultHooks = ForgeConfig.HookToggles()
         let hooks = ForgeConfig.HookToggles(
