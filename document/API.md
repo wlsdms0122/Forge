@@ -769,9 +769,12 @@ slot, from the ledger. It is an attempt, recorded before dispatch for
 at-most-once, so it advances even when the fire could not launch.
 `last_outcome` is that slot's disposition: `launched` (the scheduler committed
 the slot to the run chain; the run's start is the `schedule.fired` log event
-with its run_id, and its success or failure is in the run's own record),
-`denied` (the fire's target could not be resolved, with a machine-readable
-`reason`: `workflow_missing`, `workflow_invalid` or `spec_decode`), or
+with its run_id, and its success or failure is in the run's own record; a
+dispatch that refuses the run when it is admitted, at the run cap or during
+shutdown, logs `schedule.denied` with `stage: dispatch` and that run_id),
+`denied` (the fire could not start a run, with a machine-readable `reason`:
+`workflow_missing`, `workflow_invalid` or `spec_decode` when its target could
+not be resolved, `policy_denied` when the policy refuses its principal), or
 `skipped` (the concurrency policy dropped it, a normal disposition and not a
 failure). `last_outcome: "unknown"` means the disposition cannot be known (a
 ledger entry from before an upgrade, or a crash between attempt and close); it
@@ -801,8 +804,9 @@ target workflow (`policy/*.yaml`, checked against its path, or
 `<inline>` for a spec). The caller's principal is not stored. Each fire runs as
 `system:schedule:<id>` and is checked against the policy again, so the policy
 must grant that principal the target (for example through `system:*` or
-`system:schedule:*`). A fire the policy refuses starts no run and is logged as
-a `schedule.denied` event with `stage: dispatch`.
+`system:schedule:*`). A fire the policy refuses starts no run, closes its slot
+as `denied` with reason `policy_denied`, and is logged as a `schedule.denied`
+event with `stage: resolve`.
 
 Fire target via `workflow` (a path) or `spec` (inline), the same
 rules as `workflow.dispatch`: mutually exclusive, and `spec` runs under the
