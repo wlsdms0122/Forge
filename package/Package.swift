@@ -10,7 +10,7 @@ let package = Package(
     ],
     products: [
         .library(name: "Forge", targets: ["Forge"]),
-        .executable(name: "ForgeCLI", targets: ["ForgeCLI"]),
+        .executable(name: "forge", targets: ["ForgeCLI"]),
     ],
     dependencies: [
         .package(url: "https://github.com/wlsdms0122/warp-runtime-swift.git", exact: "0.1.0"),
@@ -29,7 +29,8 @@ let package = Package(
                 .product(name: "WarpYAML", package: "warp-frontend-yaml"),
                 .product(name: "TOMLKit", package: "TOMLKit"),
                 .product(name: "Yams", package: "Yams")
-            ]
+            ],
+            plugins: ["PackageVersion"]
         ),
         .executableTarget(
             name: "ForgeCLI",
@@ -37,6 +38,17 @@ let package = Package(
                 "Forge",
                 .product(name: "ArgumentParser", package: "swift-argument-parser")
             ]
+        ),
+        .executableTarget(
+            name: "PackageVersionTool",
+            dependencies: [
+                .product(name: "TOMLKit", package: "TOMLKit")
+            ]
+        ),
+        .plugin(
+            name: "PackageVersion",
+            capability: .buildTool(),
+            dependencies: ["PackageVersionTool"]
         ),
         .testTarget(
             name: "ForgeTests",

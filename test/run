@@ -3,9 +3,9 @@
 # the in-repo instance home (stub agent, stub service, a few workflows), then walks
 # every user-facing feature shallowly — does it answer, not does it think.
 #
-# Usage, from the repository root:
-#   swift build -c release --package-path package
-#   test/run package/.build/release/ForgeCLI
+# Usage, from the repository root (`open-package e2e` runs both):
+#   tool/build.sh
+#   test/run .build/forge
 import json
 import os
 import select

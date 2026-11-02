@@ -268,17 +268,25 @@ jobs, RPC methods — is documented in [API.md](document/API.md).
 
 ## Development
 
-```sh
-swift build --package-path package
-swift test  --package-path package          # unit + integration suites
+The repository is an [open-package](https://github.com/wlsdms0122/open-package):
+`manifest.toml` names what it can run, and `open-package` with no command
+lists it.
 
-swift build -c release --package-path package
-test/run package/.build/release/ForgeCLI    # release e2e gate (~3s, 44 checks)
+```sh
+open-package build           # the release binary, at .build/forge
+open-package test            # unit and integration suites
+open-package e2e             # build, then the release e2e gate on .build/forge
+open-package embed-library   # after editing lib/Forge.yaml
 ```
 
-The e2e gate boots a real daemon against the in-repo instance home
-(`test/home`) with a stub agent, walks every user-facing feature shallowly,
-and tears everything down. It is the last gate before a binary ships.
+The e2e gate (`test/run <binary>`) boots a real daemon against the in-repo
+instance home (`test/home`) with a stub agent, walks every user-facing
+feature shallowly, and tears everything down. It is the last gate before a
+binary ships.
+
+The version is `[package] version` in `manifest.toml`. The `PackageVersion`
+build plugin writes it into the binary at every build, so `forge --version`,
+`forge status` and `runtime.json` report the manifest's number.
 
 The library is edited in `lib/Forge.yaml`. The binary carries a copy of it,
 `Library.swift`, which `tool/embed-library.sh` writes; run it after an edit.
@@ -286,12 +294,15 @@ The library is edited in `lib/Forge.yaml`. The binary carries a copy of it,
 embedded is a red test.
 
 ```
-package/    Swift package
-  Sources/Forge      the host: daemon, shell, agent sessions, policy, config,
-                     and the embedded copy of the library
-  Sources/ForgeCLI   the `forge` command
-lib/        Forge.yaml, the library the verbs are written in
-tool/       embed-library.sh, which copies lib/ into the package
-document/   Spec.md (workflows and verbs) · API.md (CLI/RPC)
-test/       the release e2e gate — `test/run <binary>`
+manifest.toml   the open-package manifest: version, requirements, commands
+package/        Swift package
+  Sources/Forge              the host: daemon, shell, agent sessions, policy,
+                             config, and the embedded copy of the library
+  Sources/ForgeCLI           the `forge` command
+  Sources/PackageVersionTool reads the manifest's version for the plugin
+  Plugins/PackageVersion     the build plugin that hands Forge its version
+lib/            Forge.yaml, the library the verbs are written in
+tool/           build.sh (the binary) and embed-library.sh (the library copy)
+document/       Spec.md (workflows and verbs) and API.md (CLI and RPC)
+test/           the release e2e gate, `test/run <binary>`
 ```

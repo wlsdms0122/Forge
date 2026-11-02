@@ -7,8 +7,9 @@
 
 import Foundation
 
-// The single place the product version is written. The CLI's `--version`,
-// the daemon's status report, and runtime.json all read this constant.
+// The product version. The CLI's `--version`, the daemon's status report and
+// runtime.json all read it; `[package] version` in manifest.toml is where it
+// is written, and the `PackageVersion` plugin carries it here at build.
 public enum Version {
-    public static let current = "0.1.0"
+    public static let current = packageVersion
 }
