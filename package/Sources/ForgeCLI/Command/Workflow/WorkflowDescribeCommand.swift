@@ -13,7 +13,7 @@ struct WorkflowDescribeCommand: ParsableCommand {
     // MARK: - Property
     static let configuration = CommandConfiguration(
         commandName: "describe",
-        abstract: "Show a single workflow's calling contract — description, inputs, return type.",
+        abstract: "Show a single workflow's calling contract: description, inputs, return type.",
         discussion: """
             Returns what dispatching a workflow needs without grep'ing the YAML
             file: its inputs, each with the type (Optional where a caller may
@@ -62,7 +62,7 @@ struct WorkflowDescribeCommand: ParsableCommand {
                 let header = "\(key) (\(type))"
                 
                 if let hint = spec?["hint"]?.stringValue, !hint.isEmpty {
-                    print("    \(header) — \(hint)")
+                    print("    \(header): \(hint)")
                 } else {
                     print("    \(header)")
                 }

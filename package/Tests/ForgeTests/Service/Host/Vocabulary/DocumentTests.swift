@@ -152,42 +152,62 @@ struct DocumentTests {
 
     @Test("every complete workflow the reference prints loads and builds")
     func theExamplesLoad() async throws {
-        #expect(!document.workflows.isEmpty, "Spec.md carries no complete workflow to check")
+        // Given
+        let sut = document.workflows
 
-        for written in document.workflows {
-            _ = try await Self.image(of: written)
+        // Then
+        #expect(!sut.isEmpty, "Spec.md carries no complete workflow to check")
+
+        for written in sut {
+            // When, Then
+            await #expect(throws: Never.self) { _ = try await Self.image(of: written) }
         }
+    }
+
+    @Test("a workflow whose entry is not a public `main` does not pass as a complete workflow")
+    func aRefusedExampleDoesNotLoad() async throws {
+        // Given
+        let written = """
+            procedures:
+              tour:
+                access: public
+                returns: Int
+                result: 1
+            """
+
+        // When
+        let sut = await #expect(throws: WorkflowValidationError.self) { try await Self.image(of: written) }
+
+        // Then
+        #expect(sut?.message.contains("'\(Workflow.entry)'") == true, "\(String(describing: sut))")
     }
 
     @Test("the reference's tour runs, and returns what it says it does")
     func theTourRuns() async throws {
+        // Given
         let written = try #require(document.workflows.first)
-        let (image, name) = try await Self.image(of: written)
-        let returned = try await Executor().run(image, entry: name, arguments: ["who": .null])
-        let result = try ValueBridge.fields(returned)
+        let image = try await Self.image(of: written)
 
-        #expect(result["greeting"] == .string("hello, world"))
-        #expect(result["branch"] == .string("took-a"))
-        #expect(result["loop"] == .int(2))
-        #expect(result["walk"] == .array([.string("0:one"), .string("1:two")]))
-        #expect(try ValueBridge.json(result["parallel"] ?? .null) == .object(["left": .int(1), "right": .int(2)]))
-        #expect(result["rescued"] == .string("rescued: bail out"))
+        // When
+        let returned = try await Executor().run(image, entry: try Warp.Name(Workflow.entry), arguments: ["who": .null])
+        let sut = try ValueBridge.fields(returned)
+
+        // Then
+        #expect(sut["greeting"] == .string("hello, world"))
+        #expect(sut["branch"] == .string("took-a"))
+        #expect(sut["loop"] == .int(2))
+        #expect(sut["walk"] == .array([.string("0:one"), .string("1:two")]))
+        #expect(try ValueBridge.json(sut["parallel"] ?? .null) == .object(["left": .int(1), "right": .int(2)]))
+        #expect(sut["rescued"] == .string("rescued: bail out"))
     }
 
     // MARK: - Public
     // MARK: - Private
-    // Loaded and built the way the reader does it, including Forge's own rule
-    // on top of the language, one procedure per file, so an example the daemon
-    // would refuse cannot pass here.
-    private static func image(of written: String) async throws -> (Image, Warp.Name) {
-        let document = try ForgeVocabulary.shipped.get().frontend.decoded(from: written)
-        let module = try Loader().load(document)
-
-        guard module.procedures.count == 1, let name = module.procedures.keys.first else {
-            throw ExecutionError("a complete workflow in Spec.md declares one procedure")
-        }
-
-        return (try await Builder().build([module] + ForgeVocabulary.shipped.get().linkables), name)
+    // Read and built the way the daemon reads a workflow file, held to Forge's
+    // convention (`WorkflowBuilder.convention`: a public procedure `main` a run
+    // starts from), so an example the daemon would refuse cannot pass here.
+    private static func image(of written: String) async throws -> Image {
+        try await WorkflowBuilder.shipped.get().workflow(at: "document/Spec.md", text: written).image
     }
 
     // A verb's signature as the library writes it: each parameter's name and

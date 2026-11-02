@@ -70,7 +70,7 @@ struct ServiceDescribeCommand: ParsableCommand {
                 if actionDescription.isEmpty {
                     print("    \(kind)")
                 } else {
-                    print("    \(kind) — \(actionDescription)")
+                    print("    \(kind): \(actionDescription)")
                 }
                 
                 if let params = action["params"]?.objectValue, !params.isEmpty {
@@ -98,7 +98,7 @@ struct ServiceDescribeCommand: ParsableCommand {
                 if opDescription.isEmpty {
                     print("    \(opName)")
                 } else {
-                    print("    \(opName) — \(opDescription)")
+                    print("    \(opName): \(opDescription)")
                 }
                 
                 if let params = op["params"]?.arrayValue {

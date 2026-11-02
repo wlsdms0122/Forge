@@ -17,7 +17,7 @@ struct ServeCommand: AsyncParsableCommand {
         discussion: """
             `forge serve` runs a long-running supervisor that owns LLM
             backends (e.g. claude), workflow execution, schedules, and the
-            ACL gate for nested dispatch. Clients (admin, runner, agent
+            ACL gate for every dispatch. Clients (admin, runner, agent
             subprocesses) talk to it via line-delimited JSON-RPC over a
             Unix socket.
 
@@ -30,10 +30,13 @@ struct ServeCommand: AsyncParsableCommand {
                 start if a live daemon already holds the socket.
 
             CONFIG PRECEDENCE (serve only; clients never read config)
-                --config flag > <instanceHome>/config.toml > FORGE_* env > defaults.
+                One file is read: the --config file, or else
+                <instanceHome>/config.toml. A value in that file wins over
+                FORGE_* env, which wins over defaults; env fills only a key the
+                file leaves unset (or, for a [pool] key, sets to a number that
+                is not positive).
                 A --config path with no file behind it fails serve; with no
                 --config, <instanceHome>/config.toml is read if it is there.
-                env only fills keys left silent by toml (emergency override).
                 PATH ANCHORING: a relative path written in the toml resolves
                 against the toml's directory; unspecified directories/logs default
                 under instanceHome. state·socket are instance-owned.
@@ -59,8 +62,9 @@ struct ServeCommand: AsyncParsableCommand {
                         drops that default, so list `claude` explicitly alongside others.
                         Secrets via env FORGE_PROVIDER_<NAME>_API_KEY only.
                 [service.<name>]    managed child processes (no default; must be declared):
-                        command (argv, required) · working_directory · environment · auto_spawn · log_file ·
+                        command (argv) · working_directory · environment · auto_spawn · log_file ·
                         restart_backoff_initial_milliseconds · restart_backoff_maximum_milliseconds · restart_crash_loop_limit.
+                        A block without `command` is skipped with a warning.
                 [hooks] logging (default true).
                 A key outside this schema, or a value of another type than its
                 key takes, fails serve (and `service reload`) naming the table.

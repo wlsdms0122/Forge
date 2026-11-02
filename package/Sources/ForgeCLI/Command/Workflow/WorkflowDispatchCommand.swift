@@ -32,7 +32,7 @@ struct WorkflowDispatchCommand: ParsableCommand {
             BLOCKING vs --async vs --stream
                 `dispatch` blocks until the workflow completes and returns
                 the full result. Pass --async to return as soon as the run
-                is dispatched: { run_id, name, status: "running" }.
+                is dispatched: { run_id, path, status: "running" }.
                 Fire-and-forget: the run continues in the background and is
                 observable in the forge log.
 
@@ -69,7 +69,7 @@ struct WorkflowDispatchCommand: ParsableCommand {
     @Option(help: "Workflow inputs as a JSON object (default: {}).")
     var inputs: String?
     
-    @Option(help: "Caller passthrough as a JSON object — rides the log envelope only.")
+    @Option(help: "Caller passthrough as a JSON object, carried in the log envelope only.")
     var parameters: String?
     
     @Option(help: "Opaque correlator string, ridden through to `service.message` frames.")

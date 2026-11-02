@@ -16,7 +16,7 @@ struct JobUpdateCommand: ParsableCommand {
         abstract: "Edit a job ticket (comment / brief / ref / plan item / status).",
         discussion: """
             All fields optional; pass any mix. Comments are the handover the next
-            session (or the synthesizer reading sibling tickets) starts from — write
+            session (or the synthesizer reading sibling tickets) starts from: write
             what was done, why, and where things stand. Every edit is stamped with
             the caller token's id.
 
@@ -49,10 +49,10 @@ struct JobUpdateCommand: ParsableCommand {
     @Option(name: .customLong("item-desc"), help: "Plan item description (set when creating).")
     var itemDesc: String?
     
-    @Option(name: .customLong("item-status"), help: "Plan item status (free string — vocabulary is the client's convention).")
+    @Option(name: .customLong("item-status"), help: "Plan item status (a free string; its vocabulary is the client's convention).")
     var itemStatus: String?
     
-    @Option(help: "Overall job status (free string — vocabulary is the client's convention).")
+    @Option(help: "Overall job status (a free string; its vocabulary is the client's convention).")
     var status: String?
     
     @Flag(help: "Emit JSON.")

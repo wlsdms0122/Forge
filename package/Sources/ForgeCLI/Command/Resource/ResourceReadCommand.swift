@@ -21,7 +21,7 @@ struct ResourceReadCommand: ParsableCommand {
     @Argument(help: "Path relative to the working directory.")
     var path: String
     
-    @Option(help: "Truncation cap in bytes — bytes beyond are dropped and truncated=true.")
+    @Option(help: "Truncation cap in bytes; bytes beyond it are dropped and the result has truncated=true.")
     var maxBytes: Int?
     
     @Flag(help: "Emit JSON (path/body/size/truncated). Default prints body only.")

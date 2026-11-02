@@ -15,8 +15,8 @@ struct JobDeleteCommand: ParsableCommand {
         commandName: "delete",
         abstract: "Delete a job ticket after its result has been reviewed.",
         discussion: """
-            A ticket persists for review even after the work is finished — it never
-            auto-expires. Once its result has been checked, `delete` removes the
+            A ticket persists for review after the work is finished; it does not
+            expire. Once its result has been checked, `delete` removes the
             ticket (and unlinks it from its parent's children).
             """
     )

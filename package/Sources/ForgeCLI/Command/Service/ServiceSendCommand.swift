@@ -16,14 +16,14 @@ struct ServiceSendCommand: ParsableCommand {
         abstract: "Send a JSON payload to a registered service.",
         discussion: """
             Hands a payload to a registered service
-            (e.g. `slack`). The payload schema is service-specific — see
+            (e.g. `slack`). The payload schema is service-specific; see
             `forge service describe <name>`.
 
             IDENTITY
                 The bearer token (FORGE_ACCESS_TOKEN or --token) carries the
                 caller's identity. principal / run_id / origin /
-                correlator are derived server-side from the token — not
-                spoofable.
+                correlator are derived server-side from the token, so a
+                caller cannot set them.
 
             BLOCKING vs --async
                 `send` blocks until the service acks and returns its result.

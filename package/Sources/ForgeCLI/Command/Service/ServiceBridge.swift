@@ -38,7 +38,7 @@ final class ServiceBridge: @unchecked Sendable {
     // MARK: - Private
     private func readerLoop() {
         guard let socket = connectRegisterOnce() else {
-            FileHandle.standardError.write(line: "forge service: connect/register failed — exiting")
+            FileHandle.standardError.write(line: "forge service: connect/register failed; exiting")
             exit(1)
         }
         
@@ -60,7 +60,7 @@ final class ServiceBridge: @unchecked Sendable {
         
         if isStopped() { return }
         
-        FileHandle.standardError.write(line: "forge service: connection lost — exiting")
+        FileHandle.standardError.write(line: "forge service: connection lost; exiting")
         exit(1)
     }
     
@@ -137,7 +137,7 @@ final class ServiceBridge: @unchecked Sendable {
             lock.unlock()
             
             if socket == nil || !(socket!.writeLine(requestData)) {
-                FileHandle.standardError.write(line: "forge service: ack drop — connection closed")
+                FileHandle.standardError.write(line: "forge service: ack dropped: connection closed")
             }
         }
         

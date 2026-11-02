@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # The release e2e gate. Boots a real daemon from the binary under test against
 # the in-repo instance home (stub agent, stub service, a few workflows), then walks
-# every user-facing feature shallowly — does it answer, not does it think.
+# every user-facing feature shallowly, checking that each one answers.
 #
 # Usage, from the repository root (`open-package e2e` runs both):
 #   tool/build.sh
@@ -144,7 +144,7 @@ def main():
         check("whom the tour greets" in described, "workflow describe shows an input's hint", described)
         check("Kernel language tour" in described, "workflow describe shows the description", described)
 
-        # Kernel tour — every control-flow feature in one dispatch.
+        # Kernel tour: every control-flow feature in one dispatch.
         kernel = harness.forge("workflow", "dispatch", "kernel.yaml")
         for expected in ["hello, world", "took-a", "0:one", "1:two",
                          "rescued", "helper:from-use", "kept-as-data"]:
@@ -158,7 +158,7 @@ def main():
         absolute = harness.forge("workflow", "dispatch", os.path.join(outside, "kernel.yaml"))
         check("hello, world" in absolute, "a workflow outside the working directory runs", absolute)
 
-        # Host seams — shell output, resource rendering and locating, and the
+        # Host seams: shell output, resource rendering and locating, and the
         # failure-as-value catch contract.
         host = harness.forge("workflow", "dispatch", "host.yaml")
         check("shell:e2e" in host, "shell step answers", host)
@@ -166,7 +166,7 @@ def main():
         check("stamp:e2e" in host, "a located resource script runs", host)
         check("rescued(7): warned" in host, "a catch reads the failure payload", host)
 
-        # Agent seams — the stub reports turn mode and session id, so continuity
+        # Agent seams: the stub reports turn mode and session id, so continuity
         # and share_session inheritance are visible from the outside.
         agent = harness.forge("workflow", "dispatch", "converse.yaml")
         sessions = stub_sessions(agent)
@@ -196,7 +196,7 @@ def main():
         check("is absolute" in outside_read, "resource read stays inside the working directory",
               outside_read)
 
-        # Jobs — create, read, annotate, delete.
+        # Jobs: create, read, annotate, delete.
         created = harness.forge("job", "create", "--id", "j-e2e",
                                 "--title", "release gate", "--brief", "smoke")
         check("j-e2e" in created, "job create answers with the id", created)
@@ -207,7 +207,7 @@ def main():
         check("j-e2e" in jobs, "job list carries the ticket", jobs)
         harness.forge("job", "delete", "j-e2e")
 
-        # Schedules — create far in the future, toggle, delete; nothing fires.
+        # Schedules: create one far in the future, toggle it, delete it. Nothing fires.
         scheduled = harness.forge("schedule", "create", "--workflow", "kernel.yaml",
                                   "--id", "e2e-once", "--once", "2039-01-01 00:00:00",
                                   "--timezone", "Asia/Seoul")
@@ -219,14 +219,14 @@ def main():
         harness.forge("schedule", "delete", schedule_id)
         check(True, "schedule toggles and deletes")
 
-        # Tokens — an issued principal can speak.
+        # Tokens: an issued principal can speak.
         issued = harness.forge("token", "issue", "admin:e2e")
         token = issued.split()[-1] if issued.split() else ""
         check(bool(token), "token issue answers", issued)
         as_issued = harness.forge("workflow", "describe", "kernel.yaml", token=token)
         check("kernel.yaml" in as_issued, "an issued token can speak", as_issued)
 
-        # Managed service — the supervisor spawned the heartbeat stub.
+        # Managed service: the supervisor spawned the heartbeat stub.
         check("heartbeat=running" in harness.forge("status"),
               "the supervisor runs the heartbeat service")
 
@@ -279,7 +279,7 @@ def main():
         harness.tear_down()
 
     if failures:
-        print(f"\ne2e FAILED — {len(failures)} check(s):")
+        print(f"\ne2e FAILED: {len(failures)} check(s):")
         for label in failures:
             print(f"  - {label}")
         return 1

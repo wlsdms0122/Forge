@@ -1,13 +1,14 @@
 # Forge
 
-Forge is a per-instance daemon that runs **workflows written as pure data** —
-shell work, LLM agent sessions, and cross-workflow dispatch, driven by a
-small YAML-shaped language in which no string is ever secretly code.
+Forge is a per-instance daemon that runs **workflows written as pure data**:
+shell work, LLM agent sessions, and dispatch from one workflow to another,
+driven by a small YAML-shaped language in which no string is ever secretly
+code.
 
 It exists for one recurring situation: an operator (human or LLM runtime)
-who needs long-running, repeatable, observable automations — "review this
+who needs long-running, repeatable, observable automations ("review this
 diff adversarially", "consolidate memory nightly", "validate, retry, then
-report" — and needs them to be *auditable artifacts*, not prompt spaghetti.
+report") and needs them to be *auditable artifacts*, not prompt spaghetti.
 A workflow here is a file you can read, validate before running, diff in
 review, and trust to mean exactly what it says.
 
@@ -16,7 +17,8 @@ review, and trust to mean exactly what it says.
   - [Verbs](#verbs)
   - [Statements and expressions](#statements-and-expressions)
   - [Catch](#catch)
-  - [Session](#session)
+  - [Instance](#instance)
+  - [Agent session](#agent-session)
 - [Philosophy](#philosophy)
   - [Everything is data](#everything-is-data)
   - [Judge before the run](#judge-before-the-run)
@@ -34,9 +36,9 @@ review, and trust to mean exactly what it says.
 
 A workflow is one YAML file, a Warp program written in the notation of the
 Warp YAML front end. Its path is its identity: an absolute path as
-written, or one relative to the working directory. A run starts from its procedure `main`: its
-parameters are the workflow's inputs, what it returns is its result, and
-`failing` says what it may fail with.
+written, or one relative to the working directory. A run starts from its
+procedure `main`: its parameters are the workflow's inputs, what it returns
+is its result, and `failing` says what it may fail with.
 
 ```yaml
 # bot/review.yaml
@@ -86,8 +88,9 @@ implements, `Forge.Native.<verb>`, which takes its arguments by position.
 
 Everything else is the language's: `let` and `var`, `set`, conditionals,
 `cases`, loops, `each`, fan-out through `Standard.Concurrent.allKeyed`,
-calls to the file's own procedures, and expressions (`{ ref: x }`, operator mappings
-such as `{ of: x, plus: 1 }`, `format` templates, dictionary literals). A bare
+calls to the file's own procedures, and expressions (`{ ref: x }`, operator
+mappings such as `{ of: x, plus: 1 }`, `format` templates, dictionary
+literals). A bare
 string is always literal text, and `format` is closed over the bindings it
 declares under `with`. The front end's README documents the notation.
 
@@ -109,13 +112,19 @@ own fields (a shell failure: `exit_code`, `stderr`, `stdout`).
           value: { agent: { format: "invalid JSON: ${e}. Fix it.", with: { e: { ref: 'checked.details["stderr"]' } } } }
 ```
 
-### Session
+### Instance
 
-Each named instance (`--instance dev`) is its own daemon: socket, config,
-token, state, schedules. An agent conversation is a session: `invoke`
-opens one LLM session around a body, and each `agent` call in it is one
-turn, so a validate-and-retry loop *continues the same dialogue* instead of
-starting over, and the model remembers what it already produced.
+Each named instance (`--instance dev`) is its own daemon with its own home,
+`<XDG_CONFIG_HOME | ~/.config>/forge/<instance>`: the socket, `config.toml`,
+policy, logs, and the state that outlives a restart (jobs, schedules,
+service records). Workflows and the files they read live in the instance's
+working directory, `<home>/document` unless the config names another.
+
+### Agent session
+
+`invoke` opens one LLM session around a body, and each `agent` call in it is
+one turn, so a validate-and-retry loop *continues the same dialogue* instead
+of starting over, and the model remembers what it already produced.
 
 ## Philosophy
 
@@ -242,9 +251,10 @@ could mean anything other than what it says.
 
 ## Using it
 
-Forge ships as one binary; the CLI is the single surface — every consumer
-invokes `forge` as a subprocess, and clients speak JSON-RPC to the daemon's
-Unix socket underneath.
+Forge ships as one binary, `forge`, built by `open-package build` to
+`.build/forge` (see [Development](#development)); put it on `PATH`. The CLI
+is the single surface: every consumer invokes `forge` as a subprocess, and
+clients speak JSON-RPC to the daemon's Unix socket underneath.
 
 ```sh
 forge serve --instance dev           # the daemon (one per instance)
@@ -254,8 +264,8 @@ forge workflow dispatch <path> --inputs '{"key": "value"}'
 forge status
 ```
 
-The operational surface — instances, config, tokens, schedules, services,
-jobs, RPC methods — is documented in [API.md](document/API.md).
+The operational surface (instances, config, tokens, schedules, services,
+jobs, RPC methods) is documented in [API.md](document/API.md).
 
 ## Documents
 

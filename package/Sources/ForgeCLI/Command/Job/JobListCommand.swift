@@ -24,7 +24,7 @@ struct JobListCommand: ParsableCommand {
     @Option(name: .customLong("origin-value"), help: "Value the origin key must equal.")
     var originValue: String?
     
-    @Option(help: "Filter to a status (free string — whatever vocabulary the tickets use).")
+    @Option(help: "Filter to a status (a free string, in whatever vocabulary the tickets use).")
     var status: String?
     
     @Flag(help: "Emit JSON.")

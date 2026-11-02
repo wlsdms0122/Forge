@@ -109,12 +109,12 @@ struct StatusCommand: ParsableCommand {
             let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
         {
             let message = "daemon not reachable at \(socketPath) but runtime.json exists "
-                + "(pid \(object["pid"] ?? "?"), started \(object["started_at"] ?? "?")) — "
-                + "likely crashed without clean shutdown\n"
+                + "(pid \(object["pid"] ?? "?"), started \(object["started_at"] ?? "?")); "
+                + "it likely crashed without a clean shutdown\n"
             
             FileHandle.standardError.write(Data(message.utf8))
         } else {
-            let message = "no daemon for this instance — socket \(socketPath) not listening "
+            let message = "no daemon for this instance: socket \(socketPath) is not listening "
                 + "(start one with `forge serve`)\n"
             
             FileHandle.standardError.write(Data(message.utf8))
