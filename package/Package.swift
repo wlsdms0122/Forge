@@ -52,6 +52,10 @@ let package = Package(
         ),
         .testTarget(
             name: "ForgeTests",
+            dependencies: ["Forge"]
+        ),
+        .testTarget(
+            name: "ForgeCLITests",
             dependencies: [
                 "Forge",
                 "ForgeCLI"

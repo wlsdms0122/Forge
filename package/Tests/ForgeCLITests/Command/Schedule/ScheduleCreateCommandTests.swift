@@ -1,6 +1,6 @@
 //
 //  ScheduleCreateCommandTests.swift
-//  ForgeTests
+//  ForgeCLITests
 //
 //  Created by JSilver on 10/29/26.
 //
@@ -26,7 +26,10 @@ struct ScheduleCreateCommandTests {
             try JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any]
         )
         let spec = try #require(try JSONValue(jsonObject: object).objectValue)
-        let reader = try WorkflowReader(directory: nil)
+        let reader = WorkflowReader(
+            workingDirectory: WorkingDirectory(directory: nil),
+            builder: WorkflowBuilder(vocabulary: try ForgeVocabulary())
+        )
 
         // When
         let workflow = try await reader.inline(spec)
