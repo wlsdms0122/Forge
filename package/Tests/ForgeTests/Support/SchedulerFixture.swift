@@ -78,11 +78,14 @@ struct SchedulerFixture {
         try WorkflowReader(directory: directory)
     }
 
-    func runner(workflows: WorkflowReader) -> WorkflowRunner {
+    func runner(
+        workflows: WorkflowReader,
+        policy: [String: [String]] = ["*": ["*"]]
+    ) -> WorkflowRunner {
         WorkflowRunner(
             workflows: workflows,
             eventBus: WorkflowEventBus(),
-            policyStore: PolicyStore(seed: ["*": ["*"]]),
+            policyStore: PolicyStore(seed: policy),
             pool: WorkflowPool(maximumConcurrentSteps: Int.max, maximumActiveRuns: Int.max),
             workRegistry: WorkRegistry(),
             tokenAuthority: TokenAuthority(),

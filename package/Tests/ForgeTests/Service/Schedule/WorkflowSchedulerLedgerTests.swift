@@ -52,6 +52,40 @@ struct WorkflowSchedulerLedgerTests {
         try await Task.sleep(for: .milliseconds(2_000))
     }
 
+    @Test("A fire the policy refuses closes as denied and starts no run")
+    func policyRefusedFireClosesAsDenied() async throws {
+        // Given
+        let marker = try fixture.marker("policy")
+        let workflow = fixture.markerWorkflow(path: "wfpol.yaml", marker: marker, tag: "P", sleep: 0)
+        let wfDir = try fixture.temporary.make("policy-wf")
+        try fixture.write(workflow, to: wfDir)
+        let reader = try fixture.reader(directory: wfDir)
+        let schedDir = try fixture.temporary.make("policy-sched")
+        try "id: every\nworkflow: wfpol.yaml\nevery: 1s\n"
+        .write(to: schedDir.appendingPathComponent("every.yaml"), atomically: true, encoding: .utf8)
+        try "id: once\nworkflow: wfpol.yaml\nonce: \"2020-01-01 00:00:00\"\ntimezone: Asia/Seoul\n"
+        .write(to: schedDir.appendingPathComponent("once.yaml"), atomically: true, encoding: .utf8)
+        let ledger = FireLedger(path: try fixture.temporary.make("policy-led").appendingPathComponent("l.json"))
+        let sut = WorkflowScheduler(
+            workflows: reader,
+            store: try fixture.scheduleStore(directory: schedDir, ids: ["every": "wfpol.yaml", "once": "wfpol.yaml"]),
+            ledger: ledger,
+            runner: fixture.runner(workflows: reader, policy: ["user:*": ["*"]]),
+            tickIntervalSeconds: 1)
+
+        // When
+        await sut.tickOnce()
+        try await Task.sleep(for: .milliseconds(1_200))
+        await sut.tickOnce()
+        try await Task.sleep(for: .milliseconds(400))
+        let snapshot = await ledger.snapshot()
+
+        // Then
+        #expect(snapshot["every"]?.state == .closed(.denied(reason: "policy_denied")), "a repeating fire whose principal the policy refuses must close as denied(policy_denied)")
+        #expect(snapshot["once"]?.state == .closed(.denied(reason: "policy_denied")), "a one-shot fire whose principal the policy refuses must close as denied(policy_denied)")
+        #expect(fixture.read(marker) == "", "a refused fire must not run the workflow")
+    }
+
     @Test("Pruning survives a transient decode failure")
     func ledgerPruneSurvivesTransientDecodeFailure() async throws {
         // Given

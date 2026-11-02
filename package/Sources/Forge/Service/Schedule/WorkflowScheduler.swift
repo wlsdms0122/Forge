@@ -210,9 +210,9 @@ actor WorkflowScheduler {
         let target: Workflow
         
         switch await Self.resolveFireTarget(
-            path: schedule.workflow,
-            spec: schedule.spec,
-            workflows: workflows
+            schedule,
+            workflows: workflows,
+            policyStore: runner.policyStore
         ) {
         case .resolved(let resolved):
             target = resolved
@@ -269,9 +269,9 @@ actor WorkflowScheduler {
             let target: Workflow
             
             switch await Self.resolveFireTarget(
-                path: schedule.workflow,
-                spec: schedule.spec,
-                workflows: workflowsLocal
+                schedule,
+                workflows: workflowsLocal,
+                policyStore: runnerLocal.policyStore
             ) {
             case .resolved(let resolved):
                 target = resolved
@@ -298,26 +298,49 @@ actor WorkflowScheduler {
         }
     }
     
+    // A fire is denied here when its slot can be known not to start a run: the
+    // target does not resolve, or the policy refuses the fire's principal. The
+    // dispatch door enforces the policy again when the run is admitted, which
+    // under `queue` comes after this slot has closed.
     private static func resolveFireTarget(
-        path: String,
-        spec: [String: JSONValue]?,
-        workflows: WorkflowReader
+        _ schedule: Schedule,
+        workflows: WorkflowReader,
+        policyStore: PolicyStore
     ) async -> FireResolution {
-        if let spec {
+        let target: Workflow
+        
+        if let spec = schedule.spec {
             do {
-                return .resolved(try await workflows.inline(spec))
+                target = try await workflows.inline(spec)
             } catch {
                 return .denied(reason: "spec_decode", detail: String(describing: error))
             }
+        } else {
+            do {
+                target = try await workflows.workflow(at: schedule.workflow)
+            } catch let missing as WorkflowNotFound {
+                return .denied(reason: "workflow_missing", detail: missing.message)
+            } catch {
+                return .denied(reason: "workflow_invalid", detail: String(describing: error))
+            }
         }
-    
+        
         do {
-            return .resolved(try await workflows.workflow(at: path))
-        } catch let missing as WorkflowNotFound {
-            return .denied(reason: "workflow_missing", detail: missing.message)
+            try await DispatchAuthorization.requireDispatch(
+                principal: firePrincipal(schedule.id),
+                workflow: target.path,
+                policyStore: policyStore,
+                context: "schedule"
+            )
         } catch {
-            return .denied(reason: "workflow_invalid", detail: String(describing: error))
+            return .denied(reason: "policy_denied", detail: String(describing: error))
         }
+        
+        return .resolved(target)
+    }
+    
+    private static func firePrincipal(_ scheduleID: String) -> String {
+        "system:schedule:\(scheduleID)"
     }
     
     private static func denyFireSlot(
@@ -348,7 +371,7 @@ actor WorkflowScheduler {
         id: String,
         runner: WorkflowRunner
     ) async {
-        let principal = "system:schedule:\(id)"
+        let principal = firePrincipal(id)
         let runID = WorkflowRunner.newRunID()
     
         await Log.shared.append(
