@@ -4,4 +4,4 @@ procedures:
     access: public
     parameters: [ tag: String ]
     returns: "Dictionary<String, Any>"
-    result: { dictionary: [ [tag_out, { format: "child:${tag}", with: { tag: { ref: tag } } }] ] }
+    result: { dictionary: { tag_out: { format: "child:${tag}", with: { tag: { ref: tag } } } } }

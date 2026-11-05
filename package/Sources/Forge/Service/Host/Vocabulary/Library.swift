@@ -2,18 +2,20 @@
 //  Library.swift
 //  Forge
 //
-//  Written by tool/embed-library.sh. Edit lib/Forge.yaml and run it again.
+//  Written by tool/embed-library.sh. Edit the files in lib and run it again.
 //
 
 import Foundation
 
-// The text of `lib/Forge.yaml`, as it stands in the repository.
+// The texts of `lib/Forge.yaml` and `lib/Native.interface.warpt`, as they
+// stand in the repository.
 enum Library {
     static let text = """
         # Forge's grammar: the verbs a workflow writes, each over the native verb
         # the daemon lends a run, with its parameters named, its defaults and the
         # closure type its body takes.
         name: Forge
+        uses: [Native]
         
         procedures:
           shell:
@@ -133,5 +135,81 @@ enum Library {
             isolated: true
             returns: Forge.Origin
             result: { call: { procedure: Forge.Native.origin } }
+        """
+
+    static let nativeInterface = """
+        (interface 1)
+        
+        (struct Forge.Origin
+          (field id (optional String))
+          (field kind String))
+        
+        (struct Forge.Run
+          (field root_id String)
+          (field run_id String))
+        
+        (procedure Forge.Native.agent
+          (isolated)
+          (parameter prompt (type String))
+          (returns String)
+          (failing nonzero_exit))
+        
+        (procedure Forge.Native.dispatch
+          (isolated)
+          (parameter path (type String))
+          (parameter inputs (type (dictionary String Any)))
+          (parameter timeout (type (optional Double)))
+          (returns Any)
+          (failing child_run_failed timeout))
+        
+        (procedure Forge.Native.extract
+          (const)
+          (isolated)
+          (parameter text (type String))
+          (parameter outputs (type (dictionary String Any)))
+          (returns (dictionary String Any))
+          (failing extract_refused))
+        
+        (procedure Forge.Native.invoke
+          (isolated)
+          (parameter model (type (optional String)))
+          (parameter allowed (type (optional (array Any))))
+          (parameter env_extra (type (dictionary String String)))
+          (parameter cwd (type (optional String)))
+          (parameter permission_mode (type (optional String)))
+          (parameter share_session (type Bool))
+          (parameter timeout (type (optional Double)))
+          (parameter body (type (procedure (parameters) (failing (anything)) (returns (some Result)))))
+          (returns (some Result))
+          (failing (anything)))
+        
+        (procedure Forge.Native.locate
+          (isolated)
+          (parameter path (type String))
+          (returns String))
+        
+        (procedure Forge.Native.origin
+          (isolated)
+          (returns Forge.Origin))
+        
+        (procedure Forge.Native.resource
+          (isolated)
+          (parameter content (type String))
+          (parameter inputs (type (dictionary String Any)))
+          (returns String))
+        
+        (procedure Forge.Native.run
+          (isolated)
+          (returns Forge.Run))
+        
+        (procedure Forge.Native.shell
+          (isolated)
+          (parameter command (type (array String)))
+          (parameter cwd (type (optional String)))
+          (parameter env (type (dictionary String String)))
+          (parameter stdin (type (optional String)))
+          (parameter timeout (type (optional Double)))
+          (returns String)
+          (failing nonzero_exit timeout))
         """
 }

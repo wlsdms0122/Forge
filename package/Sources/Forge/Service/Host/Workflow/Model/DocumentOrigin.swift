@@ -27,8 +27,13 @@ struct DocumentOrigin: Sendable {
     // A refusal as the author of the text reads it. A load's or a build's
     // whose place is in this document stands at the line and column the
     // place reaches in the text, marked nearest where the text did not write
-    // that spot itself. Any other refusal says what it says.
+    // that spot itself, and a build's refusals read one to a line. Any other
+    // refusal says what it says.
     func described(_ refusal: any Error) -> String {
+        if let refused = refusal as? BuildRefused {
+            return refused.refusals.map { refusal in described(refusal) }.joined(separator: "\n")
+        }
+
         guard
             let refused = refusal as? any WarpError,
             case let .array(place)? = refused.place?.value,

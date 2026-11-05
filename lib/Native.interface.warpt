@@ -1,0 +1,73 @@
+(interface 1)
+
+(struct Forge.Origin
+  (field id (optional String))
+  (field kind String))
+
+(struct Forge.Run
+  (field root_id String)
+  (field run_id String))
+
+(procedure Forge.Native.agent
+  (isolated)
+  (parameter prompt (type String))
+  (returns String)
+  (failing nonzero_exit))
+
+(procedure Forge.Native.dispatch
+  (isolated)
+  (parameter path (type String))
+  (parameter inputs (type (dictionary String Any)))
+  (parameter timeout (type (optional Double)))
+  (returns Any)
+  (failing child_run_failed timeout))
+
+(procedure Forge.Native.extract
+  (const)
+  (isolated)
+  (parameter text (type String))
+  (parameter outputs (type (dictionary String Any)))
+  (returns (dictionary String Any))
+  (failing extract_refused))
+
+(procedure Forge.Native.invoke
+  (isolated)
+  (parameter model (type (optional String)))
+  (parameter allowed (type (optional (array Any))))
+  (parameter env_extra (type (dictionary String String)))
+  (parameter cwd (type (optional String)))
+  (parameter permission_mode (type (optional String)))
+  (parameter share_session (type Bool))
+  (parameter timeout (type (optional Double)))
+  (parameter body (type (procedure (parameters) (failing (anything)) (returns (some Result)))))
+  (returns (some Result))
+  (failing (anything)))
+
+(procedure Forge.Native.locate
+  (isolated)
+  (parameter path (type String))
+  (returns String))
+
+(procedure Forge.Native.origin
+  (isolated)
+  (returns Forge.Origin))
+
+(procedure Forge.Native.resource
+  (isolated)
+  (parameter content (type String))
+  (parameter inputs (type (dictionary String Any)))
+  (returns String))
+
+(procedure Forge.Native.run
+  (isolated)
+  (returns Forge.Run))
+
+(procedure Forge.Native.shell
+  (isolated)
+  (parameter command (type (array String)))
+  (parameter cwd (type (optional String)))
+  (parameter env (type (dictionary String String)))
+  (parameter stdin (type (optional String)))
+  (parameter timeout (type (optional Double)))
+  (returns String)
+  (failing nonzero_exit timeout))

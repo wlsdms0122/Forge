@@ -2,6 +2,7 @@
 # the daemon lends a run, with its parameters named, its defaults and the
 # closure type its body takes.
 name: Forge
+uses: [Native]
 
 procedures:
   shell:

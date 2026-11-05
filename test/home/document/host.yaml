@@ -1,4 +1,5 @@
 # Host seams: shell and resource in one pass.
+uses: [Forge]
 procedures:
   main:
     access: public
@@ -12,7 +13,7 @@ procedures:
             procedure: shell
             arguments: { command: [ /bin/sh, -c, "printf 'shell:%s' \"$1\"", _, { ref: name } ], timeout: 30 }
       - let: letter
-        value: { call: { procedure: resource, arguments: { content: greeting.txt, inputs: { dictionary: [ [name, { ref: name }] ] } } } }
+        value: { call: { procedure: resource, arguments: { content: greeting.txt, inputs: { dictionary: { name: { ref: name } } } } } }
       - let: script
         value: { locate: script/stamp.sh }
       - let: stamped
@@ -34,7 +35,7 @@ procedures:
                     said: { ref: 'fragile.details["stderr"]' }
     result:
       dictionary:
-        - [shell, { ref: shout }]
-        - [resource, { ref: letter }]
-        - [stamped, { ref: stamped }]
-        - [rescued, { ref: rescued }]
+        shell: { ref: shout }
+        resource: { ref: letter }
+        stamped: { ref: stamped }
+        rescued: { ref: rescued }

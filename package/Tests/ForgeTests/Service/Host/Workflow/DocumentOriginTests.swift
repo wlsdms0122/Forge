@@ -34,7 +34,7 @@ struct DocumentOriginTests {
         // Then
         let described = sut.described(try #require(error))
 
-        #expect(described.hasPrefix("6:9: a document says each thing one way"), "\(described)")
+        #expect(described.hasPrefix("7:9: a document says each thing one way"), "\(described)")
     }
 
     @Test("a build refusal reads at the line and column of the spot it is placed at")
@@ -54,7 +54,7 @@ struct DocumentOriginTests {
         // Then
         let described = sut.described(try #require(error))
 
-        #expect(described == "5:5: returns String, and its declaration promises Int", "\(described)")
+        #expect(described == "6:5: returns String, and its declaration promises Int", "\(described)")
     }
 
     @Test("a load refusal inside a closure handed to a verb reads at its line")
@@ -84,7 +84,7 @@ struct DocumentOriginTests {
         // Then
         let described = sut.described(try #require(error))
 
-        #expect(described.hasPrefix("15:19: a document says each thing one way"), "\(described)")
+        #expect(described.hasPrefix("16:19: a document says each thing one way"), "\(described)")
     }
 
     @Test("a build refusal of an argument written by name reads at the line it is written at, not at its place in the verb's order")
@@ -110,7 +110,7 @@ struct DocumentOriginTests {
         // Then
         let described = sut.described(try #require(error))
 
-        #expect(described == "10:11: sending 'Forge.shell' with timeout, which holds String where Double? is declared", "\(described)")
+        #expect(described == "11:11: sending 'Forge.shell' with timeout, which holds String where Double? is declared", "\(described)")
     }
 
     @Test("a name nothing declares is refused at the line it is read at")
@@ -131,7 +131,7 @@ struct DocumentOriginTests {
         // Then
         let described = sut.described(try #require(error))
 
-        #expect(described == "6:9: reads 'missing', which is not visible here. Declare it earlier or check the spelling", "\(described)")
+        #expect(described == "7:9: reads 'missing', which is not visible here. Declare it earlier or check the spelling", "\(described)")
     }
 
     @Test("a place past what the text wrote reads at the nearest spot it wrote, and says so")
@@ -140,14 +140,14 @@ struct DocumentOriginTests {
         let (_, sut) = try Self.spent(workflowFile("result: 1"))
         let refusal = ValidationError(
             "refused",
-            at: Place([.key("procedures"), .key("main"), .key("nowhere")], in: Place.Document(identity: sut.identity))
+            at: Place.procedure("main", in: Place.Document(identity: sut.identity)).key("nowhere")
         )
 
         // When
         let described = sut.described(refusal)
 
         // Then
-        #expect(described == "2:3 (nearest): refused", "\(described)")
+        #expect(described == "3:3 (nearest): refused", "\(described)")
     }
 
     @Test("a refusal of another document says what it says")

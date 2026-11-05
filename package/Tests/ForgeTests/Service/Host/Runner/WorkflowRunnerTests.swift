@@ -45,7 +45,7 @@ struct WorkflowRunnerTests {
         "a run's result is the value it returns as JSON, whatever its kind",
         arguments: [
             (
-                "returns: Forge.Origin\nresult: { call: { procedure: origin } }",
+                "uses: [Forge, Native]\nprocedures:\n  main:\n    access: public\n    returns: Forge.Origin\n    result: { call: { procedure: Forge.origin } }",
                 ["kind": "manual", "id": .null]
             ),
             ("returns: \"Dictionary<String, Int>\"\nresult: { dictionary: [ [a, 1] ] }", ["a": 1]),
@@ -290,6 +290,7 @@ struct WorkflowRunnerTests {
                 "parent.yaml": """
                 types:
                   Point: { struct: { x: Int } }
+                uses: [Forge]
                 procedures:
                   main:
                     access: public
@@ -331,6 +332,7 @@ struct WorkflowRunnerTests {
                 "parent.yaml": """
                 types:
                   Point: { struct: { x: Int } }
+                uses: [Forge]
                 procedures:
                   main:
                     access: public
@@ -876,8 +878,8 @@ struct WorkflowRunnerTests {
         let directory = try temporary.make("workflows")
 
         for (path, yaml) in sources {
-            // A source declaring types beside its procedure is a whole file.
-            try (yaml.hasPrefix("types:") ? yaml : workflowFile(yaml)).write(
+            // A source writing its own procedures is a whole file.
+            try (yaml.contains("procedures:") ? yaml : workflowFile(yaml)).write(
                 to: directory.appendingPathComponent(path),
                 atomically: true,
                 encoding: .utf8

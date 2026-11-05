@@ -21,7 +21,12 @@ struct ForgeVocabulary: Sendable {
     static let runType: Warp.Name = "Forge.Run"
     static let originType: Warp.Name = "Forge.Origin"
 
-    // The library's document, the one a workflow leans on.
+    // The modules the front end is handed: the library a workflow writes
+    // under `uses:`, and the native verbs the library is written over.
+    static let module: WarpYAML.Name = "Forge"
+    static let nativeModule: WarpYAML.Name = "Native"
+
+    // The library's document, the one a workflow uses.
     let library: Value
 
     // What every link holds beside the workflows: the library, the native
@@ -31,18 +36,20 @@ struct ForgeVocabulary: Sendable {
     // The verbs a workflow writes, the library's procedures.
     let verbs: Set<Warp.Name>
 
-    // The one front end forge reads a workflow with, leaning on the library.
+    // The one front end forge reads a workflow with, depending on the library.
     let frontend: YAMLFrontend
 
     // MARK: - Initializer
     init() throws {
-        let library = try BinaryEncoding().value(from: try YAMLFrontend().document(from: Library.text).document)
+        let natives = Dependency.interface(Data(Library.nativeInterface.utf8), module: Self.nativeModule)
+        let spent = try YAMLFrontend().depending(on: [natives]).document(from: Library.text)
+        let library = try BinaryEncoding().value(from: spent.document)
         let loaded = try Loader().load(library)
 
         self.library = library
         self.linkables = [loaded, try Self.natives()] + Module.standard
         self.verbs = Set(loaded.procedures.keys)
-        self.frontend = try YAMLFrontend().leaning(on: [.text(Library.text)])
+        self.frontend = try YAMLFrontend().depending(on: [natives, .text(Library.text, module: Self.module)])
     }
 
     // MARK: - Public

@@ -37,13 +37,13 @@ struct ResourceTemplate {
             rendered += before
 
             guard let close = rest[open.upperBound...].firstIndex(of: "}") else {
-                throw ExecutionError("resource template: '${' is never closed")
+                throw RunRefused("resource template: '${' is never closed")
             }
 
             let name = String(rest[open.upperBound..<close])
 
             guard let value = inputs[name] else {
-                throw ExecutionError("resource template reads '\(name)', and no input of that name was handed")
+                throw RunRefused("resource template reads '\(name)', and no input of that name was handed")
             }
 
             rendered += ValueBridge.text(value)
