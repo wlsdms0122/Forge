@@ -294,7 +294,7 @@ forge workflow check <path>...
 ```
 
 Reads each file the way the daemon reads one: through the
-YAML front end leaning on Forge's library, loaded, held to the file
+YAML front end using Forge's library, loaded, held to the file
 convention (a public procedure `main`), and built against the library, the
 natives and std. What the daemon refuses for a file is what the check prints, so a
 file passes the check where the daemon admits it. Beside that, no plain
@@ -608,7 +608,7 @@ calls and nested calls from inside a workflow are distinguished by the **token**
 |-------|-----|-------|
 | `token` | ✅ | identity derived from claims; caller cannot set `principal` |
 | `path` | △ | the workflow's path, absolute or under the working directory, exclusive with `spec` |
-| `spec` | △ | inline workflow JSON, one procedure; the run goes by `<inline>` in place of a path |
+| `spec` | △ | inline workflow JSON, one procedure, read using `Forge`; the run goes by `<inline>` in place of a path |
 | `inputs` | no | object, default `{}` |
 | `async` | no | bool, default `false` |
 | `parameters` / `correlator` / `origin` / `root` | no | honored only for fresh-root tokens; for a workflow-subprocess token they are inherited from the parent `WorkRecord` and caller values are ignored |
@@ -812,7 +812,7 @@ Fire target via `workflow` (a path) or `spec` (inline), the same
 rules as `workflow.dispatch`: mutually exclusive, and `spec` runs under the
 `<inline>` sigil. A schedule file writes one of the two; a file writing both
 is a load failure. At create time the spec is
-read the way a workflow file is, through the YAML front end leaning on
+read the way a workflow file is, through the YAML front end using
 Forge's library, and loaded, so what the front
 end or the load refuses surfaces at create time. It is not built there: a
 refusal of the build surfaces when the schedule fires. The spec is stored on
@@ -824,7 +824,7 @@ the schedule record as written and read again on every fire.
 |-------|-----|-------|
 | `token` | ✅ | any authenticated token |
 | `workflow` | △ | the workflow's path, absolute or under the working directory, exclusive with `spec` |
-| `spec` | △ | inline workflow JSON, one procedure; runs as `<inline>` |
+| `spec` | △ | inline workflow JSON, one procedure, read using `Forge`; runs as `<inline>` |
 | `every` | △ | interval duration (`"30s" "5m" "1h" "2d"`), repeating |
 | `at` | △ | wall-clock `"HH:mm"` (24h), repeating; requires `timezone` |
 | `once` | △ | wall-clock `"yyyy-MM-dd HH:mm:ss"`, one-shot; requires `timezone` |

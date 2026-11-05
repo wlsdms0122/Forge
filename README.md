@@ -42,6 +42,7 @@ is its result, and `failing` says what it may fail with.
 
 ```yaml
 # bot/review.yaml
+uses: [Forge]
 procedures:
   main:
     description: Review a diff and answer with a verdict.
@@ -63,12 +64,12 @@ procedures:
                 closure:
                   returns: String
                   result: { agent: { format: "Review this diff (${d} pass):\n${body}", with: { d: { ref: depth }, body: { ref: diff } } } }
-    result: { dictionary: [ [verdict, { ref: verdict }] ] }
+    result: { dictionary: { verdict: { ref: verdict } } }
 ```
 
 Each file is a program of its own. The daemon keeps no list of them: when a
 run, a `dispatch` or a schedule names a path, it reads that one file
-leaning on Forge's library alone and builds it, and builds it again only
+using Forge's library alone and builds it, and builds it again only
 where the file changed. A file that does not load, has no public `main` or
 does not build is refused to whoever named it, and no other file is
 touched.
@@ -78,9 +79,9 @@ touched.
 The verbs a workflow reaches the world with (`shell`, `invoke`, `agent`,
 `dispatch`, `resource`, `locate`, `extract`, `run`, `origin`) are the
 procedures of Forge's library, a document written in the same notation that
-the daemon carries and every workflow leans on. A verb is written by its
-short name and its arguments by name; one left out takes the library's
-default or null. Under each verb is a native procedure the daemon
+the daemon carries. A workflow writes `uses: [Forge]` to use them. A verb is
+written by its short name and its arguments by name; one left out takes the
+library's default or null. Under each verb is a native procedure the daemon
 implements, `Forge.Native.<verb>`, which takes its arguments by position.
 [Spec.md](document/Spec.md) lists them.
 
@@ -193,6 +194,7 @@ the language. The session persists across rounds, so each fix continues
 the same dialogue:
 
 ```yaml
+uses: [Forge]
 procedures:
   main:
     description: Produce Block Kit JSON that passes validation, or give up loudly.

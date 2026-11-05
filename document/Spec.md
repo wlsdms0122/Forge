@@ -22,8 +22,8 @@ workflow when it builds.
 
 A workflow file is a program of its own. It declares the procedure `main`,
 `access: public`, which a run starts from, and may declare other procedures
-beside it, which `main` calls by name. The file is read leaning on the
-library alone and built against the library, the natives under it and the
+beside it, which `main` calls by name. The file is read using the library
+alone and built against the library, the natives under it and the
 standard vocabulary; a file that does not load, has no public `main` or does
 not build is refused to whoever names it, with `WorkflowValidationError` and
 the reason, and runs nothing. A file is read again
@@ -73,10 +73,10 @@ procedures:
 ## The `Forge` library
 
 The verbs are the procedures of Forge's library, a document in the front
-end's notation (`lib/Forge.yaml`) that the binary carries and every workflow
-leans on. A verb is written by its short name, and its arguments by name, in
-any order; an optional one left out is null, and one with a default takes
-it:
+end's notation (`lib/Forge.yaml`) that the binary carries, the module
+`Forge`. A workflow that writes a verb writes `uses: [Forge]`. A verb is
+written by its short name, and its arguments by name, in any order; an
+optional one left out is null, and one with a default takes it:
 
 ```yaml
 - let: listed
@@ -92,7 +92,12 @@ and its statements. Every verb may run beside another in a fan-out.
 
 Under each verb is the native procedure the daemon implements,
 `Forge.Native.<verb>`, which takes every argument by position, defaults
-settled. A workflow writes the library's verbs.
+settled. The natives and the structs they return, `Forge.Run` and
+`Forge.Origin`, are the module `Native`, declared in
+`lib/Native.interface.warpt`. A workflow writes the library's verbs. One
+that names a native or one of those structs writes `uses: [Forge, Native]`,
+and a verb's short name then names two procedures, so the verb is written in
+full, `Forge.shell`.
 
 A step is a call of a verb that reaches outside the program, from its native's start to its return or throw.
 
@@ -224,8 +229,8 @@ and the piece writes what it returns:
       procedure: Standard.Concurrent.allKeyed
       arguments:
         - dictionary:
-            - [left, { closure: { returns: Int, result: 1 } }]
-            - [right, { closure: { returns: Int, result: 2 } }]
+            left: { closure: { returns: Int, result: 1 } }
+            right: { closure: { returns: Int, result: 2 } }
 ```
 
 ## Output extractors
