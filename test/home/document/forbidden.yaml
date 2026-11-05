@@ -1,5 +1,6 @@
 # Policy gate: a dispatch outside the allow list must fail, and catch must not
 # swallow it.
+uses: [Forge]
 procedures:
   main:
     access: public

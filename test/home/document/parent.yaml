@@ -1,4 +1,5 @@
 # Cross-run dispatch: parent spawns a child run through the policy gate.
+uses: [Forge]
 procedures:
   main:
     access: public
@@ -6,5 +7,5 @@ procedures:
     failing: [child_run_failed, timeout]
     body:
       - let: fan
-        value: { call: { procedure: dispatch, arguments: { path: child.yaml, inputs: { dictionary: [ [tag, from-dispatch] ] }, timeout: 60 } } }
-    result: { dictionary: [ [child, { ref: fan }] ] }
+        value: { call: { procedure: dispatch, arguments: { path: child.yaml, inputs: { dictionary: { tag: from-dispatch } }, timeout: 60 } } }
+    result: { dictionary: { child: { ref: fan } } }

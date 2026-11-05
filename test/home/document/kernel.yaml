@@ -12,7 +12,7 @@ procedures:
       - let: greet
         value: { format: "hello, ${name}", with: { name: { ref: who } } }
       - let: quoted
-        value: { dictionary: [ [ref, kept-as-data] ] }
+        value: { dictionary: { ref: kept-as-data } }
       - var: pick
         type: String
         value: ""
@@ -53,8 +53,8 @@ procedures:
             procedure: Standard.Concurrent.allKeyed
             arguments:
               - dictionary:
-                  - [left, { closure: { returns: Int, result: 1 } }]
-                  - [right, { closure: { returns: Int, result: 2 } }]
+                  left: { closure: { returns: Int, result: 1 } }
+                  right: { closure: { returns: Int, result: 2 } }
       - var: recovered
         type: String
         value: ""
@@ -70,16 +70,16 @@ procedures:
         value: { call: { procedure: tagged, arguments: { tag: from-use } } }
     result:
       dictionary:
-        - [greeting, { ref: greet }]
-        - [quoted, { ref: quoted }]
-        - [branch, { ref: pick }]
-        - [loop, { ref: latest }]
-        - [walk, { ref: walked }]
-        - [parallel, { ref: par }]
-        - [rescued, { ref: recovered }]
-        - [used, { ref: 'called["tag_out"]' }]
+        greeting: { ref: greet }
+        quoted: { ref: quoted }
+        branch: { ref: pick }
+        loop: { ref: latest }
+        walk: { ref: walked }
+        parallel: { ref: par }
+        rescued: { ref: recovered }
+        used: { ref: 'called["tag_out"]' }
 
   tagged:
     parameters: [ tag: String ]
     returns: "Dictionary<String, Any>"
-    result: { dictionary: [ [tag_out, { format: "helper:${tag}", with: { tag: { ref: tag } } }] ] }
+    result: { dictionary: { tag_out: { format: "helper:${tag}", with: { tag: { ref: tag } } } } }

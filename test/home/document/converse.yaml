@@ -1,5 +1,6 @@
 # Agent seams: invoke turns, in-session continuity, and share_session
 # inheritance.
+uses: [Forge]
 procedures:
   main:
     access: public
@@ -30,7 +31,7 @@ procedures:
                             body: { closure: { returns: String, result: { call: { procedure: agent, arguments: { prompt: ping three } } } } }
                   result:
                     dictionary:
-                      - [first, { ref: first }]
-                      - [second, { ref: second }]
-                      - [inherited, { ref: nested }]
+                      first: { ref: first }
+                      second: { ref: second }
+                      inherited: { ref: nested }
     result: { ref: outer }
