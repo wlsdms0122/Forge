@@ -32,7 +32,7 @@ struct WorkflowBuilder: Sendable {
     }
 
     // MARK: - Public
-    // A workflow file's text read leaning on the library, loaded the way a
+    // A workflow file's text read using the library, loaded the way a
     // runtime receives a document, held to Forge's convention and built, or
     // refused with what refused it.
     func workflow(at path: String, text: String) async throws -> (workflow: Workflow, image: Image) {

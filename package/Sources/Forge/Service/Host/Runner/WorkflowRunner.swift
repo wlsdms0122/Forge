@@ -253,7 +253,7 @@ actor WorkflowRunner {
             case is CancellationError:
                 RunCancelled("run '\(runID)' was cancelled")
 
-            case let refused as ArgumentError where refused.trace == nil:
+            case let refused as DoorRefused where refused.trace == nil:
                 InputValidationError(refused.message)
 
             default:

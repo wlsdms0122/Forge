@@ -53,7 +53,7 @@ struct ForgeEnvironment: ConcurrentEnvironment {
     // MARK: - Public
     static func from<P: NativeProcedure>(_ invocation: Invocation<P>) throws -> ForgeEnvironment {
         guard let environment = invocation.environment as? ForgeEnvironment else {
-            throw ExecutionError(
+            throw RunRefused(
                 "'\(invocation.selector)' needs the forge environment"
                     + " — run it through the forge executor"
             )

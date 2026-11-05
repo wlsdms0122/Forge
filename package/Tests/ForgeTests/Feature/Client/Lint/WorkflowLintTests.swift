@@ -102,7 +102,9 @@ struct WorkflowLintTests {
 
         // Then
         #expect(together.map(\.ok) == [false, true])
-        #expect(together.first?.refusal?.contains("'callee' is not declared by a document this text leans on") == true)
+        let refusal = try #require(together.first?.refusal)
+
+        #expect(refusal.contains("no module the text uses declares 'callee'"), "\(refusal)")
     }
 
     @Test("a file that loads and does not build fails the check, as the daemon refuses to read it")

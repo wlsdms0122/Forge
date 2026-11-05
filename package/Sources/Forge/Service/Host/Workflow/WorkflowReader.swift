@@ -75,20 +75,28 @@ actor WorkflowReader {
     }
 
     // An inline spec: one procedure written in the YAML notation, read the
-    // way a file is, leaning on the library, and declared as the entry a run
+    // way a file is, using the library, and declared as the entry a run
     // starts from.
     func inline(_ spec: [String: JSONValue]) async throws -> Workflow {
         var procedure = spec
 
         procedure["access"] = .string("public")
 
-        let written = JSONValue.object(["procedures": .object([Workflow.entry: .object(procedure)])])
+        let written = JSONValue.object([
+            "uses": .array([.string(ForgeVocabulary.module.spelling)]),
+            "procedures": .object([Workflow.entry: .object(procedure)])
+        ])
+        let encoder = JSONEncoder()
         let spent: Data
 
+        // Sorted, so a refusal's position in the spec's text is the same on
+        // every read.
+        encoder.outputFormatting = .sortedKeys
+
         do {
-            spent = try vocabulary.frontend.document(from: try JSONEncoder().encode(written)).document
-        } catch let refusal as AuthoringError {
-            throw WorkflowValidationError(refusal.message)
+            spent = try vocabulary.frontend.document(from: try encoder.encode(written)).document
+        } catch let refusal as TextRefused {
+            throw WorkflowValidationError(refusal.description)
         }
 
         let document = try BinaryEncoding().value(from: spent)

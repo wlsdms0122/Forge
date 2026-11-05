@@ -72,7 +72,7 @@ struct InvokeAction: ForgeAction {
         // The body is a closure so that nothing in it runs before the session
         // is open.
         guard case let .procedure(body) = invocation[.body] else {
-            throw ExecutionError("invoke has no body")
+            throw RunRefused("invoke has no body")
         }
 
         let settings = AgentSessionSettings(
@@ -103,7 +103,7 @@ struct InvokeAction: ForgeAction {
     // a quiet fallback into the daemon's own working directory.
     private static func nonEmpty(_ string: String?, field: String) throws -> String? {
         guard string != "" else {
-            throw ExecutionError(
+            throw RunRefused(
                 "invoke: \(field) must be a non-empty string, or omitted/null to"
                     + " mean \"unset\" — got an empty string"
             )

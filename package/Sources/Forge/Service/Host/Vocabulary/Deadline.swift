@@ -31,7 +31,7 @@ struct Deadline {
             }
             
             guard let first = try await group.next() else {
-                throw ExecutionError("deadline group finished without a result")
+                throw RunRefused("deadline group finished without a result")
             }
             
             group.cancelAll()

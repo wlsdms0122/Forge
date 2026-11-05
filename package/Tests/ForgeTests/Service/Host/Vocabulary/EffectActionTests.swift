@@ -118,7 +118,7 @@ struct EffectActionTests {
     
         func send(prompt: String) async throws -> String {
             guard Self.sessionOpen else {
-                throw ExecutionError("agent step has no active session — run it inside invoke")
+                throw RunRefused("agent step has no active session — run it inside invoke")
             }
     
             await recorder.recordPrompt(prompt)
@@ -542,7 +542,7 @@ struct EffectActionTests {
         let sut = try harness.executor()
 
         // When / Then
-        await #expect(throws: ExecutionError.self) {
+        await #expect(throws: RunRefused.self) {
             try await sut.run(spec)
         }
     }
@@ -732,7 +732,7 @@ struct EffectActionTests {
           - let: fine
             value: ok
           - let: run
-            value: { call: { procedure: run } }
+            value: { call: { procedure: Forge.run } }
           - let: origin
             value: { call: { procedure: Forge.Native.origin } }
           - var: recovered
@@ -743,14 +743,14 @@ struct EffectActionTests {
               try:
                 body:
                   - let: broken
-                    value: { call: { procedure: shell, arguments: { command: [ broken ] } } }
+                    value: { call: { procedure: Forge.shell, arguments: { command: [ broken ] } } }
                 catch:
                   - set: recovered
                     value: recovered
           - let: missing
-            value: { call: { procedure: resource, arguments: { content: none.txt, inputs: { dictionary: [] } } } }
+            value: { call: { procedure: Forge.resource, arguments: { content: none.txt, inputs: { dictionary: [] } } } }
         result: { dictionary: [ [fine, { ref: fine }], [recovered, { ref: recovered }] ] }
-        """)
+        """, uses: ["Forge", "Native"])
         let sut = try harness.executor(shell: MockShell(recorder: harness.recorder, exitCode: 1)) { event in
             await collected.append(event)
         }

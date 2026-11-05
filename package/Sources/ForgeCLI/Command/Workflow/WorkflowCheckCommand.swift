@@ -16,7 +16,7 @@ struct WorkflowCheckCommand: AsyncParsableCommand {
         abstract: "Check workflow YAML file(s) the way the daemon reads them. Runs without a daemon.",
         discussion: """
             Reads each file as the daemon reads one: through
-            the YAML front end leaning on Forge's library, loaded, held to
+            the YAML front end using Forge's library, loaded, held to
             Forge's convention, and built against the library, the natives and
             std. Designed for CI / pre-commit hooks.
 

@@ -110,7 +110,7 @@ enum ValueBridge {
             return try fields(existential.value)
 
         case let other:
-            throw ExecutionError("a dictionary was expected, and \(other.nominal) arrived")
+            throw RunRefused("a dictionary was expected, and \(other.nominal) arrived")
         }
     }
 

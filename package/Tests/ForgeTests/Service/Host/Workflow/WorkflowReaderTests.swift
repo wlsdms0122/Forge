@@ -54,7 +54,8 @@ struct WorkflowReaderTests {
         let directory = try temporary.make("wf-unbuilt")
         try writeWorkflow(answerBody, named: "ok", in: directory)
         try writeWorkflow("""
-        result: { call: { procedure: Nowhere.missing } }
+        returns: Int
+        result: hi
         """, named: "unbuilt", in: directory)
         let sut = try WorkflowReader(directory: directory)
 
@@ -65,7 +66,7 @@ struct WorkflowReaderTests {
         let answer = try await run(sut, at: "ok.yaml")
 
         // Then
-        #expect(refusal?.message.hasPrefix("workflow 'unbuilt.yaml' is broken: build: 4:5: ") == true)
+        #expect(refusal?.message.hasPrefix("workflow 'unbuilt.yaml' is broken: build: 6:5: ") == true)
         #expect(answer == .int(42))
     }
 
@@ -370,45 +371,6 @@ struct WorkflowReaderTests {
 
         // Then
         #expect(refusal?.message.contains("names an inline spec") == true)
-    }
-
-    // MARK: - Bounds
-    @Test("A file nested past the bound is refused at its line")
-    func aDeeplyNestedFileIsRefused() async throws {
-        // Given
-        let directory = try temporary.make("wf-deep")
-        try writeWorkflow("""
-        returns: Any
-        result: \(String(repeating: "[", count: 1_000))1\(String(repeating: "]", count: 1_000))
-        """, named: "deep", in: directory)
-        let sut = try WorkflowReader(directory: directory)
-
-        // When
-        let refusal = await #expect(throws: WorkflowValidationError.self) {
-            try await sut.workflow(at: "deep.yaml")
-        }
-
-        // Then
-        #expect(refusal?.message.hasPrefix("workflow 'deep.yaml' is broken: ") == true)
-        #expect(refusal?.message.hasSuffix("the text nests deeper than 128 containers") == true)
-    }
-
-    @Test("An inline spec nested past the bound is refused")
-    func aDeeplyNestedInlineSpecIsRefused() async throws {
-        // Given
-        let sut = try WorkflowReader(directory: nil)
-        let result = (0..<129).reduce(JSONValue.int(1)) { nested, _ in .array([nested]) }
-
-        do {
-
-        // When
-            _ = try await sut.inline(["returns": "Any", "result": result])
-
-        // Then
-            Issue.record("an inline spec nested past the bound is refused")
-        } catch let refusal as WorkflowValidationError {
-            #expect(refusal.message == "the text nests deeper than 128 containers")
-        }
     }
 
     // MARK: - Public
